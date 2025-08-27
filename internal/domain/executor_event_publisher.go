@@ -1,0 +1,40 @@
+package domain
+
+import (
+	"context"
+	"encoding/json"
+	"flowbaker/pkg/flowbaker"
+	"fmt"
+)
+
+type ExecutorEventPublisher struct {
+	api *flowbaker.Client
+}
+
+func NewExecutorEventPublisher(api *flowbaker.Client) *ExecutorEventPublisher {
+	return &ExecutorEventPublisher{
+		api: api,
+	}
+}
+
+func (p *ExecutorEventPublisher) PublishEvent(ctx context.Context, event Event) error {
+	workflowExecutionContext, ok := GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return fmt.Errorf("workflow execution context is required")
+	}
+
+	payloadJSON, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	err = p.api.PublishExecutionEvent(ctx, workflowExecutionContext.WorkspaceID, &flowbaker.PublishEventRequest{
+		EventType: flowbaker.EventType(event.GetType()),
+		EventData: payloadJSON,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
