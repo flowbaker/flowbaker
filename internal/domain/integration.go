@@ -50,23 +50,6 @@ const (
 	IntegrationType_Knowledge            IntegrationType = "flowbaker_knowledge"
 )
 
-type IntegrationInput struct {
-	NodeID            string
-	InputJSON         []byte
-	PayloadByInputID  map[string]Payload
-	IntegrationParams IntegrationParams
-	ActionType        IntegrationActionType
-	Workflow          *Workflow
-}
-
-type IntegrationParams struct {
-	Settings map[string]any
-}
-
-type IntegrationOutput struct {
-	ResultJSONByOutputID []Payload
-}
-
 type Integration struct {
 	ID          IntegrationType `json:"id" bson:"id"`
 	Name        string          `json:"name" bson:"name"`
@@ -145,4 +128,51 @@ type IntegrationEmbeddingModel struct {
 	Name        string `json:"name" bson:"name"`
 	Description string `json:"description" bson:"description"`
 	IsInternal  bool   `json:"is_internal" bson:"is_internal"`
+}
+
+type IntegrationInput struct {
+	NodeID            string
+	InputJSON         []byte
+	PayloadByInputID  map[string]Payload
+	IntegrationParams IntegrationParams
+	ActionType        IntegrationActionType
+	Workflow          *Workflow
+}
+
+func (i IntegrationInput) GetItemsByInputID() (map[string][]Item, error) {
+	itemsByInputID := map[string][]Item{}
+
+	for inputID, payload := range i.PayloadByInputID {
+		items, err := payload.ToItems()
+		if err != nil {
+			return nil, err
+		}
+
+		itemsByInputID[inputID] = items
+	}
+
+	return itemsByInputID, nil
+}
+
+func (i IntegrationInput) GetAllItems() ([]Item, error) {
+	itemsByInputID, err := i.GetItemsByInputID()
+	if err != nil {
+		return nil, err
+	}
+
+	items := []Item{}
+
+	for _, inputItems := range itemsByInputID {
+		items = append(items, inputItems...)
+	}
+
+	return items, nil
+}
+
+type IntegrationParams struct {
+	Settings map[string]any
+}
+
+type IntegrationOutput struct {
+	ResultJSONByOutputID []Payload
 }
