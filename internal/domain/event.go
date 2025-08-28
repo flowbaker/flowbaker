@@ -87,11 +87,6 @@ func (e *NodeExecutionStartedEvent) SetEventOrder(order int) {
 	e.EventOrder = order
 }
 
-type NodeItems struct {
-	FromNodeID string `json:"from_node_id"`
-	Items      []Item `json:"items"`
-}
-
 type NodeExecutedEvent struct {
 	WorkflowID          string               `json:"workflow_id"`
 	NodeID              string               `json:"node_id"`
