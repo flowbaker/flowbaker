@@ -1,6 +1,10 @@
 package domain
 
-import "errors"
+import (
+	"context"
+	"errors"
+	"flowbaker/pkg/flowbaker"
+)
 
 var (
 	ErrIntegrationNotFound = errors.New("integration not found")
@@ -175,4 +179,23 @@ type IntegrationParams struct {
 
 type IntegrationOutput struct {
 	ResultJSONByOutputID []Payload
+}
+
+type IntegrationDeps struct {
+	FlowbakerClient            flowbaker.ClientInterface
+	ExecutorEventPublisher     EventPublisher
+	ExecutorTaskPublisher      ExecutorTaskPublisher
+	TaskSchedulerService       TaskSchedulerService
+	ParameterBinder            IntegrationParameterBinder
+	IntegrationSelector        IntegrationSelector
+	ExecutorStorageManager     ExecutorStorageManager
+	ExecutorCredentialManager  ExecutorCredentialManager
+	ExecutorIntegrationManager ExecutorIntegrationManager
+	ExecutorScheduleManager    ExecutorScheduleManager
+	ExecutorKnowledgeManager   ExecutorKnowledgeManager
+	AgentMemoryService         AgentMemoryService
+}
+
+type IntegrationParameterBinder interface {
+	BindToStruct(ctx context.Context, item any, params any, expressions map[string]any) error
 }
