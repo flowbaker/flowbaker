@@ -1,8 +1,9 @@
-package domain
+package managers
 
 import (
 	"context"
 	"encoding/json"
+	"flowbaker/internal/domain"
 	"flowbaker/pkg/flowbaker"
 	"fmt"
 )
@@ -17,8 +18,8 @@ func NewExecutorEventPublisher(api *flowbaker.Client) *ExecutorEventPublisher {
 	}
 }
 
-func (p *ExecutorEventPublisher) PublishEvent(ctx context.Context, event Event) error {
-	workflowExecutionContext, ok := GetWorkflowExecutionContext(ctx)
+func (p *ExecutorEventPublisher) PublishEvent(ctx context.Context, event domain.Event) error {
+	workflowExecutionContext, ok := domain.GetWorkflowExecutionContext(ctx)
 	if !ok {
 		return fmt.Errorf("workflow execution context is required")
 	}
