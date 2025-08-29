@@ -7,7 +7,7 @@ import (
 	"flowbaker/internal/domain/executor"
 	"flowbaker/internal/expressions"
 	"flowbaker/internal/managers"
-	"flowbaker/pkg/flowbaker"
+	"flowbaker/pkg/clients/flowbaker"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -79,12 +79,12 @@ func BuildExecutorDependencies(ctx context.Context, config ExecutorDependencyCon
 		ExecutorStorageManager:     executorStorageManager,
 		ExecutorCredentialManager:  executorCredentialManager,
 		ParameterBinder:            kangarooBinder,
+		AgentMemoryService:         executorAgentMemoryService,
 		ExecutorEventPublisher:     orderedEventPublisher,
 		ExecutorTaskPublisher:      executorTaskPublisher,
 		ExecutorIntegrationManager: executorIntegrationManager,
 		ExecutorScheduleManager:    executorScheduleManager,
 		ExecutorKnowledgeManager:   executorKnowledgeManager,
-		AgentMemoryService:         executorAgentMemoryService,
 	}
 
 	// Register integrations
