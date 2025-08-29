@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"flowbaker/internal/domain"
-	"flowbaker/pkg/flowbaker"
+	"flowbaker/pkg/clients/flowbaker"
 	"fmt"
 )
 

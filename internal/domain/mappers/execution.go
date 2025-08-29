@@ -2,8 +2,8 @@ package mappers
 
 import (
 	"flowbaker/internal/domain"
-	"flowbaker/pkg/flowbaker"
-	executortypes "flowbaker/pkg/flowbaker-executor"
+	"flowbaker/pkg/clients/flowbaker"
+	executortypes "flowbaker/pkg/clients/flowbaker-executor"
 	"time"
 )
 

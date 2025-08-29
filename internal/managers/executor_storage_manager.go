@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"flowbaker/internal/domain"
-	"flowbaker/pkg/flowbaker"
+	"flowbaker/pkg/clients/flowbaker"
 
 	"github.com/rs/xid"
 )

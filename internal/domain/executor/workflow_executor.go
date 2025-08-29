@@ -6,7 +6,7 @@ import (
 	"errors"
 	"flowbaker/internal/domain"
 	"flowbaker/internal/domain/mappers"
-	"flowbaker/pkg/flowbaker"
+	"flowbaker/pkg/clients/flowbaker"
 	"fmt"
 	"sync"
 	"time"

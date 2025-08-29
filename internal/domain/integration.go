@@ -3,7 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
-	"flowbaker/pkg/flowbaker"
+	"flowbaker/pkg/clients/flowbaker"
 )
 
 var (
@@ -188,12 +188,12 @@ type IntegrationDeps struct {
 	TaskSchedulerService       TaskSchedulerService
 	ParameterBinder            IntegrationParameterBinder
 	IntegrationSelector        IntegrationSelector
+	AgentMemoryService         AgentMemoryService
 	ExecutorStorageManager     ExecutorStorageManager
 	ExecutorCredentialManager  ExecutorCredentialManager
 	ExecutorIntegrationManager ExecutorIntegrationManager
 	ExecutorScheduleManager    ExecutorScheduleManager
 	ExecutorKnowledgeManager   ExecutorKnowledgeManager
-	AgentMemoryService         AgentMemoryService
 }
 
 type IntegrationParameterBinder interface {

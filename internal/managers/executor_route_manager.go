@@ -3,7 +3,7 @@ package managers
 import (
 	"context"
 	"flowbaker/internal/domain"
-	"flowbaker/pkg/flowbaker"
+	"flowbaker/pkg/clients/flowbaker"
 	"fmt"
 )
 
@@ -22,7 +22,7 @@ func NewExecutorRouteManager(deps ExecutorRouteManagerDependencies) domain.Execu
 }
 
 func (m *executorRouteManager) GetRoutes(ctx context.Context, params domain.GetRoutesParams) ([]domain.WorkflowRoute, error) {
-	response, err := m.client.GetRoutes(ctx, &flowbaker.GetRoutesRequest{
+	response, err := m.client.GetRoutes(ctx, flowbaker.GetRoutesRequest{
 		WorkspaceID:      params.WorkspaceID,
 		RouteID:          params.RouteID,
 		TriggerEventType: string(params.TriggerEventType),

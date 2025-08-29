@@ -12,7 +12,7 @@ import (
 
 	"flowbaker/internal/auth"
 	"flowbaker/internal/server"
-	"flowbaker/pkg/flowbaker"
+	"flowbaker/pkg/clients/flowbaker"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog"

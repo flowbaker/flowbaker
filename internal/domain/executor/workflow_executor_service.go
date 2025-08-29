@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flowbaker/internal/domain"
-	"flowbaker/pkg/flowbaker"
+	"flowbaker/pkg/clients/flowbaker"
 
 	"github.com/rs/zerolog/log"
 )

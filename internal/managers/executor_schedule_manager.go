@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"flowbaker/internal/domain"
-	"flowbaker/pkg/flowbaker"
+	"flowbaker/pkg/clients/flowbaker"
 )
 
 type executorScheduleManager struct {
