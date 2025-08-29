@@ -523,3 +523,30 @@ type SearchKnowledgeRequest struct {
 	Limit               int     `json:"limit"`
 	SimilarityThreshold float64 `json:"similarity_threshold"`
 }
+
+type WorkflowRoute struct {
+	ID                     string         `json:"id"`
+	UserID                 string         `json:"user_id"`
+	WorkflowID             string         `json:"workflow_id"`
+	RouteType              string         `json:"route_type"`
+	RouteID                string         `json:"route_id"`
+	TriggerID              string         `json:"trigger_id"`
+	TriggerEventType       string         `json:"trigger_event_type"`
+	TriggerIntegrationType string         `json:"trigger_integration_type"`
+	Metadata               map[string]any `json:"metadata"`
+	WorkflowType           string         `json:"workflow_type"`
+	IsWebhook              bool           `json:"is_webhook"`
+	WorkspaceID            string         `json:"workspace_id"`
+}
+
+type GetRoutesRequest struct {
+	WorkspaceID      string `json:"workspace_id"`
+	RouteID          string `json:"route_id"`
+	TriggerEventType string `json:"trigger_event_type"`
+	WorkflowType     string `json:"workflow_type"`
+	IsWebhook        bool   `json:"is_webhook,omitempty"`
+}
+
+type GetRoutesResponse struct {
+	Routes []WorkflowRoute `json:"routes"`
+}

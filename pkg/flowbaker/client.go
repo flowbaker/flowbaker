@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -77,6 +78,9 @@ type ClientInterface interface {
 	// Schedule operations (for executor clients)
 	GetSchedule(ctx context.Context, workspaceID, scheduleID, workflowID string) ([]byte, error)
 	CreateSchedule(ctx context.Context, workspaceID string, req *CreateScheduleRequest) ([]byte, error)
+
+	// Route operations (for executor clients)
+	GetRoutes(ctx context.Context, req *GetRoutesRequest) (*GetRoutesResponse, error)
 }
 
 // Client provides a high-level interface for interacting with the Flowbaker API
@@ -1465,6 +1469,51 @@ func (c *Client) DeleteOldAgentConversations(ctx context.Context, req *DeleteOld
 	var result DeleteOldAgentConversationsResponse
 	if err := c.handleResponse(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to process delete old agent conversations response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (c *Client) GetRoutes(ctx context.Context, req GetRoutesRequest) (*GetRoutesResponse, error) {
+	if c.config.ExecutorID == "" {
+		return nil, fmt.Errorf("executor ID is required for route requests")
+	}
+
+	if req.WorkspaceID == "" {
+		return nil, fmt.Errorf("workspace ID is required")
+	}
+
+	if req.RouteID == "" {
+		return nil, fmt.Errorf("route ID is required")
+	}
+
+	if req.TriggerEventType == "" {
+		return nil, fmt.Errorf("trigger event type is required")
+	}
+
+	if req.WorkflowType == "" {
+		req.WorkflowType = "default"
+	}
+
+	queryParams := url.Values{}
+
+	queryParams.Add("trigger_event_type", req.TriggerEventType)
+	queryParams.Add("workflow_type", req.WorkflowType)
+	queryParams.Add("is_webhook", strconv.FormatBool(req.IsWebhook))
+
+	queryString := queryParams.Encode()
+
+	path := fmt.Sprintf("/v1/workspaces/%s/routes/%s?%s", req.WorkspaceID, req.RouteID, queryString)
+
+	resp, err := c.doRequestWithExecutorID(ctx, "GET", path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get routes: %w", err)
+	}
+
+	var result GetRoutesResponse
+
+	if err := c.handleResponse(resp, &result); err != nil {
+		return nil, fmt.Errorf("failed to process get routes response: %w", err)
 	}
 
 	return &result, nil
