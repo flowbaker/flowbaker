@@ -15,23 +15,17 @@ import (
 
 type DiscordPollingHandler struct {
 	credentialGetter     domain.CredentialGetter[DiscordCredential]
-	taskPublisher        domain.TaskPublisher
-	taskSchedulerService domain.TaskSchedulerService
+	taskPublisher        domain.ExecutorTaskPublisher
+	taskSchedulerService domain.ExecutorScheduleManager
 }
 
-type DiscordPollingHandlerDeps struct {
-	ExecutorCredentialManager domain.ExecutorCredentialManager
-	TaskPublisher             domain.TaskPublisher
-	TaskSchedulerService      domain.TaskSchedulerService
-}
-
-func NewDiscordPollingHandler(deps DiscordPollingHandlerDeps) *DiscordPollingHandler {
+func NewDiscordPollingHandler(deps domain.IntegrationDeps) domain.IntegrationPoller {
 	credentialGetter := managers.NewExecutorCredentialGetter[DiscordCredential](deps.ExecutorCredentialManager)
 
 	return &DiscordPollingHandler{
 		credentialGetter:     credentialGetter,
-		taskPublisher:        deps.TaskPublisher,
-		taskSchedulerService: deps.TaskSchedulerService,
+		taskPublisher:        deps.ExecutorTaskPublisher,
+		taskSchedulerService: deps.ExecutorScheduleManager,
 	}
 }
 
@@ -88,7 +82,7 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 		return domain.PollResult{}, fmt.Errorf("channel_id is empty")
 	}
 
-	schedule, err := i.taskSchedulerService.GetSchedule(ctx, p.Trigger.ID, p.Workflow.ID)
+	schedule, err := i.taskSchedulerService.GetSchedule(ctx, p.WorkspaceID, p.Trigger.ID, p.Workflow.ID)
 	if err != nil {
 		return domain.PollResult{}, fmt.Errorf("failed to get schedule: %w", err)
 	}
@@ -124,7 +118,7 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 				continue
 			}
 
-			err = i.taskPublisher.EnqueueTask(ctx, domain.ExecuteWorkflowTask{
+			err = i.taskPublisher.EnqueueTask(ctx, p.WorkspaceID, domain.ExecuteWorkflowTask{
 				WorkflowID:   p.Workflow.ID,
 				UserID:       p.UserID,
 				WorkflowType: p.WorkflowType,
@@ -162,7 +156,7 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 				continue
 			}
 
-			err = i.taskPublisher.EnqueueTask(ctx, domain.ExecuteWorkflowTask{
+			err = i.taskPublisher.EnqueueTask(ctx, p.WorkspaceID, domain.ExecuteWorkflowTask{
 				WorkflowID:   p.Workflow.ID,
 				UserID:       p.UserID,
 				WorkflowType: p.WorkflowType,
