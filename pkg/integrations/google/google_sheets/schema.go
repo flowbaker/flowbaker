@@ -1,0 +1,352 @@
+package googlesheets
+
+import (
+	"flowbaker/internal/domain"
+)
+
+var (
+	Schema = schema
+
+	schema = domain.Integration{
+		ID:          "google_sheets",
+		Name:        "Google Sheets",
+		Description: "Use Google Sheets API to manage spreadsheets",
+		CredentialProperties: []domain.NodeProperty{
+			{
+				Key:               "account",
+				Name:              "Account",
+				Description:       "OAuth account for Google Sheets",
+				Required:          false,
+				Type:              domain.NodePropertyType_OAuth,
+				OAuthType:         domain.OAuthTypeGoogle,
+				IsCustomOAuthable: true,
+			},
+		},
+		Actions: []domain.IntegrationAction{
+			{
+				ID:          "create_sheet",
+				Name:        "Create Sheet",
+				ActionType:  "create_sheet",
+				Description: "Create a new spreadsheet in Google Sheets",
+				Properties: []domain.NodeProperty{
+					{
+						Key:         "title",
+						Name:        "Title",
+						Description: "The title of the new spreadsheet",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+					},
+				},
+			},
+			{
+				ID:          "delete_sheet",
+				Name:        "Delete Sheet",
+				ActionType:  IntegrationActionType_DeleteSheet,
+				Description: "Delete an existing spreadsheet from Google Sheets",
+				Properties: []domain.NodeProperty{
+					{
+						Key:              "spreadsheet_id",
+						Name:             "Spreadsheet",
+						Description:      "The ID of the SpreadSheet to delete",
+						Required:         true,
+						Type:             domain.NodePropertyType_String,
+						Peekable:         true,
+						PeekableType:     GoogleSheetsPeekable_Files,
+						ExpressionChoice: true,
+					},
+				},
+			},
+			{
+				ID:          "add_column",
+				Name:        "Add Column",
+				ActionType:  IntegrationActionType_AddColumn,
+				Description: "Add a column to existing worksheet",
+				Properties: []domain.NodeProperty{
+					{
+						Key:              "spreadsheet_id",
+						Name:             "Spreadsheet",
+						Description:      "The ID of the SpreadSheet to create column",
+						Required:         true,
+						Type:             domain.NodePropertyType_String,
+						Peekable:         true,
+						PeekableType:     GoogleSheetsPeekable_Files,
+						ExpressionChoice: true,
+					},
+					{
+						Key:          "worksheet_id",
+						Name:         "WorkSheet",
+						Description:  "The ID of the worksheet to create column",
+						Required:     true,
+						Type:         domain.NodePropertyType_String,
+						Peekable:     true,
+						PeekableType: GoogleSheetsPeekable_Sheets,
+						Dependent:    []string{"spreadsheet_id"},
+						PeekableDependentProperties: []domain.PeekableDependentProperty{
+							{
+								PropertyKey: "spreadsheet_id",
+								ValueKey:    "spreadsheet_id",
+							},
+						},
+						ExpressionChoice: true,
+					},
+					{
+						Key:         "content",
+						Name:        "Content",
+						Description: "The content of the new column",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+					},
+					{
+						Key:         "index",
+						Name:        "Index",
+						Description: "The index of column",
+						Required:    true,
+						Type:        domain.NodePropertyType_Integer,
+					},
+				},
+			},
+			{
+				ID:          "add_data",
+				Name:        "Add Data",
+				ActionType:  IntegrationActionType_AddData,
+				Description: "Add bulk data to sheet",
+				Properties: []domain.NodeProperty{
+					{
+						Key:              "spreadsheet_id",
+						Name:             "Spreadsheet",
+						Description:      "The ID of the SpreadSheet",
+						Required:         true,
+						Type:             domain.NodePropertyType_String,
+						Peekable:         true,
+						PeekableType:     GoogleSheetsPeekable_Files,
+						ExpressionChoice: true,
+					},
+					{
+						Key:          "worksheet_id",
+						Name:         "Worksheet",
+						Description:  "The ID of the worksheet to add data",
+						Required:     true,
+						Type:         domain.NodePropertyType_String,
+						Peekable:     true,
+						PeekableType: GoogleSheetsPeekable_Sheets,
+						Dependent:    []string{"spreadsheet_id"},
+						PeekableDependentProperties: []domain.PeekableDependentProperty{
+							{
+								PropertyKey: "spreadsheet_id",
+								ValueKey:    "spreadsheet_id",
+							},
+						},
+						ExpressionChoice: true,
+					},
+					{
+						Key:         "data",
+						Name:        "Data",
+						Description: "The JSON data to add to the worksheet. Can be an array of objects or a single object.",
+						Required:    true,
+						Type:        domain.NodePropertyType_Text,
+					},
+				},
+			},
+			{
+				ID:          "create_work_sheet",
+				Name:        "Create Work Sheet",
+				ActionType:  IntegrationActionType_CreateWorkSheet,
+				Description: "Create a new worksheet in spreadsheet",
+				Properties: []domain.NodeProperty{
+					{
+						Key:              "spreadsheet_id",
+						Name:             "Spreadsheet",
+						Description:      "The ID of the SpreadSheet to create worksheet",
+						Required:         true,
+						Type:             domain.NodePropertyType_String,
+						Peekable:         true,
+						PeekableType:     GoogleSheetsPeekable_Files,
+						ExpressionChoice: true,
+					},
+					{
+						Key:         "title",
+						Name:        "Title",
+						Description: "The title of the new worksheet",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+					},
+				},
+			},
+			{
+				ID:          "copy_spread_sheet",
+				Name:        "Copy Spread Sheet",
+				ActionType:  IntegrationActionType_CopySpreadSheet,
+				Description: "Copy a existing spreadsheet in Google Sheets",
+				Properties: []domain.NodeProperty{
+					{
+						Key:              "spreadsheet_id",
+						Name:             "Spreadsheet",
+						Description:      "The ID of the SpreadSheet to copy",
+						Required:         true,
+						Type:             domain.NodePropertyType_String,
+						Peekable:         true,
+						PeekableType:     GoogleSheetsPeekable_Files,
+						ExpressionChoice: true,
+					},
+					{
+						Key:         "title",
+						Name:        "Title",
+						Description: "The title of the new spreadsheet",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+					},
+				},
+			},
+			{
+				ID:          "copy_work_sheet",
+				Name:        "Copy Work Sheet",
+				ActionType:  IntegrationActionType_CopyWorkSheet,
+				Description: "Copy a work sheet into same spreadsheet",
+				Properties: []domain.NodeProperty{
+					{
+						Key:              "spreadsheet_id",
+						Name:             "Spreadsheet",
+						Description:      "The ID of the SpreadSheet",
+						Required:         true,
+						Type:             domain.NodePropertyType_String,
+						Peekable:         true,
+						PeekableType:     GoogleSheetsPeekable_Files,
+						ExpressionChoice: true,
+					},
+					{
+						Key:          "worksheet_id",
+						Name:         "WorkSheet",
+						Description:  "The ID of the worksheet to copy",
+						Required:     true,
+						Type:         domain.NodePropertyType_String,
+						Peekable:     true,
+						PeekableType: GoogleSheetsPeekable_Sheets,
+						Dependent:    []string{"spreadsheet_id"},
+						PeekableDependentProperties: []domain.PeekableDependentProperty{
+							{
+								PropertyKey: "spreadsheet_id",
+								ValueKey:    "spreadsheet_id",
+							},
+						},
+						ExpressionChoice: true,
+					},
+					{
+						Key:         "title",
+						Name:        "Title",
+						Description: "The title of the new worksheet",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+					},
+					{
+						Key:              "dest_spreadsheet_id",
+						Name:             "Destination Spreadsheet",
+						Description:      "The ID of the destination SpreadSheet",
+						Required:         true,
+						Type:             domain.NodePropertyType_String,
+						Peekable:         true,
+						PeekableType:     GoogleSheetsPeekable_Files,
+						ExpressionChoice: true,
+					},
+				},
+			},
+			{
+				ID:          "delete_work_sheet",
+				Name:        "Delete Work Sheet",
+				ActionType:  IntegrationActionType_DeleteWorkSheet,
+				Description: "Copy a work sheet into same spreadsheet",
+				Properties: []domain.NodeProperty{
+					{
+						Key:              "spreadsheet_id",
+						Name:             "Spreadsheet",
+						Description:      "The ID of the SpreadSheet",
+						Required:         true,
+						Type:             domain.NodePropertyType_String,
+						Peekable:         true,
+						PeekableType:     GoogleSheetsPeekable_Files,
+						ExpressionChoice: true,
+					},
+					{
+						Key:          "worksheet_id",
+						Name:         "WorkSheet",
+						Description:  "The ID of the worksheet to delete",
+						Required:     true,
+						Type:         domain.NodePropertyType_String,
+						Peekable:     true,
+						PeekableType: GoogleSheetsPeekable_Sheets,
+						Dependent:    []string{"spreadsheet_id"},
+						PeekableDependentProperties: []domain.PeekableDependentProperty{
+							{
+								PropertyKey: "spreadsheet_id",
+								ValueKey:    "spreadsheet_id",
+							},
+						},
+						ExpressionChoice: true,
+					},
+				},
+			},
+			{
+				ID:          "find_rows",
+				Name:        "Find Rows",
+				ActionType:  IntegrationActionType_FindRows,
+				Description: "Find Rows by Column",
+				Properties: []domain.NodeProperty{
+					{
+						Key:              "spreadsheet_id",
+						Name:             "Spreadsheet",
+						Description:      "The ID of the SpreadSheet",
+						Required:         true,
+						Type:             domain.NodePropertyType_String,
+						Peekable:         true,
+						PeekableType:     GoogleSheetsPeekable_Files,
+						ExpressionChoice: true,
+					},
+					{
+						Key:          "worksheet_id",
+						Name:         "WorkSheet",
+						Description:  "The ID of the worksheet",
+						Required:     true,
+						Type:         domain.NodePropertyType_String,
+						Peekable:     true,
+						PeekableType: GoogleSheetsPeekable_Sheets,
+						Dependent:    []string{"spreadsheet_id"},
+						PeekableDependentProperties: []domain.PeekableDependentProperty{
+							{
+								PropertyKey: "spreadsheet_id",
+								ValueKey:    "spreadsheet_id",
+							},
+						},
+						ExpressionChoice: true,
+					},
+					{
+						Key:          "column_id",
+						Name:         "Column",
+						Description:  "The ID of the column to check",
+						Required:     true,
+						Type:         domain.NodePropertyType_String,
+						Peekable:     true,
+						PeekableType: GoogleSheetsPeekable_Columns,
+						Dependent:    []string{"worksheet_id", "spreadsheet_id"},
+						PeekableDependentProperties: []domain.PeekableDependentProperty{
+							{
+								PropertyKey: "spreadsheet_id",
+								ValueKey:    "spreadsheet_id",
+							},
+							{
+								PropertyKey: "worksheet_id",
+								ValueKey:    "worksheet_id",
+							},
+						},
+						ExpressionChoice: true,
+					},
+					{
+						Key:         "value",
+						Name:        "Value",
+						Description: "The value to search",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+					},
+				},
+			},
+		},
+	}
+)
