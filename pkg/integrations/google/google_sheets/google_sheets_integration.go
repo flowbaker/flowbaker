@@ -9,8 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"

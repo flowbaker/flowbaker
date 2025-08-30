@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -13,6 +11,10 @@ import (
 	"net/textproto"
 	"net/url"
 	"strings"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/rs/zerolog/log"
 )

@@ -1,9 +1,10 @@
 package ai_agent
 
 import (
-	"flowbaker/internal/domain"
 	"fmt"
 	"testing"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 )
 
 func TestAIParameterResolver_ResolveParameters(t *testing.T) {

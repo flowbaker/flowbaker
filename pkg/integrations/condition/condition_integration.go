@@ -3,11 +3,12 @@ package condition
 import (
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 )
 
 type ConditionIntegrationCreator struct {

@@ -2,10 +2,12 @@ package githubintegration
 
 import (
 	"context"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
 	"fmt"
 	"net/http"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/google/go-github/v57/github"
 	"github.com/rs/zerolog/log"

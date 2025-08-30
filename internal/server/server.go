@@ -2,9 +2,10 @@ package server
 
 import (
 	"context"
-	"flowbaker/internal/auth"
-	"flowbaker/internal/controllers"
-	"flowbaker/internal/middlewares"
+
+	"github.com/flowbaker/flowbaker/internal/auth"
+	"github.com/flowbaker/flowbaker/internal/controllers"
+	"github.com/flowbaker/flowbaker/internal/middlewares"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"

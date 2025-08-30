@@ -2,8 +2,9 @@ package dropbox
 
 import (
 	"context"
-	"flowbaker/internal/domain"
 	"net/http"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"

@@ -10,9 +10,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"flowbaker/internal/auth"
-	"flowbaker/internal/server"
-	"flowbaker/pkg/clients/flowbaker"
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+
+	"github.com/flowbaker/flowbaker/internal/auth"
+	"github.com/flowbaker/flowbaker/internal/server"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog"

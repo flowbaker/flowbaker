@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
 	"fmt"
 	"strconv"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"

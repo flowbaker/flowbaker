@@ -3,9 +3,11 @@ package managers
 import (
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
-	"flowbaker/pkg/clients/flowbaker"
 	"fmt"
+
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 )
 
 type executorCredentialManager struct {

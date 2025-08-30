@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/domain/mappers"
-	"flowbaker/pkg/clients/flowbaker"
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+
+	"github.com/flowbaker/flowbaker/internal/domain/mappers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"

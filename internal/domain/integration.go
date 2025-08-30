@@ -3,7 +3,8 @@ package domain
 import (
 	"context"
 	"errors"
-	"flowbaker/pkg/clients/flowbaker"
+
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 )
 
 var (

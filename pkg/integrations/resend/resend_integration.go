@@ -2,10 +2,12 @@ package resendintegration
 
 import (
 	"context"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
 	"fmt"
 	"strings"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/resend/resend-go/v2"
 )

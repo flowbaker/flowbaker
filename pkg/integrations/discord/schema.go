@@ -1,7 +1,7 @@
 package discord
 
 import (
-	"flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/internal/domain"
 )
 
 var (

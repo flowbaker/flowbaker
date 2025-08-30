@@ -3,10 +3,12 @@ package s3
 import (
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
 	"fmt"
 	"path/filepath"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"

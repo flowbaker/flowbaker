@@ -3,9 +3,11 @@ package gmail
 import (
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
 	"fmt"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/api/gmail/v1"

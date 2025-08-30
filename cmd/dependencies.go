@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
-	"flowbaker/internal/controllers"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/domain/executor"
-	"flowbaker/internal/expressions"
-	"flowbaker/internal/managers"
-	"flowbaker/pkg/clients/flowbaker"
 	"time"
+
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+
+	"github.com/flowbaker/flowbaker/internal/controllers"
+	"github.com/flowbaker/flowbaker/internal/domain/executor"
+	"github.com/flowbaker/flowbaker/internal/expressions"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/rs/zerolog/log"
 )

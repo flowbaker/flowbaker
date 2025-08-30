@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +11,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/rs/zerolog/log"

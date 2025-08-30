@@ -1,7 +1,7 @@
 package ai_agent
 
 import (
-	"flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/internal/domain"
 )
 
 // IntegrationActionType_AIAgentV2 is defined in ai_agent_integration_v2.go

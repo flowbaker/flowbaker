@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/google/go-github/v57/github" // Assuming a recent version, adjust if necessary
 	"golang.org/x/oauth2"

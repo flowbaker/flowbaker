@@ -10,7 +10,7 @@ import (
 	"github.com/dop251/goja/ast"
 	"github.com/dop251/goja/parser"
 
-	"flowbaker/internal/kangaroo/types"
+	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
 )
 
 // ASTParser provides secure JavaScript expression parsing using Goja

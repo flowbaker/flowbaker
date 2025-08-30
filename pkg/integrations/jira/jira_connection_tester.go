@@ -3,10 +3,11 @@ package jira
 import (
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"github.com/rs/zerolog/log"
 )

@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flowbaker/internal/domain"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 )
 
 type SendResponseIntegrationCreator struct {

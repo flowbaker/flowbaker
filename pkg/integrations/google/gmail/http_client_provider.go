@@ -2,8 +2,9 @@ package gmail
 
 import (
 	"context"
-	"flowbaker/internal/domain"
 	"net/http"
+
+	"github.com/flowbaker/flowbaker/internal/domain"
 
 	"golang.org/x/oauth2"
 )
