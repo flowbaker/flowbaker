@@ -52,6 +52,12 @@ type GoogleDriveIntegrationCreator struct {
 	executorStorageManager domain.ExecutorStorageManager
 }
 
+type GoogleDriveIntegrationCreatorDeps struct {
+	CredentialGetter       domain.CredentialGetter[domain.OAuthAccountSensitiveData]
+	ParameterBinder        domain.IntegrationParameterBinder
+	ExecutorStorageManager domain.ExecutorStorageManager
+}
+
 func NewGoogleDriveIntegrationCreator(deps domain.IntegrationDeps) domain.IntegrationCreator {
 	return &GoogleDriveIntegrationCreator{
 		credentialGetter:       managers.NewExecutorCredentialGetter[domain.OAuthAccountSensitiveData](deps.ExecutorCredentialManager),
@@ -252,7 +258,100 @@ func (g *GoogleDriveIntegration) PeekFoldersWithRoot(ctx context.Context, p doma
 
 	results = append(results, shareableResult.Result...)
 
+	// Fetch folders from Shared Drives
+	sharedDriveFolders, err := g.fetchSharedDriveFolders(ctx)
+	if err == nil {
+		results = append(results, sharedDriveFolders...)
+	}
+
 	return domain.PeekResult{Result: results}, nil
+}
+
+// fetchSharedDriveFolders retrieves all folders from all shared drives
+func (g *GoogleDriveIntegration) fetchSharedDriveFolders(ctx context.Context) ([]domain.PeekResultItem, error) {
+	var results []domain.PeekResultItem
+
+	sharedDrives, err := g.driveService.Drives.List().
+		PageSize(100).
+		Fields("drives(id, name)").
+		Context(ctx).
+		Do()
+
+	if err != nil || sharedDrives == nil {
+		return results, err
+	}
+
+	for _, drive := range sharedDrives.Drives {
+		driveFolders, err := g.fetchFoldersFromDrive(ctx, drive.Id, drive.Name)
+		if err == nil {
+			results = append(results, driveFolders...)
+		}
+	}
+
+	return results, nil
+}
+
+// fetchFoldersFromDrive retrieves all folders from a specific drive
+func (g *GoogleDriveIntegration) fetchFoldersFromDrive(ctx context.Context, driveId, driveName string) ([]domain.PeekResultItem, error) {
+	var results []domain.PeekResultItem
+
+	query := "mimeType='application/vnd.google-apps.folder' and trashed=false"
+	pageToken := ""
+
+	for {
+		folders, nextToken, err := g.fetchFolderPage(ctx, driveId, query, pageToken)
+		if err != nil {
+			return results, err
+		}
+
+		for _, folder := range folders {
+			displayName := g.formatFolderPath(folder, driveId, driveName)
+			results = append(results, domain.PeekResultItem{
+				Key:     folder.Name,
+				Value:   folder.Id,
+				Content: displayName,
+			})
+		}
+
+		if nextToken == "" {
+			break
+		}
+		pageToken = nextToken
+	}
+
+	return results, nil
+}
+
+// fetchFolderPage retrieves a single page of folders
+func (g *GoogleDriveIntegration) fetchFolderPage(ctx context.Context, driveId, query, pageToken string) ([]*drive.File, string, error) {
+	listCall := g.driveService.Files.List().
+		Q(query).
+		Fields("nextPageToken, files(id, name, parents)").
+		OrderBy("name").
+		PageSize(100).
+		IncludeItemsFromAllDrives(true).
+		SupportsAllDrives(true).
+		Corpora("drive").
+		DriveId(driveId)
+
+	if pageToken != "" {
+		listCall = listCall.PageToken(pageToken)
+	}
+
+	result, err := listCall.Context(ctx).Do()
+	if err != nil {
+		return nil, "", err
+	}
+
+	return result.Files, result.NextPageToken, nil
+}
+
+// formatFolderPath creates a display path for a folder
+func (g *GoogleDriveIntegration) formatFolderPath(folder *drive.File, driveId, driveName string) string {
+	if len(folder.Parents) > 0 && folder.Parents[0] == driveId {
+		return fmt.Sprintf("%s / %s", driveName, folder.Name)
+	}
+	return fmt.Sprintf("%s / ... / %s", driveName, folder.Name)
 }
 
 func (g *GoogleDriveIntegration) PeekFiles(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
@@ -1159,6 +1258,8 @@ func (g *GoogleDriveIntegration) ShareSharedDrive(ctx context.Context, input dom
 		return nil, fmt.Errorf("failed to bind parameters: %w", err)
 	}
 
+	// Map roles for Shared Drives
+	// Shared Drives use different role names than regular files/folders
 	driveRole := p.Role
 	switch p.Role {
 	case "reader":
@@ -1166,11 +1267,13 @@ func (g *GoogleDriveIntegration) ShareSharedDrive(ctx context.Context, input dom
 	case "commenter":
 		driveRole = "commenter"
 	case "writer":
-		driveRole = "contributor"
+		driveRole = "writer"
 	case "fileOrganizer":
-		driveRole = "contentManager"
+		driveRole = "fileOrganizer"
 	case "organizer":
-		driveRole = "manager"
+		driveRole = "organizer"
+	default:
+		driveRole = p.Role
 	}
 
 	permission := &drive.Permission{
