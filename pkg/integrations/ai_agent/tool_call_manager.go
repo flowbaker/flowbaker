@@ -28,11 +28,12 @@ type ToolExecutor struct {
 
 // ToolDefinition represents a tool that can be called by the LLM
 type ToolDefinition struct {
-	Name         string                       `json:"name"`
-	Description  string                       `json:"description"`
-	Parameters   map[string]interface{}       `json:"parameters"`
-	ActionType   domain.IntegrationActionType `json:"action_type"`
-	ToolExecutor *ToolExecutor                `json:"tool_executor"`
+	Name                string                       `json:"name"`
+	Description         string                       `json:"description"`
+	Parameters          map[string]interface{}       `json:"parameters"`
+	ActionType          domain.IntegrationActionType `json:"action_type"`
+	ToolExecutor        *ToolExecutor                `json:"tool_executor"`
+	IntegrationSettings map[string]interface{}       `json:"integration_settings"` // Pre-configured parameters
 }
 
 // ToolCallResult represents the result of a tool execution
@@ -148,33 +149,60 @@ func (m *DefaultToolCallManager) convertActionToTool(action domain.IntegrationAc
 	toolName := fmt.Sprintf("%s_%s", strings.ToLower(string(toolExec.IntegrationType)), strings.ToLower(string(action.ActionType)))
 
 	// Build parameters schema for LLM
-	parameters := map[string]interface{}{
-		"type":       "object",
-		"properties": make(map[string]interface{}),
-		"required":   []string{},
-	}
-
-	properties := parameters["properties"].(map[string]interface{})
+	properties := make(map[string]interface{})
 	required := []string{}
+
+	// Get preset settings from workflow node if available
+	presetSettings := make(map[string]interface{})
+	if toolExec.WorkflowNode != nil {
+		for key, value := range toolExec.WorkflowNode.IntegrationSettings {
+			presetSettings[key] = value
+		}
+	}
 
 	// Convert NodeProperty to JSON Schema format
 	for _, prop := range action.Properties {
 		propSchema := m.convertNodePropertyToSchema(prop)
+		
+		// Check if this parameter has a preset value
+		_, hasPreset := presetSettings[prop.Key]
+		
+		// If parameter has a preset value, add a note to the description
+		if hasPreset {
+			existingDesc := ""
+			if desc, ok := propSchema["description"]; ok {
+				// Safely convert to string using fmt.Sprintf
+				existingDesc = fmt.Sprintf("%v", desc)
+			}
+			if existingDesc != "" {
+				propSchema["description"] = existingDesc + " (pre-configured, optional to override)"
+			} else {
+				propSchema["description"] = "(pre-configured, optional to override)"
+			}
+		}
+		
 		properties[prop.Key] = propSchema
 
-		if prop.Required {
+		// Only mark as required if it's required AND doesn't have a preset value
+		if prop.Required && !hasPreset {
 			required = append(required, prop.Key)
 		}
 	}
 
-	parameters["required"] = required
+	// Build the final parameters object
+	parameters := map[string]interface{}{
+		"type":       "object",
+		"properties": properties,
+		"required":   required,
+	}
 
 	return ToolDefinition{
-		Name:         toolName,
-		Description:  fmt.Sprintf("%s: %s", action.Name, action.Description),
-		Parameters:   parameters,
-		ActionType:   action.ActionType,
-		ToolExecutor: toolExec,
+		Name:                toolName,
+		Description:         fmt.Sprintf("%s: %s", action.Name, action.Description),
+		Parameters:          parameters,
+		ActionType:          action.ActionType,
+		ToolExecutor:        toolExec,
+		IntegrationSettings: presetSettings,
 	}
 }
 
@@ -186,6 +214,49 @@ func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodePro
 
 	if prop.Description != "" {
 		schema["description"] = prop.Description
+	}
+
+	// Handle array type with items specification
+	if prop.Type == domain.NodePropertyType_Array {
+		if prop.ArrayOpts != nil {
+			// Add items schema for arrays (required by OpenAI function calling)
+			itemsSchema := map[string]interface{}{
+				"type": m.mapNodePropertyType(prop.ArrayOpts.ItemType),
+			}
+
+			// If array items have properties (for object/map items), add them
+			if len(prop.ArrayOpts.ItemProperties) > 0 {
+				itemsProperties := make(map[string]interface{})
+				itemsRequired := []string{}
+
+				for _, itemProp := range prop.ArrayOpts.ItemProperties {
+					itemsProperties[itemProp.Key] = m.convertNodePropertyToSchema(itemProp)
+					if itemProp.Required {
+						itemsRequired = append(itemsRequired, itemProp.Key)
+					}
+				}
+
+				itemsSchema["properties"] = itemsProperties
+				if len(itemsRequired) > 0 {
+					itemsSchema["required"] = itemsRequired
+				}
+			}
+
+			schema["items"] = itemsSchema
+
+			// Add array constraints if specified
+			if prop.ArrayOpts.MinItems > 0 {
+				schema["minItems"] = prop.ArrayOpts.MinItems
+			}
+			if prop.ArrayOpts.MaxItems > 0 {
+				schema["maxItems"] = prop.ArrayOpts.MaxItems
+			}
+		} else {
+			// Fallback for arrays without ArrayOpts - default to string items
+			schema["items"] = map[string]interface{}{
+				"type": "string",
+			}
+		}
 	}
 
 	// Note: DefaultValue field doesn't exist in NodeProperty

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flowbaker/internal/domain"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -472,10 +473,11 @@ Instructions:
 1. Carefully read the user's request to understand what they want to accomplish
 2. Use the appropriate tools to complete the task
 3. You can call multiple tools if needed, but choose the most relevant ones
-4. Always provide a clear response about what you accomplished
-5. If you cannot complete a task, explain why and what information would be needed
+4. Some tool parameters are pre-configured - you don't need to provide these unless you want to override them
+5. Always provide a clear response about what you accomplished
+6. If you cannot complete a task, explain why and what information would be needed
 
-Remember: Focus on completing the user's specific request using the available tools.`, toolDescriptions)
+Remember: Focus on completing the user's specific request using the available tools. Pre-configured parameters will be used automatically.`, toolDescriptions)
 	}
 
 	// If using custom system prompt, append tool descriptions
@@ -503,7 +505,18 @@ func (f *FunctionCallingConversationManager) formatToolDescriptions() string {
 
 	descriptions := make([]string, 0, len(f.toolDefinitions))
 	for _, tool := range f.toolDefinitions {
-		descriptions = append(descriptions, fmt.Sprintf("- %s: %s", tool.Name, tool.Description))
+		toolDesc := fmt.Sprintf("- %s: %s", tool.Name, tool.Description)
+
+		// Add information about pre-configured parameters if any
+		if len(tool.IntegrationSettings) > 0 {
+			preConfigured := []string{}
+			for key := range tool.IntegrationSettings {
+				preConfigured = append(preConfigured, key)
+			}
+			toolDesc += fmt.Sprintf("\n  Pre-configured parameters: %s (these will be used automatically unless you override them)", strings.Join(preConfigured, ", "))
+		}
+
+		descriptions = append(descriptions, toolDesc)
 	}
 
 	result := ""
