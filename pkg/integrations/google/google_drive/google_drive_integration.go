@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v3"

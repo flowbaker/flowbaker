@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"flowbaker/internal/domain"
-	"flowbaker/pkg/clients/flowbaker"
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/rs/xid"
 )

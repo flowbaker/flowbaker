@@ -2,9 +2,11 @@ package managers
 
 import (
 	"context"
-	"flowbaker/internal/domain"
-	"flowbaker/pkg/clients/flowbaker"
 	"fmt"
+
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 type ExecutorAgentMemoryService struct {

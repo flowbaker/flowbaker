@@ -2,9 +2,10 @@ package ai_agent
 
 import (
 	"encoding/json"
-	"flowbaker/internal/domain"
 	"fmt"
 	"strings"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/rs/zerolog/log"
 )

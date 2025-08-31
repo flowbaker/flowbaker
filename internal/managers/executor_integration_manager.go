@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"flowbaker/internal/domain"
-	"flowbaker/pkg/clients/flowbaker"
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 type executorIntegrationManager struct {

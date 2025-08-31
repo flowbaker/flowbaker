@@ -1,7 +1,7 @@
 package stripe
 
 import (
-	"flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 // Stripe universal trigger event type (following Jira pattern)

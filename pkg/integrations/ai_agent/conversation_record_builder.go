@@ -1,10 +1,11 @@
 package ai_agent
 
 import (
-	"flowbaker/internal/domain"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/rs/xid"
 )

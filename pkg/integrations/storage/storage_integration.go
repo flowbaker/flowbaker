@@ -3,8 +3,9 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
 	"fmt"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/rs/zerolog/log"
 )

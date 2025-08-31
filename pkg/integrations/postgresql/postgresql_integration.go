@@ -2,8 +2,10 @@ package postgresql
 
 import (
 	"context"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/jackc/pgx/v5"
 )

@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"flowbaker/internal/auth"
+	"github.com/flowbaker/flowbaker/internal/auth"
 )
 
 // ClientInterface defines the interface for the executor client

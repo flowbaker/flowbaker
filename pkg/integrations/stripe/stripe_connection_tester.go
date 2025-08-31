@@ -3,9 +3,11 @@ package stripe
 import (
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
 	"fmt"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/rs/zerolog/log"
 	"github.com/stripe/stripe-go/v82"

@@ -1,7 +1,7 @@
 package claudeintegration
 
 import (
-	"flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 var (

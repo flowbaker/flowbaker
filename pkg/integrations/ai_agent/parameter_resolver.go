@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/rs/zerolog/log"
 )

@@ -2,8 +2,9 @@ package middlewares
 
 import (
 	"bytes"
-	"flowbaker/internal/auth"
 	"io"
+
+	"github.com/flowbaker/flowbaker/internal/auth"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog/log"
