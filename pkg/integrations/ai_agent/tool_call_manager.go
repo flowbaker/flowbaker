@@ -33,7 +33,7 @@ type ToolDefinition struct {
 	Parameters          map[string]interface{}       `json:"parameters"`
 	ActionType          domain.IntegrationActionType `json:"action_type"`
 	ToolExecutor        *ToolExecutor                `json:"tool_executor"`
-	IntegrationSettings map[string]interface{}       `json:"integration_settings"` // Pre-configured parameters
+	IntegrationSettings map[string]interface{}       `json:"integration_settings"`
 }
 
 // ToolCallResult represents the result of a tool execution
@@ -69,6 +69,7 @@ type DefaultToolCallManager struct {
 	executorIntegrationManager domain.ExecutorIntegrationManager
 	parameterBinder            domain.IntegrationParameterBinder
 	parameterResolver          *AIParameterResolver
+	peekableResolver           *PeekableValueResolver
 	eventPublisher             domain.EventPublisher
 }
 
@@ -86,6 +87,7 @@ func NewDefaultToolCallManager(deps DefaultToolCallManagerDeps) ToolCallManager 
 		executorIntegrationManager: deps.ExecutorIntegrationManager,
 		parameterBinder:            deps.ParameterBinder,
 		parameterResolver:          NewAIParameterResolver(),
+		peekableResolver:           NewPeekableValueResolver(deps.ExecutorIntegrationManager),
 		eventPublisher:             deps.EventPublisher,
 	}
 }
@@ -95,24 +97,17 @@ func (m *DefaultToolCallManager) DiscoverTools(ctx context.Context, toolExecutor
 	var allTools []ToolDefinition
 
 	for _, toolExec := range toolExecutors {
-		log.Debug().
-			Str("integration_type", string(toolExec.IntegrationType)).
-			Str("node_id", toolExec.NodeID).
-			Msg("Discovering tools for integration")
 
-		// Get integration schema
 		integration, err := m.executorIntegrationManager.GetIntegration(ctx, toolExec.IntegrationType)
 		if err != nil {
 			log.Error().
 				Err(err).
 				Str("integration_type", string(toolExec.IntegrationType)).
 				Msg("Failed to get integration schema")
-			continue // Skip this integration but continue with others
+			continue
 		}
 
-		// Convert each action to a tool definition, filtering by allowed actions
 		for _, action := range integration.Actions {
-			// Check if this action is allowed (if AllowedActions is specified)
 			if len(toolExec.AllowedActions) > 0 {
 				allowed := false
 				for _, allowedAction := range toolExec.AllowedActions {
@@ -122,37 +117,27 @@ func (m *DefaultToolCallManager) DiscoverTools(ctx context.Context, toolExecutor
 					}
 				}
 				if !allowed {
-					continue // Skip this action as it's not in the allowed list
+					continue
 				}
 			}
 
 			toolDef := m.convertActionToTool(action, &toolExec)
 			allTools = append(allTools, toolDef)
 
-			log.Debug().
-				Str("tool_name", toolDef.Name).
-				Str("action_type", string(toolDef.ActionType)).
-				Msg("Discovered tool")
 		}
 	}
 
-	log.Info().
-		Int("total_tools", len(allTools)).
-		Msg("Tool discovery completed")
 
 	return allTools, nil
 }
 
 // convertActionToTool converts an IntegrationAction to a ToolDefinition
 func (m *DefaultToolCallManager) convertActionToTool(action domain.IntegrationAction, toolExec *ToolExecutor) ToolDefinition {
-	// Create a unique tool name combining integration and action
 	toolName := fmt.Sprintf("%s_%s", strings.ToLower(string(toolExec.IntegrationType)), strings.ToLower(string(action.ActionType)))
 
-	// Build parameters schema for LLM
 	properties := make(map[string]interface{})
 	required := []string{}
 
-	// Get preset settings from workflow node if available
 	presetSettings := make(map[string]interface{})
 	if toolExec.WorkflowNode != nil {
 		for key, value := range toolExec.WorkflowNode.IntegrationSettings {
@@ -160,41 +145,21 @@ func (m *DefaultToolCallManager) convertActionToTool(action domain.IntegrationAc
 		}
 	}
 
-	// Convert NodeProperty to JSON Schema format
 	for _, prop := range action.Properties {
 		propSchema := m.convertNodePropertyToSchema(prop)
-		
-		// Check if this parameter has a preset value
-		_, hasPreset := presetSettings[prop.Key]
-		
-		// If parameter has a preset value, add a note to the description
-		if hasPreset {
-			existingDesc := ""
-			if desc, ok := propSchema["description"]; ok {
-				// Safely convert to string using fmt.Sprintf
-				existingDesc = fmt.Sprintf("%v", desc)
-			}
-			if existingDesc != "" {
-				propSchema["description"] = existingDesc + " (pre-configured, optional to override)"
-			} else {
-				propSchema["description"] = "(pre-configured, optional to override)"
-			}
-		}
-		
 		properties[prop.Key] = propSchema
 
-		// Only mark as required if it's required AND doesn't have a preset value
-		if prop.Required && !hasPreset {
+		if prop.Required {
 			required = append(required, prop.Key)
 		}
 	}
 
-	// Build the final parameters object
 	parameters := map[string]interface{}{
 		"type":       "object",
 		"properties": properties,
 		"required":   required,
 	}
+
 
 	return ToolDefinition{
 		Name:                toolName,
@@ -216,15 +181,12 @@ func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodePro
 		schema["description"] = prop.Description
 	}
 
-	// Handle array type with items specification
 	if prop.Type == domain.NodePropertyType_Array {
 		if prop.ArrayOpts != nil {
-			// Add items schema for arrays (required by OpenAI function calling)
 			itemsSchema := map[string]interface{}{
 				"type": m.mapNodePropertyType(prop.ArrayOpts.ItemType),
 			}
 
-			// If array items have properties (for object/map items), add them
 			if len(prop.ArrayOpts.ItemProperties) > 0 {
 				itemsProperties := make(map[string]interface{})
 				itemsRequired := []string{}
@@ -244,7 +206,6 @@ func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodePro
 
 			schema["items"] = itemsSchema
 
-			// Add array constraints if specified
 			if prop.ArrayOpts.MinItems > 0 {
 				schema["minItems"] = prop.ArrayOpts.MinItems
 			}
@@ -252,17 +213,13 @@ func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodePro
 				schema["maxItems"] = prop.ArrayOpts.MaxItems
 			}
 		} else {
-			// Fallback for arrays without ArrayOpts - default to string items
 			schema["items"] = map[string]interface{}{
 				"type": "string",
 			}
 		}
 	}
 
-	// Note: DefaultValue field doesn't exist in NodeProperty
-	// Default values would be handled by the UI layer
 
-	// Handle select/multiselect options
 	if len(prop.Options) > 0 {
 		var enumValues []interface{}
 		for _, option := range prop.Options {
@@ -292,9 +249,9 @@ func (m *DefaultToolCallManager) mapNodePropertyType(propType domain.NodePropert
 	case domain.NodePropertyType_Object, domain.NodePropertyType_Map:
 		return "object"
 	case domain.NodePropertyType_Date:
-		return "string" // ISO date string
+		return "string"
 	default:
-		return "string" // Default to string for unknown types
+		return "string"
 	}
 }
 
@@ -316,7 +273,6 @@ func (m *DefaultToolCallManager) GetLLMTools(toolDefinitions []ToolDefinition) [
 
 // FindTool finds a tool definition by name
 func (m *DefaultToolCallManager) FindTool(toolName string, toolDefinitions []ToolDefinition) (*ToolDefinition, error) {
-	// Strip "functions." prefix if present (OpenAI function calling format)
 	actualToolName := toolName
 	if strings.HasPrefix(toolName, "functions.") {
 		actualToolName = strings.TrimPrefix(toolName, "functions.")
@@ -339,7 +295,6 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		StartTime: startTime,
 	}
 
-	// Find the tool definition
 	toolDef, err := m.FindTool(toolCall.Name, toolDefinitions)
 	if err != nil {
 		result.Success = false
@@ -352,10 +307,8 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 	result.ActionType = toolDef.ActionType
 	toolNodeID := toolDef.ToolExecutor.NodeID
 
-	// Get workflow execution context for event publishing
 	workflowCtx, hasWorkflowCtx := domain.GetWorkflowExecutionContext(ctx)
 
-	// Publish node execution started event
 	if hasWorkflowCtx && workflowCtx.EnableEvents {
 		err = m.publishToolExecutionStartedEvent(ctx, workflowCtx, toolNodeID)
 		if err != nil {
@@ -363,8 +316,7 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		}
 	}
 
-	// Resolve parameters using AI vs preset values
-	resolvedParams, err := m.resolveToolParameters(toolCall, toolDef)
+	resolvedParams, err := m.resolveToolParameters(ctx, toolCall, toolDef)
 	if err != nil {
 		result.Success = false
 		result.Error = fmt.Sprintf("Parameter resolution failed: %v", err)
@@ -373,7 +325,6 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		return result, err
 	}
 
-	// Prepare integration input with resolved parameters
 	integrationInput, err := m.createIntegrationInputWithResolvedParams(toolCall, toolDef, resolvedParams)
 	if err != nil {
 		result.Success = false
@@ -383,12 +334,6 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		return result, err
 	}
 
-	// Execute the tool
-	log.Debug().
-		Str("tool_name", toolCall.Name).
-		Str("action_type", string(toolDef.ActionType)).
-		Interface("arguments", toolCall.Arguments).
-		Msg("Executing tool call")
 
 	output, err := toolDef.ToolExecutor.Executor.Execute(ctx, integrationInput)
 
@@ -399,7 +344,6 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		result.Success = false
 		result.Error = err.Error()
 
-		// Publish node failed event
 		if hasWorkflowCtx && workflowCtx.EnableEvents {
 			publishErr := m.publishToolExecutionFailedEvent(ctx, workflowCtx, toolNodeID, toolCall, resolvedParams, err)
 			if publishErr != nil {
@@ -419,7 +363,6 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 	result.Success = true
 	result.Result = m.formatToolResult(output)
 
-	// Publish node execution completed event
 	if hasWorkflowCtx && workflowCtx.EnableEvents {
 		err = m.publishToolExecutionCompletedEvent(ctx, workflowCtx, toolNodeID, resolvedParams, output)
 		if err != nil {
@@ -427,21 +370,13 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		}
 	}
 
-	log.Debug().
-		Str("tool_name", toolCall.Name).
-		Dur("duration", result.Duration).
-		Msg("Tool execution completed successfully")
 
 	return result, nil
 }
 
 // resolveToolParameters resolves tool parameters using AI vs preset values
-func (m *DefaultToolCallManager) resolveToolParameters(toolCall domain.ToolCall, toolDef *ToolDefinition) (*ParameterResolutionResult, error) {
+func (m *DefaultToolCallManager) resolveToolParameters(ctx context.Context, toolCall domain.ToolCall, toolDef *ToolDefinition) (*ParameterResolutionResult, error) {
 	if toolDef.ToolExecutor.WorkflowNode == nil {
-		// Fallback to simple parameter passing if no workflow node metadata
-		log.Warn().
-			Str("tool_name", toolCall.Name).
-			Msg("No workflow node metadata available - using simple parameter passing")
 
 		return &ParameterResolutionResult{
 			ResolvedSettings: toolCall.Arguments,
@@ -449,32 +384,35 @@ func (m *DefaultToolCallManager) resolveToolParameters(toolCall domain.ToolCall,
 		}, nil
 	}
 
-	// Extract preset settings from workflow node
 	presetSettings := make(map[string]interface{})
 	for key, value := range toolDef.ToolExecutor.WorkflowNode.IntegrationSettings {
 		presetSettings[key] = value
 	}
 
-	// Create resolution context
-	ctx := ParameterResolutionContext{
+
+	resolutionCtx := ParameterResolutionContext{
 		WorkflowNode:        toolDef.ToolExecutor.WorkflowNode,
 		PresetSettings:      presetSettings,
 		AIProvidedArguments: toolCall.Arguments,
 		ToolName:            toolCall.Name,
 	}
 
-	// Resolve parameters
-	result, err := m.parameterResolver.ResolveParameters(ctx)
+	result, err := m.parameterResolver.ResolveParameters(resolutionCtx)
+	
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve parameters for tool %s: %w", toolCall.Name, err)
 	}
 
-	// Log resolution summary
-	summary := m.parameterResolver.GetResolutionSummary(result)
-	log.Debug().
-		Str("tool_name", toolCall.Name).
-		Str("resolution_summary", summary).
-		Msg("Parameter resolution completed")
+
+	err = m.resolvePeekableValues(ctx, result, toolDef)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("tool_name", toolCall.Name).
+			Msg("Failed to resolve peekable values, continuing with unresolved values")
+	}
+
+
 
 	return result, nil
 }
@@ -485,52 +423,42 @@ func (m *DefaultToolCallManager) createIntegrationInputWithResolvedParams(
 	toolDef *ToolDefinition,
 	resolvedParams *ParameterResolutionResult,
 ) (domain.IntegrationInput, error) {
-	// Create a tool call item (similar to existing approach)
 	toolCallItem := map[string]interface{}{
 		"_tool_call":    true,
 		"_tool_name":    toolCall.Name,
 		"_tool_call_id": toolCall.ID,
 	}
 
-	// Add resolved parameters to the item (not just AI arguments)
 	for key, value := range resolvedParams.ResolvedSettings {
 		toolCallItem[key] = value
 	}
 
-	// Create payload with the tool call item
 	toolCallItems := []interface{}{toolCallItem}
 	payloadJSON, err := json.Marshal(toolCallItems)
 	if err != nil {
 		return domain.IntegrationInput{}, fmt.Errorf("failed to marshal tool call items: %w", err)
 	}
 
-	// Create integration input with resolved parameters
 	integrationInput := domain.IntegrationInput{
 		ActionType: toolDef.ActionType,
-		InputJSON:  []byte("{}"), // Tool calls don't need input JSON
+		InputJSON:  []byte("{}"),
 		PayloadByInputID: map[string]domain.Payload{
 			"tool_call_input": domain.Payload(payloadJSON),
 		},
 		IntegrationParams: domain.IntegrationParams{
-			Settings: resolvedParams.ResolvedSettings, // Use resolved settings instead of raw arguments
+			Settings: resolvedParams.ResolvedSettings,
 		},
 		Workflow: &domain.Workflow{
 			WorkspaceID: toolDef.ToolExecutor.WorkspaceID,
 		},
 	}
 
-	log.Debug().
-		Str("tool_name", toolCall.Name).
-		Interface("resolved_item", toolCallItem).
-		Int("resolved_params_count", len(resolvedParams.ResolvedSettings)).
-		Msg("Created integration input with resolved parameters")
 
 	return integrationInput, nil
 }
 
 // formatToolResult formats the integration output for tool result
 func (m *DefaultToolCallManager) formatToolResult(output domain.IntegrationOutput) interface{} {
-	// Try to parse ResultJSON if available
 	if len(output.ResultJSONByOutputID) > 0 {
 		resultJSON := output.ResultJSONByOutputID[0]
 
@@ -539,12 +467,10 @@ func (m *DefaultToolCallManager) formatToolResult(output domain.IntegrationOutpu
 			if err := json.Unmarshal(resultJSON, &result); err == nil {
 				return result
 			}
-			// If parsing fails, return as string
 			return string(resultJSON)
 		}
 	}
 
-	// Fallback to basic output structure
 	return map[string]interface{}{
 		"success": true,
 		"message": "Tool executed successfully",
@@ -575,14 +501,12 @@ func (m *DefaultToolCallManager) publishToolExecutionCompletedEvent(
 	resolvedParams *ParameterResolutionResult,
 	output domain.IntegrationOutput,
 ) error {
-	// Build input items from resolved parameters
 	inputItems, err := m.buildInputItemsFromParameters(resolvedParams)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to build input items for tool execution event")
 		inputItems = make(map[string]domain.NodeItems)
 	}
 
-	// Build output items from integration output
 	outputItems, err := m.buildOutputItemsFromIntegrationOutput(output, nodeID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to build output items for tool execution event")
@@ -611,7 +535,6 @@ func (m *DefaultToolCallManager) publishToolExecutionFailedEvent(
 	resolvedParams *ParameterResolutionResult,
 	err error,
 ) error {
-	// Build input items from resolved parameters
 	inputItems, itemsErr := m.buildInputItemsFromParameters(resolvedParams)
 	if itemsErr != nil {
 		log.Error().Err(itemsErr).Msg("Failed to build input items for tool execution failed event")
@@ -638,7 +561,6 @@ func (m *DefaultToolCallManager) buildInputItemsFromParameters(resolvedParams *P
 		return make(map[string]domain.NodeItems), nil
 	}
 
-	// Convert resolved settings to items format
 	items := []domain.Item{}
 	if len(resolvedParams.ResolvedSettings) > 0 {
 		items = append(items, domain.Item(resolvedParams.ResolvedSettings))
@@ -657,7 +579,6 @@ func (m *DefaultToolCallManager) buildInputItemsFromParameters(resolvedParams *P
 func (m *DefaultToolCallManager) buildOutputItemsFromIntegrationOutput(output domain.IntegrationOutput, fromNodeID string) (map[string]domain.NodeItems, error) {
 	outputItems := make(map[string]domain.NodeItems)
 
-	// Convert each output payload to items
 	for outputIndex, payload := range output.ResultJSONByOutputID {
 		items, err := payload.ToItems()
 		if err != nil {
@@ -674,3 +595,199 @@ func (m *DefaultToolCallManager) buildOutputItemsFromIntegrationOutput(output do
 
 	return outputItems, nil
 }
+
+// resolvePeekableValues resolves peekable field values from display text to actual IDs
+func (m *DefaultToolCallManager) resolvePeekableValues(ctx context.Context, resolvedParams *ParameterResolutionResult, toolDef *ToolDefinition) error {
+	if toolDef.ToolExecutor.WorkflowNode == nil {
+		return nil // No workflow node, skip peekable resolution
+	}
+
+	peekableFields, err := m.peekableResolver.IdentifyPeekableFields(
+		toolDef.ToolExecutor.WorkflowNode,
+		toolDef.ToolExecutor.IntegrationType,
+		toolDef.ActionType,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to identify peekable fields: %w", err)
+	}
+
+	if len(peekableFields) == 0 {
+		return nil // No peekable fields to resolve
+	}
+
+	for fieldKey, peekableType := range peekableFields {
+		fieldValue, exists := resolvedParams.ResolvedSettings[fieldKey]
+		if !exists || fieldValue == nil {
+			continue
+		}
+
+		if fieldValueStr := fmt.Sprintf("%v", fieldValue); fieldValueStr == "" || fieldValueStr == "<nil>" {
+			continue
+		}
+
+		wasProvidedByAgent := false
+		for _, resolution := range resolvedParams.ResolutionLog {
+			if resolution.Path == fieldKey && resolution.ProvidedByAgent {
+				wasProvidedByAgent = true
+				break
+			}
+		}
+
+		if !wasProvidedByAgent {
+			continue
+		}
+
+		resolvedValue, err := m.performPeekableResolution(ctx, fieldValue, peekableType, toolDef)
+		
+		if err != nil {
+			log.Error().
+				Err(err).
+				Str("field_key", fieldKey).
+				Interface("display_value", fieldValue).
+				Msg("Failed to resolve peekable value")
+			continue
+		}
+
+		// Update the resolved value if it changed
+		if resolvedValue != fieldValue {
+			resolvedParams.ResolvedSettings[fieldKey] = resolvedValue
+
+			// Update resolution log
+			for i, res := range resolvedParams.ResolutionLog {
+				if res.Path == fieldKey {
+					resolvedParams.ResolutionLog[i].Value = resolvedValue
+					break
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// extractDependentValues extracts values that a peekable field depends on
+func (m *DefaultToolCallManager) extractDependentValues(fieldKey string, resolvedSettings map[string]interface{}, toolDef *ToolDefinition) map[string]interface{} {
+	dependentValues := make(map[string]interface{})
+
+	// Get integration schema to find dependent properties
+	integration, err := m.executorIntegrationManager.GetIntegration(context.Background(), toolDef.ToolExecutor.IntegrationType)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("integration_type", string(toolDef.ToolExecutor.IntegrationType)).
+			Msg("Failed to get integration for dependent value extraction")
+		return dependentValues
+	}
+
+	action := m.findActionByType(integration.Actions, toolDef.ActionType)
+	if action == nil {
+		return dependentValues
+	}
+
+	prop := m.findPropertyByKey(action.Properties, fieldKey)
+	if prop == nil || len(prop.PeekableDependentProperties) == 0 {
+		return dependentValues
+	}
+
+	for _, dep := range prop.PeekableDependentProperties {
+		if value, exists := resolvedSettings[dep.PropertyKey]; exists {
+			dependentValues[dep.PropertyKey] = value
+		}
+	}
+
+	return dependentValues
+}
+
+// performPeekableResolution performs the actual peekable resolution using the tool executor
+func (m *DefaultToolCallManager) performPeekableResolution(ctx context.Context, displayValue interface{}, peekableType domain.IntegrationPeekableType, toolDef *ToolDefinition) (interface{}, error) {
+	// Convert display value to string for processing
+	displayStr := fmt.Sprintf("%v", displayValue)
+	if displayStr == "" || displayStr == "<nil>" {
+		return displayValue, nil // Return original if empty
+	}
+
+	// Check if the tool executor supports peeking
+	peeker, ok := toolDef.ToolExecutor.Executor.(domain.IntegrationPeeker)
+	if !ok {
+		return displayValue, nil
+	}
+
+	// Prepare peek parameters
+	peekParams := domain.PeekParams{
+		PeekableType: peekableType,
+		WorkspaceID:  toolDef.ToolExecutor.WorkspaceID,
+		UserID:       "", // Will be set by the integration if needed
+		PayloadJSON:  []byte("{}"), // Default empty payload
+	}
+
+	// Perform the peek operation
+	peekResult, err := peeker.Peek(ctx, peekParams)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("peekable_type", string(peekableType)).
+			Msg("Peekable API call failed")
+		return displayValue, fmt.Errorf("peekable lookup failed: %w", err)
+	}
+
+	// Debug: Log what peekable API returned
+	// Process peekable results
+
+	// Search for matching value in peek results
+	resolvedValue := m.findMatchingPeekValue(displayStr, peekResult.Result)
+	if resolvedValue != "" {
+		return resolvedValue, nil
+	}
+
+
+	// If still no match, return the display value as-is (it might be a valid ID already)
+	return displayValue, nil
+}
+
+// findMatchingPeekValue searches for an exact match in peek results
+func (m *DefaultToolCallManager) findMatchingPeekValue(displayValue string, peekResults []domain.PeekResultItem) string {
+	displayLower := strings.ToLower(displayValue)
+
+	for _, item := range peekResults {
+		// Check if display value matches the content (display text)
+		if strings.ToLower(item.Content) == displayLower {
+			return item.Value  // Return the actual ID, not the display name
+		}
+
+		// Check if display value matches the value (already an ID)
+		if strings.ToLower(item.Value) == displayLower {
+			return item.Value
+		}
+
+		// Check if display value IS the key (filename match)
+		if strings.ToLower(item.Key) == displayLower {
+			return item.Value  // Return the actual ID, not the display name
+		}
+
+		// For file names, check if it's part of the content (handle extensions)
+		if strings.Contains(strings.ToLower(item.Content), displayLower) {
+			return item.Value  // Return the actual ID, not the display name
+		}
+	}
+
+	return ""
+}
+
+func (m *DefaultToolCallManager) findActionByType(actions []domain.IntegrationAction, actionType domain.IntegrationActionType) *domain.IntegrationAction {
+	for _, action := range actions {
+		if action.ActionType == actionType {
+			return &action
+		}
+	}
+	return nil
+}
+
+func (m *DefaultToolCallManager) findPropertyByKey(properties []domain.NodeProperty, key string) *domain.NodeProperty {
+	for _, prop := range properties {
+		if prop.Key == key {
+			return &prop
+		}
+	}
+	return nil
+}
+

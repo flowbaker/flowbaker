@@ -470,14 +470,13 @@ Available tools:
 %s
 
 Instructions:
-1. Carefully read the user's request to understand what they want to accomplish
-2. Use the appropriate tools to complete the task
-3. You can call multiple tools if needed, but choose the most relevant ones
-4. Some tool parameters are pre-configured - you don't need to provide these unless you want to override them
-5. Always provide a clear response about what you accomplished
-6. If you cannot complete a task, explain why and what information would be needed
+1. Always use tools to complete user requests - don't just provide explanations
+2. For missing required parameters, extract values from the user's message (e.g., file names, descriptions)
+3. Call the tool even if you think information is missing - the system will handle parameter resolution
+4. Pre-configured parameters are automatically filled
+5. Provide a clear response about what you accomplished
 
-Remember: Focus on completing the user's specific request using the available tools. Pre-configured parameters will be used automatically.`, toolDescriptions)
+IMPORTANT: Always call tools to perform actions. Extract any identifiers from the user's message as parameter values.`, toolDescriptions)
 	}
 
 	// If using custom system prompt, append tool descriptions
@@ -510,10 +509,14 @@ func (f *FunctionCallingConversationManager) formatToolDescriptions() string {
 		// Add information about pre-configured parameters if any
 		if len(tool.IntegrationSettings) > 0 {
 			preConfigured := []string{}
-			for key := range tool.IntegrationSettings {
-				preConfigured = append(preConfigured, key)
+			for key, value := range tool.IntegrationSettings {
+				if value != "" && value != nil {
+					preConfigured = append(preConfigured, fmt.Sprintf("%s=%v", key, value))
+				}
 			}
-			toolDesc += fmt.Sprintf("\n  Pre-configured parameters: %s (these will be used automatically unless you override them)", strings.Join(preConfigured, ", "))
+			if len(preConfigured) > 0 {
+				toolDesc += fmt.Sprintf("\n  Pre-configured: %s", strings.Join(preConfigured, ", "))
+			}
 		}
 
 		descriptions = append(descriptions, toolDesc)

@@ -100,12 +100,12 @@ var (
 				ID:          "copy_file",
 				Name:        "Copy File",
 				ActionType:  IntegrationActionType_CopyFile,
-				Description: "Copies a file to a new name and optionally to a new folder.",
+				Description: "Copies a file to a new name and optionally to a new folder. Requires both the source file name/ID and the new file name.",
 				Properties: []domain.NodeProperty{
 					{
 						Key:          "file_id",
 						Name:         "Source File ID",
-						Description:  "The ID of the file to copy.",
+						Description:  "The name or ID of the file to copy. You can provide the file name and it will be resolved automatically.",
 						Required:     true,
 						Type:         domain.NodePropertyType_String,
 						Peekable:     true,
