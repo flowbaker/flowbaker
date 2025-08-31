@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"

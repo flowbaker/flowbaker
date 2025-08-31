@@ -6,7 +6,7 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 type ExecutorAgentMemoryService struct {

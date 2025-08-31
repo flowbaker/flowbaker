@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"golang.org/x/oauth2"
 )

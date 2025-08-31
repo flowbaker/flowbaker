@@ -7,7 +7,7 @@ import (
 
 	"github.com/flowbaker/flowbaker/internal/managers"
 
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v3"

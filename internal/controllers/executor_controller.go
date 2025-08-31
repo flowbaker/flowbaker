@@ -3,10 +3,10 @@ package controllers
 import (
 	executortypes "github.com/flowbaker/flowbaker/pkg/clients/flowbaker-executor"
 
-	"github.com/flowbaker/flowbaker/internal/domain/executor"
-	"github.com/flowbaker/flowbaker/internal/domain/mappers"
+	"github.com/flowbaker/flowbaker/pkg/domain/executor"
+	"github.com/flowbaker/flowbaker/pkg/domain/mappers"
 
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog/log"

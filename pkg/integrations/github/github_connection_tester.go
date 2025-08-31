@@ -7,7 +7,7 @@ import (
 
 	"github.com/flowbaker/flowbaker/internal/managers"
 
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/google/go-github/v57/github"
 	"github.com/rs/zerolog/log"

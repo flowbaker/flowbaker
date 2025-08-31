@@ -1,7 +1,7 @@
 package cronintegration
 
 import (
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 const (

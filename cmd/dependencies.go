@@ -7,12 +7,12 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 
 	"github.com/flowbaker/flowbaker/internal/controllers"
-	"github.com/flowbaker/flowbaker/internal/domain/executor"
 	"github.com/flowbaker/flowbaker/internal/expressions"
+	"github.com/flowbaker/flowbaker/pkg/domain/executor"
 
 	"github.com/flowbaker/flowbaker/internal/managers"
 
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/rs/zerolog/log"
 )

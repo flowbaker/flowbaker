@@ -1,7 +1,7 @@
 package jira
 
 import (
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 // Jira universal trigger event type (following GitHub pattern)

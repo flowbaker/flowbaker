@@ -6,7 +6,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	executortypes "github.com/flowbaker/flowbaker/pkg/clients/flowbaker-executor"
 
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 // DomainNodeExecutionToFlowbaker converts a domain.NodeExecution to flowbaker.NodeExecution

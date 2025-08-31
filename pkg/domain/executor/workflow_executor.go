@@ -10,9 +10,9 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 
-	"github.com/flowbaker/flowbaker/internal/domain/mappers"
+	"github.com/flowbaker/flowbaker/pkg/domain/mappers"
 
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"

@@ -1,7 +1,7 @@
 package flowbaker_agent_memory
 
 import (
-	"github.com/flowbaker/flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 const (
