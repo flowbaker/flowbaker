@@ -35,9 +35,6 @@ WORKDIR /app
 # Copy the binary from builder stage
 COPY --from=builder /app/flowbaker .
 
-# Copy config file template (optional)
-COPY --from=builder /app/cmd/executor_config.yaml ./executor_config.yaml.example
-
 # Change ownership to non-root user
 RUN chown -R flowbaker:flowbaker /app
 
