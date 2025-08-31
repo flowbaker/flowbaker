@@ -3,9 +3,10 @@ package ai_agent
 import (
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
 	"fmt"
 	"strings"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 type PeekableValueResolver struct {
