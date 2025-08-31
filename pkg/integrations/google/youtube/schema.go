@@ -15,7 +15,7 @@ var (
 	Schema domain.Integration = domain.Integration{
 		ID:          domain.IntegrationType_Youtube,
 		Name:        "Youtube",
-		Description: "Youtube integration",
+		Description: "Youtube integration for uploading videos, getting video briefs, and deleting videos",
 		CredentialProperties: []domain.NodeProperty{
 			{
 				Key:               "oauth_provider",
