@@ -52,22 +52,3 @@ func GenerateKeyPair() (privateKeyBase64, publicKeyBase64 string, err error) {
 func (h *ExecutorAuthHelper) GetPublicKeyBase64() string {
 	return base64.StdEncoding.EncodeToString(h.publicKey)
 }
-
-
-
-// PerformRegistration performs executor registration with the API
-func PerformRegistration(client ClientInterface, workspaceID, executorID string, x25519PublicKey, ed25519PublicKey string) (*RegisterExecutorResponse, error) {
-	req := &RegisterExecutorRequest{
-		WorkspaceID:      workspaceID,
-		ExecutorID:       executorID,
-		X25519PublicKey:  x25519PublicKey,
-		Ed25519PublicKey: ed25519PublicKey,
-	}
-
-	resp, err := client.RegisterExecutor(nil, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to register executor: %w", err)
-	}
-
-	return resp, nil
-}

@@ -274,21 +274,6 @@ type PersistFileResponse struct {
 	Message  string `json:"message"`
 }
 
-// Executor registration types
-
-// RegisterExecutorRequest represents the request to register a new executor
-type RegisterExecutorRequest struct {
-	WorkspaceID      string `json:"workspace_id"`
-	ExecutorID       string `json:"executor_id"`
-	X25519PublicKey  string `json:"x25519_public_key"`  // Base64 encoded X25519 public key for encryption
-	Ed25519PublicKey string `json:"ed25519_public_key"` // Base64 encoded Ed25519 public key for signatures
-}
-
-// RegisterExecutorResponse represents the response from executor registration
-type RegisterExecutorResponse struct {
-	Success bool `json:"success"`
-}
-
 // Executor represents an executor in the system
 type Executor struct {
 	ID               string    `json:"id"`

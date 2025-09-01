@@ -32,7 +32,6 @@ type ClientInterface interface {
 	EnqueueTaskAndWait(ctx context.Context, workspaceID string, req *EnqueueTaskAndWaitRequest) (*EnqueueTaskAndWaitResponse, error)
 
 	// Executor registration operations
-	RegisterExecutor(ctx context.Context, req *RegisterExecutorRequest) (*RegisterExecutorResponse, error)
 	CreateExecutorRegistration(ctx context.Context, req *CreateExecutorRegistrationRequest) (*CreateExecutorRegistrationResponse, error)
 	VerifyExecutorRegistration(ctx context.Context, workspaceID, executorID string, req *VerifyExecutorRegistrationRequest) (*Executor, error)
 	GetWorkspaceExecutors(ctx context.Context, workspaceID string) ([]Executor, error)
@@ -270,30 +269,6 @@ func (c *Client) GetWorkspaceExecutors(ctx context.Context, workspaceID string) 
 	}
 
 	return result, nil
-}
-
-// RegisterExecutor registers a new executor with the API
-func (c *Client) RegisterExecutor(ctx context.Context, req *RegisterExecutorRequest) (*RegisterExecutorResponse, error) {
-	if req == nil {
-		return nil, fmt.Errorf("request is required")
-	}
-
-	resp, err := c.doRequest(ctx, "POST", "/v1/auth/register", req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to register executor: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("registration failed with status %d", resp.StatusCode)
-	}
-
-	var result RegisterExecutorResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode registration response: %w", err)
-	}
-
-	return &result, nil
 }
 
 // GetCredential retrieves an encrypted credential for the executor
