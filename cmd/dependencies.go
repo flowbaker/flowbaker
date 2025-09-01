@@ -4,15 +4,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
-
 	"github.com/flowbaker/flowbaker/internal/controllers"
 	"github.com/flowbaker/flowbaker/internal/expressions"
-	"github.com/flowbaker/flowbaker/pkg/domain/executor"
-
+	"github.com/flowbaker/flowbaker/internal/initialization"
 	"github.com/flowbaker/flowbaker/internal/managers"
-
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	"github.com/flowbaker/flowbaker/pkg/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain/executor"
 
 	"github.com/rs/zerolog/log"
 )
@@ -29,7 +27,7 @@ type ExecutorDependencies struct {
 type ExecutorDependencyConfig struct {
 	FlowbakerClient *flowbaker.Client
 	ExecutorID      string
-	Config          *Config
+	Config          *initialization.ExecutorConfig
 }
 
 // BuildExecutorDependencies creates and wires up all executor dependencies
@@ -53,7 +51,7 @@ func BuildExecutorDependencies(ctx context.Context, config ExecutorDependencyCon
 		Client: config.FlowbakerClient,
 	})
 
-	executorCredentialDecryptor := managers.NewExecutorCredentialDecryptionService(config.Config.X25519PrivateKey)
+	executorCredentialDecryptor := managers.NewExecutorCredentialDecryptionService(config.Config.Keys.X25519Private)
 	executorCredentialManager := managers.NewExecutorCredentialManager(config.FlowbakerClient, executorCredentialDecryptor)
 	executorEventPublisher := managers.NewExecutorEventPublisher(config.FlowbakerClient)
 	executorTaskPublisher := managers.NewExecutorTaskPublisher(managers.ExecutorTaskPublisherDependencies{
