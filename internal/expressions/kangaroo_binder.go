@@ -11,8 +11,8 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"flowbaker/internal/kangaroo"
-	"flowbaker/internal/kangaroo/types"
+	"github.com/flowbaker/flowbaker/internal/kangaroo"
+	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
 )
 
 // KangarooBinder implements expression binding using local Kangaroo runtime

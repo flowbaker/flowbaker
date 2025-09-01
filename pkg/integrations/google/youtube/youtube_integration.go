@@ -2,9 +2,11 @@ package youtube
 
 import (
 	"context"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
 	"fmt"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"golang.org/x/oauth2"
 	"google.golang.org/api/option"

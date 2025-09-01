@@ -3,9 +3,10 @@ package cronintegration
 import (
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
 	"fmt"
 	"time"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"

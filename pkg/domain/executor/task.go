@@ -1,8 +1,9 @@
 package executor
 
 import (
-	"flowbaker/internal/domain"
 	"sync"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 type NodeExecutionTask struct {

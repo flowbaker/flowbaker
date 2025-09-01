@@ -1,4 +1,4 @@
-module flowbaker
+module github.com/flowbaker/flowbaker
 
 go 1.25.0
 

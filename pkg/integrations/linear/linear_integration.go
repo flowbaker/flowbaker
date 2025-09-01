@@ -3,11 +3,13 @@ package linear
 import (
 	"context"
 	"encoding/json"
-	"flowbaker/internal/domain"
-	"flowbaker/internal/managers"
 	"fmt"
 	"net/http"
 	"strconv"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/hasura/go-graphql-client"
 	"github.com/rs/zerolog/log"

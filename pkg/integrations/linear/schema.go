@@ -1,7 +1,7 @@
 package linear
 
 import (
-	"flowbaker/internal/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 const (
