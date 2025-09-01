@@ -289,6 +289,36 @@ type RegisterExecutorResponse struct {
 	Success bool `json:"success"`
 }
 
+// Executor represents an executor in the system
+type Executor struct {
+	ID               string    `json:"id"`
+	Key              string    `json:"key"`
+	Address          string    `json:"address"`
+	WorkspaceID      string    `json:"workspace_id"`
+	X25519PublicKey  string    `json:"x25519_public_key"`
+	Ed25519PublicKey string    `json:"ed25519_public_key"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+// CreateExecutorRegistrationRequest represents the request to create an executor registration
+type CreateExecutorRegistrationRequest struct {
+	ExecutorKey      string `json:"executor_key"`
+	Address          string `json:"address"`
+	X25519PublicKey  string `json:"x25519_public_key"`
+	Ed25519PublicKey string `json:"ed25519_public_key"`
+}
+
+// CreateExecutorRegistrationResponse represents the response from creating an executor registration
+type CreateExecutorRegistrationResponse struct {
+	VerificationCode string `json:"verification_code"`
+}
+
+// VerifyExecutorRegistrationRequest represents the request to verify an executor registration
+type VerifyExecutorRegistrationRequest struct {
+	Code string `json:"code"`
+}
+
 // File and folder management types
 
 // WorkspaceFile represents a file in the workspace

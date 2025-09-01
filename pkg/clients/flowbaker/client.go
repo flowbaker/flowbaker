@@ -33,6 +33,9 @@ type ClientInterface interface {
 
 	// Executor registration operations
 	RegisterExecutor(ctx context.Context, req *RegisterExecutorRequest) (*RegisterExecutorResponse, error)
+	CreateExecutorRegistration(ctx context.Context, req *CreateExecutorRegistrationRequest) (*CreateExecutorRegistrationResponse, error)
+	VerifyExecutorRegistration(ctx context.Context, workspaceID, executorID string, req *VerifyExecutorRegistrationRequest) (*Executor, error)
+	GetWorkspaceExecutors(ctx context.Context, workspaceID string) ([]Executor, error)
 
 	// Credential operations (for executor clients)
 	GetCredential(ctx context.Context, workspaceID, credentialID string) (*EncryptedCredential, error)
@@ -200,6 +203,73 @@ func (c *Client) EnqueueTaskAndWait(ctx context.Context, workspaceID string, req
 	}
 
 	return &result, nil
+}
+
+// CreateExecutorRegistration creates a new executor registration
+func (c *Client) CreateExecutorRegistration(ctx context.Context, req *CreateExecutorRegistrationRequest) (*CreateExecutorRegistrationResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("request is required")
+	}
+
+	resp, err := c.doRequest(ctx, "POST", "/executors", req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create executor registration: %w", err)
+	}
+
+	var result CreateExecutorRegistrationResponse
+	if err := c.handleResponse(resp, &result); err != nil {
+		return nil, fmt.Errorf("failed to process create executor registration response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// VerifyExecutorRegistration verifies an executor registration for a workspace
+func (c *Client) VerifyExecutorRegistration(ctx context.Context, workspaceID, executorID string, req *VerifyExecutorRegistrationRequest) (*Executor, error) {
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID is required")
+	}
+	if executorID == "" {
+		return nil, fmt.Errorf("executor ID is required")
+	}
+	if req == nil {
+		return nil, fmt.Errorf("request is required")
+	}
+
+	path := fmt.Sprintf("/workspaces/%s/executors/%s/verify", workspaceID, executorID)
+	resp, err := c.doRequest(ctx, "POST", path, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify executor registration: %w", err)
+	}
+
+	var result struct {
+		Executor *Executor `json:"executor"`
+	}
+	if err := c.handleResponse(resp, &result); err != nil {
+		return nil, fmt.Errorf("failed to process verify executor registration response: %w", err)
+	}
+
+	return result.Executor, nil
+}
+
+// GetWorkspaceExecutors retrieves all executors for a workspace
+func (c *Client) GetWorkspaceExecutors(ctx context.Context, workspaceID string) ([]Executor, error) {
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID is required")
+	}
+
+	path := fmt.Sprintf("/workspaces/%s/executors", workspaceID)
+	resp, err := c.doRequest(ctx, "GET", path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workspace executors: %w", err)
+	}
+
+	var result []Executor
+	if err := c.handleResponse(resp, &result); err != nil {
+		return nil, fmt.Errorf("failed to process get workspace executors response: %w", err)
+	}
+
+	return result, nil
 }
 
 // RegisterExecutor registers a new executor with the API
