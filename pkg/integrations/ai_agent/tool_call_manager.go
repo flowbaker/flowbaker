@@ -61,6 +61,9 @@ type ToolCallManager interface {
 
 	// FindTool finds a tool definition by name
 	FindTool(toolName string, toolDefinitions []ToolDefinition) (*ToolDefinition, error)
+
+	// GetPeekableData retrieves peekable data for all tools that have agent-provided peekable fields
+	GetPeekableData(ctx context.Context, toolDefinitions []ToolDefinition) map[string]map[string][]domain.PeekResultItem
 }
 
 // DefaultToolCallManager implements ToolCallManager
@@ -284,6 +287,59 @@ func (m *DefaultToolCallManager) FindTool(toolName string, toolDefinitions []Too
 		}
 	}
 	return nil, fmt.Errorf("tool not found: %s", toolName)
+}
+
+func (m *DefaultToolCallManager) GetPeekableData(ctx context.Context, toolDefinitions []ToolDefinition) map[string]map[string][]domain.PeekResultItem {
+	result := make(map[string]map[string][]domain.PeekResultItem)
+
+	for _, toolDef := range toolDefinitions {
+		if toolDef.ToolExecutor.WorkflowNode == nil {
+			continue
+		}
+
+		// Identify peekable fields for this tool
+		peekableFields, err := m.peekableResolver.IdentifyPeekableFields(
+			toolDef.ToolExecutor.WorkflowNode,
+			toolDef.ToolExecutor.IntegrationType,
+			toolDef.ActionType,
+		)
+		if err != nil || len(peekableFields) == 0 {
+			continue
+		}
+
+		toolPeekables := make(map[string][]domain.PeekResultItem)
+
+		// Get peekable data for each field
+		for fieldKey, peekableType := range peekableFields {
+			// Check if the executor implements IntegrationPeeker
+			peeker, ok := toolDef.ToolExecutor.Executor.(domain.IntegrationPeeker)
+			if !ok {
+				continue
+			}
+
+			// Prepare peek parameters
+			peekParams := domain.PeekParams{
+				PeekableType: peekableType,
+				WorkspaceID:  toolDef.ToolExecutor.WorkspaceID,
+				UserID:       "", // Will be set by the integration if needed
+				PayloadJSON:  []byte("{}"), // Default empty payload
+			}
+
+			// Perform the peek operation
+			peekResult, err := peeker.Peek(ctx, peekParams)
+			if err != nil {
+				continue
+			}
+
+			toolPeekables[fieldKey] = peekResult.Result
+		}
+
+		if len(toolPeekables) > 0 {
+			result[toolDef.Name] = toolPeekables
+		}
+	}
+
+	return result
 }
 
 // ExecuteToolCall executes a tool call from LLM and returns the result
@@ -627,7 +683,7 @@ func (m *DefaultToolCallManager) resolvePeekableValues(ctx context.Context, reso
 
 		wasProvidedByAgent := false
 		for _, resolution := range resolvedParams.ResolutionLog {
-			if resolution.Path == fieldKey && resolution.ProvidedByAgent {
+			if resolution.ProvidedByAgent && (resolution.Path == fieldKey || strings.HasSuffix(resolution.Path, "."+fieldKey)) {
 				wasProvidedByAgent = true
 				break
 			}
@@ -654,7 +710,7 @@ func (m *DefaultToolCallManager) resolvePeekableValues(ctx context.Context, reso
 
 			// Update resolution log
 			for i, res := range resolvedParams.ResolutionLog {
-				if res.Path == fieldKey {
+				if res.Path == fieldKey || strings.HasSuffix(res.Path, "."+fieldKey) {
 					resolvedParams.ResolutionLog[i].Value = resolvedValue
 					break
 				}
@@ -665,38 +721,6 @@ func (m *DefaultToolCallManager) resolvePeekableValues(ctx context.Context, reso
 	return nil
 }
 
-// extractDependentValues extracts values that a peekable field depends on
-func (m *DefaultToolCallManager) extractDependentValues(fieldKey string, resolvedSettings map[string]interface{}, toolDef *ToolDefinition) map[string]interface{} {
-	dependentValues := make(map[string]interface{})
-
-	// Get integration schema to find dependent properties
-	integration, err := m.executorIntegrationManager.GetIntegration(context.Background(), toolDef.ToolExecutor.IntegrationType)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("integration_type", string(toolDef.ToolExecutor.IntegrationType)).
-			Msg("Failed to get integration for dependent value extraction")
-		return dependentValues
-	}
-
-	action := m.findActionByType(integration.Actions, toolDef.ActionType)
-	if action == nil {
-		return dependentValues
-	}
-
-	prop := m.findPropertyByKey(action.Properties, fieldKey)
-	if prop == nil || len(prop.PeekableDependentProperties) == 0 {
-		return dependentValues
-	}
-
-	for _, dep := range prop.PeekableDependentProperties {
-		if value, exists := resolvedSettings[dep.PropertyKey]; exists {
-			dependentValues[dep.PropertyKey] = value
-		}
-	}
-
-	return dependentValues
-}
 
 // performPeekableResolution performs the actual peekable resolution using the tool executor
 func (m *DefaultToolCallManager) performPeekableResolution(ctx context.Context, displayValue interface{}, peekableType domain.IntegrationPeekableType, toolDef *ToolDefinition) (interface{}, error) {

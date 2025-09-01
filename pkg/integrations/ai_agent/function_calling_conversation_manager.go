@@ -458,6 +458,7 @@ func (f *FunctionCallingConversationManager) executeToolCalls(ctx context.Contex
 
 func (f *FunctionCallingConversationManager) buildSystemPrompt(ctx context.Context, workspaceID string) string {
 	toolDescriptions := f.formatToolDescriptions()
+	peekableContext := f.buildPeekableContext(ctx)
 
 	// Use system prompt from LLM node parameters if available, otherwise use default
 	var basePrompt string
@@ -469,14 +470,14 @@ func (f *FunctionCallingConversationManager) buildSystemPrompt(ctx context.Conte
 Available tools:
 %s
 
-Instructions:
+%sInstructions:
 1. Always use tools to complete user requests - don't just provide explanations
 2. For missing required parameters, extract values from the user's message (e.g., file names, descriptions)
 3. Call the tool even if you think information is missing - the system will handle parameter resolution
 4. Pre-configured parameters are automatically filled
 5. Provide a clear response about what you accomplished
 
-IMPORTANT: Always call tools to perform actions. Extract any identifiers from the user's message as parameter values.`, toolDescriptions)
+IMPORTANT: Always call tools to perform actions. Extract any identifiers from the user's message as parameter values.`, toolDescriptions, peekableContext)
 	}
 
 	// If using custom system prompt, append tool descriptions
@@ -484,7 +485,9 @@ IMPORTANT: Always call tools to perform actions. Extract any identifiers from th
 		basePrompt = fmt.Sprintf(`%s
 
 Available tools:
-%s`, basePrompt, toolDescriptions)
+%s
+
+%s`, basePrompt, toolDescriptions, peekableContext)
 	}
 
 	// Enhance with memory context if available
@@ -495,6 +498,73 @@ Available tools:
 	}
 
 	return enhancedPrompt
+}
+
+func (f *FunctionCallingConversationManager) buildPeekableContext(ctx context.Context) string {
+	if len(f.toolDefinitions) == 0 {
+		return ""
+	}
+
+	peekableData := f.toolCallManager.GetPeekableData(ctx, f.toolDefinitions)
+	if len(peekableData) == 0 {
+		return ""
+	}
+
+	peekableInfo := f.formatPeekableInfo(peekableData)
+	if len(peekableInfo) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf(`Available data for selection:
+%s
+
+`, strings.Join(peekableInfo, "\n"))
+}
+
+func (f *FunctionCallingConversationManager) formatPeekableInfo(peekableData map[string]map[string][]domain.PeekResultItem) []string {
+	var peekableInfo []string
+
+	for toolName, toolPeekables := range peekableData {
+		toolInfo := f.formatToolPeekables(toolName, toolPeekables)
+		peekableInfo = append(peekableInfo, toolInfo...)
+	}
+
+	return peekableInfo
+}
+
+func (f *FunctionCallingConversationManager) formatToolPeekables(toolName string, toolPeekables map[string][]domain.PeekResultItem) []string {
+	var toolInfo []string
+
+	for fieldKey, peekResults := range toolPeekables {
+		fieldInfo := f.formatFieldOptions(toolName, fieldKey, peekResults)
+		if fieldInfo != "" {
+			toolInfo = append(toolInfo, fieldInfo)
+		}
+	}
+
+	return toolInfo
+}
+
+func (f *FunctionCallingConversationManager) formatFieldOptions(toolName, fieldKey string, peekResults []domain.PeekResultItem) string {
+	options := f.extractOptions(peekResults)
+	if len(options) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf("For tool '%s', parameter '%s', available options: %s", 
+		toolName, fieldKey, strings.Join(options, ", "))
+}
+
+func (f *FunctionCallingConversationManager) extractOptions(peekResults []domain.PeekResultItem) []string {
+	var options []string
+	
+	for _, item := range peekResults {
+		if item.Content != "" {
+			options = append(options, fmt.Sprintf(`"%s"`, item.Content))
+		}
+	}
+	
+	return options
 }
 
 func (f *FunctionCallingConversationManager) formatToolDescriptions() string {

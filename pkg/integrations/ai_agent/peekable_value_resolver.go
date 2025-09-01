@@ -10,13 +10,11 @@ import (
 
 type PeekableValueResolver struct {
 	executorManager domain.ExecutorIntegrationManager
-	cache           map[string]string
 }
 
 func NewPeekableValueResolver(executorManager domain.ExecutorIntegrationManager) *PeekableValueResolver {
 	return &PeekableValueResolver{
 		executorManager: executorManager,
-		cache:           make(map[string]string),
 	}
 }
 
@@ -49,17 +47,6 @@ func (r *PeekableValueResolver) ResolveValue(ctx context.Context, resolutionCtx 
 		}
 	}
 
-	cacheKey := fmt.Sprintf("%s:%s", resolutionCtx.PeekableType, displayStr)
-	if cachedValue, exists := r.cache[cacheKey]; exists {
-
-		return &PeekableResolutionResult{
-			ResolvedValue:    cachedValue,
-			DisplayValue:     resolutionCtx.DisplayValue,
-			ResolutionMethod: "cache",
-		}
-	}
-
-	r.cache[cacheKey] = displayStr
 
 	return &PeekableResolutionResult{
 		ResolvedValue:    displayStr,
@@ -131,16 +118,6 @@ func (r *PeekableValueResolver) IdentifyPeekableFields(
 	return peekableFields, nil
 }
 
-func (r *PeekableValueResolver) ClearCache() {
-	r.cache = make(map[string]string)
-}
-
-func (r *PeekableValueResolver) GetCacheStats() map[string]interface{} {
-	return map[string]interface{}{
-		"size":    len(r.cache),
-		"entries": r.cache,
-	}
-}
 
 func (r *PeekableValueResolver) findActionByType(actions []domain.IntegrationAction, actionType domain.IntegrationActionType) *domain.IntegrationAction {
 	for _, action := range actions {
