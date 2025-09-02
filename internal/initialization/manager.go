@@ -5,16 +5,118 @@ import (
 	"os"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 )
 
-func RunFirstTimeSetup() (*SetupResult, error) {
-	fmt.Println("🚀 Welcome to Flowbaker")
-	fmt.Println()
-	fmt.Println("Setting up your executor...")
+const flowbakerLogo = `       ...........................*####=--:.       
+    -...--------------.....:----..@%%%%%@@@@#.-    
+  ==@@#...-------........-..----..@%%%%%%%%%%@@%*  
+ :#%%%@@*...----..:%@@@@@@#.----.*@%%%%%%%%%@@*... 
+-#%%%%%@@@-...--.@@@@%%%%@*.---..@@%%%%%%%@@#...-. 
+-%%%%%%%%@@%......%@%%%%%@*.--:.-@%%%%%%@@%...:---.
+#%%%%%%%%%%@@%.....#@@%%%@*.--..@@%%%%@@%...:-----.
+#%%%%%%%%%%%%@@#.....@@%%@*.-..%@%%%@@@-...-------.
+#@@@@@@@@%%%%%%@@*....@@%@*...#@%%%@@*.......-----.
+.....*#%@@@@@@@%@@@=...@%@*..*@%%@@#......*=..----.
+.::.........*%@@@@@@@..*@@=.#@@@@%.....+%@@@*.:---.
+.---------......*%@@@@#.@@.%@@@%.....#@@@%%@@..---.
+.---................%@@@*@%@@*...-#@@@%%%%%%@#.---.
+.---.%###########*+:..*@%%%%+%@@@@@@@@@@@@@@@@.---.
+.---.@@@@@@@@@@@@@@@@%=%%%%@+..-+*###########@.---.
+.---.#@%%%%%%@@@%*...+@@%@+@@@%................---.
+.---..@%%%@@@#.....%@@@#.@@.#@@@@%*......---------.
+.---..%@@@@*.....%@@@@*.:@@-..@@@@@@@#+............
+.----..%%+.....#@@%@@...+@@@...+@@@%@@@@@@%**-.....
+.-----.......*@@%%%@+...+@%@@....*@@%%%%%@@@@@@@@@#
+.-------...=@@@%%%@*..-.+@%%@@.....#@@%%%%%%%%%%%%#
+.-----....%@@%%%%@%..--.+@%%%@@*.....%@@%%%%%%%%%%+
+.---:...%@@%%%%%%@..---.+@%%%%@@#......@@@%%%%%%%%-
+ .-...#@@%%%%%%%@%..---.+@%%%%@@@@.--...=@@@%%%%%#-
+ ...*@@%%%%%%%%%@=.----.#@@@@@@#...----...*@@%%%#: 
+  *%@@%%%%%%%%%%@..----..:........-------...#@@==  
+    -.#@@@%%%%%@%.:-----.....-------------:...-    
+       .:--=####=...........................       `
 
-	executorName := GenerateExecutorName()
-	log.Info().Str("executor_name", executorName).Msg("Generated executor name")
+func showWelcome() {
+	// Create styles
+	logoStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("205")).
+		Bold(true).
+		Align(lipgloss.Center)
+
+	titleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("86")).
+		Bold(true).
+		Align(lipgloss.Center).
+		MarginTop(1).
+		MarginBottom(1)
+
+	subtitleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("241")).
+		Italic(true).
+		Align(lipgloss.Center).
+		MarginBottom(2)
+
+	// Display welcome screen
+	fmt.Println(logoStyle.Render(flowbakerLogo))
+	fmt.Println(titleStyle.Render("✨ Welcome to Flowbaker!"))
+	fmt.Println(subtitleStyle.Render("Let's get your automation magic ready to roll..."))
+}
+
+func collectExecutorConfig() (string, string, error) {
+	var executorName, address string
+
+	// Get default values from environment or fallbacks
+	defaultName := os.Getenv("FLOWBAKER_EXECUTOR_NAME")
+	if defaultName == "" {
+		defaultName = GenerateExecutorName()
+	}
+
+	defaultAddress := os.Getenv("FLOWBAKER_EXECUTOR_ADDRESS")
+	if defaultAddress == "" {
+		defaultAddress = "localhost:8081"
+	}
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Executor Name").
+				Description("A friendly name for your executor").
+				Value(&executorName).
+				Placeholder(defaultName),
+
+			huh.NewInput().
+				Title("Executor Address").
+				Description("Address where your executor will listen").
+				Value(&address).
+				Placeholder(defaultAddress),
+		),
+	)
+
+	err := form.Run()
+	if err != nil {
+		return "", "", err
+	}
+
+	// Use defaults if user didn't enter anything
+	if executorName == "" {
+		executorName = defaultName
+	}
+	if address == "" {
+		address = defaultAddress
+	}
+
+	return executorName, address, nil
+}
+
+func RunFirstTimeSetup() (*SetupResult, error) {
+	showWelcome()
+
+	executorName, address, err := collectExecutorConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect executor configuration: %w", err)
+	}
 
 	keys, err := GenerateAllKeys()
 	if err != nil {
@@ -24,7 +126,7 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	apiURL := getAPIURL()
 
 	fmt.Println("📡 Registering with Flowbaker...")
-	verificationCode, err := RegisterExecutor(executorName, keys, apiURL)
+	verificationCode, err := RegisterExecutor(executorName, address, keys, apiURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register executor: %w", err)
 	}
