@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/curve25519"
 )
 
-func GenerateExecutorID() string {
+func GenerateExecutorName() string {
 	adjectives := []string{"swift", "bright", "calm", "bold", "wise", "kind", "quick", "cool", "warm", "clear"}
 	nouns := []string{"river", "mountain", "ocean", "forest", "valley", "meadow", "stream", "peak", "lake", "field"}
 
@@ -19,10 +19,7 @@ func GenerateExecutorID() string {
 	adjIndex := int(now.UnixNano()) % len(adjectives)
 	nounIndex := int(now.UnixNano()/1000) % len(nouns)
 
-	return fmt.Sprintf("%s_%s_%d",
-		adjectives[adjIndex],
-		nouns[nounIndex],
-		now.Year())
+	return fmt.Sprintf("%s_%s", adjectives[adjIndex], nouns[nounIndex])
 }
 
 func GenerateX25519KeyPair() (privateKeyBase64, publicKeyBase64 string, err error) {

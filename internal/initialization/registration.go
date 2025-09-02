@@ -15,7 +15,7 @@ func RegisterExecutor(executorID string, keys CryptoKeys, apiBaseURL string) (st
 	)
 
 	req := &flowbaker.CreateExecutorRegistrationRequest{
-		ExecutorKey:      executorID,
+		ExecutorName:     executorID,
 		Address:          "localhost:8081", // Default address
 		X25519PublicKey:  keys.X25519Public,
 		Ed25519PublicKey: keys.Ed25519Public,
@@ -33,12 +33,10 @@ func RegisterExecutor(executorID string, keys CryptoKeys, apiBaseURL string) (st
 }
 
 // WaitForVerification waits for the executor to be verified via the frontend
-func WaitForVerification(executorID, verificationCode string, keys CryptoKeys, apiBaseURL string) (string, string, error) {
-	/* 	client := flowbaker.NewClient(
+func WaitForVerification(executorName, verificationCode string, keys CryptoKeys, apiBaseURL string) (string, string, string, error) {
+	client := flowbaker.NewClient(
 		flowbaker.WithBaseURL(apiBaseURL),
-		flowbaker.WithExecutorID(executorID),
-		flowbaker.WithEd25519PrivateKey(keys.Ed25519Private),
-	) */
+	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -46,12 +44,38 @@ func WaitForVerification(executorID, verificationCode string, keys CryptoKeys, a
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
+	fmt.Printf("Waiting for executor verification (code: %s)...\n", verificationCode)
+
 	for {
 		select {
 		case <-ctx.Done():
-			return "", "", fmt.Errorf("verification timeout after 10 minutes")
+			return "", "", "", fmt.Errorf("verification timeout after 10 minutes")
 		case <-ticker.C:
-			// FIXME: Add polling logic here
+			status, err := client.GetExecutorRegistrationStatus(ctx, verificationCode)
+			if err != nil {
+				// Log error but continue polling
+				fmt.Printf("Error checking registration status: %v\n", err)
+				continue
+			}
+
+			switch status.Status {
+			case "verified":
+				fmt.Println("Executor registration verified!")
+				if status.Executor != nil {
+					return status.Executor.ID, status.Executor.WorkspaceID, status.WorkspaceName, nil
+				}
+				// Fallback if executor data is not available
+				return "", "", "", fmt.Errorf("executor data not available in verification response")
+			case "not_found":
+				return "", "", "", fmt.Errorf("registration not found or expired: %s", status.Message)
+			case "pending":
+				// Continue polling
+				fmt.Printf("Registration still pending, expires at: %s\n", status.ExpiresAt)
+				continue
+			default:
+				fmt.Printf("Unknown status: %s\n", status.Status)
+				continue
+			}
 		}
 	}
 }

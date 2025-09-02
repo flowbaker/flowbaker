@@ -13,8 +13,8 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	fmt.Println()
 	fmt.Println("Setting up your executor...")
 
-	executorID := GenerateExecutorID()
-	log.Info().Str("executor_id", executorID).Msg("Generated executor ID")
+	executorName := GenerateExecutorName()
+	log.Info().Str("executor_name", executorName).Msg("Generated executor name")
 
 	keys, err := GenerateAllKeys()
 	if err != nil {
@@ -24,13 +24,13 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	apiURL := getAPIURL()
 
 	fmt.Println("📡 Registering with Flowbaker...")
-	verificationCode, err := RegisterExecutor(executorID, keys, apiURL)
+	verificationCode, err := RegisterExecutor(executorName, keys, apiURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register executor: %w", err)
 	}
 
 	frontendURL := GetVerificationURL(apiURL)
-	connectionURL := fmt.Sprintf("%s/executors/%s/verify?code=%s", frontendURL, executorID, verificationCode)
+	connectionURL := fmt.Sprintf("%s/executors/verify?code=%s", frontendURL, verificationCode)
 	fmt.Println()
 	fmt.Println("🔗 Connect your executor:")
 	fmt.Println()
@@ -38,15 +38,14 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	fmt.Println()
 	fmt.Println("⏳ Waiting for connection...")
 
-	workspaceID, workspaceName, err := WaitForVerification(executorID, verificationCode, keys, apiURL)
+	executorID, workspaceID, workspaceName, err := WaitForVerification(executorName, verificationCode, keys, apiURL)
 	if err != nil {
-		// Save partial config so user can resume later
 		partialConfig := &ExecutorConfig{
-			ExecutorID:       executorID,
+			ExecutorName:     executorName,
 			Keys:             keys,
 			APIBaseURL:       apiURL,
 			SetupComplete:    false,
-			VerificationCode: verificationCode, // Save the code for resume
+			VerificationCode: verificationCode,
 		}
 		SaveConfig(partialConfig)
 		return nil, fmt.Errorf("verification failed: %w", err)
@@ -54,6 +53,7 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 
 	config := &ExecutorConfig{
 		ExecutorID:    executorID,
+		ExecutorName:  executorName,
 		WorkspaceID:   workspaceID,
 		Keys:          keys,
 		APIBaseURL:    apiURL,
@@ -66,11 +66,12 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	}
 
 	fmt.Println()
-	fmt.Printf("✅ Connected to \"%s\" workspace\n", workspaceName)
+	fmt.Printf("✅ Connected to workspace \"%s\"\n", workspaceName)
 	fmt.Println("💾 Configuration saved")
 
 	return &SetupResult{
 		ExecutorID:    executorID,
+		ExecutorName:  executorName,
 		WorkspaceID:   workspaceID,
 		WorkspaceName: workspaceName,
 	}, nil
@@ -92,8 +93,9 @@ func ResumeSetup() (*SetupResult, error) {
 	if config.SetupComplete {
 		return &SetupResult{
 			ExecutorID:    config.ExecutorID,
+			ExecutorName:  config.ExecutorName,
 			WorkspaceID:   config.WorkspaceID,
-			WorkspaceName: "Unknown", // We don't store workspace name
+			WorkspaceName: "Unknown", // We don't store workspace name in config, would need API call to fetch
 		}, nil
 	}
 
@@ -101,18 +103,19 @@ func ResumeSetup() (*SetupResult, error) {
 	fmt.Println()
 
 	frontendURL := GetVerificationURL(config.APIBaseURL)
-	connectionURL := fmt.Sprintf("%s/executors/%s/verify?code=%s", frontendURL, config.ExecutorID, config.VerificationCode)
+	connectionURL := fmt.Sprintf("%s/executors/verify?code=%s", frontendURL, config.VerificationCode)
 	fmt.Println("🔗 Connect your executor:")
 	fmt.Println()
 	fmt.Printf("   %s\n", connectionURL)
 	fmt.Println()
 	fmt.Println("⏳ Waiting for connection...")
 
-	workspaceID, workspaceName, err := WaitForVerification(config.ExecutorID, config.VerificationCode, config.Keys, config.APIBaseURL)
+	executorID, workspaceID, workspaceName, err := WaitForVerification(config.ExecutorName, config.VerificationCode, config.Keys, config.APIBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("verification failed: %w", err)
 	}
 
+	config.ExecutorID = executorID
 	config.WorkspaceID = workspaceID
 	config.SetupComplete = true
 	config.LastConnected = time.Now()
@@ -122,10 +125,11 @@ func ResumeSetup() (*SetupResult, error) {
 	}
 
 	fmt.Println()
-	fmt.Printf("✅ Connected to \"%s\" workspace\n", workspaceName)
+	fmt.Printf("✅ Connected to workspace \"%s\"\n", workspaceName)
 
 	return &SetupResult{
-		ExecutorID:    config.ExecutorID,
+		ExecutorID:    executorID,
+		ExecutorName:  config.ExecutorName,
 		WorkspaceID:   workspaceID,
 		WorkspaceName: workspaceName,
 	}, nil

@@ -4,7 +4,8 @@ import "time"
 
 // ExecutorConfig represents the persistent configuration for an executor
 type ExecutorConfig struct {
-	ExecutorID       string    `json:"executor_id"`
+	ExecutorID       string    `json:"executor_id,omitempty"`
+	ExecutorName     string    `json:"executor_name"`
 	WorkspaceID      string    `json:"workspace_id,omitempty"`
 	SetupComplete    bool      `json:"setup_complete"`
 	Keys             CryptoKeys `json:"keys"`
@@ -24,6 +25,7 @@ type CryptoKeys struct {
 // SetupResult contains the results of the initialization process
 type SetupResult struct {
 	ExecutorID    string
+	ExecutorName  string
 	WorkspaceID   string
 	WorkspaceName string
 }
