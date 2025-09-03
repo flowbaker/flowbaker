@@ -3,6 +3,7 @@ package ai_agent
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
@@ -112,6 +113,67 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 		return nil, fmt.Errorf("failed to bind parameters: %w", err)
 	}
 
+	action := domain.IntegrationAction{}
+
+	for _, schemaAction := range schema.Actions {
+		if schemaAction.ActionType == IntegrationActionType_FunctionCallingAgent {
+			action = schemaAction
+			break
+		}
+	}
+
+	handles := action.HandlesByContext[domain.UsageContextWorkflow]
+
+	if len(handles.Input) < 4 {
+		return nil, fmt.Errorf("agent node %s has less than 4 input handles", params.NodeID)
+	}
+
+	handleIdFormat := "input-%s-%d"
+
+	llmHandleID := fmt.Sprintf(handleIdFormat, params.NodeID, 1)
+	memoryHandleID := fmt.Sprintf(handleIdFormat, params.NodeID, 2)
+	toolsHandleID := fmt.Sprintf(handleIdFormat, params.NodeID, 3)
+
+	agentNode, exists := params.Workflow.GetActionNodeByID(params.NodeID)
+	if !exists {
+		return nil, fmt.Errorf("agent node %s not found in workflow", params.NodeID)
+	}
+
+	llmInput, exists := agentNode.GetInputByID(llmHandleID)
+	if !exists {
+		return nil, fmt.Errorf("LLM input %s not found in agent node %s", llmHandleID, params.NodeID)
+	}
+
+	memoryNodeID := ""
+
+	memoryInput, exists := agentNode.GetInputByID(memoryHandleID)
+	if exists {
+		memoryNodeID = e.GetNodeIDFromOutputID(memoryInput.SubscribedEvents[0])
+
+		if memoryNodeID != "" {
+			executeParams.Memory = &NodeReference{NodeID: memoryNodeID}
+		}
+	}
+
+	toolsInput, exists := agentNode.GetInputByID(toolsHandleID)
+	if exists {
+		toolNodeIDs := e.GetNodeIDsFromOutputIDs(toolsInput.SubscribedEvents)
+
+		executeParams.Tools = make([]NodeReference, 0, len(toolNodeIDs))
+
+		for _, toolNodeID := range toolNodeIDs {
+			executeParams.Tools = append(executeParams.Tools, NodeReference{NodeID: toolNodeID})
+		}
+	}
+
+	llmNodeID := e.GetNodeIDFromOutputID(llmInput.SubscribedEvents[0])
+
+	if llmNodeID == "" {
+		return nil, fmt.Errorf("LLM node is required")
+	}
+
+	executeParams.LLM = &NodeReference{NodeID: llmNodeID}
+
 	// Create item processor
 	itemProcessor := NewItemProcessor(e.parameterBinder)
 
@@ -189,7 +251,6 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 		MaxContextLength:  memoryNodeParams.MaxContextLength,
 	}
 
-	memoryNodeID := ""
 	if memory.Memory != nil {
 		memoryNodeID = executeParams.Memory.NodeID
 	}
@@ -424,4 +485,30 @@ func (e *AIAgentExecutorV2) ResolveTools(ctx context.Context, toolRefs []NodeRef
 	}
 
 	return tools, nil
+}
+
+func (e *AIAgentExecutorV2) GetNodeIDsFromOutputIDs(outputIDs []string) []string {
+	nodeIDs := make([]string, 0, len(outputIDs))
+
+	for _, outputID := range outputIDs {
+		parts := strings.Split(outputID, "-")
+
+		if len(parts) >= 3 {
+			nodeID := e.GetNodeIDFromOutputID(outputID)
+
+			nodeIDs = append(nodeIDs, nodeID)
+		}
+	}
+
+	return nodeIDs
+}
+
+func (e *AIAgentExecutorV2) GetNodeIDFromOutputID(outputID string) string {
+	parts := strings.Split(outputID, "-")
+
+	if len(parts) >= 3 {
+		return strings.Join(parts[1:len(parts)-1], "-")
+	}
+
+	return ""
 }
