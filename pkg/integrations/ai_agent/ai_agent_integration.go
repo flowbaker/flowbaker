@@ -139,15 +139,10 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 		return nil, fmt.Errorf("agent node %s not found in workflow", params.NodeID)
 	}
 
-	llmInput, exists := agentNode.GetInputByID(llmHandleID)
-	if !exists {
-		return nil, fmt.Errorf("LLM input %s not found in agent node %s", llmHandleID, params.NodeID)
-	}
-
 	memoryNodeID := ""
 
 	memoryInput, exists := agentNode.GetInputByID(memoryHandleID)
-	if exists {
+	if exists && len(memoryInput.SubscribedEvents) > 0 {
 		memoryNodeID = e.GetNodeIDFromOutputID(memoryInput.SubscribedEvents[0])
 
 		if memoryNodeID != "" {
@@ -164,6 +159,15 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 		for _, toolNodeID := range toolNodeIDs {
 			executeParams.Tools = append(executeParams.Tools, NodeReference{NodeID: toolNodeID})
 		}
+	}
+
+	llmInput, exists := agentNode.GetInputByID(llmHandleID)
+	if !exists {
+		return nil, fmt.Errorf("LLM input %s not found in agent node %s", llmHandleID, params.NodeID)
+	}
+
+	if len(llmInput.SubscribedEvents) == 0 {
+		return nil, fmt.Errorf("LLM node is required")
 	}
 
 	llmNodeID := e.GetNodeIDFromOutputID(llmInput.SubscribedEvents[0])
