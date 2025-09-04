@@ -285,7 +285,7 @@ var (
 					},
 				},
 			},
-			{
+			/* 			{
 				ID:          "generate_embeddings",
 				Name:        "Generate Embeddings",
 				ActionType:  "generate_embeddings",
@@ -316,7 +316,7 @@ var (
 						},
 					},
 				},
-			},
+			}, */
 		},
 		EmbeddingModels: []domain.IntegrationEmbeddingModel{
 			{
