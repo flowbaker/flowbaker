@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
@@ -458,6 +459,7 @@ func (f *FunctionCallingConversationManager) executeToolCalls(ctx context.Contex
 
 func (f *FunctionCallingConversationManager) buildSystemPrompt(ctx context.Context, workspaceID string) string {
 	toolDescriptions := f.formatToolDescriptions()
+	peekableContext := f.buildPeekableContext(ctx)
 
 	// Use system prompt from LLM node parameters if available, otherwise use default
 	var basePrompt string
@@ -469,14 +471,14 @@ func (f *FunctionCallingConversationManager) buildSystemPrompt(ctx context.Conte
 Available tools:
 %s
 
-Instructions:
-1. Carefully read the user's request to understand what they want to accomplish
-2. Use the appropriate tools to complete the task
-3. You can call multiple tools if needed, but choose the most relevant ones
-4. Always provide a clear response about what you accomplished
-5. If you cannot complete a task, explain why and what information would be needed
+%sInstructions:
+1. Always use tools to complete user requests - don't just provide explanations
+2. For missing required parameters, extract values from the user's message (e.g., file names, descriptions)
+3. Call the tool even if you think information is missing - the system will handle parameter resolution
+4. Pre-configured parameters are automatically filled
+5. Provide a clear response about what you accomplished
 
-Remember: Focus on completing the user's specific request using the available tools.`, toolDescriptions)
+IMPORTANT: Always call tools to perform actions. Extract any identifiers from the user's message as parameter values.`, toolDescriptions, peekableContext)
 	}
 
 	// If using custom system prompt, append tool descriptions
@@ -484,7 +486,9 @@ Remember: Focus on completing the user's specific request using the available to
 		basePrompt = fmt.Sprintf(`%s
 
 Available tools:
-%s`, basePrompt, toolDescriptions)
+%s
+
+%s`, basePrompt, toolDescriptions, peekableContext)
 	}
 
 	// Enhance with memory context if available
@@ -497,6 +501,73 @@ Available tools:
 	return enhancedPrompt
 }
 
+func (f *FunctionCallingConversationManager) buildPeekableContext(ctx context.Context) string {
+	if len(f.toolDefinitions) == 0 {
+		return ""
+	}
+
+	peekableData := f.toolCallManager.GetPeekableData(ctx, f.toolDefinitions)
+	if len(peekableData) == 0 {
+		return ""
+	}
+
+	peekableInfo := f.formatPeekableInfo(peekableData)
+	if len(peekableInfo) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf(`Available data for selection:
+%s
+
+`, strings.Join(peekableInfo, "\n"))
+}
+
+func (f *FunctionCallingConversationManager) formatPeekableInfo(peekableData map[string]map[string][]domain.PeekResultItem) []string {
+	var peekableInfo []string
+
+	for toolName, toolPeekables := range peekableData {
+		toolInfo := f.formatToolPeekables(toolName, toolPeekables)
+		peekableInfo = append(peekableInfo, toolInfo...)
+	}
+
+	return peekableInfo
+}
+
+func (f *FunctionCallingConversationManager) formatToolPeekables(toolName string, toolPeekables map[string][]domain.PeekResultItem) []string {
+	var toolInfo []string
+
+	for fieldKey, peekResults := range toolPeekables {
+		fieldInfo := f.formatFieldOptions(toolName, fieldKey, peekResults)
+		if fieldInfo != "" {
+			toolInfo = append(toolInfo, fieldInfo)
+		}
+	}
+
+	return toolInfo
+}
+
+func (f *FunctionCallingConversationManager) formatFieldOptions(toolName, fieldKey string, peekResults []domain.PeekResultItem) string {
+	options := f.extractOptions(peekResults)
+	if len(options) == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf("For tool '%s', parameter '%s', available options: %s", 
+		toolName, fieldKey, strings.Join(options, ", "))
+}
+
+func (f *FunctionCallingConversationManager) extractOptions(peekResults []domain.PeekResultItem) []string {
+	var options []string
+	
+	for _, item := range peekResults {
+		if item.Content != "" {
+			options = append(options, fmt.Sprintf(`"%s"`, item.Content))
+		}
+	}
+	
+	return options
+}
+
 func (f *FunctionCallingConversationManager) formatToolDescriptions() string {
 	if len(f.toolDefinitions) == 0 {
 		return "No tools available"
@@ -504,7 +575,22 @@ func (f *FunctionCallingConversationManager) formatToolDescriptions() string {
 
 	descriptions := make([]string, 0, len(f.toolDefinitions))
 	for _, tool := range f.toolDefinitions {
-		descriptions = append(descriptions, fmt.Sprintf("- %s: %s", tool.Name, tool.Description))
+		toolDesc := fmt.Sprintf("- %s: %s", tool.Name, tool.Description)
+
+		// Add information about pre-configured parameters if any
+		if len(tool.IntegrationSettings) > 0 {
+			preConfigured := []string{}
+			for key, value := range tool.IntegrationSettings {
+				if value != "" && value != nil {
+					preConfigured = append(preConfigured, fmt.Sprintf("%s=%v", key, value))
+				}
+			}
+			if len(preConfigured) > 0 {
+				toolDesc += fmt.Sprintf("\n  Pre-configured: %s", strings.Join(preConfigured, ", "))
+			}
+		}
+
+		descriptions = append(descriptions, toolDesc)
 	}
 
 	result := ""
