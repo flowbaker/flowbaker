@@ -76,6 +76,16 @@ type WorkflowNode struct {
 	UsageContext                 string
 }
 
+func (n *WorkflowNode) GetInputByID(inputID string) (NodeInput, bool) {
+	for _, input := range n.Inputs {
+		if input.InputID == inputID {
+			return input, true
+		}
+	}
+
+	return NodeInput{}, false
+}
+
 type NodeInput struct {
 	InputID          string
 	SubscribedEvents []string
