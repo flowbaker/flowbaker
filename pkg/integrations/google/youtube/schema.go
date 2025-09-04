@@ -60,7 +60,7 @@ var (
 						Name:        "Tags",
 						Description: "The tags of the video",
 						Type:        domain.NodePropertyType_TagInput,
-						Required:    true,
+						Required:    false,
 					},
 					{
 						Key:         "privacy_status",
