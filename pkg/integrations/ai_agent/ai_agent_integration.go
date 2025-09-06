@@ -289,6 +289,12 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 		return nil, fmt.Errorf("function calling conversation failed: %w", err)
 	}
 
+	// Publish events and record history for connected nodes
+	err = e.publishConnectedNodeEventsAfterExecution(ctx, executeParams, agentSettings, result.ToolExecutions, workflow.WorkspaceID, workflow.ID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to publish connected node events")
+	}
+
 	// Create output items from conversation result
 	outputItems, err := itemProcessor.CreateOutputItems(ctx, result, result.ToolExecutions)
 	if err != nil {
@@ -515,4 +521,154 @@ func (e *AIAgentExecutorV2) GetNodeIDFromOutputID(outputID string) string {
 	}
 
 	return ""
+}
+
+
+func (e *AIAgentExecutorV2) publishConnectedNodeEventsAfterExecution(ctx context.Context, executeParams ExecuteParams, agentSettings AgentSettings, toolExecutions []interface{}, workspaceID, workflowID string) error {
+	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return fmt.Errorf("workflow execution context not found")
+	}
+
+	// Use the new tool tracker to get executed tools
+	executedToolNodeIDs := make(map[string]bool)
+	
+	// First try to get from tool tracker (preferred method)
+	if executionContext.ToolTracker != nil {
+		for _, nodeID := range executionContext.ToolTracker.GetExecutedNodeIDs() {
+			executedToolNodeIDs[nodeID] = true
+		}
+	}
+	
+	// Fallback to legacy method if tracker is empty or unavailable
+	if len(executedToolNodeIDs) == 0 {
+		// Build a more efficient tool lookup map
+		toolLookup := make(map[string]string) // toolName -> nodeID
+		for _, tool := range agentSettings.Tools {
+			toolName := fmt.Sprintf("%s_%s", tool.IntegrationType, tool.WorkflowNode.ActionType)
+			toolLookup[toolName] = tool.NodeID
+		}
+		
+		// Collect executed tool node IDs from actual tool executions
+		for _, toolExecInterface := range toolExecutions {
+			if toolExec, ok := toolExecInterface.(FunctionCallExecution); ok {
+				// Prefer metadata if available
+				if toolExec.Metadata != nil {
+					executedToolNodeIDs[toolExec.Metadata.NodeID] = true
+				} else if nodeID, exists := toolLookup[toolExec.ToolName]; exists {
+					executedToolNodeIDs[nodeID] = true
+				}
+			}
+		}
+	}
+
+	// Publish events for LLM (always used)
+	if executeParams.LLM != nil {
+		e.publishNodeEvents(ctx, executeParams.LLM.NodeID, workflowID, executionContext.WorkflowExecutionID)
+	}
+
+	// Publish events for Memory if present
+	if executeParams.Memory != nil {
+		e.publishNodeEvents(ctx, executeParams.Memory.NodeID, workflowID, executionContext.WorkflowExecutionID)
+	}
+
+	// Publish events for executed tools only
+	for nodeID := range executedToolNodeIDs {
+		e.publishNodeEvents(ctx, nodeID, workflowID, executionContext.WorkflowExecutionID)
+	}
+
+	// Record execution history
+	if executionContext.HistoryRecorder != nil {
+		e.recordExecutionHistory(ctx, executeParams, agentSettings, executedToolNodeIDs, executionContext.HistoryRecorder)
+	}
+
+	return nil
+}
+
+
+func (e *AIAgentExecutorV2) publishNodeEvents(ctx context.Context, nodeID, workflowID, executionID string) {
+	// Publish node execution started event
+	startedEvent := &domain.NodeExecutionStartedEvent{
+		WorkflowID:          workflowID,
+		WorkflowExecutionID: executionID,
+		NodeID:              nodeID,
+		Timestamp:           time.Now().UnixNano(),
+	}
+
+	err := e.eventPublisher.PublishEvent(ctx, startedEvent)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to publish node execution started event for node %s", nodeID)
+		return
+	}
+
+	// Publish node execution completed event
+	completedEvent := &domain.NodeExecutedEvent{
+		WorkflowID:          workflowID,
+		WorkflowExecutionID: executionID,
+		NodeID:              nodeID,
+		Timestamp:           time.Now().UnixNano(),
+		ItemsByInputID:      map[string]domain.NodeItems{},
+		ItemsByOutputID:     map[string]domain.NodeItems{},
+		ExecutionOrder:      0, // Connected nodes don't have execution order
+	}
+
+	err = e.eventPublisher.PublishEvent(ctx, completedEvent)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to publish node execution completed event for node %s", nodeID)
+	}
+}
+
+func (e *AIAgentExecutorV2) recordExecutionHistory(ctx context.Context, executeParams ExecuteParams, agentSettings AgentSettings, executedToolNodeIDs map[string]bool, recorder domain.ExecutionHistoryRecorder) {
+	if executeParams.LLM != nil {
+		e.recordNodeExecutionHistory(executeParams.LLM.NodeID, "openai", "chat_completion", recorder)
+	}
+
+	if executeParams.Memory != nil {
+		e.recordNodeExecutionHistory(executeParams.Memory.NodeID, "flowbaker_agent_memory", "store_conversation", recorder)
+	}
+
+	// Try to get tool execution details from tracker first
+	execContext, hasContext := domain.GetWorkflowExecutionContext(ctx)
+	if hasContext && execContext.ToolTracker != nil {
+		execContext.ToolTracker.ForEachExecution(func(nodeID string, toolExec *domain.ToolExecution) {
+			e.recordNodeExecutionHistory(nodeID, string(toolExec.Identifier.IntegrationType), string(toolExec.Identifier.ActionType), recorder)
+		})
+	} else {
+		// Fallback to legacy method
+		for nodeID := range executedToolNodeIDs {
+			for _, tool := range agentSettings.Tools {
+				if tool.NodeID == nodeID {
+					e.recordNodeExecutionHistory(nodeID, string(tool.IntegrationType), string(tool.WorkflowNode.ActionType), recorder)
+					break
+				}
+			}
+		}
+	}
+}
+
+func (e *AIAgentExecutorV2) recordNodeExecutionHistory(nodeID string, integrationType string, actionType string, recorder domain.ExecutionHistoryRecorder) {
+	now := time.Now()
+	
+	recorder.AddNodeExecution(domain.NodeExecution{
+		ID:                     fmt.Sprintf("%s_%d", nodeID, now.UnixNano()),
+		NodeID:                 nodeID,
+		IntegrationType:        domain.IntegrationType(integrationType),
+		IntegrationActionType:  domain.IntegrationActionType(actionType),
+		StartedAt:              now,
+		EndedAt:                now,
+		ExecutionOrder:         0,
+		InputItemsCount:        domain.InputItemsCount{},
+		InputItemsSizeInBytes:  domain.InputItemsSizeInBytes{},
+		OutputItemsCount:       domain.OutputItemsCount{},
+		OutputItemsSizeInBytes: domain.OutputItemsSizeInBytes{},
+	})
+
+	recorder.AddNodeExecutionEntry(domain.NodeExecutionEntry{
+		NodeID:          nodeID,
+		ItemsByInputID:  map[string]domain.NodeItems{},
+		ItemsByOutputID: map[string]domain.NodeItems{},
+		EventType:       domain.NodeExecuted,
+		Timestamp:       now.UnixNano(),
+		ExecutionOrder:  0,
+	})
 }

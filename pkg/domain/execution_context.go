@@ -6,6 +6,11 @@ import (
 
 type WorkflowExecutionContextKey struct{}
 
+type ExecutionHistoryRecorder interface {
+	AddNodeExecution(execution NodeExecution)
+	AddNodeExecutionEntry(entry NodeExecutionEntry)
+}
+
 type WorkflowExecutionContext struct {
 	WorkspaceID         string
 	WorkflowID          string
@@ -14,6 +19,8 @@ type WorkflowExecutionContext struct {
 	ResponsePayload     Payload
 	ResponseHeaders     map[string][]string
 	ResponseStatusCode  int
+	HistoryRecorder     ExecutionHistoryRecorder
+	ToolTracker         *ToolExecutionTracker
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {
@@ -29,17 +36,22 @@ func (c *WorkflowExecutionContext) SetResponseStatusCode(statusCode int) {
 }
 
 func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool) context.Context {
-	workflowExecutionContext := &WorkflowExecutionContext{
-		WorkspaceID:         workspaceID,
-		WorkflowID:          workflowID,
-		WorkflowExecutionID: workflowExecutionID,
-		EnableEvents:        enableEvents,
-		ResponsePayload:     nil,
-		ResponseHeaders:     map[string][]string{},
-		ResponseStatusCode:  200,
-	}
+	return NewWorkflowExecutionContextBuilder().
+		WithWorkspaceID(workspaceID).
+		WithWorkflowID(workflowID).
+		WithWorkflowExecutionID(workflowExecutionID).
+		WithEvents(enableEvents).
+		Build(ctx)
+}
 
-	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)
+func NewContextWithWorkflowExecutionContextAndRecorder(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool, recorder ExecutionHistoryRecorder) context.Context {
+	return NewWorkflowExecutionContextBuilder().
+		WithWorkspaceID(workspaceID).
+		WithWorkflowID(workflowID).
+		WithWorkflowExecutionID(workflowExecutionID).
+		WithEvents(enableEvents).
+		WithHistoryRecorder(recorder).
+		Build(ctx)
 }
 
 func GetWorkflowExecutionContext(ctx context.Context) (*WorkflowExecutionContext, bool) {
