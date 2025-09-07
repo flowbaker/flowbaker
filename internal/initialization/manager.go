@@ -2,7 +2,11 @@ package initialization
 
 import (
 	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/huh"
@@ -64,6 +68,70 @@ func showWelcome() {
 	fmt.Println(subtitleStyle.Render("Let's get your automation magic ready to roll..."))
 }
 
+func getPublicIP() (string, error) {
+	// Try multiple services in case one is down
+	services := []string{
+		"https://api.ipify.org",
+		"https://icanhazip.com",
+		"https://ipinfo.io/ip",
+	}
+
+	for _, service := range services {
+		resp, err := http.Get(service)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				continue
+			}
+			ip := strings.TrimSpace(string(body))
+			if ip != "" {
+				return ip, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("failed to detect public IP address from any service")
+}
+
+func detectVPN() bool {
+	// Check for VPN network interfaces
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return false
+	}
+	
+	vpnInterfaces := []string{
+		"wg",    // WireGuard (wg0, wg1, etc.)
+		"tun",   // OpenVPN, other tunnel interfaces (tun0, tun1, etc.)
+		"tap",   // TAP interfaces (tap0, tap1, etc.)
+		"ppp",   // Point-to-Point Protocol (ppp0, ppp1, etc.)
+		"utun",  // macOS VPN interfaces (utun0, utun1, etc.)
+		"ipsec", // IPSec interfaces
+		"vpn",   // Generic VPN interface names
+	}
+	
+	for _, iface := range interfaces {
+		// Skip loopback and down interfaces
+		if iface.Flags&net.FlagLoopback != 0 || iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+		
+		name := strings.ToLower(iface.Name)
+		for _, vpnPrefix := range vpnInterfaces {
+			if strings.HasPrefix(name, vpnPrefix) {
+				return true
+			}
+		}
+	}
+	
+	return false
+}
+
 func collectExecutorConfig() (string, string, error) {
 	var executorName, address string
 
@@ -75,7 +143,33 @@ func collectExecutorConfig() (string, string, error) {
 
 	defaultAddress := os.Getenv("FLOWBAKER_EXECUTOR_ADDRESS")
 	if defaultAddress == "" {
-		defaultAddress = "localhost:8081"
+		publicIP, err := getPublicIP()
+		if err != nil {
+			return "", "", fmt.Errorf("failed to detect public IP address: %w", err)
+		}
+		defaultAddress = fmt.Sprintf("%s:8081", publicIP)
+		
+		// Check for VPN and warn user
+		if detectVPN() {
+			var continueSetup bool
+			
+			warningForm := huh.NewForm(
+				huh.NewGroup(
+					huh.NewConfirm().
+						Title("⚠️  VPN Detected").
+						Description("VPN network interface detected. This may prevent external services from reaching your executor. Continue anyway?").
+						Value(&continueSetup),
+				),
+			)
+			
+			if err := warningForm.Run(); err != nil {
+				return "", "", err
+			}
+			
+			if !continueSetup {
+				return "", "", fmt.Errorf("setup cancelled by user")
+			}
+		}
 	}
 
 	form := huh.NewForm(
@@ -88,7 +182,7 @@ func collectExecutorConfig() (string, string, error) {
 
 			huh.NewInput().
 				Title("Executor Address").
-				Description("Address where your executor will listen").
+				Description("Address where your executor will listen (⚠️  Dynamic IPs may change - ensure port 8081 is forwarded)").
 				Value(&address).
 				Placeholder(defaultAddress),
 		),

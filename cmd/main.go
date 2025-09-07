@@ -21,12 +21,23 @@ import (
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
+	// Define help flag
+	var showHelp bool
+	flag.BoolVar(&showHelp, "help", false, "Show help message")
+	flag.BoolVar(&showHelp, "h", false, "Show help message")
 	flag.Parse()
+	
+	if showHelp {
+		printUsage()
+		os.Exit(0)
+	}
+
 	args := flag.Args()
 
+	// Default behavior: auto-start if configured, setup if not
 	if len(args) == 0 {
-		printUsage()
-		os.Exit(1)
+		startExecutor()
+		return
 	}
 
 	switch args[0] {
