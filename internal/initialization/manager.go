@@ -112,7 +112,6 @@ func detectVPN() bool {
 		"tun",   // OpenVPN, other tunnel interfaces (tun0, tun1, etc.)
 		"tap",   // TAP interfaces (tap0, tap1, etc.)
 		"ppp",   // Point-to-Point Protocol (ppp0, ppp1, etc.)
-		"utun",  // macOS VPN interfaces (utun0, utun1, etc.)
 		"ipsec", // IPSec interfaces
 		"vpn",   // Generic VPN interface names
 	}

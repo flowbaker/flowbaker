@@ -6,19 +6,35 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	"golang.org/x/crypto/curve25519"
 )
 
 func GenerateExecutorName() string {
-	adjectives := []string{"swift", "bright", "calm", "bold", "wise", "kind", "quick", "cool", "warm", "clear"}
-	nouns := []string{"river", "mountain", "ocean", "forest", "valley", "meadow", "stream", "peak", "lake", "field"}
+	adjectives := []string{
+		"swift", "bright", "calm", "bold", "wise", "kind", "quick", "cool", "warm", "clear",
+		"gentle", "fierce", "noble", "clever", "silent", "vibrant", "steady", "ancient", "mystic", "radiant",
+		"powerful", "graceful", "mysterious", "elegant", "resilient", "dynamic", "serene", "mighty", "luminous", "agile",
+		"fearless", "brilliant", "tranquil", "robust", "stellar", "cosmic", "ethereal", "infinite", "blazing", "crystal",
+	}
+	nouns := []string{
+		"river", "mountain", "ocean", "forest", "valley", "meadow", "stream", "peak", "lake", "field",
+		"thunder", "lightning", "storm", "breeze", "sunrise", "sunset", "galaxy", "comet", "phoenix", "dragon",
+		"wolf", "eagle", "falcon", "tiger", "bear", "lion", "shark", "whale", "dolphin", "hawk",
+		"crystal", "diamond", "emerald", "sapphire", "ruby", "pearl", "opal", "quartz", "amber", "jade",
+	}
 
-	now := time.Now()
-	adjIndex := int(now.UnixNano()) % len(adjectives)
-	nounIndex := int(now.UnixNano()/1000) % len(nouns)
+	adjBytes := make([]byte, 4)
+	nounBytes := make([]byte, 4)
+	rand.Read(adjBytes)
+	rand.Read(nounBytes)
+
+	adjIndex := int(adjBytes[0])<<24 | int(adjBytes[1])<<16 | int(adjBytes[2])<<8 | int(adjBytes[3])
+	nounIndex := int(nounBytes[0])<<24 | int(nounBytes[1])<<16 | int(nounBytes[2])<<8 | int(nounBytes[3])
+
+	adjIndex = adjIndex % len(adjectives)
+	nounIndex = nounIndex % len(nouns)
 
 	return fmt.Sprintf("%s_%s", adjectives[adjIndex], nouns[nounIndex])
 }
@@ -73,27 +89,27 @@ func GetDefaultAPIURL() string {
 func isDevMode() bool {
 	// Check common development environment variables
 	devEnvVars := []string{
-		"FLOWBAKER_DEV", 
-		"DEVELOPMENT", 
+		"FLOWBAKER_DEV",
+		"DEVELOPMENT",
 		"DEV_MODE",
 	}
-	
+
 	for _, envVar := range devEnvVars {
 		if value := os.Getenv(envVar); value != "" && value != "false" && value != "0" {
 			return true
 		}
 	}
-	
+
 	// Check if GO_ENV is set to development
 	if goEnv := os.Getenv("GO_ENV"); goEnv == "development" || goEnv == "dev" {
 		return true
 	}
-	
+
 	// Check if NODE_ENV is set to development (common in mixed environments)
 	if nodeEnv := os.Getenv("NODE_ENV"); nodeEnv == "development" {
 		return true
 	}
-	
+
 	return false
 }
 
