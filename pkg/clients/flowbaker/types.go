@@ -11,6 +11,13 @@ import (
 // Item represents any data item
 type Item any
 
+// APIPublicKeyResponse represents the API's public key response
+type APIPublicKeyResponse struct {
+	PublicKey string `json:"public_key"`
+	KeyType   string `json:"key_type"`
+	Version   string `json:"version"`
+}
+
 // NodeItems represents items from a specific node
 type NodeItems struct {
 	FromNodeID string `json:"from_node_id"`

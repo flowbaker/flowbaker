@@ -84,6 +84,9 @@ type ClientInterface interface {
 
 	// Route operations (for executor clients)
 	GetRoutes(ctx context.Context, req GetRoutesRequest) (GetRoutesResponse, error)
+
+	// API key operations
+	GetAPIPublicKey(ctx context.Context) (*APIPublicKeyResponse, error)
 }
 
 // Client provides a high-level interface for interacting with the Flowbaker API
@@ -1580,4 +1583,19 @@ func (c *Client) GetRoutes(ctx context.Context, req GetRoutesRequest) (GetRoutes
 	}
 
 	return result, nil
+}
+
+// GetAPIPublicKey retrieves the API server's public key for signature verification
+func (c *Client) GetAPIPublicKey(ctx context.Context) (*APIPublicKeyResponse, error) {
+	resp, err := c.doRequest(ctx, "GET", "/v1/keys/public", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get API public key: %w", err)
+	}
+
+	var result APIPublicKeyResponse
+	if err := c.handleResponse(resp, &result); err != nil {
+		return nil, fmt.Errorf("failed to process API public key response: %w", err)
+	}
+
+	return &result, nil
 }

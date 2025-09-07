@@ -10,6 +10,7 @@ type ExecutorConfig struct {
 	SetupComplete    bool      `json:"setup_complete"`
 	Keys             CryptoKeys `json:"keys"`
 	APIBaseURL       string    `json:"api_url"`
+	APIPublicKey     string    `json:"api_public_key,omitempty"`
 	VerificationCode string    `json:"verification_code,omitempty"`
 	LastConnected    time.Time `json:"last_connected,omitempty"`
 }

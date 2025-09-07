@@ -4,6 +4,14 @@ import (
 	"time"
 )
 
+// HealthCheckResponse represents the response from a health check
+type HealthCheckResponse struct {
+	Status    string `json:"status"`
+	Service   string `json:"service"`
+	Version   string `json:"version"`
+	Timestamp string `json:"timestamp"`
+}
+
 // WorkflowType represents the type of workflow execution
 type WorkflowType string
 

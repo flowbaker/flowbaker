@@ -1,6 +1,7 @@
 package initialization
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 )
 
 const flowbakerLogo = `       ...........................*####=--:.       
@@ -104,7 +106,7 @@ func detectVPN() bool {
 	if err != nil {
 		return false
 	}
-	
+
 	vpnInterfaces := []string{
 		"wg",    // WireGuard (wg0, wg1, etc.)
 		"tun",   // OpenVPN, other tunnel interfaces (tun0, tun1, etc.)
@@ -114,13 +116,13 @@ func detectVPN() bool {
 		"ipsec", // IPSec interfaces
 		"vpn",   // Generic VPN interface names
 	}
-	
+
 	for _, iface := range interfaces {
 		// Skip loopback and down interfaces
 		if iface.Flags&net.FlagLoopback != 0 || iface.Flags&net.FlagUp == 0 {
 			continue
 		}
-		
+
 		name := strings.ToLower(iface.Name)
 		for _, vpnPrefix := range vpnInterfaces {
 			if strings.HasPrefix(name, vpnPrefix) {
@@ -128,8 +130,24 @@ func detectVPN() bool {
 			}
 		}
 	}
-	
+
 	return false
+}
+
+func fetchAPIPublicKey(apiURL string) (string, error) {
+	client := flowbaker.NewClient(
+		flowbaker.WithBaseURL(apiURL),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	resp, err := client.GetAPIPublicKey(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get API public key: %w", err)
+	}
+
+	return resp.PublicKey, nil
 }
 
 func collectExecutorConfig() (string, string, error) {
@@ -148,11 +166,11 @@ func collectExecutorConfig() (string, string, error) {
 			return "", "", fmt.Errorf("failed to detect public IP address: %w", err)
 		}
 		defaultAddress = fmt.Sprintf("%s:8081", publicIP)
-		
+
 		// Check for VPN and warn user
 		if detectVPN() {
 			var continueSetup bool
-			
+
 			warningForm := huh.NewForm(
 				huh.NewGroup(
 					huh.NewConfirm().
@@ -161,11 +179,11 @@ func collectExecutorConfig() (string, string, error) {
 						Value(&continueSetup),
 				),
 			)
-			
+
 			if err := warningForm.Run(); err != nil {
 				return "", "", err
 			}
-			
+
 			if !continueSetup {
 				return "", "", fmt.Errorf("setup cancelled by user")
 			}
@@ -247,12 +265,19 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 		return nil, fmt.Errorf("verification failed: %w", err)
 	}
 
+	fmt.Println("🔑 Fetching API public key...")
+	apiPublicKey, err := fetchAPIPublicKey(apiURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch API public key: %w", err)
+	}
+
 	config := &ExecutorConfig{
 		ExecutorID:    executorID,
 		ExecutorName:  executorName,
 		WorkspaceID:   workspaceID,
 		Keys:          keys,
 		APIBaseURL:    apiURL,
+		APIPublicKey:  apiPublicKey,
 		SetupComplete: true,
 		LastConnected: time.Now(),
 	}

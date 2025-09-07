@@ -19,6 +19,7 @@ type ClientInterface interface {
 	HandlePollingEvent(ctx context.Context, req *PollingEventRequest) (*PollingEventResponse, error)
 	TestConnection(ctx context.Context, req *ConnectionTestRequest) (*ConnectionTestResponse, error)
 	PeekData(ctx context.Context, req *PeekDataRequest) (*PeekDataResponse, error)
+	HealthCheck(ctx context.Context) (*HealthCheckResponse, error)
 }
 
 // Client provides methods to interact with the executor service
@@ -144,6 +145,22 @@ func (c *Client) PeekData(ctx context.Context, req *PeekDataRequest) (*PeekDataR
 	}
 
 	return &peekDataResponse, nil
+}
+
+// HealthCheck performs a health check on the executor
+func (c *Client) HealthCheck(ctx context.Context) (*HealthCheckResponse, error) {
+	resp, err := c.doRequest(ctx, "GET", "/health", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to perform health check: %w", err)
+	}
+
+	var healthResponse HealthCheckResponse
+
+	if err := c.handleResponse(resp, &healthResponse); err != nil {
+		return nil, fmt.Errorf("failed to process health check response: %w", err)
+	}
+
+	return &healthResponse, nil
 }
 
 // doRequest performs an HTTP request with retry logic

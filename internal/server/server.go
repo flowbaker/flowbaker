@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"time"
 
 	"github.com/flowbaker/flowbaker/internal/auth"
 	"github.com/flowbaker/flowbaker/internal/controllers"
 	"github.com/flowbaker/flowbaker/internal/middlewares"
+	"github.com/flowbaker/flowbaker/internal/version"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -21,6 +23,16 @@ func NewHTTPServer(ctx context.Context, executorController *controllers.Executor
 	// Add basic middleware
 	router.Use(cors.New())
 	router.Use(logger.New())
+
+	// Health check endpoint (no authentication required)
+	router.Get("/health", func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"status":    "healthy",
+			"service":   "flowbaker-executor",
+			"version":   version.GetVersion(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
 
 	// Add API signature verification middleware if verifier is available
 	if apiSignatureVerifier != nil {

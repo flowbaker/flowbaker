@@ -45,6 +45,10 @@ jobs:
           type=semver,pattern={{major}}
           type=raw,value=latest,enable={{is_default_branch}}
 
+    - name: Set build date
+      id: build-date
+      run: echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
     - name: Build and push Docker image
       id: build
       uses: docker/build-push-action@v5
@@ -54,6 +58,11 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          VERSION=${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+          GIT_COMMIT=${{ github.sha }}
+          BUILD_DATE=${{ steps.build-date.outputs.date }}
+          BUILD_USER=github-actions
         cache-from: type=gha
         cache-to: type=gha,mode=max
 

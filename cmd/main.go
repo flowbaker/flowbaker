@@ -143,9 +143,18 @@ func runExecutor() {
 		log.Fatal().Err(err).Msg("Failed to build executor dependencies")
 	}
 
-	// FIXME: For now, disable API signature verification since we don't have the public key in our new config
+	// Initialize API signature verification with the public key from config
 	var apiSignatureVerifier *auth.APISignatureVerifier
-	log.Warn().Msg("API signature verification disabled - not implemented in auto-setup yet")
+	if config.APIPublicKey != "" {
+		var err error
+		apiSignatureVerifier, err = auth.NewAPISignatureVerifier(config.APIPublicKey)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to initialize API signature verifier")
+		}
+		log.Info().Msg("API signature verification enabled")
+	} else {
+		log.Warn().Msg("API signature verification disabled - no public key in config")
+	}
 
 	server := server.NewHTTPServer(context.Background(), deps.ExecutorController, apiSignatureVerifier)
 

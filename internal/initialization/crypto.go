@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -61,16 +62,45 @@ func GenerateAllKeys() (CryptoKeys, error) {
 }
 
 func GetDefaultAPIURL() string {
-	if strings.Contains(strings.ToLower(strings.Join([]string{}, "")), "dev") {
+	// Check for development mode indicators
+	if isDevMode() {
 		return "http://localhost:8080"
 	}
 
 	return "https://api.flowbaker.io"
 }
 
+func isDevMode() bool {
+	// Check common development environment variables
+	devEnvVars := []string{
+		"FLOWBAKER_DEV", 
+		"DEVELOPMENT", 
+		"DEV_MODE",
+	}
+	
+	for _, envVar := range devEnvVars {
+		if value := os.Getenv(envVar); value != "" && value != "false" && value != "0" {
+			return true
+		}
+	}
+	
+	// Check if GO_ENV is set to development
+	if goEnv := os.Getenv("GO_ENV"); goEnv == "development" || goEnv == "dev" {
+		return true
+	}
+	
+	// Check if NODE_ENV is set to development (common in mixed environments)
+	if nodeEnv := os.Getenv("NODE_ENV"); nodeEnv == "development" {
+		return true
+	}
+	
+	return false
+}
+
 func GetVerificationURL(apiURL string) string {
-	if strings.Contains(apiURL, "localhost") {
-		return "http://localhost:3000"
+	// Use same development mode detection as API URL
+	if strings.Contains(apiURL, "localhost") || isDevMode() {
+		return "https://localhost:5173"
 	}
 
 	return "https://app.flowbaker.io"
