@@ -165,7 +165,7 @@ func collectExecutorConfig() (string, string, error) {
 		if err != nil {
 			return "", "", fmt.Errorf("failed to detect public IP address: %w", err)
 		}
-		defaultAddress = fmt.Sprintf("%s:8081", publicIP)
+		defaultAddress = fmt.Sprintf("http://%s:8081", publicIP)
 
 		// Check for VPN and warn user
 		if detectVPN() {
@@ -200,7 +200,7 @@ func collectExecutorConfig() (string, string, error) {
 
 			huh.NewInput().
 				Title("Executor Address").
-				Description("Address where your executor will listen (⚠️  Dynamic IPs may change - ensure port 8081 is forwarded)").
+				Description("Full URL where your executor will listen (e.g., http://1.2.3.4:8081 or https://mydomain.com:8081)").
 				Value(&address).
 				Placeholder(defaultAddress),
 		),

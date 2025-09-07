@@ -7,13 +7,17 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/flowbaker/flowbaker/internal/auth"
 	"github.com/flowbaker/flowbaker/internal/initialization"
 	"github.com/flowbaker/flowbaker/internal/server"
+	"github.com/flowbaker/flowbaker/internal/version"
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -26,7 +30,7 @@ func main() {
 	flag.BoolVar(&showHelp, "help", false, "Show help message")
 	flag.BoolVar(&showHelp, "h", false, "Show help message")
 	flag.Parse()
-	
+
 	if showHelp {
 		printUsage()
 		os.Exit(0)
@@ -75,9 +79,22 @@ Environment Variables (optional):
 
 func startExecutor() {
 	if !initialization.IsSetupComplete() {
+		// Start HTTP server with health check endpoint before registration
+		// so the API can verify connectivity during the registration process
+		ctx, cancel := context.WithCancel(context.Background())
+
+		go func() {
+			startHealthCheckServer(ctx)
+		}()
+
 		if _, err := initialization.RunFirstTimeSetup(); err != nil {
 			log.Fatal().Err(err).Msg("Failed to complete setup")
 		}
+
+		cancel()
+
+		// Give the server a moment to shutdown gracefully
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	runExecutor()
@@ -169,4 +186,32 @@ func runExecutor() {
 	}
 
 	log.Info().Msg("Executor service stopped")
+}
+
+// startHealthCheckServer starts a minimal HTTP server with only the health check endpoint
+// This is used during the initial setup phase to allow API connectivity verification
+func startHealthCheckServer(ctx context.Context) {
+	app := fiber.New(fiber.Config{
+		AppName: "flowbaker-executor-setup",
+	})
+
+	app.Use(cors.New())
+	app.Use(logger.New())
+
+	app.Get("/health", func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"status":     "healthy",
+			"service":    "flowbaker-executor",
+			"version":    version.GetVersion(),
+			"timestamp":  time.Now().UTC().Format(time.RFC3339),
+			"setup_mode": true,
+		})
+	})
+
+	if err := app.Listen(":8081", fiber.ListenConfig{
+		GracefulContext:       ctx,
+		DisableStartupMessage: true,
+	}); err != nil {
+		log.Error().Err(err).Msg("Health check server failed to start")
+	}
 }
