@@ -100,11 +100,6 @@ func isDevMode() bool {
 		}
 	}
 
-	// Check if GO_ENV is set to development
-	if goEnv := os.Getenv("GO_ENV"); goEnv == "development" || goEnv == "dev" {
-		return true
-	}
-
 	return false
 }
 
