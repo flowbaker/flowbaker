@@ -105,11 +105,6 @@ func isDevMode() bool {
 		return true
 	}
 
-	// Check if NODE_ENV is set to development (common in mixed environments)
-	if nodeEnv := os.Getenv("NODE_ENV"); nodeEnv == "development" {
-		return true
-	}
-
 	return false
 }
 
