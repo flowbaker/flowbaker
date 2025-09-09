@@ -286,7 +286,7 @@ type Executor struct {
 	ID               string    `json:"id"`
 	Name             string    `json:"name"`
 	Address          string    `json:"address"`
-	WorkspaceID      string    `json:"workspace_id"`
+	WorkspaceIDs     []string  `json:"workspace_ids"`
 	X25519PublicKey  string    `json:"x25519_public_key"`
 	Ed25519PublicKey string    `json:"ed25519_public_key"`
 	CreatedAt        time.Time `json:"created_at"`
@@ -313,11 +313,11 @@ type VerifyExecutorRegistrationRequest struct {
 
 // RegistrationStatusResponse represents the response from checking registration status
 type RegistrationStatusResponse struct {
-	Status        string    `json:"status"` // "pending", "verified", "not_found"
-	Message       string    `json:"message,omitempty"`
-	ExpiresAt     string    `json:"expires_at,omitempty"`
-	Executor      *Executor `json:"executor,omitempty"`
-	WorkspaceName string    `json:"workspace_name,omitempty"`
+	Status         string    `json:"status"` // "pending", "verified", "not_found"
+	Message        string    `json:"message,omitempty"`
+	ExpiresAt      string    `json:"expires_at,omitempty"`
+	Executor       *Executor `json:"executor,omitempty"`
+	WorkspaceNames []string  `json:"workspace_names,omitempty"`
 }
 
 // File and folder management types
