@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -51,6 +52,8 @@ func main() {
 		resetExecutor()
 	case "status":
 		showStatus()
+	case "workspaces":
+		handleWorkspaceCommands(args[1:])
 	default:
 		log.Error().Str("command", args[0]).Msg("Unknown command")
 		printUsage()
@@ -65,16 +68,24 @@ Commands:
   start                  Start the executor (auto-setup if needed)
   reset                  Reset configuration and start fresh
   status                 Show current executor status
+  workspaces <subcommand> Manage workspace assignments
+
+Workspace Commands:
+  workspaces list        List all assigned workspaces
+  workspaces add         Register executor with a new workspace (requires web verification)
+  workspaces remove      Remove executor from a workspace
 
 Examples:
   %s start              # Start executor with auto-setup
   %s reset              # Start completely fresh
+  %s workspaces list    # List assigned workspaces
+  %s workspaces add     # Add to new workspace
 
 Environment Variables (optional):
   FLOWBAKER_API_URL              Override API URL (default: https://api.flowbaker.io)
   FLOWBAKER_DEBUG                Show detailed logs
 
-`, os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }
 
 func startExecutor() {
@@ -116,7 +127,7 @@ func showStatus() {
 		}
 		fmt.Println("✅ Executor is set up and ready")
 		fmt.Printf("   Executor ID: %s\n", config.ExecutorID)
-		fmt.Printf("   Workspace ID: %s\n", config.WorkspaceID)
+		fmt.Printf("   Workspaces (%d): %s\n", len(config.WorkspaceIDs), strings.Join(config.WorkspaceIDs, ", "))
 		fmt.Printf("   API URL: %s\n", config.APIBaseURL)
 		if !config.LastConnected.IsZero() {
 			fmt.Printf("   Last connected: %s\n", config.LastConnected.Format("2006-01-02 15:04:05"))
@@ -214,4 +225,77 @@ func startHealthCheckServer(ctx context.Context) {
 	}); err != nil {
 		log.Error().Err(err).Msg("Health check server failed to start")
 	}
+}
+
+// handleWorkspaceCommands handles all workspace-related subcommands
+func handleWorkspaceCommands(args []string) {
+	if len(args) == 0 {
+		fmt.Println("Missing workspace subcommand. Available commands:")
+		fmt.Println("  list    - List all assigned workspaces")
+		fmt.Println("  add     - Add executor to a new workspace")  
+		fmt.Println("  remove  - Remove executor from a workspace")
+		os.Exit(1)
+	}
+
+	switch args[0] {
+	case "list":
+		listWorkspaces()
+	case "add":
+		addWorkspace(args[1:])
+	case "remove":
+		removeWorkspace(args[1:])
+	default:
+		fmt.Printf("Unknown workspace command: %s\n", args[0])
+		fmt.Println("Available commands: list, add, remove")
+		os.Exit(1)
+	}
+}
+
+// listWorkspaces shows all currently assigned workspaces
+func listWorkspaces() {
+	if !initialization.IsSetupComplete() {
+		fmt.Println("❌ Executor is not set up. Run 'start' to begin setup.")
+		os.Exit(1)
+	}
+
+	config, err := initialization.LoadConfig()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to load configuration")
+	}
+
+	fmt.Println("📋 Assigned Workspaces:")
+	if len(config.WorkspaceIDs) == 0 {
+		fmt.Println("   No workspaces assigned")
+		return
+	}
+
+	for i, workspaceID := range config.WorkspaceIDs {
+		fmt.Printf("   %d. %s\n", i+1, workspaceID)
+	}
+	fmt.Printf("\nTotal: %d workspace(s)\n", len(config.WorkspaceIDs))
+}
+
+// addWorkspace adds the executor to a new workspace using the registration flow
+func addWorkspace(_ []string) {
+	if !initialization.IsSetupComplete() {
+		fmt.Println("❌ Executor is not set up. Run 'start' to begin setup.")
+		os.Exit(1)
+	}
+
+	_, err := initialization.AddWorkspace()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to add workspace")
+	}
+}
+
+// removeWorkspace removes the executor from a workspace (placeholder for now)  
+func removeWorkspace(_ []string) {
+	if !initialization.IsSetupComplete() {
+		fmt.Println("❌ Executor is not set up. Run 'start' to begin setup.")
+		os.Exit(1)
+	}
+
+	fmt.Println("🚧 Removing workspace assignments is not yet implemented.")
+	fmt.Println("This feature will allow you to unregister this executor from workspaces.")
+	fmt.Println("For now, use the web interface to manage workspace assignments.")
 }

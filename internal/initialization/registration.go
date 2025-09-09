@@ -45,9 +45,9 @@ type verificationModel struct {
 }
 
 type verificationResult struct {
-	executorID    string
-	workspaceID   string
-	workspaceName string
+	executorID     string
+	workspaceIDs   []string
+	workspaceNames []string
 }
 
 type statusChecked struct {
@@ -79,9 +79,9 @@ func (m verificationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "verified":
 			if msg.status.Executor != nil {
 				m.result = &verificationResult{
-					executorID:    msg.status.Executor.ID,
-					workspaceID:   msg.status.Executor.WorkspaceID,
-					workspaceName: msg.status.WorkspaceName,
+					executorID:     msg.status.Executor.ID,
+					workspaceIDs:   msg.status.Executor.WorkspaceIDs,
+					workspaceNames: msg.status.WorkspaceNames,
 				}
 				m.done = true
 				return m, tea.Quit
@@ -132,7 +132,7 @@ func (m verificationModel) checkStatus() tea.Cmd {
 }
 
 // WaitForVerification waits for the executor to be verified via the frontend
-func WaitForVerification(executorName, verificationCode string, keys CryptoKeys, apiBaseURL string) (string, string, string, error) {
+func WaitForVerification(executorName, verificationCode string, keys CryptoKeys, apiBaseURL string) (string, []string, []string, error) {
 	client := flowbaker.NewClient(
 		flowbaker.WithBaseURL(apiBaseURL),
 	)
@@ -159,19 +159,19 @@ func WaitForVerification(executorName, verificationCode string, keys CryptoKeys,
 	// Run the program
 	finalModel, err := p.Run()
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to run verification interface: %w", err)
+		return "", nil, nil, fmt.Errorf("failed to run verification interface: %w", err)
 	}
 
 	// Check the final state
 	final := finalModel.(verificationModel)
 	if final.err != nil {
-		return "", "", "", final.err
+		return "", nil, nil, final.err
 	}
 
 	if final.result != nil {
 		fmt.Println("✅ Executor registration verified!")
-		return final.result.executorID, final.result.workspaceID, final.result.workspaceName, nil
+		return final.result.executorID, final.result.workspaceIDs, final.result.workspaceNames, nil
 	}
 
-	return "", "", "", fmt.Errorf("verification timeout after 10 minutes")
+	return "", nil, nil, fmt.Errorf("verification timeout after 10 minutes")
 }

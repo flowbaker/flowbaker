@@ -12,7 +12,12 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/flowbaker/flowbaker/internal/version"
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/logger"
+	"github.com/rs/zerolog/log"
 )
 
 const flowbakerLogo = `       ...........................*####=--:.       
@@ -251,10 +256,11 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	fmt.Println()
 	fmt.Println("⏳ Waiting for connection...")
 
-	executorID, workspaceID, workspaceName, err := WaitForVerification(executorName, verificationCode, keys, apiURL)
+	executorID, workspaceIDs, workspaceNames, err := WaitForVerification(executorName, verificationCode, keys, apiURL)
 	if err != nil {
 		partialConfig := &ExecutorConfig{
 			ExecutorName:     executorName,
+			Address:          address,
 			Keys:             keys,
 			APIBaseURL:       apiURL,
 			SetupComplete:    false,
@@ -273,7 +279,8 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	config := &ExecutorConfig{
 		ExecutorID:    executorID,
 		ExecutorName:  executorName,
-		WorkspaceID:   workspaceID,
+		Address:       address,
+		WorkspaceIDs:  workspaceIDs,
 		Keys:          keys,
 		APIBaseURL:    apiURL,
 		APIPublicKey:  apiPublicKey,
@@ -286,14 +293,14 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	}
 
 	fmt.Println()
-	fmt.Printf("✅ Connected to workspace \"%s\"\n", workspaceName)
+	fmt.Printf("✅ Connected to %d workspace(s): %s\n", len(workspaceNames), strings.Join(workspaceNames, ", "))
 	fmt.Println("💾 Configuration saved")
 
 	return &SetupResult{
-		ExecutorID:    executorID,
-		ExecutorName:  executorName,
-		WorkspaceID:   workspaceID,
-		WorkspaceName: workspaceName,
+		ExecutorID:     executorID,
+		ExecutorName:   executorName,
+		WorkspaceIDs:   workspaceIDs,
+		WorkspaceNames: workspaceNames,
 	}, nil
 }
 
@@ -312,10 +319,10 @@ func ResumeSetup() (*SetupResult, error) {
 
 	if config.SetupComplete {
 		return &SetupResult{
-			ExecutorID:    config.ExecutorID,
-			ExecutorName:  config.ExecutorName,
-			WorkspaceID:   config.WorkspaceID,
-			WorkspaceName: "Unknown", // We don't store workspace name in config, would need API call to fetch
+			ExecutorID:     config.ExecutorID,
+			ExecutorName:   config.ExecutorName,
+			WorkspaceIDs:   config.WorkspaceIDs,
+			WorkspaceNames: []string{"Unknown"}, // We don't store workspace names in config, would need API call to fetch
 		}, nil
 	}
 
@@ -330,13 +337,13 @@ func ResumeSetup() (*SetupResult, error) {
 	fmt.Println()
 	fmt.Println("⏳ Waiting for connection...")
 
-	executorID, workspaceID, workspaceName, err := WaitForVerification(config.ExecutorName, config.VerificationCode, config.Keys, config.APIBaseURL)
+	executorID, workspaceIDs, workspaceNames, err := WaitForVerification(config.ExecutorName, config.VerificationCode, config.Keys, config.APIBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("verification failed: %w", err)
 	}
 
 	config.ExecutorID = executorID
-	config.WorkspaceID = workspaceID
+	config.WorkspaceIDs = workspaceIDs
 	config.SetupComplete = true
 	config.LastConnected = time.Now()
 
@@ -345,12 +352,126 @@ func ResumeSetup() (*SetupResult, error) {
 	}
 
 	fmt.Println()
-	fmt.Printf("✅ Connected to workspace \"%s\"\n", workspaceName)
+	fmt.Printf("✅ Connected to %d workspace(s): %s\n", len(workspaceNames), strings.Join(workspaceNames, ", "))
 
 	return &SetupResult{
-		ExecutorID:    executorID,
-		ExecutorName:  config.ExecutorName,
-		WorkspaceID:   workspaceID,
-		WorkspaceName: workspaceName,
+		ExecutorID:     executorID,
+		ExecutorName:   config.ExecutorName,
+		WorkspaceIDs:   workspaceIDs,
+		WorkspaceNames: workspaceNames,
 	}, nil
+}
+
+// AddWorkspace adds the current executor to a new workspace
+func AddWorkspace() (*SetupResult, error) {
+	config, err := LoadConfig()
+	if err != nil || config == nil {
+		return nil, fmt.Errorf("no executor configuration found. Run setup first")
+	}
+
+	if !config.SetupComplete {
+		return nil, fmt.Errorf("executor setup is not complete. Run setup first")
+	}
+
+	fmt.Println("🔗 Adding executor to new workspace...")
+	fmt.Println()
+
+	// Start health check server during registration
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		startSetupHealthCheckServer(ctx)
+	}()
+
+	// Use existing executor info to create registration
+	apiURL := config.APIBaseURL
+	verificationCode, err := RegisterExecutor(config.ExecutorName, config.Address, config.Keys, apiURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register executor for new workspace: %w", err)
+	}
+
+	frontendURL := GetVerificationURL(apiURL)
+	connectionURL := fmt.Sprintf("%s/executors/verify?code=%s", frontendURL, verificationCode)
+	fmt.Println("🔗 Connect executor to new workspace:")
+	fmt.Println()
+	fmt.Printf("   %s\n", connectionURL)
+	fmt.Println()
+	fmt.Println("⏳ Waiting for workspace assignment...")
+
+	executorID, newWorkspaceIDs, newWorkspaceNames, err := WaitForVerification(config.ExecutorName, verificationCode, config.Keys, apiURL)
+	if err != nil {
+		return nil, fmt.Errorf("workspace assignment failed: %w", err)
+	}
+
+	// Merge new workspace IDs with existing ones
+	existingWorkspaceIDs := make(map[string]bool)
+	for _, id := range config.WorkspaceIDs {
+		existingWorkspaceIDs[id] = true
+	}
+
+	allWorkspaceIDs := make([]string, 0, len(config.WorkspaceIDs)+len(newWorkspaceIDs))
+	allWorkspaceNames := make([]string, 0, len(config.WorkspaceIDs)+len(newWorkspaceNames))
+
+	// Add existing workspaces
+	for _, id := range config.WorkspaceIDs {
+		allWorkspaceIDs = append(allWorkspaceIDs, id)
+		allWorkspaceNames = append(allWorkspaceNames, "Unknown") // We don't store names, would need API call
+	}
+
+	// Add new workspaces (avoid duplicates)
+	for i, id := range newWorkspaceIDs {
+		if !existingWorkspaceIDs[id] {
+			allWorkspaceIDs = append(allWorkspaceIDs, id)
+			allWorkspaceNames = append(allWorkspaceNames, newWorkspaceNames[i])
+		}
+	}
+
+	// Update configuration
+	config.WorkspaceIDs = allWorkspaceIDs
+	config.LastConnected = time.Now()
+
+	if err := SaveConfig(config); err != nil {
+		return nil, fmt.Errorf("failed to save updated configuration: %w", err)
+	}
+
+	fmt.Println()
+	fmt.Printf("✅ Added to new workspace(s): %s\n", strings.Join(newWorkspaceNames, ", "))
+	fmt.Printf("📋 Total workspaces: %d\n", len(allWorkspaceIDs))
+	fmt.Println("💾 Configuration updated")
+
+	return &SetupResult{
+		ExecutorID:     executorID,
+		ExecutorName:   config.ExecutorName,
+		WorkspaceIDs:   allWorkspaceIDs,
+		WorkspaceNames: allWorkspaceNames,
+	}, nil
+}
+
+
+// startSetupHealthCheckServer starts a minimal HTTP server for verification during setup
+func startSetupHealthCheckServer(ctx context.Context) {
+	app := fiber.New(fiber.Config{
+		AppName: "flowbaker-executor-setup",
+	})
+
+	app.Use(cors.New())
+	app.Use(logger.New())
+
+	app.Get("/health", func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"status":     "healthy",
+			"service":    "flowbaker-executor",
+			"version":    version.GetVersion(),
+			"timestamp":  time.Now().UTC().Format(time.RFC3339),
+			"setup_mode": true,
+		})
+	})
+
+	if err := app.Listen(":8081", fiber.ListenConfig{
+		GracefulContext:       ctx,
+		DisableStartupMessage: true,
+	}); err != nil {
+		log.Error().Err(err).Msg("Setup health check server failed to start")
+	}
 }

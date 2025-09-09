@@ -6,7 +6,8 @@ import "time"
 type ExecutorConfig struct {
 	ExecutorID       string    `json:"executor_id,omitempty"`
 	ExecutorName     string    `json:"executor_name"`
-	WorkspaceID      string    `json:"workspace_id,omitempty"`
+	Address          string    `json:"address"`
+	WorkspaceIDs     []string  `json:"workspace_ids,omitempty"`
 	SetupComplete    bool      `json:"setup_complete"`
 	Keys             CryptoKeys `json:"keys"`
 	APIBaseURL       string    `json:"api_url"`
@@ -25,8 +26,8 @@ type CryptoKeys struct {
 
 // SetupResult contains the results of the initialization process
 type SetupResult struct {
-	ExecutorID    string
-	ExecutorName  string
-	WorkspaceID   string
-	WorkspaceName string
+	ExecutorID     string
+	ExecutorName   string
+	WorkspaceIDs   []string
+	WorkspaceNames []string
 }

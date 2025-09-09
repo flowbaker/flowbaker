@@ -10,19 +10,16 @@ import (
 )
 
 type ExecutorAgentMemoryService struct {
-	client      flowbaker.ClientInterface
-	workspaceID string
+	client flowbaker.ClientInterface
 }
 
 type ExecutorAgentMemoryServiceDependencies struct {
-	Client      flowbaker.ClientInterface
-	WorkspaceID string
+	Client flowbaker.ClientInterface
 }
 
 func NewExecutorAgentMemoryService(deps ExecutorAgentMemoryServiceDependencies) domain.AgentMemoryService {
 	return &ExecutorAgentMemoryService{
-		client:      deps.Client,
-		workspaceID: deps.WorkspaceID,
+		client: deps.Client,
 	}
 }
 
@@ -63,7 +60,7 @@ func (s *ExecutorAgentMemoryService) SaveConversation(ctx context.Context, conve
 		}
 	}
 
-	_, err := s.client.SaveAgentConversation(ctx, s.workspaceID, flowbakerConversation)
+	_, err := s.client.SaveAgentConversation(ctx, conversation.WorkspaceID, flowbakerConversation)
 	if err != nil {
 		return fmt.Errorf("failed to save conversation via FlowbakerClient: %w", err)
 	}

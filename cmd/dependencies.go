@@ -66,8 +66,7 @@ func BuildExecutorDependencies(ctx context.Context, config ExecutorDependencyCon
 	})
 
 	executorAgentMemoryService := managers.NewExecutorAgentMemoryService(managers.ExecutorAgentMemoryServiceDependencies{
-		Client:      config.FlowbakerClient,
-		WorkspaceID: config.Config.WorkspaceID,
+		Client: config.FlowbakerClient,
 	})
 
 	executorKnowledgeManager := managers.NewExecutorKnowledgeManager(managers.ExecutorKnowledgeManagerDependencies{
