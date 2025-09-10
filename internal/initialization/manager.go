@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/flowbaker/flowbaker/internal/version"
-	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
@@ -138,22 +137,6 @@ func detectVPN() bool {
 	return false
 }
 
-func fetchAPIPublicKey(apiURL string) (string, error) {
-	client := flowbaker.NewClient(
-		flowbaker.WithBaseURL(apiURL),
-	)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	resp, err := client.GetAPIPublicKey(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to get API public key: %w", err)
-	}
-
-	return resp.PublicKey, nil
-}
-
 func collectExecutorConfig() (string, string, error) {
 	var executorName, address string
 
@@ -256,7 +239,7 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	fmt.Println()
 	fmt.Println("⏳ Waiting for connection...")
 
-	executorID, workspaceIDs, workspaceNames, err := WaitForVerification(executorName, verificationCode, keys, apiURL)
+	executorID, workspaceIDs, workspaceNames, workspaceAPIKeys, err := WaitForVerification(executorName, verificationCode, keys, apiURL)
 	if err != nil {
 		partialConfig := &ExecutorConfig{
 			ExecutorName:     executorName,
@@ -270,22 +253,16 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 		return nil, fmt.Errorf("verification failed: %w", err)
 	}
 
-	fmt.Println("🔑 Fetching API public key...")
-	apiPublicKey, err := fetchAPIPublicKey(apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch API public key: %w", err)
-	}
-
 	config := &ExecutorConfig{
-		ExecutorID:    executorID,
-		ExecutorName:  executorName,
-		Address:       address,
-		WorkspaceIDs:  workspaceIDs,
-		Keys:          keys,
-		APIBaseURL:    apiURL,
-		APIPublicKey:  apiPublicKey,
-		SetupComplete: true,
-		LastConnected: time.Now(),
+		ExecutorID:       executorID,
+		ExecutorName:     executorName,
+		Address:          address,
+		WorkspaceIDs:     workspaceIDs,
+		WorkspaceAPIKeys: workspaceAPIKeys,
+		Keys:             keys,
+		APIBaseURL:       apiURL,
+		SetupComplete:    true,
+		LastConnected:    time.Now(),
 	}
 
 	if err := SaveConfig(config); err != nil {
@@ -337,13 +314,14 @@ func ResumeSetup() (*SetupResult, error) {
 	fmt.Println()
 	fmt.Println("⏳ Waiting for connection...")
 
-	executorID, workspaceIDs, workspaceNames, err := WaitForVerification(config.ExecutorName, config.VerificationCode, config.Keys, config.APIBaseURL)
+	executorID, workspaceIDs, workspaceNames, workspaceAPIKeys, err := WaitForVerification(config.ExecutorName, config.VerificationCode, config.Keys, config.APIBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("verification failed: %w", err)
 	}
 
 	config.ExecutorID = executorID
 	config.WorkspaceIDs = workspaceIDs
+	config.WorkspaceAPIKeys = workspaceAPIKeys
 	config.SetupComplete = true
 	config.LastConnected = time.Now()
 
@@ -399,7 +377,7 @@ func AddWorkspace() (*SetupResult, error) {
 	fmt.Println()
 	fmt.Println("⏳ Waiting for workspace assignment...")
 
-	executorID, newWorkspaceIDs, newWorkspaceNames, err := WaitForVerification(config.ExecutorName, verificationCode, config.Keys, apiURL)
+	executorID, newWorkspaceIDs, newWorkspaceNames, newWorkspaceAPIKeys, err := WaitForVerification(config.ExecutorName, verificationCode, config.Keys, apiURL)
 	if err != nil {
 		return nil, fmt.Errorf("workspace assignment failed: %w", err)
 	}
@@ -412,12 +390,14 @@ func AddWorkspace() (*SetupResult, error) {
 
 	allWorkspaceIDs := make([]string, 0, len(config.WorkspaceIDs)+len(newWorkspaceIDs))
 	allWorkspaceNames := make([]string, 0, len(config.WorkspaceIDs)+len(newWorkspaceNames))
+	allWorkspaceAPIKeys := make([]WorkspaceAPIKey, 0, len(config.WorkspaceAPIKeys)+len(newWorkspaceAPIKeys))
 
-	// Add existing workspaces
 	for _, id := range config.WorkspaceIDs {
 		allWorkspaceIDs = append(allWorkspaceIDs, id)
 		allWorkspaceNames = append(allWorkspaceNames, "Unknown") // We don't store names, would need API call
 	}
+
+	allWorkspaceAPIKeys = append(allWorkspaceAPIKeys, config.WorkspaceAPIKeys...)
 
 	// Add new workspaces (avoid duplicates)
 	for i, id := range newWorkspaceIDs {
@@ -427,8 +407,11 @@ func AddWorkspace() (*SetupResult, error) {
 		}
 	}
 
+	allWorkspaceAPIKeys = append(allWorkspaceAPIKeys, newWorkspaceAPIKeys...)
+
 	// Update configuration
 	config.WorkspaceIDs = allWorkspaceIDs
+	config.WorkspaceAPIKeys = allWorkspaceAPIKeys
 	config.LastConnected = time.Now()
 
 	if err := SaveConfig(config); err != nil {
@@ -447,7 +430,6 @@ func AddWorkspace() (*SetupResult, error) {
 		WorkspaceNames: allWorkspaceNames,
 	}, nil
 }
-
 
 // startSetupHealthCheckServer starts a minimal HTTP server for verification during setup
 func startSetupHealthCheckServer(ctx context.Context) {

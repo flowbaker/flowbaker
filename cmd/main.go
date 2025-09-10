@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/flowbaker/flowbaker/internal/auth"
 	"github.com/flowbaker/flowbaker/internal/initialization"
 	"github.com/flowbaker/flowbaker/internal/managers"
+	"github.com/flowbaker/flowbaker/internal/middlewares"
 	"github.com/flowbaker/flowbaker/internal/server"
 	"github.com/flowbaker/flowbaker/internal/version"
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
@@ -172,20 +172,13 @@ func runExecutor() {
 		log.Fatal().Err(err).Msg("Failed to build executor dependencies")
 	}
 
-	// Initialize API signature verification with the public key from config
-	var apiSignatureVerifier *auth.APISignatureVerifier
-	if config.APIPublicKey != "" {
-		var err error
-		apiSignatureVerifier, err = auth.NewAPISignatureVerifier(config.APIPublicKey)
-		if err != nil {
-			log.Fatal().Err(err).Msg("Failed to initialize API signature verifier")
-		}
-		log.Info().Msg("API signature verification enabled")
-	} else {
-		log.Warn().Msg("API signature verification disabled - no public key in config")
+	if len(config.WorkspaceAPIKeys) == 0 {
+		log.Fatal().Msg("No workspace API keys found in config")
 	}
 
-	server := server.NewHTTPServer(context.Background(), deps.ExecutorController, apiSignatureVerifier)
+	keyProvider := middlewares.NewConfigAPIKeyProvider(config)
+
+	server := server.NewHTTPServer(context.Background(), deps.ExecutorController, keyProvider)
 
 	shutdownChan := make(chan os.Signal, 1)
 	signal.Notify(shutdownChan, syscall.SIGINT, syscall.SIGTERM)

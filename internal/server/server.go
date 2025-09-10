@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/flowbaker/flowbaker/internal/auth"
 	"github.com/flowbaker/flowbaker/internal/controllers"
 	"github.com/flowbaker/flowbaker/internal/middlewares"
 	"github.com/flowbaker/flowbaker/internal/version"
@@ -15,7 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func NewHTTPServer(ctx context.Context, executorController *controllers.ExecutorController, apiSignatureVerifier *auth.APISignatureVerifier) *fiber.App {
+func NewHTTPServer(ctx context.Context, executorController *controllers.ExecutorController, keyProvider middlewares.WorkspaceAPIKeyProvider) *fiber.App {
 	router := fiber.New(fiber.Config{
 		AppName: "flowbaker-executor",
 	})
@@ -34,18 +33,18 @@ func NewHTTPServer(ctx context.Context, executorController *controllers.Executor
 		})
 	})
 
-	// Add API signature verification middleware if verifier is available
-	if apiSignatureVerifier != nil {
-		router.Use(middlewares.APISignatureMiddleware(apiSignatureVerifier))
-		log.Info().Msg("API signature verification middleware enabled")
-	} else {
-		log.Warn().Msg("API signature verification middleware disabled")
+	workspaces := router.Group("/workspaces/:workspaceID")
+
+	if keyProvider == nil {
+		log.Fatal().Msg("Key provider is nil, please set up the executor with a key provider")
 	}
 
-	router.Post("/executions", executorController.StartExecution)
-	router.Post("/polling-events", executorController.HandlePollingEvent)
-	router.Post("/connection-test", executorController.TestConnection)
-	router.Post("/peek-data", executorController.PeekData)
+	workspaces.Use(middlewares.WorkspaceAwareAPISignatureMiddleware(keyProvider))
+
+	workspaces.Post("/executions", executorController.StartExecution)
+	workspaces.Post("/polling-events", executorController.HandlePollingEvent)
+	workspaces.Post("/connection-test", executorController.TestConnection)
+	workspaces.Post("/peek-data", executorController.PeekData)
 
 	return router
 }

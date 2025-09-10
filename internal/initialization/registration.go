@@ -36,18 +36,19 @@ func RegisterExecutor(executorName, address string, keys CryptoKeys, apiBaseURL 
 }
 
 type verificationModel struct {
-	spinner        spinner.Model
-	client         *flowbaker.Client
+	spinner          spinner.Model
+	client           *flowbaker.Client
 	verificationCode string
-	done           bool
-	result         *verificationResult
-	err            error
+	done             bool
+	result           *verificationResult
+	err              error
 }
 
 type verificationResult struct {
-	executorID     string
-	workspaceIDs   []string
-	workspaceNames []string
+	executorID           string
+	workspaceIDs         []string
+	workspaceNames       []string
+	workspaceAssignments []WorkspaceAPIKey
 }
 
 type statusChecked struct {
@@ -78,10 +79,19 @@ func (m verificationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.status.Status {
 		case "verified":
 			if msg.status.Executor != nil {
+				workspaceAssignments := make([]WorkspaceAPIKey, len(msg.status.WorkspaceAssignments))
+				for i, assignment := range msg.status.WorkspaceAssignments {
+					workspaceAssignments[i] = WorkspaceAPIKey{
+						WorkspaceID:  assignment.WorkspaceID,
+						APIPublicKey: assignment.APIPublicKey,
+					}
+				}
+
 				m.result = &verificationResult{
-					executorID:     msg.status.Executor.ID,
-					workspaceIDs:   msg.status.Executor.WorkspaceIDs,
-					workspaceNames: msg.status.WorkspaceNames,
+					executorID:           msg.status.Executor.ID,
+					workspaceIDs:         msg.status.Executor.WorkspaceIDs,
+					workspaceNames:       msg.status.WorkspaceNames,
+					workspaceAssignments: workspaceAssignments,
 				}
 				m.done = true
 				return m, tea.Quit
@@ -116,7 +126,7 @@ func (m verificationModel) View() string {
 	if m.done {
 		return ""
 	}
-	
+
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 	return fmt.Sprintf("\n%s %s\n\n", m.spinner.View(), style.Render("Waiting for executor verification..."))
 }
@@ -125,14 +135,14 @@ func (m verificationModel) checkStatus() tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		
+
 		status, err := m.client.GetExecutorRegistrationStatus(ctx, m.verificationCode)
 		return statusChecked{status: status, err: err}
 	}
 }
 
 // WaitForVerification waits for the executor to be verified via the frontend
-func WaitForVerification(executorName, verificationCode string, keys CryptoKeys, apiBaseURL string) (string, []string, []string, error) {
+func WaitForVerification(executorName, verificationCode string, keys CryptoKeys, apiBaseURL string) (string, []string, []string, []WorkspaceAPIKey, error) {
 	client := flowbaker.NewClient(
 		flowbaker.WithBaseURL(apiBaseURL),
 	)
@@ -155,23 +165,23 @@ func WaitForVerification(executorName, verificationCode string, keys CryptoKeys,
 
 	// Create a program with context
 	p := tea.NewProgram(model, tea.WithContext(ctx))
-	
+
 	// Run the program
 	finalModel, err := p.Run()
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("failed to run verification interface: %w", err)
+		return "", nil, nil, nil, fmt.Errorf("failed to run verification interface: %w", err)
 	}
 
 	// Check the final state
 	final := finalModel.(verificationModel)
 	if final.err != nil {
-		return "", nil, nil, final.err
+		return "", nil, nil, nil, final.err
 	}
 
 	if final.result != nil {
 		fmt.Println("✅ Executor registration verified!")
-		return final.result.executorID, final.result.workspaceIDs, final.result.workspaceNames, nil
+		return final.result.executorID, final.result.workspaceIDs, final.result.workspaceNames, final.result.workspaceAssignments, nil
 	}
 
-	return "", nil, nil, fmt.Errorf("verification timeout after 10 minutes")
+	return "", nil, nil, nil, fmt.Errorf("verification timeout after 10 minutes")
 }
