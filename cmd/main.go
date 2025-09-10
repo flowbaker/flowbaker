@@ -12,6 +12,7 @@ import (
 
 	"github.com/flowbaker/flowbaker/internal/auth"
 	"github.com/flowbaker/flowbaker/internal/initialization"
+	"github.com/flowbaker/flowbaker/internal/managers"
 	"github.com/flowbaker/flowbaker/internal/server"
 	"github.com/flowbaker/flowbaker/internal/version"
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
@@ -232,7 +233,7 @@ func handleWorkspaceCommands(args []string) {
 	if len(args) == 0 {
 		fmt.Println("Missing workspace subcommand. Available commands:")
 		fmt.Println("  list    - List all assigned workspaces")
-		fmt.Println("  add     - Add executor to a new workspace")  
+		fmt.Println("  add     - Add executor to a new workspace")
 		fmt.Println("  remove  - Remove executor from a workspace")
 		os.Exit(1)
 	}
@@ -269,10 +270,26 @@ func listWorkspaces() {
 		return
 	}
 
-	for i, workspaceID := range config.WorkspaceIDs {
-		fmt.Printf("   %d. %s\n", i+1, workspaceID)
+	flowbakerClient := flowbaker.NewClient(
+		flowbaker.WithBaseURL(config.APIBaseURL),
+		flowbaker.WithExecutorID(config.ExecutorID),
+		flowbaker.WithEd25519PrivateKey(config.Keys.Ed25519Private),
+	)
+
+	workspaceManager := managers.NewExecutorWorkspaceManager(managers.ExecutorWorkspaceManagerDependencies{
+		FlowbakerClient: flowbakerClient,
+	})
+
+	ctx := context.Background()
+	workspaces, err := workspaceManager.GetWorkspaces(ctx)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to fetch workspace details")
 	}
-	fmt.Printf("\nTotal: %d workspace(s)\n", len(config.WorkspaceIDs))
+
+	for i, workspace := range workspaces {
+		fmt.Printf("   %d. %s (%s)\n", i+1, workspace.Name, workspace.Slug)
+	}
+	fmt.Printf("\nTotal: %d workspace(s)\n", len(workspaces))
 }
 
 // addWorkspace adds the executor to a new workspace using the registration flow
@@ -288,7 +305,7 @@ func addWorkspace(_ []string) {
 	}
 }
 
-// removeWorkspace removes the executor from a workspace (placeholder for now)  
+// removeWorkspace removes the executor from a workspace (placeholder for now)
 func removeWorkspace(_ []string) {
 	if !initialization.IsSetupComplete() {
 		fmt.Println("❌ Executor is not set up. Run 'start' to begin setup.")

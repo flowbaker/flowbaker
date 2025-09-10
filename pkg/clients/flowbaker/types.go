@@ -320,6 +320,13 @@ type RegistrationStatusResponse struct {
 	WorkspaceNames []string  `json:"workspace_names,omitempty"`
 }
 
+// Workspace represents a workspace
+type Workspace struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
 // File and folder management types
 
 // WorkspaceFile represents a file in the workspace
