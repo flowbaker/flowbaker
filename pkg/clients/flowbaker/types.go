@@ -11,12 +11,6 @@ import (
 // Item represents any data item
 type Item any
 
-// APIPublicKeyResponse represents the API's public key response
-type APIPublicKeyResponse struct {
-	PublicKey string `json:"public_key"`
-	KeyType   string `json:"key_type"`
-	Version   string `json:"version"`
-}
 
 // NodeItems represents items from a specific node
 type NodeItems struct {
@@ -312,12 +306,18 @@ type VerifyExecutorRegistrationRequest struct {
 }
 
 // RegistrationStatusResponse represents the response from checking registration status
+type WorkspaceAssignment struct {
+	WorkspaceID  string `json:"workspace_id"`
+	APIPublicKey string `json:"api_public_key"`
+}
+
 type RegistrationStatusResponse struct {
-	Status         string    `json:"status"` // "pending", "verified", "not_found"
-	Message        string    `json:"message,omitempty"`
-	ExpiresAt      string    `json:"expires_at,omitempty"`
-	Executor       *Executor `json:"executor,omitempty"`
-	WorkspaceNames []string  `json:"workspace_names,omitempty"`
+	Status               string               `json:"status"` // "pending", "verified", "not_found"
+	Message              string               `json:"message,omitempty"`
+	ExpiresAt            string               `json:"expires_at,omitempty"`
+	Executor             *Executor            `json:"executor,omitempty"`
+	WorkspaceNames       []string             `json:"workspace_names,omitempty"`
+	WorkspaceAssignments []WorkspaceAssignment `json:"workspace_assignments,omitempty"`
 }
 
 // Workspace represents a workspace
