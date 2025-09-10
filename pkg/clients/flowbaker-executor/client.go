@@ -15,10 +15,10 @@ import (
 
 // ClientInterface defines the interface for the executor client
 type ClientInterface interface {
-	Execute(ctx context.Context, req *StartExecutionRequest) (*StartExecutionResponse, error)
-	HandlePollingEvent(ctx context.Context, req *PollingEventRequest) (*PollingEventResponse, error)
-	TestConnection(ctx context.Context, req *ConnectionTestRequest) (*ConnectionTestResponse, error)
-	PeekData(ctx context.Context, req *PeekDataRequest) (*PeekDataResponse, error)
+	Execute(ctx context.Context, workspaceID string, req *StartExecutionRequest) (*StartExecutionResponse, error)
+	HandlePollingEvent(ctx context.Context, workspaceID string, req *PollingEventRequest) (*PollingEventResponse, error)
+	TestConnection(ctx context.Context, workspaceID string, req *ConnectionTestRequest) (*ConnectionTestResponse, error)
+	PeekData(ctx context.Context, workspaceID string, req *PeekDataRequest) (*PeekDataResponse, error)
 	HealthCheck(ctx context.Context) (*HealthCheckResponse, error)
 }
 
@@ -64,13 +64,16 @@ func NewClient(options ...ClientOption) *Client {
 }
 
 // Execute sends a workflow execution request to the executor service
-func (c *Client) Execute(ctx context.Context, req *StartExecutionRequest) (*StartExecutionResponse, error) {
+func (c *Client) Execute(ctx context.Context, workspaceID string, req *StartExecutionRequest) (*StartExecutionResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("execution request cannot be nil")
 	}
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID cannot be empty")
+	}
 
-	// Send request to executor
-	resp, err := c.doRequest(ctx, "POST", "/executions", req)
+	path := fmt.Sprintf("/workspaces/%s/executions", workspaceID)
+	resp, err := c.doRequest(ctx, "POST", path, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute workflow: %w", err)
 	}
@@ -87,13 +90,16 @@ func (c *Client) Execute(ctx context.Context, req *StartExecutionRequest) (*Star
 }
 
 // HandlePollingEvent sends a polling event request to the executor service
-func (c *Client) HandlePollingEvent(ctx context.Context, req *PollingEventRequest) (*PollingEventResponse, error) {
+func (c *Client) HandlePollingEvent(ctx context.Context, workspaceID string, req *PollingEventRequest) (*PollingEventResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("polling event request cannot be nil")
 	}
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID cannot be empty")
+	}
 
-	// Send request to executor
-	resp, err := c.doRequest(ctx, "POST", "/polling-events", req)
+	path := fmt.Sprintf("/workspaces/%s/polling-events", workspaceID)
+	resp, err := c.doRequest(ctx, "POST", path, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle polling event: %w", err)
 	}
@@ -108,13 +114,16 @@ func (c *Client) HandlePollingEvent(ctx context.Context, req *PollingEventReques
 }
 
 // TestConnection sends a connection test request to the executor service
-func (c *Client) TestConnection(ctx context.Context, req *ConnectionTestRequest) (*ConnectionTestResponse, error) {
+func (c *Client) TestConnection(ctx context.Context, workspaceID string, req *ConnectionTestRequest) (*ConnectionTestResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("connection test request cannot be nil")
 	}
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID cannot be empty")
+	}
 
-	// Send request to executor
-	resp, err := c.doRequest(ctx, "POST", "/connection-test", req)
+	path := fmt.Sprintf("/workspaces/%s/connection-test", workspaceID)
+	resp, err := c.doRequest(ctx, "POST", path, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to test connection: %w", err)
 	}
@@ -128,12 +137,16 @@ func (c *Client) TestConnection(ctx context.Context, req *ConnectionTestRequest)
 	return &connectionTestResponse, nil
 }
 
-func (c *Client) PeekData(ctx context.Context, req *PeekDataRequest) (*PeekDataResponse, error) {
+func (c *Client) PeekData(ctx context.Context, workspaceID string, req *PeekDataRequest) (*PeekDataResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("peek data request cannot be nil")
 	}
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID cannot be empty")
+	}
 
-	resp, err := c.doRequest(ctx, "POST", "/peek-data", req)
+	path := fmt.Sprintf("/workspaces/%s/peek-data", workspaceID)
+	resp, err := c.doRequest(ctx, "POST", path, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to peek data: %w", err)
 	}

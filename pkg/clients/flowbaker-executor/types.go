@@ -150,7 +150,6 @@ type PollingEventRequest struct {
 	Workflow        Workflow        `json:"workflow"`
 	UserID          string          `json:"user_id"`
 	WorkflowType    WorkflowType    `json:"workflow_type"`
-	WorkspaceID     string          `json:"workspace_id"`
 }
 
 // PollingEventResponse represents the response from handling a polling event
@@ -162,7 +161,6 @@ type PollingEventResponse struct {
 type ConnectionTestRequest struct {
 	IntegrationType IntegrationType `json:"integration_type"`
 	CredentialID    string          `json:"credential_id"`
-	WorkspaceID     string          `json:"workspace_id"`
 	Payload         map[string]any  `json:"payload"`
 }
 
@@ -176,7 +174,6 @@ type ConnectionTestResponse struct {
 type PeekDataRequest struct {
 	IntegrationType IntegrationType `json:"integration_type"`
 	CredentialID    string          `json:"credential_id"`
-	WorkspaceID     string          `json:"workspace_id"`
 	UserID          string          `json:"user_id"`
 	PeekableType    string          `json:"peekable_type"`
 	Cursor          string          `json:"cursor,omitempty"`
