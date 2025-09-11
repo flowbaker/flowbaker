@@ -36,16 +36,21 @@ func RegisterExecutor(executorName, address string, keys domain.CryptoKeys, apiB
 	return resp.VerificationCode, nil
 }
 
+type verificationSuccessMsg struct {
+	executorID          string
+	workspaceAssignment domain.WorkspaceAssignment
+}
+
+type verificationErrorMsg struct {
+	err error
+}
+
 type verificationModel struct {
 	spinner          spinner.Model
 	verificationCode string
 	done             bool
 	err              error
-}
-
-type verificationResult struct {
-	executorID          string
-	workspaceAssignment domain.WorkspaceAssignment
+	result           *verificationSuccessMsg
 }
 
 func (m verificationModel) Init() tea.Cmd {
@@ -60,6 +65,14 @@ func (m verificationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.done = true
 			return m, tea.Quit
 		}
+	case verificationSuccessMsg:
+		m.result = &msg
+		m.done = true
+		return m, tea.Quit
+	case verificationErrorMsg:
+		m.err = msg.err
+		m.done = true
+		return m, tea.Quit
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
@@ -96,13 +109,24 @@ func WaitForVerification(params WaitForVerificationParams) (WaitForVerificationR
 		return WaitForVerificationResult{}, fmt.Errorf("failed to generate passcode: %w", err)
 	}
 
-	resultChan := make(chan *verificationResult, 1)
-	errorChan := make(chan error, 1)
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+
+	model := verificationModel{
+		spinner:          s,
+		verificationCode: params.VerificationCode,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	program := tea.NewProgram(model, tea.WithContext(ctx))
 
 	err = params.WorkspaceRegistrationManager.AddPasscode(context.Background(), domain.AddPasscodeParams{
 		Passcode: passcode,
 		OnSuccess: func(ctx context.Context, params domain.RegisterWorkspaceParams) error {
-			result := &verificationResult{
+			program.Send(verificationSuccessMsg{
 				executorID: "executor-" + params.Passcode, // FIXME: Use verification code as executor ID for now
 				workspaceAssignment: domain.WorkspaceAssignment{
 					WorkspaceID:   params.Assignment.WorkspaceID,
@@ -110,13 +134,7 @@ func WaitForVerification(params WaitForVerificationParams) (WaitForVerificationR
 					WorkspaceSlug: params.Assignment.WorkspaceSlug,
 					APIPublicKey:  params.Assignment.APIPublicKey,
 				},
-			}
-
-			select {
-			case resultChan <- result:
-			default:
-			}
-
+			})
 			return nil
 		},
 	})
@@ -124,55 +142,27 @@ func WaitForVerification(params WaitForVerificationParams) (WaitForVerificationR
 		return WaitForVerificationResult{}, fmt.Errorf("failed to register callback: %w", err)
 	}
 
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-
 	fmt.Printf("🔑 Registration passcode: %s\n", passcode)
 	fmt.Println("💡 Use this passcode when registering workspaces via the API")
 	fmt.Println()
 
-	go func() {
-		model := verificationModel{
-			spinner:          s,
-			verificationCode: params.VerificationCode,
-		}
+	finalModel, err := program.Run()
+	if err != nil {
+		return WaitForVerificationResult{}, fmt.Errorf("failed to run verification interface: %w", err)
+	}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
+	final := finalModel.(verificationModel)
+	if final.err != nil {
+		return WaitForVerificationResult{}, final.err
+	}
 
-		p := tea.NewProgram(model, tea.WithContext(ctx))
-		finalModel, err := p.Run()
-		if err != nil {
-			select {
-			case errorChan <- fmt.Errorf("failed to run verification interface: %w", err):
-			default:
-			}
-			return
-		}
-
-		final := finalModel.(verificationModel)
-		if final.err != nil {
-			select {
-			case errorChan <- final.err:
-			default:
-			}
-		}
-	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-
-	select {
-	case result := <-resultChan:
-		fmt.Println("✅ Executor registration verified!")
-		return WaitForVerificationResult{
-			ExecutorID:          result.executorID,
-			WorkspaceAssignment: result.workspaceAssignment,
-		}, nil
-	case err := <-errorChan:
-		return WaitForVerificationResult{}, err
-	case <-ctx.Done():
+	if final.result == nil {
 		return WaitForVerificationResult{}, fmt.Errorf("verification timeout after 10 minutes")
 	}
+
+	fmt.Println("✅ Executor registration verified!")
+	return WaitForVerificationResult{
+		ExecutorID:          final.result.executorID,
+		WorkspaceAssignment: final.result.workspaceAssignment,
+	}, nil
 }
