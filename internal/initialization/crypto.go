@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 	"golang.org/x/crypto/curve25519"
 )
 
@@ -56,8 +57,8 @@ func GenerateX25519KeyPair() (privateKeyBase64, publicKeyBase64 string, err erro
 	return privateKeyBase64, publicKeyBase64, nil
 }
 
-func GenerateAllKeys() (CryptoKeys, error) {
-	var keys CryptoKeys
+func GenerateAllKeys() (domain.CryptoKeys, error) {
+	var keys domain.CryptoKeys
 
 	x25519Private, x25519Public, err := GenerateX25519KeyPair()
 	if err != nil {

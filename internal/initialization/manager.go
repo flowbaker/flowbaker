@@ -2,6 +2,8 @@ package initialization
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net"
@@ -12,11 +14,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/flowbaker/flowbaker/internal/version"
-	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/cors"
-	"github.com/gofiber/fiber/v3/middleware/logger"
-	"github.com/rs/zerolog/log"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 const flowbakerLogo = `       ...........................*####=--:.       
@@ -209,17 +207,22 @@ func collectExecutorConfig() (string, string, error) {
 	return executorName, address, nil
 }
 
-func RunFirstTimeSetup() (*SetupResult, error) {
+type RunFirstTimeSetupParams struct {
+	ConfigManager       domain.ConfigManager
+	RegistrationManager domain.WorkspaceRegistrationManager
+}
+
+func RunFirstTimeSetup(ctx context.Context, params RunFirstTimeSetupParams) error {
 	showWelcome()
 
 	executorName, address, err := collectExecutorConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to collect executor configuration: %w", err)
+		return fmt.Errorf("failed to collect executor configuration: %w", err)
 	}
 
 	keys, err := GenerateAllKeys()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate keys: %w", err)
+		return fmt.Errorf("failed to generate keys: %w", err)
 	}
 
 	apiURL := getAPIURL()
@@ -227,7 +230,7 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	fmt.Println("📡 Registering with Flowbaker...")
 	verificationCode, err := RegisterExecutor(executorName, address, keys, apiURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to register executor: %w", err)
+		return fmt.Errorf("failed to register executor: %w", err)
 	}
 
 	frontendURL := GetVerificationURL(apiURL)
@@ -239,46 +242,45 @@ func RunFirstTimeSetup() (*SetupResult, error) {
 	fmt.Println()
 	fmt.Println("⏳ Waiting for connection...")
 
-	executorID, workspaceIDs, workspaceNames, workspaceAPIKeys, err := WaitForVerification(executorName, verificationCode, keys, apiURL)
+	p := WaitForVerificationParams{
+		ExecutorName:                 executorName,
+		VerificationCode:             verificationCode,
+		Keys:                         keys,
+		APIBaseURL:                   apiURL,
+		WorkspaceRegistrationManager: params.RegistrationManager,
+	}
+
+	result, err := WaitForVerification(p)
 	if err != nil {
-		partialConfig := &ExecutorConfig{
-			ExecutorName:     executorName,
-			Address:          address,
-			Keys:             keys,
-			APIBaseURL:       apiURL,
-			SetupComplete:    false,
-			VerificationCode: verificationCode,
-		}
-		SaveConfig(partialConfig)
-		return nil, fmt.Errorf("verification failed: %w", err)
+		return fmt.Errorf("verification failed: %w", err)
 	}
 
-	config := &ExecutorConfig{
-		ExecutorID:       executorID,
-		ExecutorName:     executorName,
-		Address:          address,
-		WorkspaceIDs:     workspaceIDs,
-		WorkspaceAPIKeys: workspaceAPIKeys,
-		Keys:             keys,
-		APIBaseURL:       apiURL,
-		SetupComplete:    true,
-		LastConnected:    time.Now(),
+	config := &domain.ExecutorConfig{
+		ExecutorID:    result.ExecutorID, // FIXME: I think executor id should be same for every registration
+		ExecutorName:  executorName,
+		Address:       address,
+		Assignments:   []domain.WorkspaceAssignment{result.WorkspaceAssignment},
+		Keys:          keys,
+		APIBaseURL:    apiURL,
+		SetupComplete: true,
+		LastConnected: time.Now(),
 	}
 
-	if err := SaveConfig(config); err != nil {
-		return nil, fmt.Errorf("failed to save configuration: %w", err)
+	if err := params.ConfigManager.SaveConfig(ctx, *config); err != nil {
+		return fmt.Errorf("failed to save configuration: %w", err)
+	}
+
+	workspaceNames := make([]string, len(config.Assignments))
+
+	for i, assignment := range config.Assignments {
+		workspaceNames[i] = assignment.WorkspaceName
 	}
 
 	fmt.Println()
-	fmt.Printf("✅ Connected to %d workspace(s): %s\n", len(workspaceNames), strings.Join(workspaceNames, ", "))
+	fmt.Printf("✅ Connected to %d workspace(s): %s\n", len(config.Assignments), strings.Join(workspaceNames, ", "))
 	fmt.Println("💾 Configuration saved")
 
-	return &SetupResult{
-		ExecutorID:     executorID,
-		ExecutorName:   executorName,
-		WorkspaceIDs:   workspaceIDs,
-		WorkspaceNames: workspaceNames,
-	}, nil
+	return nil
 }
 
 func getAPIURL() string {
@@ -288,172 +290,13 @@ func getAPIURL() string {
 	return GetDefaultAPIURL()
 }
 
-func ResumeSetup() (*SetupResult, error) {
-	config, err := LoadConfig()
-	if err != nil || config == nil {
-		return nil, fmt.Errorf("no setup to resume")
-	}
+func GeneratePasscode() (string, error) {
+	bytes := make([]byte, 24)
 
-	if config.SetupComplete {
-		return &SetupResult{
-			ExecutorID:     config.ExecutorID,
-			ExecutorName:   config.ExecutorName,
-			WorkspaceIDs:   config.WorkspaceIDs,
-			WorkspaceNames: []string{"Unknown"}, // We don't store workspace names in config, would need API call to fetch
-		}, nil
-	}
-
-	fmt.Println("🔄 Resuming setup...")
-	fmt.Println()
-
-	frontendURL := GetVerificationURL(config.APIBaseURL)
-	connectionURL := fmt.Sprintf("%s/executors/verify?code=%s", frontendURL, config.VerificationCode)
-	fmt.Println("🔗 Connect your executor:")
-	fmt.Println()
-	fmt.Printf("   %s\n", connectionURL)
-	fmt.Println()
-	fmt.Println("⏳ Waiting for connection...")
-
-	executorID, workspaceIDs, workspaceNames, workspaceAPIKeys, err := WaitForVerification(config.ExecutorName, config.VerificationCode, config.Keys, config.APIBaseURL)
+	_, err := rand.Read(bytes)
 	if err != nil {
-		return nil, fmt.Errorf("verification failed: %w", err)
+		return "", err
 	}
 
-	config.ExecutorID = executorID
-	config.WorkspaceIDs = workspaceIDs
-	config.WorkspaceAPIKeys = workspaceAPIKeys
-	config.SetupComplete = true
-	config.LastConnected = time.Now()
-
-	if err := SaveConfig(config); err != nil {
-		return nil, fmt.Errorf("failed to save configuration: %w", err)
-	}
-
-	fmt.Println()
-	fmt.Printf("✅ Connected to %d workspace(s): %s\n", len(workspaceNames), strings.Join(workspaceNames, ", "))
-
-	return &SetupResult{
-		ExecutorID:     executorID,
-		ExecutorName:   config.ExecutorName,
-		WorkspaceIDs:   workspaceIDs,
-		WorkspaceNames: workspaceNames,
-	}, nil
-}
-
-// AddWorkspace adds the current executor to a new workspace
-func AddWorkspace() (*SetupResult, error) {
-	config, err := LoadConfig()
-	if err != nil || config == nil {
-		return nil, fmt.Errorf("no executor configuration found. Run setup first")
-	}
-
-	if !config.SetupComplete {
-		return nil, fmt.Errorf("executor setup is not complete. Run setup first")
-	}
-
-	fmt.Println("🔗 Adding executor to new workspace...")
-	fmt.Println()
-
-	// Start health check server during registration
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		startSetupHealthCheckServer(ctx)
-	}()
-
-	// Use existing executor info to create registration
-	apiURL := config.APIBaseURL
-	verificationCode, err := RegisterExecutor(config.ExecutorName, config.Address, config.Keys, apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to register executor for new workspace: %w", err)
-	}
-
-	frontendURL := GetVerificationURL(apiURL)
-	connectionURL := fmt.Sprintf("%s/executors/verify?code=%s", frontendURL, verificationCode)
-	fmt.Println("🔗 Connect executor to new workspace:")
-	fmt.Println()
-	fmt.Printf("   %s\n", connectionURL)
-	fmt.Println()
-	fmt.Println("⏳ Waiting for workspace assignment...")
-
-	executorID, newWorkspaceIDs, newWorkspaceNames, newWorkspaceAPIKeys, err := WaitForVerification(config.ExecutorName, verificationCode, config.Keys, apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("workspace assignment failed: %w", err)
-	}
-
-	// Merge new workspace IDs with existing ones
-	existingWorkspaceIDs := make(map[string]bool)
-	for _, id := range config.WorkspaceIDs {
-		existingWorkspaceIDs[id] = true
-	}
-
-	allWorkspaceIDs := make([]string, 0, len(config.WorkspaceIDs)+len(newWorkspaceIDs))
-	allWorkspaceNames := make([]string, 0, len(config.WorkspaceIDs)+len(newWorkspaceNames))
-	allWorkspaceAPIKeys := make([]WorkspaceAPIKey, 0, len(config.WorkspaceAPIKeys)+len(newWorkspaceAPIKeys))
-
-	for _, id := range config.WorkspaceIDs {
-		allWorkspaceIDs = append(allWorkspaceIDs, id)
-		allWorkspaceNames = append(allWorkspaceNames, "Unknown") // We don't store names, would need API call
-	}
-
-	allWorkspaceAPIKeys = append(allWorkspaceAPIKeys, config.WorkspaceAPIKeys...)
-
-	// Add new workspaces (avoid duplicates)
-	for i, id := range newWorkspaceIDs {
-		if !existingWorkspaceIDs[id] {
-			allWorkspaceIDs = append(allWorkspaceIDs, id)
-			allWorkspaceNames = append(allWorkspaceNames, newWorkspaceNames[i])
-		}
-	}
-
-	allWorkspaceAPIKeys = append(allWorkspaceAPIKeys, newWorkspaceAPIKeys...)
-
-	// Update configuration
-	config.WorkspaceIDs = allWorkspaceIDs
-	config.WorkspaceAPIKeys = allWorkspaceAPIKeys
-	config.LastConnected = time.Now()
-
-	if err := SaveConfig(config); err != nil {
-		return nil, fmt.Errorf("failed to save updated configuration: %w", err)
-	}
-
-	fmt.Println()
-	fmt.Printf("✅ Added to new workspace(s): %s\n", strings.Join(newWorkspaceNames, ", "))
-	fmt.Printf("📋 Total workspaces: %d\n", len(allWorkspaceIDs))
-	fmt.Println("💾 Configuration updated")
-
-	return &SetupResult{
-		ExecutorID:     executorID,
-		ExecutorName:   config.ExecutorName,
-		WorkspaceIDs:   allWorkspaceIDs,
-		WorkspaceNames: allWorkspaceNames,
-	}, nil
-}
-
-// startSetupHealthCheckServer starts a minimal HTTP server for verification during setup
-func startSetupHealthCheckServer(ctx context.Context) {
-	app := fiber.New(fiber.Config{
-		AppName: "flowbaker-executor-setup",
-	})
-
-	app.Use(cors.New())
-	app.Use(logger.New())
-
-	app.Get("/health", func(c fiber.Ctx) error {
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"status":     "healthy",
-			"service":    "flowbaker-executor",
-			"version":    version.GetVersion(),
-			"timestamp":  time.Now().UTC().Format(time.RFC3339),
-			"setup_mode": true,
-		})
-	})
-
-	if err := app.Listen(":8081", fiber.ListenConfig{
-		GracefulContext:       ctx,
-		DisableStartupMessage: true,
-	}); err != nil {
-		log.Error().Err(err).Msg("Setup health check server failed to start")
-	}
+	return base64.StdEncoding.EncodeToString(bytes), nil
 }
