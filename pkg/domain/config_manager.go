@@ -59,7 +59,10 @@ func NewConfigManager() (ConfigManager, error) {
 	configPath := filepath.Join(configDir, ConfigFileName)
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return nil, nil
+		return &configManager{
+			config:     ExecutorConfig{},
+			configPath: configPath,
+		}, nil
 	}
 
 	data, err := os.ReadFile(configPath)
