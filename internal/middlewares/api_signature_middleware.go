@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/flowbaker/flowbaker/internal/auth"
-	"github.com/flowbaker/flowbaker/internal/initialization"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/rs/zerolog/log"
@@ -16,15 +16,15 @@ type WorkspaceAPIKeyProvider interface {
 }
 
 type ConfigAPIKeyProvider struct {
-	config *initialization.ExecutorConfig
+	config domain.ExecutorConfig
 }
 
-func NewConfigAPIKeyProvider(config *initialization.ExecutorConfig) *ConfigAPIKeyProvider {
+func NewConfigAPIKeyProvider(config domain.ExecutorConfig) *ConfigAPIKeyProvider {
 	return &ConfigAPIKeyProvider{config: config}
 }
 
 func (p *ConfigAPIKeyProvider) GetWorkspaceAPIKey(workspaceID string) (string, error) {
-	for _, wsKey := range p.config.WorkspaceAPIKeys {
+	for _, wsKey := range p.config.Assignments {
 		if wsKey.WorkspaceID == workspaceID {
 			return wsKey.APIPublicKey, nil
 		}
