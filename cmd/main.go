@@ -10,12 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/flowbaker/flowbaker/internal/controllers"
 	"github.com/flowbaker/flowbaker/internal/initialization"
 	"github.com/flowbaker/flowbaker/internal/managers"
 	"github.com/flowbaker/flowbaker/internal/middlewares"
 	"github.com/flowbaker/flowbaker/internal/server"
 	"github.com/flowbaker/flowbaker/internal/version"
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -38,23 +40,34 @@ func main() {
 		os.Exit(0)
 	}
 
+	configManager, err := domain.NewConfigManager()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create config manager")
+	}
+
+	workspaceRegistrationManager := domain.NewWorkspaceRegistrationManager()
+
+	executorController := controllers.NewExecutorController(controllers.ExecutorControllerDependencies{
+		WorkspaceRegistrationManager: workspaceRegistrationManager,
+	})
+
 	args := flag.Args()
 
 	// Default behavior: auto-start if configured, setup if not
 	if len(args) == 0 {
-		startExecutor()
+		startExecutor(configManager, executorController, workspaceRegistrationManager)
 		return
 	}
 
 	switch args[0] {
 	case "start":
-		startExecutor()
+		startExecutor(configManager, executorController, workspaceRegistrationManager)
 	case "reset":
-		resetExecutor()
+		resetExecutor(configManager)
 	case "status":
-		showStatus()
+		showStatus(configManager)
 	case "workspaces":
-		handleWorkspaceCommands(args[1:])
+		handleWorkspaceCommands(configManager, args[1:])
 	default:
 		log.Error().Str("command", args[0]).Msg("Unknown command")
 		printUsage()
@@ -89,17 +102,22 @@ Environment Variables (optional):
 `, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }
 
-func startExecutor() {
-	if !initialization.IsSetupComplete() {
+func startExecutor(configManager domain.ConfigManager, executorController *controllers.ExecutorController, workspaceRegistrationManager domain.WorkspaceRegistrationManager) {
+	ctx := context.Background()
+
+	if !configManager.IsSetupComplete(ctx) {
 		// Start HTTP server with health check endpoint before registration
 		// so the API can verify connectivity during the registration process
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(ctx)
 
 		go func() {
-			startHealthCheckServer(ctx)
+			startHealthCheckServer(ctx, executorController)
 		}()
 
-		if _, err := initialization.RunFirstTimeSetup(); err != nil {
+		if err := initialization.RunFirstTimeSetup(ctx, initialization.RunFirstTimeSetupParams{
+			ConfigManager:       configManager,
+			RegistrationManager: workspaceRegistrationManager,
+		}); err != nil {
 			log.Fatal().Err(err).Msg("Failed to complete setup")
 		}
 
@@ -112,23 +130,30 @@ func startExecutor() {
 	runExecutor()
 }
 
-func resetExecutor() {
-	if err := initialization.ResetConfig(); err != nil {
+func resetExecutor(configManager domain.ConfigManager) {
+	if err := configManager.ResetConfig(context.Background()); err != nil {
 		log.Fatal().Err(err).Msg("Failed to reset configuration")
 	}
 	fmt.Println("✅ Configuration reset successfully")
 	fmt.Printf("Run '%s start' to begin setup\n", os.Args[0])
 }
 
-func showStatus() {
-	if initialization.IsSetupComplete() {
-		config, err := initialization.LoadConfig()
+func showStatus(configManager domain.ConfigManager) {
+	if configManager.IsSetupComplete(context.Background()) {
+		config, err := configManager.GetConfig(context.Background())
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to load configuration")
 		}
+
+		workspaceNames := make([]string, len(config.Assignments))
+
+		for i, assignment := range config.Assignments {
+			workspaceNames[i] = assignment.WorkspaceName
+		}
+
 		fmt.Println("✅ Executor is set up and ready")
 		fmt.Printf("   Executor ID: %s\n", config.ExecutorID)
-		fmt.Printf("   Workspaces (%d): %s\n", len(config.WorkspaceIDs), strings.Join(config.WorkspaceIDs, ", "))
+		fmt.Printf("   Workspaces (%d): %s\n", len(config.Assignments), strings.Join(workspaceNames, ", "))
 		fmt.Printf("   API URL: %s\n", config.APIBaseURL)
 		if !config.LastConnected.IsZero() {
 			fmt.Printf("   Last connected: %s\n", config.LastConnected.Format("2006-01-02 15:04:05"))
@@ -145,8 +170,13 @@ func runExecutor() {
 
 	log.Info().Msg("Starting executor service")
 
-	config, err := initialization.LoadConfig()
-	if err != nil || config == nil {
+	configManager, err := domain.NewConfigManager()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create config manager")
+	}
+
+	config, err := configManager.GetConfig(ctx)
+	if err != nil || config.ExecutorID == "" || !config.SetupComplete {
 		log.Fatal().Msg("No configuration found. Run with 'start' to set up.")
 	}
 
@@ -172,7 +202,7 @@ func runExecutor() {
 		log.Fatal().Err(err).Msg("Failed to build executor dependencies")
 	}
 
-	if len(config.WorkspaceAPIKeys) == 0 {
+	if len(config.Assignments) == 0 {
 		log.Fatal().Msg("No workspace API keys found in config")
 	}
 
@@ -195,7 +225,7 @@ func runExecutor() {
 
 // startHealthCheckServer starts a minimal HTTP server with only the health check endpoint
 // This is used during the initial setup phase to allow API connectivity verification
-func startHealthCheckServer(ctx context.Context) {
+func startHealthCheckServer(ctx context.Context, executorController *controllers.ExecutorController) {
 	app := fiber.New(fiber.Config{
 		AppName: "flowbaker-executor-setup",
 	})
@@ -213,6 +243,10 @@ func startHealthCheckServer(ctx context.Context) {
 		})
 	})
 
+	workspaces := app.Group("/workspaces")
+
+	workspaces.Post("/", executorController.RegisterWorkspace)
+
 	if err := app.Listen(":8081", fiber.ListenConfig{
 		GracefulContext:       ctx,
 		DisableStartupMessage: true,
@@ -222,7 +256,7 @@ func startHealthCheckServer(ctx context.Context) {
 }
 
 // handleWorkspaceCommands handles all workspace-related subcommands
-func handleWorkspaceCommands(args []string) {
+func handleWorkspaceCommands(configManager domain.ConfigManager, args []string) {
 	if len(args) == 0 {
 		fmt.Println("Missing workspace subcommand. Available commands:")
 		fmt.Println("  list    - List all assigned workspaces")
@@ -233,11 +267,7 @@ func handleWorkspaceCommands(args []string) {
 
 	switch args[0] {
 	case "list":
-		listWorkspaces()
-	case "add":
-		addWorkspace(args[1:])
-	case "remove":
-		removeWorkspace(args[1:])
+		listWorkspaces(configManager)
 	default:
 		fmt.Printf("Unknown workspace command: %s\n", args[0])
 		fmt.Println("Available commands: list, add, remove")
@@ -246,19 +276,19 @@ func handleWorkspaceCommands(args []string) {
 }
 
 // listWorkspaces shows all currently assigned workspaces
-func listWorkspaces() {
-	if !initialization.IsSetupComplete() {
+func listWorkspaces(configManager domain.ConfigManager) {
+	if !configManager.IsSetupComplete(context.Background()) {
 		fmt.Println("❌ Executor is not set up. Run 'start' to begin setup.")
 		os.Exit(1)
 	}
 
-	config, err := initialization.LoadConfig()
+	config, err := configManager.GetConfig(context.Background())
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to load configuration")
 	}
 
 	fmt.Println("📋 Assigned Workspaces:")
-	if len(config.WorkspaceIDs) == 0 {
+	if len(config.Assignments) == 0 {
 		fmt.Println("   No workspaces assigned")
 		return
 	}
@@ -283,29 +313,4 @@ func listWorkspaces() {
 		fmt.Printf("   %d. %s (%s)\n", i+1, workspace.Name, workspace.Slug)
 	}
 	fmt.Printf("\nTotal: %d workspace(s)\n", len(workspaces))
-}
-
-// addWorkspace adds the executor to a new workspace using the registration flow
-func addWorkspace(_ []string) {
-	if !initialization.IsSetupComplete() {
-		fmt.Println("❌ Executor is not set up. Run 'start' to begin setup.")
-		os.Exit(1)
-	}
-
-	_, err := initialization.AddWorkspace()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to add workspace")
-	}
-}
-
-// removeWorkspace removes the executor from a workspace (placeholder for now)
-func removeWorkspace(_ []string) {
-	if !initialization.IsSetupComplete() {
-		fmt.Println("❌ Executor is not set up. Run 'start' to begin setup.")
-		os.Exit(1)
-	}
-
-	fmt.Println("🚧 Removing workspace assignments is not yet implemented.")
-	fmt.Println("This feature will allow you to unregister this executor from workspaces.")
-	fmt.Println("For now, use the web interface to manage workspace assignments.")
 }
