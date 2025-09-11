@@ -15,17 +15,48 @@ import (
 // ExecutorController handles API-initiated requests to executor services
 // This controller is used when the API needs to send commands to executors
 type ExecutorController struct {
-	executorService executor.WorkflowExecutorService
+	executorService              executor.WorkflowExecutorService
+	workspaceRegistrationManager domain.WorkspaceRegistrationManager
 }
 
 type ExecutorControllerDependencies struct {
-	WorkflowExecutorService executor.WorkflowExecutorService
+	WorkflowExecutorService      executor.WorkflowExecutorService
+	WorkspaceRegistrationManager domain.WorkspaceRegistrationManager
 }
 
 func NewExecutorController(deps ExecutorControllerDependencies) *ExecutorController {
 	return &ExecutorController{
-		executorService: deps.WorkflowExecutorService,
+		executorService:              deps.WorkflowExecutorService,
+		workspaceRegistrationManager: deps.WorkspaceRegistrationManager,
 	}
+}
+
+func (c *ExecutorController) RegisterWorkspace(ctx fiber.Ctx) error {
+	log.Info().Msg("Registering workspace")
+
+	var req executortypes.RegisterWorkspaceRequest
+
+	if err := ctx.Bind().Body(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	p := domain.RegisterWorkspaceParams{
+		Passcode: req.Passcode,
+		Assignment: domain.WorkspaceAssignment{
+			WorkspaceID:   req.Assignment.WorkspaceID,
+			WorkspaceName: req.Assignment.WorkspaceName,
+			WorkspaceSlug: req.Assignment.WorkspaceSlug,
+			APIPublicKey:  req.Assignment.APIPublicKey,
+		},
+	}
+
+	err := c.workspaceRegistrationManager.TryRegisterWorkspace(ctx.RequestCtx(), p)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to register workspace")
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to register workspace")
+	}
+
+	return nil
 }
 
 // StartExecution handles the start of a workflow execution

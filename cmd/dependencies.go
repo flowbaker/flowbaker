@@ -6,7 +6,6 @@ import (
 
 	"github.com/flowbaker/flowbaker/internal/controllers"
 	"github.com/flowbaker/flowbaker/internal/expressions"
-	"github.com/flowbaker/flowbaker/internal/initialization"
 	"github.com/flowbaker/flowbaker/internal/managers"
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	"github.com/flowbaker/flowbaker/pkg/domain"
@@ -27,7 +26,7 @@ type ExecutorDependencies struct {
 type ExecutorDependencyConfig struct {
 	FlowbakerClient *flowbaker.Client
 	ExecutorID      string
-	Config          *initialization.ExecutorConfig
+	Config          domain.ExecutorConfig
 }
 
 // BuildExecutorDependencies creates and wires up all executor dependencies
