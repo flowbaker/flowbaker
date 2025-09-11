@@ -33,18 +33,22 @@ func NewHTTPServer(ctx context.Context, executorController *controllers.Executor
 		})
 	})
 
-	workspaces := router.Group("/workspaces/:workspaceID")
+	workspaces := router.Group("/workspaces")
+
+	workspaces.Post("/", executorController.RegisterWorkspace)
+
+	specificWorkspace := router.Group("/workspaces/:workspaceID")
 
 	if keyProvider == nil {
 		log.Fatal().Msg("Key provider is nil, please set up the executor with a key provider")
 	}
 
-	workspaces.Use(middlewares.WorkspaceAwareAPISignatureMiddleware(keyProvider))
+	specificWorkspace.Use(middlewares.WorkspaceAwareAPISignatureMiddleware(keyProvider))
 
-	workspaces.Post("/executions", executorController.StartExecution)
-	workspaces.Post("/polling-events", executorController.HandlePollingEvent)
-	workspaces.Post("/connection-test", executorController.TestConnection)
-	workspaces.Post("/peek-data", executorController.PeekData)
+	specificWorkspace.Post("/executions", executorController.StartExecution)
+	specificWorkspace.Post("/polling-events", executorController.HandlePollingEvent)
+	specificWorkspace.Post("/connection-test", executorController.TestConnection)
+	specificWorkspace.Post("/peek-data", executorController.PeekData)
 
 	return router
 }
