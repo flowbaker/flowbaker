@@ -16,6 +16,7 @@ import (
 // ClientInterface defines the interface for the executor client
 type ClientInterface interface {
 	Execute(ctx context.Context, workspaceID string, req *StartExecutionRequest) (*StartExecutionResponse, error)
+	RegisterWorkspace(ctx context.Context, req *RegisterWorkspaceRequest) (*RegisterWorkspaceResponse, error)
 	HandlePollingEvent(ctx context.Context, workspaceID string, req *PollingEventRequest) (*PollingEventResponse, error)
 	TestConnection(ctx context.Context, workspaceID string, req *ConnectionTestRequest) (*ConnectionTestResponse, error)
 	PeekData(ctx context.Context, workspaceID string, req *PeekDataRequest) (*PeekDataResponse, error)
@@ -303,4 +304,21 @@ func (c *Client) handleResponse(resp *http.Response, result any) error {
 	}
 
 	return nil
+}
+
+func (c *Client) RegisterWorkspace(ctx context.Context, req *RegisterWorkspaceRequest) (*RegisterWorkspaceResponse, error) {
+	path := "/workspaces"
+
+	resp, err := c.doRequest(ctx, "POST", path, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register workspace: %w", err)
+	}
+
+	var registerWorkspaceResponse RegisterWorkspaceResponse
+
+	if err := c.handleResponse(resp, &registerWorkspaceResponse); err != nil {
+		return nil, fmt.Errorf("failed to process register workspace response: %w", err)
+	}
+
+	return &registerWorkspaceResponse, nil
 }

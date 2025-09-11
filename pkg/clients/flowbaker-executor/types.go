@@ -196,3 +196,22 @@ type PeekResultItem struct {
 	Value   string `json:"value,omitempty"`
 	Content string `json:"content,omitempty"`
 }
+
+// RegisterWorkspaceRequest represents a request to register a workspace
+type RegisterWorkspaceRequest struct {
+	Passcode   string              `json:"passcode"`
+	Assignment WorkspaceAssignment `json:"assignment"`
+}
+
+// RegisterWorkspaceResponse represents the response from registering a workspace
+type RegisterWorkspaceResponse struct {
+	Success bool `json:"success"`
+}
+
+// WorkspaceAssignment represents an assignment of a workspace to an executor
+type WorkspaceAssignment struct {
+	WorkspaceID   string `json:"workspace_id"`
+	WorkspaceName string `json:"workspace_name"`
+	WorkspaceSlug string `json:"workspace_slug"`
+	APIPublicKey  string `json:"api_public_key"`
+}

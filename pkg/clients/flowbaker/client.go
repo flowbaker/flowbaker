@@ -34,7 +34,6 @@ type ClientInterface interface {
 	// Executor registration operations
 	CreateExecutorRegistration(ctx context.Context, req *CreateExecutorRegistrationRequest) (*CreateExecutorRegistrationResponse, error)
 	VerifyExecutorRegistration(ctx context.Context, workspaceID, code string) (*Executor, error)
-	GetExecutorRegistrationStatus(ctx context.Context, code string) (*RegistrationStatusResponse, error)
 	GetWorkspaceExecutors(ctx context.Context, workspaceID string) ([]Executor, error)
 
 	// Workspace operations (for executor clients)
@@ -251,26 +250,6 @@ func (c *Client) VerifyExecutorRegistration(ctx context.Context, workspaceID, co
 	}
 
 	return result.Executor, nil
-}
-
-// GetExecutorRegistrationStatus checks the status of an executor registration
-func (c *Client) GetExecutorRegistrationStatus(ctx context.Context, code string) (*RegistrationStatusResponse, error) {
-	if code == "" {
-		return nil, fmt.Errorf("verification code is required")
-	}
-
-	path := fmt.Sprintf("/executors/%s/status", code)
-	resp, err := c.doRequest(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get executor registration status: %w", err)
-	}
-
-	var result RegistrationStatusResponse
-	if err := c.handleResponse(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to process registration status response: %w", err)
-	}
-
-	return &result, nil
 }
 
 // GetWorkspaceExecutors retrieves all executors for a workspace
