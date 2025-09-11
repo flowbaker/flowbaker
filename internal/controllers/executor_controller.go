@@ -56,7 +56,9 @@ func (c *ExecutorController) RegisterWorkspace(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to register workspace")
 	}
 
-	return nil
+	return ctx.JSON(executortypes.RegisterWorkspaceResponse{
+		Success: true,
+	})
 }
 
 // StartExecution handles the start of a workflow execution
