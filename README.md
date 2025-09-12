@@ -1,12 +1,5 @@
 <img src="assets/head.png" alt="Flowbaker Executor" width="100%">
-
-
-
-
-
-
-
-Flowbaker is a workflow automation executor that runs on your machine. It connects to the Flowbaker platform to execute workflows with various integrations like Discord, GitHub, Gmail, and more.
+Workflow automation executor that runs on your machine. It connects to the Flowbaker platform to execute workflows with various integrations like Discord, GitHub, Gmail, and more.
 <div align="center">
 
   [![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg?style=flat-square)](https://golang.org/)
