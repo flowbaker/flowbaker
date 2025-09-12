@@ -43,9 +43,7 @@ func runStart(executorContainer *initialization.ExecutorContainer) error {
 		// so the API can verify connectivity during the registration process
 		ctx, cancel := context.WithCancel(ctx)
 
-		go func() {
-			startHealthCheckServer(ctx, executorContainer)
-		}()
+		app := startHealthCheckServer(ctx, executorContainer)
 
 		if err := initialization.RunFirstTimeSetup(ctx, initialization.RunFirstTimeSetupParams{
 			ConfigManager:       configManager,
@@ -54,10 +52,14 @@ func runStart(executorContainer *initialization.ExecutorContainer) error {
 			log.Fatal().Err(err).Msg("Failed to complete setup")
 		}
 
-		cancel()
-
-		// Give the server a moment to shutdown gracefully
-		time.Sleep(100 * time.Millisecond)
+		// Gracefully shutdown the health check server
+		cancel() // Cancel the server's context first
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+		
+		if err := app.ShutdownWithContext(shutdownCtx); err != nil {
+			log.Error().Err(err).Msg("Failed to shutdown health check server gracefully")
+		}
 	}
 
 	return runExecutor(executorContainer)
@@ -120,7 +122,7 @@ func runExecutor(executorContainer *initialization.ExecutorContainer) error {
 
 // startHealthCheckServer starts a minimal HTTP server with only the health check endpoint
 // This is used during the initial setup phase to allow API connectivity verification
-func startHealthCheckServer(ctx context.Context, executorContainer *initialization.ExecutorContainer) {
+func startHealthCheckServer(ctx context.Context, executorContainer *initialization.ExecutorContainer) *fiber.App {
 	workspaceRegistrationManager := executorContainer.GetWorkspaceRegistrationManager()
 
 	// Create a minimal executor controller for registration
@@ -149,10 +151,14 @@ func startHealthCheckServer(ctx context.Context, executorContainer *initializati
 	workspaces := app.Group("/workspaces")
 	workspaces.Post("/", executorController.RegisterWorkspace)
 
-	if err := app.Listen(":8081", fiber.ListenConfig{
-		GracefulContext:       ctx,
-		DisableStartupMessage: true,
-	}); err != nil {
-		log.Error().Err(err).Msg("Health check server failed to start")
-	}
+	go func() {
+		if err := app.Listen(":8081", fiber.ListenConfig{
+			GracefulContext:       ctx,
+			DisableStartupMessage: true,
+		}); err != nil {
+			log.Error().Err(err).Msg("Health check server failed to start")
+		}
+	}()
+
+	return app
 }
