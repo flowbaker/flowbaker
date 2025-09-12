@@ -1,4 +1,5 @@
 <img src="assets/head.png" alt="Flowbaker Executor" width="100%">
+
 Workflow automation executor that runs on your machine. It connects to the Flowbaker platform to execute workflows with various integrations like Discord, GitHub, Gmail, and more.
 <div align="center">
 
