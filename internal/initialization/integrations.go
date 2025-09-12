@@ -1,8 +1,6 @@
-package main
+package initialization
 
 import (
-	"context"
-
 	"github.com/flowbaker/flowbaker/pkg/integrations/ai_agent"
 	claudeintegration "github.com/flowbaker/flowbaker/pkg/integrations/claude"
 	"github.com/flowbaker/flowbaker/pkg/integrations/condition"
@@ -34,11 +32,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
-// IntegrationCommonDependencies contains dependencies that most integrations need
-
-type SchemaRegistrationFunc func(ctx context.Context, integrationManager domain.ExecutorIntegrationManager) error
-
-type IntegrationRegisterParams struct {
+type integrationRegisterParams struct {
 	IntegrationType              domain.IntegrationType
 	NewCreator                   func(deps domain.IntegrationDeps) domain.IntegrationCreator
 	NewPollingEventHandler       func(deps domain.IntegrationDeps) domain.IntegrationPoller
@@ -47,7 +41,7 @@ type IntegrationRegisterParams struct {
 	NewConnectionTester          func(deps domain.IntegrationDeps) domain.IntegrationConnectionTester
 }
 
-var integrationRegisterParams = []IntegrationRegisterParams{
+var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType:        domain.IntegrationType_Discord,
 		NewCreator:             discord.NewDiscordIntegrationCreator,
@@ -169,17 +163,8 @@ var integrationRegisterParams = []IntegrationRegisterParams{
 	},
 }
 
-type RegisterIntegrationParams struct {
-	IntegrationSelector domain.IntegrationSelector
-	Deps                domain.IntegrationDeps
-}
-
-func RegisterIntegrations(ctx context.Context,
-	p RegisterIntegrationParams) error {
-	integrationSelector := p.IntegrationSelector
-	commonDeps := p.Deps
-
-	for _, params := range integrationRegisterParams {
+func registerIntegrations(integrationSelector domain.IntegrationSelector, commonDeps domain.IntegrationDeps) error {
+	for _, params := range integrationRegisterParamsList {
 
 		if params.NewCreator != nil {
 			creator := params.NewCreator(commonDeps)

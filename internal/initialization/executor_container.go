@@ -1,4 +1,4 @@
-package main
+package initialization
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// ExecutorDependencies contains all dependencies needed by the executor
 type ExecutorDependencies struct {
 	FlowbakerClient         *flowbaker.Client
 	IntegrationSelector     domain.IntegrationSelector
@@ -22,15 +21,40 @@ type ExecutorDependencies struct {
 	ExecutorController      *controllers.ExecutorController
 }
 
-// ExecutorDependencyConfig contains configuration for dependency injection
 type ExecutorDependencyConfig struct {
 	FlowbakerClient *flowbaker.Client
 	ExecutorID      string
 	Config          domain.ExecutorConfig
 }
 
-// BuildExecutorDependencies creates and wires up all executor dependencies
-func BuildExecutorDependencies(ctx context.Context, config ExecutorDependencyConfig) (*ExecutorDependencies, error) {
+type ExecutorContainer struct {
+	configManager                domain.ConfigManager
+	workspaceRegistrationManager domain.WorkspaceRegistrationManager
+}
+
+func NewExecutorContainer() (*ExecutorContainer, error) {
+	configManager, err := domain.NewConfigManager()
+	if err != nil {
+		return nil, err
+	}
+
+	workspaceRegistrationManager := domain.NewWorkspaceRegistrationManager()
+
+	return &ExecutorContainer{
+		configManager:                configManager,
+		workspaceRegistrationManager: workspaceRegistrationManager,
+	}, nil
+}
+
+func (c *ExecutorContainer) GetConfigManager() domain.ConfigManager {
+	return c.configManager
+}
+
+func (c *ExecutorContainer) GetWorkspaceRegistrationManager() domain.WorkspaceRegistrationManager {
+	return c.workspaceRegistrationManager
+}
+
+func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, config ExecutorDependencyConfig) (*ExecutorDependencies, error) {
 	log.Info().Msg("Building executor dependencies")
 	logger := log.Logger
 
@@ -40,7 +64,6 @@ func BuildExecutorDependencies(ctx context.Context, config ExecutorDependencyCon
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Kangaroo expression binder")
-
 		return nil, err
 	}
 
@@ -72,7 +95,6 @@ func BuildExecutorDependencies(ctx context.Context, config ExecutorDependencyCon
 		Client: config.FlowbakerClient,
 	})
 
-	// Create common dependencies for integrations
 	integrationDeps := domain.IntegrationDeps{
 		FlowbakerClient:            config.FlowbakerClient,
 		IntegrationSelector:        integrationSelector,
@@ -87,15 +109,10 @@ func BuildExecutorDependencies(ctx context.Context, config ExecutorDependencyCon
 		ExecutorKnowledgeManager:   executorKnowledgeManager,
 	}
 
-	// Register integrations
-	if err := RegisterIntegrations(ctx, RegisterIntegrationParams{
-		IntegrationSelector: integrationSelector,
-		Deps:                integrationDeps,
-	}); err != nil {
+	if err := registerIntegrations(integrationSelector, integrationDeps); err != nil {
 		return nil, err
 	}
 
-	// Create workflow executor service
 	workflowExecutorService := executor.NewWorkflowExecutorService(executor.WorkflowExecutorServiceDependencies{
 		IntegrationSelector:   integrationSelector,
 		OrderedEventPublisher: orderedEventPublisher,
@@ -103,9 +120,9 @@ func BuildExecutorDependencies(ctx context.Context, config ExecutorDependencyCon
 		CredentialManager:     executorCredentialManager,
 	})
 
-	// Create executor controller
 	executorController := controllers.NewExecutorController(controllers.ExecutorControllerDependencies{
-		WorkflowExecutorService: workflowExecutorService,
+		WorkflowExecutorService:      workflowExecutorService,
+		WorkspaceRegistrationManager: c.workspaceRegistrationManager,
 	})
 
 	log.Info().Msg("Executor dependencies built successfully")
