@@ -56,4 +56,4 @@ Requirements: Go 1.25+
 
 ## License
 
-MIT
+Apache 2.0
