@@ -277,9 +277,9 @@ type PersistFileResponse struct {
 // Executor represents an executor in the system
 type Executor struct {
 	ID               string    `json:"id"`
-	Key              string    `json:"key"`
+	Name             string    `json:"name"`
 	Address          string    `json:"address"`
-	WorkspaceID      string    `json:"workspace_id"`
+	WorkspaceIDs     []string  `json:"workspace_ids"`
 	X25519PublicKey  string    `json:"x25519_public_key"`
 	Ed25519PublicKey string    `json:"ed25519_public_key"`
 	CreatedAt        time.Time `json:"created_at"`
@@ -288,7 +288,7 @@ type Executor struct {
 
 // CreateExecutorRegistrationRequest represents the request to create an executor registration
 type CreateExecutorRegistrationRequest struct {
-	ExecutorKey      string `json:"executor_key"`
+	ExecutorName     string `json:"executor_name"`
 	Address          string `json:"address"`
 	X25519PublicKey  string `json:"x25519_public_key"`
 	Ed25519PublicKey string `json:"ed25519_public_key"`
@@ -302,6 +302,13 @@ type CreateExecutorRegistrationResponse struct {
 // VerifyExecutorRegistrationRequest represents the request to verify an executor registration
 type VerifyExecutorRegistrationRequest struct {
 	Code string `json:"code"`
+}
+
+// Workspace represents a workspace
+type Workspace struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 // File and folder management types

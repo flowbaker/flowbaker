@@ -4,6 +4,14 @@ import (
 	"time"
 )
 
+// HealthCheckResponse represents the response from a health check
+type HealthCheckResponse struct {
+	Status    string `json:"status"`
+	Service   string `json:"service"`
+	Version   string `json:"version"`
+	Timestamp string `json:"timestamp"`
+}
+
 // WorkflowType represents the type of workflow execution
 type WorkflowType string
 
@@ -142,7 +150,6 @@ type PollingEventRequest struct {
 	Workflow        Workflow        `json:"workflow"`
 	UserID          string          `json:"user_id"`
 	WorkflowType    WorkflowType    `json:"workflow_type"`
-	WorkspaceID     string          `json:"workspace_id"`
 }
 
 // PollingEventResponse represents the response from handling a polling event
@@ -154,7 +161,6 @@ type PollingEventResponse struct {
 type ConnectionTestRequest struct {
 	IntegrationType IntegrationType `json:"integration_type"`
 	CredentialID    string          `json:"credential_id"`
-	WorkspaceID     string          `json:"workspace_id"`
 	Payload         map[string]any  `json:"payload"`
 }
 
@@ -168,7 +174,6 @@ type ConnectionTestResponse struct {
 type PeekDataRequest struct {
 	IntegrationType IntegrationType `json:"integration_type"`
 	CredentialID    string          `json:"credential_id"`
-	WorkspaceID     string          `json:"workspace_id"`
 	UserID          string          `json:"user_id"`
 	PeekableType    string          `json:"peekable_type"`
 	Cursor          string          `json:"cursor,omitempty"`
@@ -190,4 +195,24 @@ type PeekResultItem struct {
 	Key     string `json:"key"`
 	Value   string `json:"value,omitempty"`
 	Content string `json:"content,omitempty"`
+}
+
+// RegisterWorkspaceRequest represents a request to register a workspace
+type RegisterWorkspaceRequest struct {
+	ExecutorID string              `json:"executor_id"`
+	Passcode   string              `json:"passcode"`
+	Assignment WorkspaceAssignment `json:"assignment"`
+}
+
+// RegisterWorkspaceResponse represents the response from registering a workspace
+type RegisterWorkspaceResponse struct {
+	Success bool `json:"success"`
+}
+
+// WorkspaceAssignment represents an assignment of a workspace to an executor
+type WorkspaceAssignment struct {
+	WorkspaceID   string `json:"workspace_id"`
+	WorkspaceName string `json:"workspace_name"`
+	WorkspaceSlug string `json:"workspace_slug"`
+	APIPublicKey  string `json:"api_public_key"`
 }

@@ -1,6 +1,12 @@
 # Build stage
 FROM golang:1.25.0-alpine AS builder
 
+# Build arguments
+ARG VERSION=dev
+ARG GIT_COMMIT=""
+ARG BUILD_DATE=""
+ARG BUILD_USER=""
+
 # Install git and ca-certificates for dependency fetching
 RUN apk add --no-cache git ca-certificates
 
@@ -16,8 +22,13 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o flowbaker ./cmd
+# Build the application with version information
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
+    -ldflags "-X github.com/flowbaker/flowbaker/internal/version.Version=${VERSION} \
+              -X github.com/flowbaker/flowbaker/internal/version.GitCommit=${GIT_COMMIT} \
+              -X github.com/flowbaker/flowbaker/internal/version.BuildDate=${BUILD_DATE} \
+              -X github.com/flowbaker/flowbaker/internal/version.BuildUser=${BUILD_USER}" \
+    -o flowbaker ./cmd
 
 # Final stage
 FROM alpine:latest

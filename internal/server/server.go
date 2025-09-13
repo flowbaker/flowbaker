@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"time"
 
-	"github.com/flowbaker/flowbaker/internal/auth"
 	"github.com/flowbaker/flowbaker/internal/controllers"
 	"github.com/flowbaker/flowbaker/internal/middlewares"
+	"github.com/flowbaker/flowbaker/internal/version"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -13,7 +15,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func NewHTTPServer(ctx context.Context, executorController *controllers.ExecutorController, apiSignatureVerifier *auth.APISignatureVerifier) *fiber.App {
+type HTTPServerDependencies struct {
+	Config             domain.ExecutorConfig
+	ExecutorController *controllers.ExecutorController
+	KeyProvider        middlewares.WorkspaceAPIKeyProvider
+}
+
+func NewHTTPServer(ctx context.Context, deps HTTPServerDependencies) *fiber.App {
 	router := fiber.New(fiber.Config{
 		AppName: "flowbaker-executor",
 	})
@@ -22,18 +30,34 @@ func NewHTTPServer(ctx context.Context, executorController *controllers.Executor
 	router.Use(cors.New())
 	router.Use(logger.New())
 
-	// Add API signature verification middleware if verifier is available
-	if apiSignatureVerifier != nil {
-		router.Use(middlewares.APISignatureMiddleware(apiSignatureVerifier))
-		log.Info().Msg("API signature verification middleware enabled")
-	} else {
-		log.Warn().Msg("API signature verification middleware disabled")
+	// Health check endpoint (no authentication required)
+	router.Get("/health", func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"status":    "healthy",
+			"service":   "flowbaker-executor",
+			"version":   version.GetVersion(),
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
+
+	if deps.Config.EnableWorkspaceRegistration {
+		workspaces := router.Group("/workspaces")
+
+		workspaces.Post("/", deps.ExecutorController.RegisterWorkspace)
 	}
 
-	router.Post("/executions", executorController.StartExecution)
-	router.Post("/polling-events", executorController.HandlePollingEvent)
-	router.Post("/connection-test", executorController.TestConnection)
-	router.Post("/peek-data", executorController.PeekData)
+	specificWorkspace := router.Group("/workspaces/:workspaceID")
+
+	if deps.KeyProvider == nil {
+		log.Fatal().Msg("Key provider is nil, please set up the executor with a key provider")
+	}
+
+	specificWorkspace.Use(middlewares.WorkspaceAwareAPISignatureMiddleware(deps.KeyProvider))
+
+	specificWorkspace.Post("/executions", deps.ExecutorController.StartExecution)
+	specificWorkspace.Post("/polling-events", deps.ExecutorController.HandlePollingEvent)
+	specificWorkspace.Post("/connection-test", deps.ExecutorController.TestConnection)
+	specificWorkspace.Post("/peek-data", deps.ExecutorController.PeekData)
 
 	return router
 }
