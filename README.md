@@ -52,7 +52,7 @@ Requirements: Go 1.25+
 
 ## Community
 
-- [Discord](https://discord.gg/flowbaker) - Get help and discuss
+- [Discord](https://discord.gg/wDxHFkcbhD) - Get help and discuss
 - [GitHub Issues](https://github.com/flowbaker/flowbaker/issues) - Report bugs or request features
 
 ## License
