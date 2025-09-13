@@ -4,7 +4,7 @@ Workflow automation executor that runs on your machine. It connects to the Flowb
 <div align="center">
 
   [![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg?style=flat-square)](https://golang.org/)
-  [![Community](https://img.shields.io/discord/1369035097394647162?style=flat-square&label=discord)](https://discord.gg/flowbaker)
+  [![Community](https://img.shields.io/discord/1369035097394647162?style=flat-square&label=discord)](https://discord.gg/wDxHFkcbhD)
 
 </div>
 
