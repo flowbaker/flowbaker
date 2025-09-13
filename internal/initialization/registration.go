@@ -101,7 +101,7 @@ type WaitForVerificationParams struct {
 }
 
 type WaitForVerificationResult struct {
-	ExecutorID          string // FIXME: Enes: What to do with this?
+	ExecutorID          string
 	WorkspaceAssignment domain.WorkspaceAssignment
 }
 
@@ -133,7 +133,7 @@ func WaitForVerification(params WaitForVerificationParams) (WaitForVerificationR
 		Passcode: passcode,
 		OnSuccess: func(ctx context.Context, params domain.RegisterWorkspaceParams) error {
 			program.Send(verificationSuccessMsg{
-				executorID: "executor-" + params.Passcode, // FIXME: Use verification code as executor ID for now
+				executorID: params.ExecutorID,
 				workspaceAssignment: domain.WorkspaceAssignment{
 					WorkspaceID:   params.Assignment.WorkspaceID,
 					WorkspaceName: params.Assignment.WorkspaceName,

@@ -261,7 +261,7 @@ func RunFirstTimeSetup(ctx context.Context, params RunFirstTimeSetupParams) erro
 	}
 
 	config := &domain.ExecutorConfig{
-		ExecutorID:           result.ExecutorID, // FIXME: I think executor id should be same for every registration
+		ExecutorID:           result.ExecutorID,
 		ExecutorName:         executorName,
 		Address:              address,
 		Assignments:          []domain.WorkspaceAssignment{result.WorkspaceAssignment},

@@ -41,7 +41,8 @@ func (c *ExecutorController) RegisterWorkspace(ctx fiber.Ctx) error {
 	}
 
 	p := domain.RegisterWorkspaceParams{
-		Passcode: req.Passcode,
+		ExecutorID: req.ExecutorID,
+		Passcode:   req.Passcode,
 		Assignment: domain.WorkspaceAssignment{
 			WorkspaceID:   req.Assignment.WorkspaceID,
 			WorkspaceName: req.Assignment.WorkspaceName,

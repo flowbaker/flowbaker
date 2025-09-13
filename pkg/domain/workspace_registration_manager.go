@@ -22,6 +22,7 @@ type WorkspaceAssignment struct {
 }
 
 type RegisterWorkspaceParams struct {
+	ExecutorID string              `json:"executor_id"`
 	Passcode   string              `json:"passcode"`
 	Assignment WorkspaceAssignment `json:"assignment"`
 }

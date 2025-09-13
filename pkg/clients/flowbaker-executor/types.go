@@ -199,6 +199,7 @@ type PeekResultItem struct {
 
 // RegisterWorkspaceRequest represents a request to register a workspace
 type RegisterWorkspaceRequest struct {
+	ExecutorID string              `json:"executor_id"`
 	Passcode   string              `json:"passcode"`
 	Assignment WorkspaceAssignment `json:"assignment"`
 }
