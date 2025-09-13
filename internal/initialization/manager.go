@@ -242,12 +242,17 @@ func RunFirstTimeSetup(ctx context.Context, params RunFirstTimeSetupParams) erro
 	fmt.Println()
 	fmt.Println("⏳ Waiting for connection...")
 
+	enableStaticPasscode := os.Getenv("FLOWBAKER_ENABLE_STATIC_PASSCODE") == "true"
+	staticPasscode := os.Getenv("FLOWBAKER_STATIC_PASSCODE")
+
 	p := WaitForVerificationParams{
 		ExecutorName:                 executorName,
 		VerificationCode:             verificationCode,
 		Keys:                         keys,
 		APIBaseURL:                   apiURL,
 		WorkspaceRegistrationManager: params.RegistrationManager,
+		EnableStaticPasscode:         enableStaticPasscode,
+		StaticPasscode:               staticPasscode,
 	}
 
 	result, err := WaitForVerification(p)
@@ -256,14 +261,16 @@ func RunFirstTimeSetup(ctx context.Context, params RunFirstTimeSetupParams) erro
 	}
 
 	config := &domain.ExecutorConfig{
-		ExecutorID:    result.ExecutorID, // FIXME: I think executor id should be same for every registration
-		ExecutorName:  executorName,
-		Address:       address,
-		Assignments:   []domain.WorkspaceAssignment{result.WorkspaceAssignment},
-		Keys:          keys,
-		APIBaseURL:    apiURL,
-		SetupComplete: true,
-		LastConnected: time.Now(),
+		ExecutorID:           result.ExecutorID, // FIXME: I think executor id should be same for every registration
+		ExecutorName:         executorName,
+		Address:              address,
+		Assignments:          []domain.WorkspaceAssignment{result.WorkspaceAssignment},
+		Keys:                 keys,
+		APIBaseURL:           apiURL,
+		SetupComplete:        true,
+		EnableStaticPasscode: enableStaticPasscode,
+		StaticPasscode:       staticPasscode,
+		LastConnected:        time.Now(),
 	}
 
 	if err := params.ConfigManager.SaveConfig(ctx, *config); err != nil {

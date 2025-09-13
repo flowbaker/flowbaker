@@ -36,7 +36,25 @@ type workspaceRegistrationManager struct {
 	codeStoreMutex sync.RWMutex
 }
 
-func NewWorkspaceRegistrationManager() WorkspaceRegistrationManager {
+func NewWorkspaceRegistrationManager(config ExecutorConfig) WorkspaceRegistrationManager {
+	store := map[string]PassCodeEntry{}
+
+	if config.EnableStaticPasscode {
+		store[config.StaticPasscode] = PassCodeEntry{
+			Passcode:  config.StaticPasscode,
+			ExpiresAt: time.Time{},
+			OnSuccess: func(ctx context.Context, params RegisterWorkspaceParams) error {
+				log.Info().
+					Str("workspace_id", params.Assignment.WorkspaceID).
+					Str("workspace_slug", params.Assignment.WorkspaceSlug).
+					Str("workspace_name", params.Assignment.WorkspaceName).
+					Msg("Registered workspace via static passcode")
+
+				return nil
+			},
+		}
+	}
+
 	return &workspaceRegistrationManager{
 		codeStore: make(map[string]PassCodeEntry),
 	}
@@ -59,7 +77,7 @@ func (m *workspaceRegistrationManager) TryRegisterWorkspace(ctx context.Context,
 		return ErrInvalidRegistrationCode
 	}
 
-	if time.Now().After(passcodeEntry.ExpiresAt) {
+	if time.Now().After(passcodeEntry.ExpiresAt) && !passcodeEntry.ExpiresAt.IsZero() {
 		log.Debug().Str("passcode", params.Passcode).Str("expires_at", passcodeEntry.ExpiresAt.Format(time.RFC3339)).Msg("expired")
 
 		return ErrInvalidRegistrationCode

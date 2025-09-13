@@ -10,15 +10,18 @@ import (
 )
 
 type ExecutorConfig struct {
-	ExecutorID       string                `json:"executor_id,omitempty"`
-	ExecutorName     string                `json:"executor_name"`
-	Address          string                `json:"address"`
-	Assignments      []WorkspaceAssignment `json:"workspace_assignments,omitempty"`
-	SetupComplete    bool                  `json:"setup_complete"`
-	Keys             CryptoKeys            `json:"keys"`
-	APIBaseURL       string                `json:"api_url"`
-	VerificationCode string                `json:"verification_code,omitempty"`
-	LastConnected    time.Time             `json:"last_connected,omitempty"`
+	ExecutorID                  string                `json:"executor_id,omitempty"`
+	ExecutorName                string                `json:"executor_name"`
+	Address                     string                `json:"address"`
+	Assignments                 []WorkspaceAssignment `json:"workspace_assignments,omitempty"`
+	SetupComplete               bool                  `json:"setup_complete"`
+	Keys                        CryptoKeys            `json:"keys"`
+	APIBaseURL                  string                `json:"api_url"`
+	VerificationCode            string                `json:"verification_code,omitempty"`
+	LastConnected               time.Time             `json:"last_connected,omitempty"`
+	EnableWorkspaceRegistration bool                  `json:"enable_workspace_registration,omitempty"`
+	EnableStaticPasscode        bool                  `json:"enable_static_passcode,omitempty"`
+	StaticPasscode              string                `json:"static_passcode,omitempty"`
 }
 
 type CryptoKeys struct {

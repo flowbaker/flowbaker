@@ -56,7 +56,7 @@ func runStart(executorContainer *initialization.ExecutorContainer) error {
 		cancel() // Cancel the server's context first
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
-		
+
 		if err := app.ShutdownWithContext(shutdownCtx); err != nil {
 			log.Error().Err(err).Msg("Failed to shutdown health check server gracefully")
 		}
@@ -104,7 +104,12 @@ func runExecutor(executorContainer *initialization.ExecutorContainer) error {
 	}
 
 	keyProvider := middlewares.NewConfigAPIKeyProvider(config)
-	server := server.NewHTTPServer(context.Background(), deps.ExecutorController, keyProvider)
+
+	server := server.NewHTTPServer(context.Background(), server.HTTPServerDependencies{
+		Config:             config,
+		ExecutorController: deps.ExecutorController,
+		KeyProvider:        keyProvider,
+	})
 
 	shutdownChan := make(chan os.Signal, 1)
 	signal.Notify(shutdownChan, syscall.SIGINT, syscall.SIGTERM)

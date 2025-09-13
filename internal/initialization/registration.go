@@ -96,6 +96,8 @@ type WaitForVerificationParams struct {
 	Keys                         domain.CryptoKeys
 	APIBaseURL                   string
 	WorkspaceRegistrationManager domain.WorkspaceRegistrationManager
+	EnableStaticPasscode         bool
+	StaticPasscode               string
 }
 
 type WaitForVerificationResult struct {
@@ -107,6 +109,10 @@ func WaitForVerification(params WaitForVerificationParams) (WaitForVerificationR
 	passcode, err := GeneratePasscode()
 	if err != nil {
 		return WaitForVerificationResult{}, fmt.Errorf("failed to generate passcode: %w", err)
+	}
+
+	if params.EnableStaticPasscode {
+		passcode = params.StaticPasscode
 	}
 
 	s := spinner.New()
