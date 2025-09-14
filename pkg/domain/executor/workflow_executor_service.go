@@ -87,6 +87,8 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 }
 
 func (s *workflowExecutorService) HandlePollingEvent(ctx context.Context, event domain.PollingEvent) (domain.PollResult, error) {
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, event.WorkspaceID, event.Workflow.ID, "", false)
+
 	integrationPoller, err := s.integrationSelector.SelectPoller(ctx, domain.SelectIntegrationParams{
 		IntegrationType: event.IntegrationType,
 	})
