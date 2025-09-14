@@ -261,30 +261,34 @@ func RunFirstTimeSetup(ctx context.Context, params RunFirstTimeSetupParams) erro
 	}
 
 	config := &domain.ExecutorConfig{
-		ExecutorID:           result.ExecutorID,
-		ExecutorName:         executorName,
-		Address:              address,
-		Assignments:          []domain.WorkspaceAssignment{result.WorkspaceAssignment},
-		Keys:                 keys,
-		APIBaseURL:           apiURL,
-		SetupComplete:        true,
-		EnableStaticPasscode: enableStaticPasscode,
-		StaticPasscode:       staticPasscode,
-		LastConnected:        time.Now(),
+		ExecutorID:                  result.ExecutorID,
+		ExecutorName:                executorName,
+		Address:                     address,
+		APIBaseURL:                  apiURL,
+		X25519PrivateKey:            keys.X25519Private,
+		X25519PublicKey:             keys.X25519Public,
+		Ed25519PrivateKey:           keys.Ed25519Private,
+		Ed25519PublicKey:            keys.Ed25519Public,
+		SetupComplete:               true,
+		WorkspaceAssignments:        []domain.WorkspaceAssignment{result.WorkspaceAssignment},
+		EnableWorkspaceRegistration: true,
+		EnableStaticPasscode:        enableStaticPasscode,
+		StaticPasscode:              staticPasscode,
+		LastConnected:               time.Now().Format(time.RFC3339),
 	}
 
 	if err := params.ConfigManager.SaveConfig(ctx, *config); err != nil {
 		return fmt.Errorf("failed to save configuration: %w", err)
 	}
 
-	workspaceNames := make([]string, len(config.Assignments))
+	workspaceNames := make([]string, len(config.WorkspaceAssignments))
 
-	for i, assignment := range config.Assignments {
+	for i, assignment := range config.WorkspaceAssignments {
 		workspaceNames[i] = assignment.WorkspaceName
 	}
 
 	fmt.Println()
-	fmt.Printf("✅ Connected to %d workspace(s): %s\n", len(config.Assignments), strings.Join(workspaceNames, ", "))
+	fmt.Printf("✅ Connected to %d workspace(s): %s\n", len(config.WorkspaceAssignments), strings.Join(workspaceNames, ", "))
 	fmt.Println("💾 Configuration saved")
 
 	return nil

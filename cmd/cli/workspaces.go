@@ -52,7 +52,7 @@ func runWorkspacesList(executorContainer *initialization.ExecutorContainer) erro
 	}
 
 	fmt.Println("📋 Assigned Workspaces:")
-	if len(config.Assignments) == 0 {
+	if len(config.WorkspaceAssignments) == 0 {
 		fmt.Println("   No workspaces assigned")
 		return nil
 	}
@@ -60,7 +60,7 @@ func runWorkspacesList(executorContainer *initialization.ExecutorContainer) erro
 	flowbakerClient := flowbaker.NewClient(
 		flowbaker.WithBaseURL(config.APIBaseURL),
 		flowbaker.WithExecutorID(config.ExecutorID),
-		flowbaker.WithEd25519PrivateKey(config.Keys.Ed25519Private),
+		flowbaker.WithEd25519PrivateKey(config.Ed25519PrivateKey),
 	)
 
 	workspaceManager := managers.NewExecutorWorkspaceManager(managers.ExecutorWorkspaceManagerDependencies{

@@ -34,18 +34,19 @@ func runStatus(executorContainer *initialization.ExecutorContainer) error {
 			return err
 		}
 
-		workspaceNames := make([]string, len(config.Assignments))
+		workspaceNames := make([]string, len(config.WorkspaceAssignments))
 
-		for i, assignment := range config.Assignments {
+		for i, assignment := range config.WorkspaceAssignments {
 			workspaceNames[i] = assignment.WorkspaceName
 		}
 
 		fmt.Println("✅ Executor is set up and ready")
 		fmt.Printf("   Executor ID: %s\n", config.ExecutorID)
-		fmt.Printf("   Workspaces (%d): %s\n", len(config.Assignments), strings.Join(workspaceNames, ", "))
+		fmt.Printf("   Workspaces (%d): %s\n", len(config.WorkspaceAssignments), strings.Join(workspaceNames, ", "))
 		fmt.Printf("   API URL: %s\n", config.APIBaseURL)
-		if !config.LastConnected.IsZero() {
-			fmt.Printf("   Last connected: %s\n", config.LastConnected.Format("2006-01-02 15:04:05"))
+		lastConnected := config.GetLastConnectedTime()
+		if !lastConnected.IsZero() {
+			fmt.Printf("   Last connected: %s\n", lastConnected.Format("2006-01-02 15:04:05"))
 		}
 	} else {
 		fmt.Println("❌ Executor is not set up")

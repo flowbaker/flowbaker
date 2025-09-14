@@ -50,10 +50,6 @@ func NewHTTPServer(ctx context.Context, deps HTTPServerDependencies) *fiber.App 
 
 	specificWorkspace := router.Group("/workspaces/:workspaceID")
 
-	if deps.KeyProvider == nil {
-		log.Fatal().Msg("Key provider is nil, please set up the executor with a key provider")
-	}
-
 	staticAPIPublicKey := os.Getenv("STATIC_API_SIGNATURE_PUBLIC_KEY")
 
 	if staticAPIPublicKey != "" {
@@ -63,8 +59,10 @@ func NewHTTPServer(ctx context.Context, deps HTTPServerDependencies) *fiber.App 
 		}
 
 		specificWorkspace.Use(middlewares.APISignatureMiddleware(verifier))
-	} else {
+	} else if deps.KeyProvider != nil {
 		specificWorkspace.Use(middlewares.WorkspaceAwareAPISignatureMiddleware(deps.KeyProvider))
+	} else {
+		log.Fatal().Msg("No signature verification method available")
 	}
 
 	specificWorkspace.Post("/executions", deps.ExecutorController.StartExecution)

@@ -85,7 +85,7 @@ func runExecutor(executorContainer *initialization.ExecutorContainer) error {
 	flowbakerClient := flowbaker.NewClient(
 		flowbaker.WithBaseURL(config.APIBaseURL),
 		flowbaker.WithExecutorID(config.ExecutorID),
-		flowbaker.WithEd25519PrivateKey(config.Keys.Ed25519Private),
+		flowbaker.WithEd25519PrivateKey(config.Ed25519PrivateKey),
 	)
 
 	log.Info().Msg("Flowbaker client with signature-based auth ready")
@@ -99,11 +99,15 @@ func runExecutor(executorContainer *initialization.ExecutorContainer) error {
 		log.Fatal().Err(err).Msg("Failed to build executor dependencies")
 	}
 
-	if len(config.Assignments) == 0 {
-		log.Fatal().Msg("No workspace API keys found in config")
+	var keyProvider middlewares.WorkspaceAPIKeyProvider
+	if config.SkipWorkspaceAssignments || config.StaticAPISignaturePublicKey != "" {
+		keyProvider = nil
+	} else {
+		if len(config.WorkspaceAssignments) == 0 {
+			log.Fatal().Msg("No workspace API keys found in config")
+		}
+		keyProvider = middlewares.NewConfigAPIKeyProvider(config)
 	}
-
-	keyProvider := middlewares.NewConfigAPIKeyProvider(config)
 
 	server := server.NewHTTPServer(context.Background(), server.HTTPServerDependencies{
 		Config:             config,
