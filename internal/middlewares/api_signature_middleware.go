@@ -24,7 +24,7 @@ func NewConfigAPIKeyProvider(config domain.ExecutorConfig) *ConfigAPIKeyProvider
 }
 
 func (p *ConfigAPIKeyProvider) GetWorkspaceAPIKey(workspaceID string) (string, error) {
-	for _, wsKey := range p.config.Assignments {
+	for _, wsKey := range p.config.WorkspaceAssignments {
 		if wsKey.WorkspaceID == workspaceID {
 			return wsKey.APIPublicKey, nil
 		}

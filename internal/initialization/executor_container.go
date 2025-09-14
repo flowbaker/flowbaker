@@ -78,7 +78,7 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		Client: config.FlowbakerClient,
 	})
 
-	executorCredentialDecryptor := managers.NewExecutorCredentialDecryptionService(config.Config.Keys.X25519Private)
+	executorCredentialDecryptor := managers.NewExecutorCredentialDecryptionService(config.Config.X25519PrivateKey)
 	executorCredentialManager := managers.NewExecutorCredentialManager(config.FlowbakerClient, executorCredentialDecryptor)
 	executorEventPublisher := managers.NewExecutorEventPublisher(config.FlowbakerClient)
 	executorTaskPublisher := managers.NewExecutorTaskPublisher(managers.ExecutorTaskPublisherDependencies{
