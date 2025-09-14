@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"os"
 	"time"
 
+	"github.com/flowbaker/flowbaker/internal/auth"
 	"github.com/flowbaker/flowbaker/internal/controllers"
 	"github.com/flowbaker/flowbaker/internal/middlewares"
 	"github.com/flowbaker/flowbaker/internal/version"
@@ -52,7 +54,18 @@ func NewHTTPServer(ctx context.Context, deps HTTPServerDependencies) *fiber.App 
 		log.Fatal().Msg("Key provider is nil, please set up the executor with a key provider")
 	}
 
-	specificWorkspace.Use(middlewares.WorkspaceAwareAPISignatureMiddleware(deps.KeyProvider))
+	staticAPIPublicKey := os.Getenv("STATIC_API_SIGNATURE_PUBLIC_KEY")
+
+	if staticAPIPublicKey != "" {
+		verifier, err := auth.NewAPISignatureVerifier(staticAPIPublicKey)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to create API signature verifier")
+		}
+
+		specificWorkspace.Use(middlewares.APISignatureMiddleware(verifier))
+	} else {
+		specificWorkspace.Use(middlewares.WorkspaceAwareAPISignatureMiddleware(deps.KeyProvider))
+	}
 
 	specificWorkspace.Post("/executions", deps.ExecutorController.StartExecution)
 	specificWorkspace.Post("/polling-events", deps.ExecutorController.HandlePollingEvent)
