@@ -17,7 +17,7 @@ import (
 type ClientInterface interface {
 	Execute(ctx context.Context, workspaceID string, req *StartExecutionRequest) (*StartExecutionResponse, error)
 	RegisterWorkspace(ctx context.Context, req *RegisterWorkspaceRequest) (*RegisterWorkspaceResponse, error)
-	UnregisterWorkspace(ctx context.Context, workspaceID string) (*UnregisterWorkspaceResponse, error)
+	UnregisterWorkspace(ctx context.Context, workspaceID string) error
 	HandlePollingEvent(ctx context.Context, workspaceID string, req *PollingEventRequest) (*PollingEventResponse, error)
 	TestConnection(ctx context.Context, workspaceID string, req *ConnectionTestRequest) (*ConnectionTestResponse, error)
 	PeekData(ctx context.Context, workspaceID string, req *PeekDataRequest) (*PeekDataResponse, error)
