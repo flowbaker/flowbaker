@@ -8,6 +8,7 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
+	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -290,7 +291,14 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 	}
 
 	// Publish events and record history for connected nodes
-	err = e.publishConnectedNodeEventsAfterExecution(ctx, executeParams, agentSettings, result.ToolExecutions, workflow.WorkspaceID, workflow.ID)
+	publishParams := PublishEventsParams{
+		ExecuteParams:  executeParams,
+		AgentSettings:  agentSettings,
+		ToolExecutions: result.ToolExecutions,
+		WorkspaceID:    workflow.WorkspaceID,
+		WorkflowID:     workflow.ID,
+	}
+	err = e.publishConnectedNodeEventsAfterExecution(ctx, publishParams)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to publish connected node events")
 	}
@@ -308,6 +316,31 @@ type AgentSettings struct {
 	LLM    ResolveLLMResult
 	Memory ResolveMemoryResult
 	Tools  []ToolExecutor
+}
+
+// PublishEventsParams encapsulates parameters for publishConnectedNodeEventsAfterExecution
+type PublishEventsParams struct {
+	ExecuteParams   ExecuteParams
+	AgentSettings   AgentSettings
+	ToolExecutions  []interface{}
+	WorkspaceID     string
+	WorkflowID      string
+}
+
+// RecordHistoryParams encapsulates parameters for recordExecutionHistory
+type RecordHistoryParams struct {
+	ExecuteParams       ExecuteParams
+	AgentSettings       AgentSettings
+	ExecutedToolNodeIDs map[string]bool
+	Recorder            domain.ExecutionHistoryRecorder
+}
+
+// NodeExecutionHistoryParams encapsulates parameters for recordNodeExecutionHistory
+type NodeExecutionHistoryParams struct {
+	NodeID          string
+	IntegrationType string
+	ActionType      string
+	Recorder        domain.ExecutionHistoryRecorder
 }
 
 func (e *AIAgentExecutorV2) ResolveAgentSettings(ctx context.Context, executeParams ExecuteParams, workflow domain.Workflow) (AgentSettings, error) {
@@ -524,62 +557,38 @@ func (e *AIAgentExecutorV2) GetNodeIDFromOutputID(outputID string) string {
 }
 
 
-func (e *AIAgentExecutorV2) publishConnectedNodeEventsAfterExecution(ctx context.Context, executeParams ExecuteParams, agentSettings AgentSettings, toolExecutions []interface{}, workspaceID, workflowID string) error {
+func (e *AIAgentExecutorV2) publishConnectedNodeEventsAfterExecution(ctx context.Context, params PublishEventsParams) error {
 	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
 	if !ok {
 		return fmt.Errorf("workflow execution context not found")
 	}
 
-	// Use the new tool tracker to get executed tools
-	executedToolNodeIDs := make(map[string]bool)
-	
-	// First try to get from tool tracker (preferred method)
-	if executionContext.ToolTracker != nil {
-		for _, nodeID := range executionContext.ToolTracker.GetExecutedNodeIDs() {
-			executedToolNodeIDs[nodeID] = true
-		}
-	}
-	
-	// Fallback to legacy method if tracker is empty or unavailable
-	if len(executedToolNodeIDs) == 0 {
-		// Build a more efficient tool lookup map
-		toolLookup := make(map[string]string) // toolName -> nodeID
-		for _, tool := range agentSettings.Tools {
-			toolName := fmt.Sprintf("%s_%s", tool.IntegrationType, tool.WorkflowNode.ActionType)
-			toolLookup[toolName] = tool.NodeID
-		}
-		
-		// Collect executed tool node IDs from actual tool executions
-		for _, toolExecInterface := range toolExecutions {
-			if toolExec, ok := toolExecInterface.(FunctionCallExecution); ok {
-				// Prefer metadata if available
-				if toolExec.Metadata != nil {
-					executedToolNodeIDs[toolExec.Metadata.NodeID] = true
-				} else if nodeID, exists := toolLookup[toolExec.ToolName]; exists {
-					executedToolNodeIDs[nodeID] = true
-				}
-			}
-		}
-	}
+	executedToolNodeIDs := e.getExecutedToolNodeIDs(executionContext, params)
 
 	// Publish events for LLM (always used)
-	if executeParams.LLM != nil {
-		e.publishNodeEvents(ctx, executeParams.LLM.NodeID, workflowID, executionContext.WorkflowExecutionID)
+	if params.ExecuteParams.LLM != nil {
+		e.publishNodeEvents(ctx, params.ExecuteParams.LLM.NodeID, params.WorkflowID, executionContext.WorkflowExecutionID)
 	}
 
 	// Publish events for Memory if present
-	if executeParams.Memory != nil {
-		e.publishNodeEvents(ctx, executeParams.Memory.NodeID, workflowID, executionContext.WorkflowExecutionID)
+	if params.ExecuteParams.Memory != nil {
+		e.publishNodeEvents(ctx, params.ExecuteParams.Memory.NodeID, params.WorkflowID, executionContext.WorkflowExecutionID)
 	}
 
 	// Publish events for executed tools only
 	for nodeID := range executedToolNodeIDs {
-		e.publishNodeEvents(ctx, nodeID, workflowID, executionContext.WorkflowExecutionID)
+		e.publishNodeEvents(ctx, nodeID, params.WorkflowID, executionContext.WorkflowExecutionID)
 	}
 
 	// Record execution history
 	if executionContext.HistoryRecorder != nil {
-		e.recordExecutionHistory(ctx, executeParams, agentSettings, executedToolNodeIDs, executionContext.HistoryRecorder)
+		historyParams := RecordHistoryParams{
+			ExecuteParams:       params.ExecuteParams,
+			AgentSettings:       params.AgentSettings,
+			ExecutedToolNodeIDs: executedToolNodeIDs,
+			Recorder:            executionContext.HistoryRecorder,
+		}
+		e.recordExecutionHistory(ctx, historyParams)
 	}
 
 	return nil
@@ -618,42 +627,172 @@ func (e *AIAgentExecutorV2) publishNodeEvents(ctx context.Context, nodeID, workf
 	}
 }
 
-func (e *AIAgentExecutorV2) recordExecutionHistory(ctx context.Context, executeParams ExecuteParams, agentSettings AgentSettings, executedToolNodeIDs map[string]bool, recorder domain.ExecutionHistoryRecorder) {
-	if executeParams.LLM != nil {
-		e.recordNodeExecutionHistory(executeParams.LLM.NodeID, "openai", "chat_completion", recorder)
-	}
+func (e *AIAgentExecutorV2) recordExecutionHistory(ctx context.Context, params RecordHistoryParams) {
+	e.recordLLMExecutionIfPresent(params.ExecuteParams.LLM, params.Recorder)
+	e.recordMemoryExecutionIfPresent(params.ExecuteParams.Memory, params.Recorder)
+	e.recordToolExecutions(ctx, params.AgentSettings, params.ExecutedToolNodeIDs, params.Recorder)
+}
 
-	if executeParams.Memory != nil {
-		e.recordNodeExecutionHistory(executeParams.Memory.NodeID, "flowbaker_agent_memory", "store_conversation", recorder)
+func (e *AIAgentExecutorV2) recordLLMExecutionIfPresent(llm *NodeReference, recorder domain.ExecutionHistoryRecorder) {
+	if llm == nil {
+		return
 	}
+	e.recordNodeExecutionHistory(NodeExecutionHistoryParams{
+		NodeID:          llm.NodeID,
+		IntegrationType: "openai",
+		ActionType:      "chat_completion",
+		Recorder:        recorder,
+	})
+}
 
-	// Try to get tool execution details from tracker first
+func (e *AIAgentExecutorV2) recordMemoryExecutionIfPresent(memory *NodeReference, recorder domain.ExecutionHistoryRecorder) {
+	if memory == nil {
+		return
+	}
+	e.recordNodeExecutionHistory(NodeExecutionHistoryParams{
+		NodeID:          memory.NodeID,
+		IntegrationType: "flowbaker_agent_memory",
+		ActionType:      "store_conversation",
+		Recorder:        recorder,
+	})
+}
+
+func (e *AIAgentExecutorV2) recordToolExecutions(ctx context.Context, agentSettings AgentSettings, executedToolNodeIDs map[string]bool, recorder domain.ExecutionHistoryRecorder) {
 	execContext, hasContext := domain.GetWorkflowExecutionContext(ctx)
-	if hasContext && execContext.ToolTracker != nil {
-		execContext.ToolTracker.ForEachExecution(func(nodeID string, toolExec *domain.ToolExecution) {
-			e.recordNodeExecutionHistory(nodeID, string(toolExec.Identifier.IntegrationType), string(toolExec.Identifier.ActionType), recorder)
-		})
+	
+	if e.canUseDetailedToolTracker(hasContext, execContext) {
+		e.recordDetailedToolExecutions(execContext, recorder)
 	} else {
-		// Fallback to legacy method
-		for nodeID := range executedToolNodeIDs {
-			for _, tool := range agentSettings.Tools {
-				if tool.NodeID == nodeID {
-					e.recordNodeExecutionHistory(nodeID, string(tool.IntegrationType), string(tool.WorkflowNode.ActionType), recorder)
-					break
-				}
-			}
+		e.recordBasicToolExecutions(executedToolNodeIDs, agentSettings.Tools, recorder)
+	}
+}
+
+func (e *AIAgentExecutorV2) canUseDetailedToolTracker(hasContext bool, execContext *domain.WorkflowExecutionContext) bool {
+	return hasContext && execContext != nil && execContext.ToolTracker != nil
+}
+
+func (e *AIAgentExecutorV2) recordDetailedToolExecutions(execContext *domain.WorkflowExecutionContext, recorder domain.ExecutionHistoryRecorder) {
+	execContext.ToolTracker.ForEachExecution(func(nodeID string, toolExec *domain.ToolExecution) {
+		e.recordNodeExecutionHistory(NodeExecutionHistoryParams{
+			NodeID:          nodeID,
+			IntegrationType: string(toolExec.Identifier.IntegrationType),
+			ActionType:      string(toolExec.Identifier.ActionType),
+			Recorder:        recorder,
+		})
+	})
+}
+
+func (e *AIAgentExecutorV2) recordBasicToolExecutions(executedToolNodeIDs map[string]bool, tools []ToolExecutor, recorder domain.ExecutionHistoryRecorder) {
+	for nodeID := range executedToolNodeIDs {
+		if tool := e.findToolByNodeID(nodeID, tools); tool != nil {
+			e.recordNodeExecutionHistory(NodeExecutionHistoryParams{
+				NodeID:          nodeID,
+				IntegrationType: string(tool.IntegrationType),
+				ActionType:      string(tool.WorkflowNode.ActionType),
+				Recorder:        recorder,
+			})
 		}
 	}
 }
 
-func (e *AIAgentExecutorV2) recordNodeExecutionHistory(nodeID string, integrationType string, actionType string, recorder domain.ExecutionHistoryRecorder) {
+func (e *AIAgentExecutorV2) findToolByNodeID(nodeID string, tools []ToolExecutor) *ToolExecutor {
+	for _, tool := range tools {
+		if tool.NodeID == nodeID {
+			return &tool
+		}
+	}
+	return nil
+}
+
+func (e *AIAgentExecutorV2) getExecutedToolNodeIDs(executionContext *domain.WorkflowExecutionContext, params PublishEventsParams) map[string]bool {
+	executedToolNodeIDs := e.getToolNodeIDsFromTracker(executionContext)
+	
+	if e.shouldUseLegacyResolution(executedToolNodeIDs) {
+		executedToolNodeIDs = e.getToolNodeIDsFromExecutions(params)
+	}
+	
+	return executedToolNodeIDs
+}
+
+func (e *AIAgentExecutorV2) getToolNodeIDsFromTracker(executionContext *domain.WorkflowExecutionContext) map[string]bool {
+	executedToolNodeIDs := make(map[string]bool)
+	
+	if !e.hasToolTracker(executionContext) {
+		return executedToolNodeIDs
+	}
+	
+	for _, nodeID := range executionContext.ToolTracker.GetExecutedNodeIDs() {
+		executedToolNodeIDs[nodeID] = true
+	}
+	
+	return executedToolNodeIDs
+}
+
+func (e *AIAgentExecutorV2) hasToolTracker(executionContext *domain.WorkflowExecutionContext) bool {
+	return executionContext != nil && executionContext.ToolTracker != nil
+}
+
+func (e *AIAgentExecutorV2) shouldUseLegacyResolution(executedToolNodeIDs map[string]bool) bool {
+	return len(executedToolNodeIDs) == 0
+}
+
+func (e *AIAgentExecutorV2) getToolNodeIDsFromExecutions(params PublishEventsParams) map[string]bool {
+	toolLookup := e.buildToolLookupMap(params.AgentSettings.Tools)
+	executedToolNodeIDs := make(map[string]bool)
+	
+	for _, toolExecInterface := range params.ToolExecutions {
+		if nodeID := e.extractNodeIDFromExecution(toolExecInterface, toolLookup); nodeID != "" {
+			executedToolNodeIDs[nodeID] = true
+		}
+	}
+	
+	return executedToolNodeIDs
+}
+
+func (e *AIAgentExecutorV2) buildToolLookupMap(tools []ToolExecutor) map[string]string {
+	toolLookup := make(map[string]string)
+	
+	for _, tool := range tools {
+		toolName := e.generateToolName(tool)
+		toolLookup[toolName] = tool.NodeID
+	}
+	
+	return toolLookup
+}
+
+func (e *AIAgentExecutorV2) generateToolName(tool ToolExecutor) string {
+	return fmt.Sprintf("%s_%s", tool.IntegrationType, tool.WorkflowNode.ActionType)
+}
+
+func (e *AIAgentExecutorV2) extractNodeIDFromExecution(toolExecInterface interface{}, toolLookup map[string]string) string {
+	toolExec, ok := toolExecInterface.(FunctionCallExecution)
+	if !ok {
+		return ""
+	}
+	
+	if e.hasMetadataNodeID(toolExec) {
+		return toolExec.Metadata.NodeID
+	}
+	
+	if nodeID, exists := toolLookup[toolExec.ToolName]; exists {
+		return nodeID
+	}
+	
+	return ""
+}
+
+func (e *AIAgentExecutorV2) hasMetadataNodeID(toolExec FunctionCallExecution) bool {
+	return toolExec.Metadata != nil && toolExec.Metadata.NodeID != ""
+}
+
+func (e *AIAgentExecutorV2) recordNodeExecutionHistory(params NodeExecutionHistoryParams) {
 	now := time.Now()
 	
-	recorder.AddNodeExecution(domain.NodeExecution{
-		ID:                     fmt.Sprintf("%s_%d", nodeID, now.UnixNano()),
-		NodeID:                 nodeID,
-		IntegrationType:        domain.IntegrationType(integrationType),
-		IntegrationActionType:  domain.IntegrationActionType(actionType),
+	params.Recorder.AddNodeExecution(domain.NodeExecution{
+		ID:                     xid.New().String(),
+		NodeID:                 params.NodeID,
+		IntegrationType:        domain.IntegrationType(params.IntegrationType),
+		IntegrationActionType:  domain.IntegrationActionType(params.ActionType),
 		StartedAt:              now,
 		EndedAt:                now,
 		ExecutionOrder:         0,
@@ -663,8 +802,8 @@ func (e *AIAgentExecutorV2) recordNodeExecutionHistory(nodeID string, integratio
 		OutputItemsSizeInBytes: domain.OutputItemsSizeInBytes{},
 	})
 
-	recorder.AddNodeExecutionEntry(domain.NodeExecutionEntry{
-		NodeID:          nodeID,
+	params.Recorder.AddNodeExecutionEntry(domain.NodeExecutionEntry{
+		NodeID:          params.NodeID,
 		ItemsByInputID:  map[string]domain.NodeItems{},
 		ItemsByOutputID: map[string]domain.NodeItems{},
 		EventType:       domain.NodeExecuted,

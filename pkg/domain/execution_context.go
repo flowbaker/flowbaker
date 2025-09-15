@@ -36,22 +36,39 @@ func (c *WorkflowExecutionContext) SetResponseStatusCode(statusCode int) {
 }
 
 func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool) context.Context {
-	return NewWorkflowExecutionContextBuilder().
-		WithWorkspaceID(workspaceID).
-		WithWorkflowID(workflowID).
-		WithWorkflowExecutionID(workflowExecutionID).
-		WithEvents(enableEvents).
-		Build(ctx)
+	ctx = NewContextWithEventOrder(ctx)
+	
+	workflowExecutionContext := &WorkflowExecutionContext{
+		WorkspaceID:         workspaceID,
+		WorkflowID:          workflowID,
+		WorkflowExecutionID: workflowExecutionID,
+		EnableEvents:        enableEvents,
+		ResponsePayload:     nil,
+		ResponseHeaders:     map[string][]string{},
+		ResponseStatusCode:  200,
+		HistoryRecorder:     nil,
+		ToolTracker:         NewToolExecutionTracker(),
+	}
+
+	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)
 }
 
 func NewContextWithWorkflowExecutionContextAndRecorder(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool, recorder ExecutionHistoryRecorder) context.Context {
-	return NewWorkflowExecutionContextBuilder().
-		WithWorkspaceID(workspaceID).
-		WithWorkflowID(workflowID).
-		WithWorkflowExecutionID(workflowExecutionID).
-		WithEvents(enableEvents).
-		WithHistoryRecorder(recorder).
-		Build(ctx)
+	ctx = NewContextWithEventOrder(ctx)
+	
+	workflowExecutionContext := &WorkflowExecutionContext{
+		WorkspaceID:         workspaceID,
+		WorkflowID:          workflowID,
+		WorkflowExecutionID: workflowExecutionID,
+		EnableEvents:        enableEvents,
+		ResponsePayload:     nil,
+		ResponseHeaders:     map[string][]string{},
+		ResponseStatusCode:  200,
+		HistoryRecorder:     recorder,
+		ToolTracker:         NewToolExecutionTracker(),
+	}
+
+	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)
 }
 
 func GetWorkflowExecutionContext(ctx context.Context) (*WorkflowExecutionContext, bool) {
