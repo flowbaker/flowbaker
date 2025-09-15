@@ -17,6 +17,7 @@ import (
 type ClientInterface interface {
 	Execute(ctx context.Context, workspaceID string, req *StartExecutionRequest) (*StartExecutionResponse, error)
 	RegisterWorkspace(ctx context.Context, req *RegisterWorkspaceRequest) (*RegisterWorkspaceResponse, error)
+	UnregisterWorkspace(ctx context.Context, workspaceID string) error
 	HandlePollingEvent(ctx context.Context, workspaceID string, req *PollingEventRequest) (*PollingEventResponse, error)
 	TestConnection(ctx context.Context, workspaceID string, req *ConnectionTestRequest) (*ConnectionTestResponse, error)
 	PeekData(ctx context.Context, workspaceID string, req *PeekDataRequest) (*PeekDataResponse, error)
@@ -321,4 +322,21 @@ func (c *Client) RegisterWorkspace(ctx context.Context, req *RegisterWorkspaceRe
 	}
 
 	return &registerWorkspaceResponse, nil
+}
+
+func (c *Client) UnregisterWorkspace(ctx context.Context, workspaceID string) error {
+	path := fmt.Sprintf("/workspaces/%s", workspaceID)
+
+	resp, err := c.doRequest(ctx, "DELETE", path, nil)
+	if err != nil {
+		return fmt.Errorf("failed to unregister workspace: %w", err)
+	}
+
+	var unregisterWorkspaceResponse UnregisterWorkspaceResponse
+
+	if err := c.handleResponse(resp, &unregisterWorkspaceResponse); err != nil {
+		return fmt.Errorf("failed to process unregister workspace response: %w", err)
+	}
+
+	return nil
 }

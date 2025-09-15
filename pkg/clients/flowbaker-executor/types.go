@@ -216,3 +216,7 @@ type WorkspaceAssignment struct {
 	WorkspaceSlug string `json:"workspace_slug"`
 	APIPublicKey  string `json:"api_public_key"`
 }
+
+type UnregisterWorkspaceResponse struct {
+	Success bool `json:"success"`
+}
