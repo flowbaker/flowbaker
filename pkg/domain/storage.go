@@ -20,7 +20,6 @@ type FileItem struct {
 // This handles cases where the FileItem is received as a JSON string instead of an object,
 // which can happen when expression evaluators stringify complex objects.
 func (f *FileItem) UnmarshalJSON(data []byte) error {
-	// First, try to unmarshal as a regular object
 	type fileItemAlias FileItem
 	var item fileItemAlias
 	if err := json.Unmarshal(data, &item); err == nil {
@@ -28,13 +27,11 @@ func (f *FileItem) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	// If that fails, try to unmarshal as a string (which might contain JSON)
 	var jsonString string
 	if err := json.Unmarshal(data, &jsonString); err != nil {
 		return fmt.Errorf("FileItem unmarshal failed: data is neither object nor string: %w", err)
 	}
 
-	// Try to parse the string as JSON
 	var item2 fileItemAlias
 	if err := json.Unmarshal([]byte(jsonString), &item2); err != nil {
 		return fmt.Errorf("FileItem unmarshal failed: string is not valid JSON: %w", err)

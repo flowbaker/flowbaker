@@ -33,8 +33,12 @@ type ClientInterface interface {
 
 	// Executor registration operations
 	CreateExecutorRegistration(ctx context.Context, req *CreateExecutorRegistrationRequest) (*CreateExecutorRegistrationResponse, error)
-	VerifyExecutorRegistration(ctx context.Context, workspaceID, executorID string, req *VerifyExecutorRegistrationRequest) (*Executor, error)
+	VerifyExecutorRegistration(ctx context.Context, workspaceID, code string) (*Executor, error)
 	GetWorkspaceExecutors(ctx context.Context, workspaceID string) ([]Executor, error)
+
+	// Workspace operations (for executor clients)
+	GetWorkspace(ctx context.Context, workspaceID string) (*Workspace, error)
+	GetWorkspaces(ctx context.Context) ([]Workspace, error)
 
 	// Credential operations (for executor clients)
 	GetCredential(ctx context.Context, workspaceID, credentialID string) (*EncryptedCredential, error)
@@ -224,19 +228,16 @@ func (c *Client) CreateExecutorRegistration(ctx context.Context, req *CreateExec
 }
 
 // VerifyExecutorRegistration verifies an executor registration for a workspace
-func (c *Client) VerifyExecutorRegistration(ctx context.Context, workspaceID, executorID string, req *VerifyExecutorRegistrationRequest) (*Executor, error) {
+func (c *Client) VerifyExecutorRegistration(ctx context.Context, workspaceID, code string) (*Executor, error) {
 	if workspaceID == "" {
 		return nil, fmt.Errorf("workspace ID is required")
 	}
-	if executorID == "" {
-		return nil, fmt.Errorf("executor ID is required")
-	}
-	if req == nil {
-		return nil, fmt.Errorf("request is required")
+	if code == "" {
+		return nil, fmt.Errorf("verification code is required")
 	}
 
-	path := fmt.Sprintf("/workspaces/%s/executors/%s/verify", workspaceID, executorID)
-	resp, err := c.doRequest(ctx, "POST", path, req)
+	path := fmt.Sprintf("/workspaces/%s/executors/verify?code=%s", workspaceID, code)
+	resp, err := c.doRequest(ctx, "POST", path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify executor registration: %w", err)
 	}
@@ -266,6 +267,42 @@ func (c *Client) GetWorkspaceExecutors(ctx context.Context, workspaceID string) 
 	var result []Executor
 	if err := c.handleResponse(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to process get workspace executors response: %w", err)
+	}
+
+	return result, nil
+}
+
+// GetWorkspace retrieves workspace information by ID
+func (c *Client) GetWorkspace(ctx context.Context, workspaceID string) (*Workspace, error) {
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID is required")
+	}
+
+	path := fmt.Sprintf("/v1/workspaces/%s", workspaceID)
+	resp, err := c.doRequest(ctx, "GET", path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workspace: %w", err)
+	}
+
+	var result Workspace
+	if err := c.handleResponse(resp, &result); err != nil {
+		return nil, fmt.Errorf("failed to process get workspace response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// GetWorkspaces retrieves all workspaces for authenticated executor
+func (c *Client) GetWorkspaces(ctx context.Context) ([]Workspace, error) {
+	path := "/v1/workspaces"
+	resp, err := c.doRequest(ctx, "GET", path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get executor workspaces: %w", err)
+	}
+
+	var result []Workspace
+	if err := c.handleResponse(resp, &result); err != nil {
+		return nil, fmt.Errorf("failed to process get executor workspaces response: %w", err)
 	}
 
 	return result, nil

@@ -15,21 +15,60 @@ import (
 // ExecutorController handles API-initiated requests to executor services
 // This controller is used when the API needs to send commands to executors
 type ExecutorController struct {
-	executorService executor.WorkflowExecutorService
+	executorService              executor.WorkflowExecutorService
+	workspaceRegistrationManager domain.WorkspaceRegistrationManager
 }
 
 type ExecutorControllerDependencies struct {
-	WorkflowExecutorService executor.WorkflowExecutorService
+	WorkflowExecutorService      executor.WorkflowExecutorService
+	WorkspaceRegistrationManager domain.WorkspaceRegistrationManager
 }
 
 func NewExecutorController(deps ExecutorControllerDependencies) *ExecutorController {
 	return &ExecutorController{
-		executorService: deps.WorkflowExecutorService,
+		executorService:              deps.WorkflowExecutorService,
+		workspaceRegistrationManager: deps.WorkspaceRegistrationManager,
 	}
+}
+
+func (c *ExecutorController) RegisterWorkspace(ctx fiber.Ctx) error {
+	log.Info().Msg("Registering workspace")
+
+	var req executortypes.RegisterWorkspaceRequest
+
+	if err := ctx.Bind().Body(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	p := domain.RegisterWorkspaceParams{
+		ExecutorID: req.ExecutorID,
+		Passcode:   req.Passcode,
+		Assignment: domain.WorkspaceAssignment{
+			WorkspaceID:   req.Assignment.WorkspaceID,
+			WorkspaceName: req.Assignment.WorkspaceName,
+			WorkspaceSlug: req.Assignment.WorkspaceSlug,
+			APIPublicKey:  req.Assignment.APIPublicKey,
+		},
+	}
+
+	err := c.workspaceRegistrationManager.TryRegisterWorkspace(ctx.RequestCtx(), p)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to register workspace")
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to register workspace")
+	}
+
+	return ctx.JSON(executortypes.RegisterWorkspaceResponse{
+		Success: true,
+	})
 }
 
 // StartExecution handles the start of a workflow execution
 func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
+	workspaceID := ctx.Params("workspaceID")
+	if workspaceID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Workspace ID is required")
+	}
+
 	var req executortypes.StartExecutionRequest
 
 	if err := ctx.Bind().Body(&req); err != nil {
@@ -42,7 +81,7 @@ func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
 		req.Workflow = &req.TestingWorkflow.Workflow
 	}
 
-	log.Info().Msgf("Starting execution for workflow %s", req.Workflow.ID)
+	log.Info().Msgf("Starting execution for workflow %s in workspace %s", req.Workflow.ID, workspaceID)
 
 	p := executor.ExecuteParams{
 		Workflow:          mappers.ExecutorWorkflowToDomain(req.Workflow),
@@ -68,6 +107,11 @@ func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
 
 // HandlePollingEvent handles a polling event request from the API
 func (c *ExecutorController) HandlePollingEvent(ctx fiber.Ctx) error {
+	workspaceID := ctx.Params("workspaceID")
+	if workspaceID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Workspace ID is required")
+	}
+
 	var req executortypes.PollingEventRequest
 
 	if err := ctx.Bind().Body(&req); err != nil {
@@ -81,7 +125,7 @@ func (c *ExecutorController) HandlePollingEvent(ctx fiber.Ctx) error {
 		Workflow:        mappers.ExecutorWorkflowToDomain(&req.Workflow),
 		UserID:          req.UserID,
 		WorkflowType:    mappers.ExecutorWorkflowTypeToDomain(req.WorkflowType),
-		WorkspaceID:     req.WorkspaceID,
+		WorkspaceID:     workspaceID,
 	}
 
 	// Call the executor service to handle the polling event
@@ -100,6 +144,11 @@ func (c *ExecutorController) HandlePollingEvent(ctx fiber.Ctx) error {
 
 // TestConnection handles connection testing requests from the API
 func (c *ExecutorController) TestConnection(ctx fiber.Ctx) error {
+	workspaceID := ctx.Params("workspaceID")
+	if workspaceID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Workspace ID is required")
+	}
+
 	var req executortypes.ConnectionTestRequest
 
 	if err := ctx.Bind().Body(&req); err != nil {
@@ -109,14 +158,14 @@ func (c *ExecutorController) TestConnection(ctx fiber.Ctx) error {
 	log.Info().
 		Str("integration_type", string(req.IntegrationType)).
 		Str("credential_id", req.CredentialID).
-		Str("workspace_id", req.WorkspaceID).
+		Str("workspace_id", workspaceID).
 		Msg("Testing connection")
 
 	// Call the executor service to test the connection
 	success, err := c.executorService.TestConnection(ctx.RequestCtx(), executor.TestConnectionParams{
 		IntegrationType: domain.IntegrationType(req.IntegrationType),
 		CredentialID:    req.CredentialID,
-		WorkspaceID:     req.WorkspaceID,
+		WorkspaceID:     workspaceID,
 		Payload:         req.Payload,
 	})
 	if err != nil {
@@ -133,6 +182,11 @@ func (c *ExecutorController) TestConnection(ctx fiber.Ctx) error {
 }
 
 func (c *ExecutorController) PeekData(ctx fiber.Ctx) error {
+	workspaceID := ctx.Params("workspaceID")
+	if workspaceID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Workspace ID is required")
+	}
+
 	var req executortypes.PeekDataRequest
 
 	if err := ctx.Bind().Body(&req); err != nil {
@@ -142,7 +196,7 @@ func (c *ExecutorController) PeekData(ctx fiber.Ctx) error {
 	result, err := c.executorService.PeekData(ctx.RequestCtx(), executor.PeekDataParams{
 		IntegrationType: domain.IntegrationType(req.IntegrationType),
 		CredentialID:    req.CredentialID,
-		WorkspaceID:     req.WorkspaceID,
+		WorkspaceID:     workspaceID,
 		UserID:          req.UserID,
 		PeekableType:    req.PeekableType,
 		Cursor:          req.Cursor,
