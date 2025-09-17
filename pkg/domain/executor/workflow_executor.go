@@ -137,7 +137,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	inputID := fmt.Sprintf(InputHandleFormat, nodeID, 0)
 	outputID := fmt.Sprintf(OutputHandleFormat, nodeID, 0)
 
-	// this is trigger node spesific
 	if w.enableEvents {
 		err = w.PublishNodeExecutionStartedEvent(ctx, nodeID)
 		if err != nil {
