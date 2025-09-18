@@ -8,7 +8,6 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
-	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -118,21 +117,17 @@ func (h *CronPollingHandler) HandleNextRun(ctx context.Context, event domain.Pol
 
 	nextScheduledCheckAt := schedule.NextScheduledCheckAt
 
-	cronSchedule, err := cron.ParseStandard(cronString)
-	if err != nil {
-		return domain.PollResult{}, fmt.Errorf("failed to parse cron string: %w", err)
-	}
-
 	now := time.Now()
-	nextRun := cronSchedule.Next(nextScheduledCheckAt)
 
-	if nextRun.Before(now) {
+	// Check if it's time to run based on the last check time
+	if now.After(nextScheduledCheckAt) {
 		log.Info().
-			Time("run_time", nextRun).
+			Time("next_scheduled_check_at", nextScheduledCheckAt).
+			Time("now", now).
 			Str("workflow_id", event.Workflow.ID).
 			Str("workflow_type", string(event.WorkflowType)).
 			Str("trigger_id", event.Trigger.ID).
-			Msg("Enqueuing missed cron run")
+			Msg("Enqueuing cron run - time has passed")
 
 		payload := map[string]any{
 			"timestamp": time.Now().Format(time.RFC3339),
@@ -144,6 +139,7 @@ func (h *CronPollingHandler) HandleNextRun(ctx context.Context, event domain.Pol
 		}
 
 		err = h.TaskPublisher.EnqueueTask(ctx, event.WorkspaceID, domain.ExecuteWorkflowTask{
+			WorkspaceID:  event.WorkspaceID,
 			WorkflowID:   event.Workflow.ID,
 			UserID:       event.UserID,
 			WorkflowType: event.WorkflowType,
