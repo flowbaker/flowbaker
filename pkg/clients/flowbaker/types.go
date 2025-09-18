@@ -399,11 +399,12 @@ const (
 
 // OAuthAccount represents an OAuth account without sensitive data (for executor use)
 type OAuthAccount struct {
-	ID        string                 `json:"id"`
-	UserID    string                 `json:"user_id"`
-	OAuthName string                 `json:"oauth_name"`
-	OAuthType OAuthType              `json:"oauth_type"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	ID          string                 `json:"id"`
+	UserID      string                 `json:"user_id,omitempty"`
+	WorkspaceID string                 `json:"workspace_id"`
+	OAuthName   string                 `json:"oauth_name"`
+	OAuthType   OAuthType              `json:"oauth_type"`
+	Metadata    map[string]interface{} `json:"metadata"`
 }
 
 // GetOAuthAccountRequest represents the request to get an OAuth account
