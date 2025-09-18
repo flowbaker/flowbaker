@@ -401,7 +401,7 @@ const (
 type OAuthAccount struct {
 	ID          string                 `json:"id"`
 	UserID      string                 `json:"user_id,omitempty"`
-	WorkspaceID string                 `json:"workspace_id"`
+	WorkspaceID string                 `json:"workspace_id,omitempty"`
 	OAuthName   string                 `json:"oauth_name"`
 	OAuthType   OAuthType              `json:"oauth_type"`
 	Metadata    map[string]interface{} `json:"metadata"`
