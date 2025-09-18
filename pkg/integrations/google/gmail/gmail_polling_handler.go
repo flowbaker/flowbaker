@@ -94,6 +94,7 @@ func (h *GmailPollingHandler) OnMessageReceived(ctx context.Context, p domain.Po
 		}
 
 		err = h.taskPublisher.EnqueueTask(ctx, p.WorkspaceID, domain.ExecuteWorkflowTask{
+			WorkspaceID:  p.WorkspaceID,
 			WorkflowID:   p.Workflow.ID,
 			UserID:       p.UserID,
 			WorkflowType: p.WorkflowType,

@@ -26,6 +26,7 @@ var (
 )
 
 type ExecuteWorkflowTask struct {
+	WorkspaceID  string       `json:"workspace_id"`
 	WorkflowID   string       `json:"workflow_id"`
 	UserID       string       `json:"user_id"`
 	WorkflowType WorkflowType `json:"workflow_type"`
