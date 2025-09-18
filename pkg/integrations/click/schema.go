@@ -21,6 +21,10 @@ var (
 				Name:        "On Click",
 				EventType:   IntegrationTriggerType_Click,
 				Description: "Triggered when clicked",
+				Decoration: domain.NodeDecoration{
+					HasButton:     true,
+					DisableEditor: true,
+				},
 			},
 		},
 	}
