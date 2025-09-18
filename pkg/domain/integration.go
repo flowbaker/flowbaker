@@ -77,12 +77,12 @@ type IntegrationTrigger struct {
 	Properties                    []NodeProperty              `json:"properties" bson:"properties"`
 	OutputHandles                 []NodeHandle                `json:"output_handles" bson:"output_handles"`
 	IsNonAvailableForDefaultOAuth bool                        `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
-	Decoration                    TriggerNodeDecoration       `json:"decoration" bson:"decoration"`
+	Decoration                    NodeDecoration              `json:"decoration" bson:"decoration"`
 }
 
-type TriggerNodeDecoration struct {
-	HasButton        bool `json:"has_button" bson:"has_button"`
-	DoesNotHasEditor bool `json:"does_not_has_editor" bson:"does_not_has_editor"`
+type NodeDecoration struct {
+	HasButton     bool `json:"has_button" bson:"has_button"`
+	DisableEditor bool `json:"disable_editor" bson:"disable_editor"`
 }
 
 // ActionUsageContext represents the context in which an integration is being used
@@ -131,7 +131,8 @@ type IntegrationAction struct {
 	HandlesByContext  map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
 	SupportedContexts []ActionUsageContext                  `json:"supported_contexts" bson:"supported_contexts"`
 
-	IsNonAvailableForDefaultOAuth bool `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
+	IsNonAvailableForDefaultOAuth bool           `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
+	Decoration                    NodeDecoration `json:"decoration" bson:"decoration"`
 }
 
 type IntegrationEmbeddingModel struct {
