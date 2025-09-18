@@ -43,7 +43,7 @@ func NewExecutorContainer() (*ExecutorContainer, error) {
 		return nil, err
 	}
 
-	workspaceRegistrationManager := domain.NewWorkspaceRegistrationManager(config)
+	workspaceRegistrationManager := domain.NewWorkspaceRegistrationManager(config, configManager)
 
 	return &ExecutorContainer{
 		configManager:                configManager,

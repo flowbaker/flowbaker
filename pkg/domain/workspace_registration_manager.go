@@ -15,10 +15,10 @@ var (
 )
 
 type WorkspaceAssignment struct {
-	WorkspaceID   string `json:"workspace_id"`
-	WorkspaceName string `json:"workspace_name"`
-	WorkspaceSlug string `json:"workspace_slug"`
-	APIPublicKey  string `json:"api_public_key"`
+	WorkspaceID   string `json:"workspace_id" mapstructure:"workspace_id"`
+	WorkspaceName string `json:"workspace_name" mapstructure:"workspace_name"`
+	WorkspaceSlug string `json:"workspace_slug" mapstructure:"workspace_slug"`
+	APIPublicKey  string `json:"api_public_key" mapstructure:"api_public_key"`
 }
 
 type RegisterWorkspaceParams struct {
@@ -29,15 +29,17 @@ type RegisterWorkspaceParams struct {
 
 type WorkspaceRegistrationManager interface {
 	TryRegisterWorkspace(ctx context.Context, params RegisterWorkspaceParams) error
+	UnregisterWorkspace(ctx context.Context, workspaceID string) error
 	AddPasscode(ctx context.Context, params AddPasscodeParams) error
 }
 
 type workspaceRegistrationManager struct {
 	codeStore      map[string]PassCodeEntry
 	codeStoreMutex sync.RWMutex
+	configManager  ConfigManager
 }
 
-func NewWorkspaceRegistrationManager(config ExecutorConfig) WorkspaceRegistrationManager {
+func NewWorkspaceRegistrationManager(config ExecutorConfig, configManager ConfigManager) WorkspaceRegistrationManager {
 	store := map[string]PassCodeEntry{}
 
 	if config.EnableStaticPasscode {
@@ -57,7 +59,8 @@ func NewWorkspaceRegistrationManager(config ExecutorConfig) WorkspaceRegistratio
 	}
 
 	return &workspaceRegistrationManager{
-		codeStore: make(map[string]PassCodeEntry),
+		codeStore:     store,
+		configManager: configManager,
 	}
 }
 
@@ -119,6 +122,43 @@ func (m *workspaceRegistrationManager) AddPasscode(ctx context.Context, params A
 		ExpiresAt: now.Add(PassCodeExpiresIn),
 		OnSuccess: params.OnSuccess,
 	}
+
+	return nil
+}
+
+func (m *workspaceRegistrationManager) UnregisterWorkspace(ctx context.Context, workspaceID string) error {
+	config, err := m.configManager.GetConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("unregistering workspace: failed to get config: %w", err)
+	}
+
+	var updatedAssignments []WorkspaceAssignment
+
+	found := false
+
+	for _, assignment := range config.WorkspaceAssignments {
+		if assignment.WorkspaceID != workspaceID {
+			updatedAssignments = append(updatedAssignments, assignment)
+		} else {
+			found = true
+		}
+	}
+
+	if !found {
+		log.Warn().Str("workspace_id", workspaceID).Msg("Unregistering workspace: Workspace not found in assignments")
+
+		return fmt.Errorf("unregistering workspace: workspace not found: %s", workspaceID)
+	}
+
+	config.WorkspaceAssignments = updatedAssignments
+
+	if err := m.configManager.SaveConfig(ctx, config); err != nil {
+		log.Error().Err(err).Msg("Unregistering workspace: Failed to save config")
+
+		return fmt.Errorf("unregistering workspace: failed to save config: %w", err)
+	}
+
+	log.Info().Str("workspace_id", workspaceID).Msg("Successfully unregistered workspace")
 
 	return nil
 }
