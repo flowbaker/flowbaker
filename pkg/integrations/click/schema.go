@@ -21,9 +21,9 @@ var (
 				Name:        "On Click",
 				EventType:   IntegrationTriggerType_Click,
 				Description: "Triggered when clicked",
-				Decoration: domain.TriggerNodeDecoration{
-					HasButton:        true,
-					DoesNotHasEditor: true,
+				Decoration: domain.NodeDecoration{
+					HasButton:     true,
+					DisableEditor: true,
 				},
 			},
 		},
