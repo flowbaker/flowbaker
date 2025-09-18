@@ -67,6 +67,10 @@ func (h *CronPollingHandler) HandleCronTrigger(ctx context.Context, event domain
 		return domain.PollResult{}, fmt.Errorf("failed to unmarshal integration settings: %w", err)
 	}
 
+	if params.CronString == "" {
+		return domain.PollResult{}, fmt.Errorf("cron string is empty")
+	}
+
 	return h.HandleNextRun(ctx, event, params.CronString)
 }
 
@@ -81,6 +85,14 @@ func (h *CronPollingHandler) HandleSimpleTrigger(ctx context.Context, event doma
 	err = json.Unmarshal(jsonIntegrationSettings, &params)
 	if err != nil {
 		return domain.PollResult{}, fmt.Errorf("failed to unmarshal integration settings: %w", err)
+	}
+
+	if params.Interval == "" {
+		return domain.PollResult{}, fmt.Errorf("interval is empty")
+	}
+
+	if params.Day == 0 && params.Hour == 0 && params.Minute == 0 {
+		return domain.PollResult{}, fmt.Errorf("one of day, hour, or minute must be set")
 	}
 
 	var cronString string
@@ -105,8 +117,6 @@ func (h *CronPollingHandler) HandleNextRun(ctx context.Context, event domain.Pol
 	}
 
 	nextScheduledCheckAt := schedule.NextScheduledCheckAt
-
-	log.Info().Time("last_checked", nextScheduledCheckAt).Msg("Last checked at")
 
 	cronSchedule, err := cron.ParseStandard(cronString)
 	if err != nil {
