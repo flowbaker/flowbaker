@@ -64,11 +64,11 @@ func (e *executorCredentialManager) GetOAuthAccount(ctx context.Context, oauthAc
 
 	// Convert flowbaker.OAuthAccount to domain.OAuthAccount
 	domainAccount := domain.OAuthAccount{
-		ID:        response.OAuthAccount.ID,
-		UserID:    response.OAuthAccount.UserID,
-		OAuthName: response.OAuthAccount.OAuthName,
-		OAuthType: domain.OAuthType(response.OAuthAccount.OAuthType),
-		Metadata:  response.OAuthAccount.Metadata,
+		ID:          response.OAuthAccount.ID,
+		WorkspaceID: response.OAuthAccount.WorkspaceID,
+		OAuthName:   response.OAuthAccount.OAuthName,
+		OAuthType:   domain.OAuthType(response.OAuthAccount.OAuthType),
+		Metadata:    response.OAuthAccount.Metadata,
 		// Note: EncryptedSensitiveData is intentionally not included as it's not available from executor endpoint
 	}
 

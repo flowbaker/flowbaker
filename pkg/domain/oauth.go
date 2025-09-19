@@ -3,12 +3,12 @@ package domain
 import "time"
 
 type OAuthAccount struct {
-	ID        string
-	UserID    string
-	OAuthName string
-	OAuthType OAuthType
-	Metadata  map[string]interface{}
-	ClientID  string
+	ID          string
+	WorkspaceID string
+	OAuthName   string
+	OAuthType   OAuthType
+	Metadata    map[string]interface{}
+	ClientID    string
 }
 
 type OAuthAccountSensitiveData struct {
