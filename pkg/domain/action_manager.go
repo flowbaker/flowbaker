@@ -360,41 +360,30 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 		return IntegrationOutput{}, err
 	}
 
-	maxInputLength := 0
+	inputCount := len(itemsByInputID)
 
-	for _, items := range itemsByInputID {
-		if len(items) > maxInputLength {
-			maxInputLength = len(items)
-		}
+	itemsByInputOrder := make([][]Item, 0)
+
+	for i := 0; i < inputCount; i++ {
+		itemsByInputOrder = append(itemsByInputOrder, make([]Item, 0))
 	}
 
-	outputs := make([]Item, 0)
-
-	for i := 0; i < maxInputLength; i++ {
-		itemsByInputOrder := make([][]Item, 0, len(itemsByInputID))
-
-		for inputID, inputItems := range itemsByInputID {
-			if i >= len(inputItems) {
-				continue
-			}
-
-			order, err := GetInputOrder(inputID)
-			if err != nil {
-				return IntegrationOutput{}, err
-			}
-
-			inputItems := itemsByInputOrder[order]
-
-			inputItems = append(inputItems, inputItems[i])
-			itemsByInputOrder[order] = inputItems
-		}
-
-		output, err := actionFuncMultiInput(ctx, params, itemsByInputOrder)
+	for inputID, inputItems := range itemsByInputID {
+		order, err := GetInputOrder(inputID)
 		if err != nil {
 			return IntegrationOutput{}, err
 		}
 
-		outputs = append(outputs, output)
+		itemsByInputOrder[order] = inputItems
+	}
+
+	outputs, err := actionFuncMultiInput(ctx, params, itemsByInputOrder)
+	if err != nil {
+		return IntegrationOutput{}, err
+	}
+
+	if outputs == nil {
+		outputs = []Item{}
 	}
 
 	resultJSON, err := json.Marshal(outputs)

@@ -1,6 +1,8 @@
 package initialization
 
 import (
+	"github.com/flowbaker/flowbaker/pkg/integrations/transform"
+
 	"github.com/flowbaker/flowbaker/pkg/integrations/ai_agent"
 	claudeintegration "github.com/flowbaker/flowbaker/pkg/integrations/claude"
 	"github.com/flowbaker/flowbaker/pkg/integrations/condition"
@@ -160,6 +162,10 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_Condition,
 		NewCreator:      condition.NewConditionIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_Transform,
+		NewCreator:      transform.NewTransformIntegrationCreator,
 	},
 }
 
