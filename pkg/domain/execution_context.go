@@ -6,6 +6,11 @@ import (
 
 type WorkflowExecutionContextKey struct{}
 
+type ExecutionHistoryRecorder interface {
+	AddNodeExecution(execution NodeExecution)
+	AddNodeExecutionEntry(entry NodeExecutionEntry)
+}
+
 type WorkflowExecutionContext struct {
 	WorkspaceID         string
 	WorkflowID          string
@@ -14,6 +19,8 @@ type WorkflowExecutionContext struct {
 	ResponsePayload     Payload
 	ResponseHeaders     map[string][]string
 	ResponseStatusCode  int
+	HistoryRecorder     ExecutionHistoryRecorder
+	ToolTracker         *ToolExecutionTracker
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {
@@ -29,6 +36,8 @@ func (c *WorkflowExecutionContext) SetResponseStatusCode(statusCode int) {
 }
 
 func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool) context.Context {
+	ctx = NewContextWithEventOrder(ctx)
+	
 	workflowExecutionContext := &WorkflowExecutionContext{
 		WorkspaceID:         workspaceID,
 		WorkflowID:          workflowID,
@@ -37,6 +46,26 @@ func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, wo
 		ResponsePayload:     nil,
 		ResponseHeaders:     map[string][]string{},
 		ResponseStatusCode:  200,
+		HistoryRecorder:     nil,
+		ToolTracker:         NewToolExecutionTracker(),
+	}
+
+	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)
+}
+
+func NewContextWithWorkflowExecutionContextAndRecorder(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool, recorder ExecutionHistoryRecorder) context.Context {
+	ctx = NewContextWithEventOrder(ctx)
+	
+	workflowExecutionContext := &WorkflowExecutionContext{
+		WorkspaceID:         workspaceID,
+		WorkflowID:          workflowID,
+		WorkflowExecutionID: workflowExecutionID,
+		EnableEvents:        enableEvents,
+		ResponsePayload:     nil,
+		ResponseHeaders:     map[string][]string{},
+		ResponseStatusCode:  200,
+		HistoryRecorder:     recorder,
+		ToolTracker:         NewToolExecutionTracker(),
 	}
 
 	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)

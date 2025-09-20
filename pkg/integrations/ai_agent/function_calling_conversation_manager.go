@@ -74,6 +74,14 @@ type FunctionCallExecution struct {
 	Result     interface{}            `json:"result,omitempty"`
 	Error      string                 `json:"error,omitempty"`
 	Duration   time.Duration          `json:"duration"`
+	Metadata   *ToolExecutionMetadata `json:"metadata,omitempty"`
+}
+
+// ToolExecutionMetadata contains additional metadata about tool execution
+type ToolExecutionMetadata struct {
+	NodeID          string                        `json:"node_id"`
+	IntegrationType domain.IntegrationType        `json:"integration_type"`
+	ActionType      domain.IntegrationActionType `json:"action_type"`
 }
 
 // FunctionCallingConversationManager manages function calling pattern conversations
@@ -402,6 +410,19 @@ func (f *FunctionCallingConversationManager) executeToolCalls(ctx context.Contex
 			StartTime:  time.Now(),
 		}
 
+		// Find tool metadata from tool executors
+		for _, toolExecutor := range f.toolExecutors {
+			expectedToolName := fmt.Sprintf("%s_%s", toolExecutor.IntegrationType, toolExecutor.WorkflowNode.ActionType)
+			if toolCall.Name == expectedToolName {
+				execution.Metadata = &ToolExecutionMetadata{
+					NodeID:          toolExecutor.NodeID,
+					IntegrationType: toolExecutor.IntegrationType,
+					ActionType:      domain.IntegrationActionType(toolExecutor.WorkflowNode.ActionType),
+				}
+				break
+			}
+		}
+
 		result, err := f.toolCallManager.ExecuteToolCall(ctx, toolCall, f.toolDefinitions)
 		execution.EndTime = time.Now()
 		execution.Duration = execution.EndTime.Sub(execution.StartTime)
@@ -439,6 +460,26 @@ func (f *FunctionCallingConversationManager) executeToolCalls(ctx context.Contex
 		}
 
 		state.ToolExecutions = append(state.ToolExecutions, *execution)
+
+		// Record in tool tracker if available
+		if execution.Metadata != nil {
+			if execContext, ok := domain.GetWorkflowExecutionContext(ctx); ok && execContext.ToolTracker != nil {
+				toolExec := &domain.ToolExecution{
+					Identifier: domain.ToolIdentifier{
+						NodeID:          execution.Metadata.NodeID,
+						IntegrationType: execution.Metadata.IntegrationType,
+						ActionType:      execution.Metadata.ActionType,
+					},
+					ExecutedAt:  execution.StartTime,
+					CompletedAt: execution.EndTime,
+					Result:      execution.Result,
+				}
+				if !execution.Success && execution.Error != "" {
+					toolExec.Error = fmt.Errorf(execution.Error)
+				}
+				execContext.ToolTracker.RecordExecution(toolExec)
+			}
+		}
 	}
 
 	// Add tool results to conversation history
