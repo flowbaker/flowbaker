@@ -123,7 +123,7 @@ var (
 						},
 					},
 				},
-				Properties:  commonProperties,
+				Properties:  commonProperties[:1],
 				Description: "Exclude items that match, keeping only items that do not match",
 			},
 			{
