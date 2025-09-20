@@ -20,7 +20,6 @@ require (
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/redis/go-redis/v9 v9.12.1
 	github.com/resend/resend-go/v2 v2.23.0
-	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/xid v1.6.0
 	github.com/rs/zerolog v1.34.0
 	github.com/sashabaranov/go-openai v1.41.1
