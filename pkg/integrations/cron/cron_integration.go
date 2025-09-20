@@ -27,17 +27,32 @@ func NewCronPollingHandler(deps domain.IntegrationDeps) domain.IntegrationPoller
 
 func (h *CronPollingHandler) HandlePollingEvent(ctx context.Context, params domain.PollingEvent) (domain.PollResult, error) {
 	log.Info().
-		Str("trigger_id", params.Trigger.ID).
-		Str("workflow_id", params.Workflow.ID).
-		Str("event_type", string(params.Trigger.EventType)).
-		Msg("Handling polling event")
+		Str("workspaceID", params.WorkspaceID).
+		Str("triggerID", params.Trigger.ID).
+		Str("workflowID", params.Workflow.ID).
+		Str("eventType", string(params.Trigger.EventType)).
+		Str("userID", params.UserID).
+		Interface("integrationSettings", params.Trigger.IntegrationSettings).
+		Msg("CronPollingHandler: Starting to handle polling event")
 
 	switch params.Trigger.EventType {
 	case IntegrationTriggerType_Cron:
+		log.Info().
+			Str("workspaceID", params.WorkspaceID).
+			Str("triggerID", params.Trigger.ID).
+			Msg("CronPollingHandler: Handling cron trigger")
 		return h.HandleCronTrigger(ctx, params)
 	case IntegrationTriggerType_Simple:
+		log.Info().
+			Str("workspaceID", params.WorkspaceID).
+			Str("triggerID", params.Trigger.ID).
+			Msg("CronPollingHandler: Handling simple trigger")
 		return h.HandleSimpleTrigger(ctx, params)
 	default:
+		log.Error().
+			Str("workspaceID", params.WorkspaceID).
+			Str("eventType", string(params.Trigger.EventType)).
+			Msg("CronPollingHandler: Unsupported trigger event type")
 		return domain.PollResult{}, fmt.Errorf("unsupported trigger event type: %s", params.Trigger.EventType)
 	}
 }
