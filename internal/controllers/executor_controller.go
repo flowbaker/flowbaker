@@ -219,3 +219,20 @@ func (c *ExecutorController) PeekData(ctx fiber.Ctx) error {
 		HasMore:    result.HasMore,
 	})
 }
+
+func (c *ExecutorController) UnregisterWorkspace(ctx fiber.Ctx) error {
+	workspaceID := ctx.Params("workspaceID")
+	if workspaceID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Workspace ID is required")
+	}
+
+	err := c.workspaceRegistrationManager.UnregisterWorkspace(ctx.RequestCtx(), workspaceID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to unregister workspace")
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to unregister workspace")
+	}
+
+	return ctx.JSON(executortypes.UnregisterWorkspaceResponse{
+		Success: true,
+	})
+}

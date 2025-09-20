@@ -69,6 +69,7 @@ func NewHTTPServer(ctx context.Context, deps HTTPServerDependencies) *fiber.App 
 	specificWorkspace.Post("/polling-events", deps.ExecutorController.HandlePollingEvent)
 	specificWorkspace.Post("/connection-test", deps.ExecutorController.TestConnection)
 	specificWorkspace.Post("/peek-data", deps.ExecutorController.PeekData)
+	specificWorkspace.Delete("/", deps.ExecutorController.UnregisterWorkspace)
 
 	return router
 }
