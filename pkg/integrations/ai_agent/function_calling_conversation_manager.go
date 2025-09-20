@@ -79,28 +79,26 @@ type FunctionCallExecution struct {
 
 // ToolExecutionMetadata contains additional metadata about tool execution
 type ToolExecutionMetadata struct {
-	NodeID          string                        `json:"node_id"`
-	IntegrationType domain.IntegrationType        `json:"integration_type"`
+	NodeID          string                       `json:"node_id"`
+	IntegrationType domain.IntegrationType       `json:"integration_type"`
 	ActionType      domain.IntegrationActionType `json:"action_type"`
 }
 
 // FunctionCallingConversationManager manages function calling pattern conversations
 type FunctionCallingConversationManager struct {
-	agentNodeID          string
-	llm                  domain.IntegrationLLM
-	memory               domain.IntegrationMemory
-	toolExecutors        []ToolExecutor
-	toolCallManager      ToolCallManager
-	toolDefinitions      []ToolDefinition
-	stateManager         FunctionCallingStateManager
-	errorHandler         *FunctionCallingErrorHandler
-	eventPublisher       domain.EventPublisher
-	executeParams        ExecuteParams
-	llmNodeParams           LLMNodeParams
-	memoryNodeID            string
-	memoryManager           ConversationMemoryManager
-	llmExecutionCallback    func(nodeID string)
-	memoryExecutionCallback func(nodeID string)
+	agentNodeID     string
+	llm             domain.IntegrationLLM
+	memory          domain.IntegrationMemory
+	toolExecutors   []ToolExecutor
+	toolCallManager ToolCallManager
+	toolDefinitions []ToolDefinition
+	stateManager    FunctionCallingStateManager
+	errorHandler    *FunctionCallingErrorHandler
+	eventPublisher  domain.EventPublisher
+	executeParams   ExecuteParams
+	llmNodeParams   LLMNodeParams
+	memoryNodeID    string
+	memoryManager   ConversationMemoryManager
 }
 
 // FunctionCallingStateManager handles state persistence and recovery for function calling
@@ -117,38 +115,34 @@ type FunctionCallingErrorHandler struct {
 }
 
 type FunctionCallingConversationManagerDeps struct {
-	AgentNodeID          string
-	LLM                  domain.IntegrationLLM
-	Memory               domain.IntegrationMemory
-	ToolExecutors        []ToolExecutor
-	ToolCallManager      ToolCallManager
-	StateManager         FunctionCallingStateManager
-	EventPublisher       domain.EventPublisher
-	ExecuteParams        ExecuteParams
-	MemoryManager        ConversationMemoryManager
-	LLMNodeParams           LLMNodeParams
-	MemoryNodeID            string
-	LLMExecutionCallback    func(nodeID string)
-	MemoryExecutionCallback func(nodeID string)
+	AgentNodeID     string
+	LLM             domain.IntegrationLLM
+	Memory          domain.IntegrationMemory
+	ToolExecutors   []ToolExecutor
+	ToolCallManager ToolCallManager
+	StateManager    FunctionCallingStateManager
+	EventPublisher  domain.EventPublisher
+	ExecuteParams   ExecuteParams
+	MemoryManager   ConversationMemoryManager
+	LLMNodeParams   LLMNodeParams
+	MemoryNodeID    string
 }
 
 // NewFunctionCallingConversationManager creates a new function calling conversation manager
 func NewFunctionCallingConversationManager(deps FunctionCallingConversationManagerDeps) *FunctionCallingConversationManager {
 	return &FunctionCallingConversationManager{
-		agentNodeID:          deps.AgentNodeID,
-		llm:                  deps.LLM,
-		memory:               deps.Memory,
-		toolExecutors:        deps.ToolExecutors,
-		toolCallManager:      deps.ToolCallManager,
-		stateManager:         deps.StateManager,
-		errorHandler:         NewFunctionCallingErrorHandler(),
-		eventPublisher:       deps.EventPublisher,
-		executeParams:           deps.ExecuteParams,
-		memoryNodeID:            deps.MemoryNodeID,
-		memoryManager:           deps.MemoryManager,
-		llmNodeParams:           deps.LLMNodeParams,
-		llmExecutionCallback:    deps.LLMExecutionCallback,
-		memoryExecutionCallback: deps.MemoryExecutionCallback,
+		agentNodeID:     deps.AgentNodeID,
+		llm:             deps.LLM,
+		memory:          deps.Memory,
+		toolExecutors:   deps.ToolExecutors,
+		toolCallManager: deps.ToolCallManager,
+		stateManager:    deps.StateManager,
+		errorHandler:    NewFunctionCallingErrorHandler(),
+		eventPublisher:  deps.EventPublisher,
+		executeParams:   deps.ExecuteParams,
+		memoryNodeID:    deps.MemoryNodeID,
+		memoryManager:   deps.MemoryManager,
+		llmNodeParams:   deps.LLMNodeParams,
 	}
 }
 
@@ -190,8 +184,20 @@ func (f *FunctionCallingConversationManager) ExecuteFunctionCallingConversation(
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to store conversation start in memory")
 		// Don't fail the conversation due to memory issues
-	} else if f.memoryExecutionCallback != nil && f.memoryNodeID != "" {
-		f.memoryExecutionCallback(f.memoryNodeID)
+	} else {
+		if execCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok && execCtx.AgentTracker != nil && f.memoryNodeID != "" {
+			memoryExecution := &domain.AgentExecution{
+				Identifier: domain.ExecutionIdentifier{
+					NodeID:   f.memoryNodeID,
+					NodeType: domain.NodeTypeMemory,
+				},
+				ExecutedAt:  time.Now(),
+				CompletedAt: time.Now(),
+				InputItems:  []domain.Item{domain.Item(map[string]interface{}{"conversation": "Memory storing conversation"})},
+				OutputItems: []domain.Item{domain.Item(map[string]interface{}{"stored": "Memory stored successfully"})},
+			}
+			execCtx.AgentTracker.RecordExecution(memoryExecution)
+		}
 	}
 
 	// Execute function calling loop
@@ -211,8 +217,6 @@ func (f *FunctionCallingConversationManager) ExecuteFunctionCallingConversation(
 		storeErr := f.memoryManager.StoreConversationComplete(ctx, state, nil, workspaceID, initialPrompt)
 		if storeErr != nil {
 			log.Error().Err(storeErr).Msg("Failed to store failed conversation in memory")
-		} else if f.memoryExecutionCallback != nil && f.memoryNodeID != "" {
-			f.memoryExecutionCallback(f.memoryNodeID)
 		}
 
 		return nil, err
@@ -225,8 +229,6 @@ func (f *FunctionCallingConversationManager) ExecuteFunctionCallingConversation(
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to store completed conversation in memory")
 		// Don't fail the conversation due to memory issues
-	} else if f.memoryExecutionCallback != nil && f.memoryNodeID != "" {
-		f.memoryExecutionCallback(f.memoryNodeID)
 	}
 
 	return result, nil
@@ -365,8 +367,19 @@ func (f *FunctionCallingConversationManager) executeLLMCall(ctx context.Context,
 		return fmt.Errorf("LLM call failed: %w", err)
 	}
 
-	if f.llmExecutionCallback != nil {
-		f.llmExecutionCallback(f.llmNodeParams.NodeID)
+	// Record LLM execution in AgentTracker
+	if execCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok && execCtx.AgentTracker != nil {
+		llmExecution := &domain.AgentExecution{
+			Identifier: domain.ExecutionIdentifier{
+				NodeID:   f.llmNodeParams.NodeID,
+				NodeType: domain.NodeTypeLLM,
+			},
+			ExecutedAt:  time.Now(),
+			CompletedAt: time.Now(),
+			InputItems:  []domain.Item{domain.Item(map[string]interface{}{"prompt": "LLM processing request"})},
+			OutputItems: []domain.Item{domain.Item(map[string]interface{}{"response": response.Content})},
+		}
+		execCtx.AgentTracker.RecordExecution(llmExecution)
 	}
 
 	// Add assistant response to conversation history
@@ -480,25 +493,6 @@ func (f *FunctionCallingConversationManager) executeToolCalls(ctx context.Contex
 
 		state.ToolExecutions = append(state.ToolExecutions, *execution)
 
-		// Record in tool tracker if available
-		if execution.Metadata != nil {
-			if execContext, ok := domain.GetWorkflowExecutionContext(ctx); ok && execContext.ToolTracker != nil {
-				toolExec := &domain.ToolExecution{
-					Identifier: domain.ToolIdentifier{
-						NodeID:          execution.Metadata.NodeID,
-						IntegrationType: execution.Metadata.IntegrationType,
-						ActionType:      execution.Metadata.ActionType,
-					},
-					ExecutedAt:  execution.StartTime,
-					CompletedAt: execution.EndTime,
-					Result:      execution.Result,
-				}
-				if !execution.Success && execution.Error != "" {
-					toolExec.Error = fmt.Errorf(execution.Error)
-				}
-				execContext.ToolTracker.RecordExecution(toolExec)
-			}
-		}
 	}
 
 	// Add tool results to conversation history
@@ -556,8 +550,6 @@ Available tools:
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to enhance system prompt with memory")
 		return basePrompt
-	} else if f.memoryExecutionCallback != nil && f.memoryNodeID != "" {
-		f.memoryExecutionCallback(f.memoryNodeID)
 	}
 
 	return enhancedPrompt
@@ -614,19 +606,19 @@ func (f *FunctionCallingConversationManager) formatFieldOptions(toolName, fieldK
 		return ""
 	}
 
-	return fmt.Sprintf("For tool '%s', parameter '%s', available options: %s", 
+	return fmt.Sprintf("For tool '%s', parameter '%s', available options: %s",
 		toolName, fieldKey, strings.Join(options, ", "))
 }
 
 func (f *FunctionCallingConversationManager) extractOptions(peekResults []domain.PeekResultItem) []string {
 	var options []string
-	
+
 	for _, item := range peekResults {
 		if item.Content != "" {
 			options = append(options, fmt.Sprintf(`"%s"`, item.Content))
 		}
 	}
-	
+
 	return options
 }
 

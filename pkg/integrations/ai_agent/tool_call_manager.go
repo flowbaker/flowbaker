@@ -413,21 +413,30 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		}
 	}
 
-	if hasWorkflowCtx && workflowCtx.ToolTracker != nil {
-		toolExecution := &domain.ToolExecution{
-			Identifier: domain.ToolIdentifier{
+	completedAt := time.Now()
+
+	if hasWorkflowCtx && workflowCtx.AgentTracker != nil {
+		agentExecution := &domain.AgentExecution{
+			Identifier: domain.ExecutionIdentifier{
 				NodeID:          toolNodeID,
+				NodeType:        domain.NodeTypeTool,
 				IntegrationType: toolDef.ToolExecutor.IntegrationType,
 				ActionType:      toolDef.ActionType,
 			},
 			ExecutedAt:  startTime,
-			CompletedAt: time.Now(),
+			CompletedAt: completedAt,
 			Result:      output,
 			Error:       err,
 			InputItems:  inputItems,
 			OutputItems: outputItems,
 		}
-		workflowCtx.ToolTracker.RecordExecution(toolExecution)
+		workflowCtx.AgentTracker.RecordExecution(agentExecution)
+		log.Info().
+			Str("nodeID", toolNodeID).
+			Str("nodeType", "tool").
+			Int("inputItemsCount", len(inputItems)).
+			Int("outputItemsCount", len(outputItems)).
+			Msg("Recorded Tool execution in AgentTracker")
 	}
 
 	if err != nil {

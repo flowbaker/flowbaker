@@ -88,14 +88,15 @@ func (e *NodeExecutionStartedEvent) SetEventOrder(order int) {
 }
 
 type NodeExecutedEvent struct {
-	WorkflowID          string               `json:"workflow_id"`
-	NodeID              string               `json:"node_id"`
-	ItemsByInputID      map[string]NodeItems `json:"items_by_input_id"`
-	ItemsByOutputID     map[string]NodeItems `json:"items_by_output_id"`
-	Timestamp           int64                `json:"timestamp"`
-	ExecutionOrder      int                  `json:"execution_order"`
-	WorkflowExecutionID string               `json:"workflow_execution_id"`
-	EventOrder          int                  `json:"event_order"`
+	WorkflowID          string                `json:"workflow_id"`
+	NodeID              string                `json:"node_id"`
+	ItemsByInputID      map[string]NodeItems  `json:"items_by_input_id"`
+	ItemsByOutputID     map[string]NodeItems  `json:"items_by_output_id"`
+	Timestamp           int64                 `json:"timestamp"`
+	ExecutionOrder      int                   `json:"execution_order"`
+	WorkflowExecutionID string                `json:"workflow_execution_id"`
+	EventOrder          int                   `json:"event_order"`
+	ExecutionStatistics *ExecutionStatistics  `json:"execution_statistics,omitempty"`
 }
 
 func (e *NodeExecutedEvent) GetType() EventType {

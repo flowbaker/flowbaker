@@ -20,7 +20,7 @@ type WorkflowExecutionContext struct {
 	ResponseHeaders     map[string][]string
 	ResponseStatusCode  int
 	HistoryRecorder     ExecutionHistoryRecorder
-	ToolTracker         *ToolExecutionTracker
+	AgentTracker        *AgentExecutionTracker
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {
@@ -37,7 +37,7 @@ func (c *WorkflowExecutionContext) SetResponseStatusCode(statusCode int) {
 
 func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool) context.Context {
 	ctx = NewContextWithEventOrder(ctx)
-	
+
 	workflowExecutionContext := &WorkflowExecutionContext{
 		WorkspaceID:         workspaceID,
 		WorkflowID:          workflowID,
@@ -47,7 +47,7 @@ func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, wo
 		ResponseHeaders:     map[string][]string{},
 		ResponseStatusCode:  200,
 		HistoryRecorder:     nil,
-		ToolTracker:         NewToolExecutionTracker(),
+		AgentTracker:        NewAgentExecutionTracker(),
 	}
 
 	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)
@@ -55,7 +55,7 @@ func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, wo
 
 func NewContextWithWorkflowExecutionContextAndRecorder(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool, recorder ExecutionHistoryRecorder) context.Context {
 	ctx = NewContextWithEventOrder(ctx)
-	
+
 	workflowExecutionContext := &WorkflowExecutionContext{
 		WorkspaceID:         workspaceID,
 		WorkflowID:          workflowID,
@@ -65,7 +65,7 @@ func NewContextWithWorkflowExecutionContextAndRecorder(ctx context.Context, work
 		ResponseHeaders:     map[string][]string{},
 		ResponseStatusCode:  200,
 		HistoryRecorder:     recorder,
-		ToolTracker:         NewToolExecutionTracker(),
+		AgentTracker:        NewAgentExecutionTracker(),
 	}
 
 	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)
