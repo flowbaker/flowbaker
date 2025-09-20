@@ -2,7 +2,9 @@ package ai_agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,6 +54,8 @@ type AIAgentExecutorV2 struct {
 	executorIntegrationManager domain.ExecutorIntegrationManager
 	eventPublisher             domain.EventPublisher
 	actionManager              *domain.IntegrationActionManager
+	llmExecutionCounts         map[string]int
+	memoryExecutionCounts      map[string]int
 }
 
 func NewAIAgentExecutorV2(deps domain.IntegrationDeps) domain.IntegrationExecutor {
@@ -60,6 +64,8 @@ func NewAIAgentExecutorV2(deps domain.IntegrationDeps) domain.IntegrationExecuto
 		parameterBinder:            deps.ParameterBinder,
 		executorIntegrationManager: deps.ExecutorIntegrationManager,
 		eventPublisher:             deps.ExecutorEventPublisher,
+		llmExecutionCounts:         make(map[string]int),
+		memoryExecutionCounts:      make(map[string]int),
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
@@ -96,6 +102,7 @@ type MemoryNodeParams struct {
 }
 
 type LLMNodeParams struct {
+	NodeID       string  `json:"node_id"`
 	Model        string  `json:"model"`
 	MaxTokens    int     `json:"max_tokens"`
 	Temperature  float32 `json:"temperature"`
@@ -106,7 +113,26 @@ func (e *AIAgentExecutorV2) Execute(ctx context.Context, params domain.Integrati
 	return e.actionManager.Run(ctx, params.ActionType, params)
 }
 
+func (e *AIAgentExecutorV2) incrementLLMExecutionCount(nodeID string) {
+	if existing, exists := e.llmExecutionCounts[nodeID]; exists {
+		e.llmExecutionCounts[nodeID] = existing + 1
+	} else {
+		e.llmExecutionCounts[nodeID] = 1
+	}
+}
+
+func (e *AIAgentExecutorV2) incrementMemoryExecutionCount(nodeID string) {
+	if existing, exists := e.memoryExecutionCounts[nodeID]; exists {
+		e.memoryExecutionCounts[nodeID] = existing + 1
+	} else {
+		e.memoryExecutionCounts[nodeID] = 1
+	}
+}
+
 func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
+	e.llmExecutionCounts = make(map[string]int)
+	e.memoryExecutionCounts = make(map[string]int)
+
 	executeParams := ExecuteParams{}
 
 	err := e.parameterBinder.BindToStruct(ctx, item, &executeParams, params.IntegrationParams.Settings)
@@ -239,6 +265,7 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 	llmNodeParams := LLMNodeParams{}
 
 	if llm.LLM != nil {
+		llmNodeParams.NodeID = llm.Node.ID
 		err := e.parameterBinder.BindToStruct(ctx, item, &llmNodeParams, llm.Node.IntegrationSettings)
 		if err != nil {
 			return nil, fmt.Errorf("failed to bind LLM node params: %w", err)
@@ -269,16 +296,19 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 	})
 
 	deps := FunctionCallingConversationManagerDeps{
-		AgentNodeID:     params.NodeID,
-		LLM:             llm.LLM,
-		Memory:          memory.Memory,
-		ToolExecutors:   tools,
-		ToolCallManager: toolCallManager,
-		StateManager:    stateManager,
-		EventPublisher:  e.eventPublisher,
-		ExecuteParams:   executeParams,
-		MemoryManager:   memoryManager,
-		LLMNodeParams:   llmNodeParams,
+		AgentNodeID:             params.NodeID,
+		LLM:                     llm.LLM,
+		Memory:                  memory.Memory,
+		ToolExecutors:           tools,
+		ToolCallManager:         toolCallManager,
+		StateManager:            stateManager,
+		EventPublisher:          e.eventPublisher,
+		ExecuteParams:           executeParams,
+		MemoryManager:           memoryManager,
+		LLMNodeParams:           llmNodeParams,
+		MemoryNodeID:            memoryNodeID,
+		LLMExecutionCallback:    e.incrementLLMExecutionCount,
+		MemoryExecutionCallback: e.incrementMemoryExecutionCount,
 	}
 
 	fcManager := NewFunctionCallingConversationManager(deps)
@@ -292,11 +322,13 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 
 	// Publish events and record history for connected nodes
 	publishParams := PublishEventsParams{
-		ExecuteParams:  executeParams,
-		AgentSettings:  agentSettings,
-		ToolExecutions: result.ToolExecutions,
-		WorkspaceID:    workflow.WorkspaceID,
-		WorkflowID:     workflow.ID,
+		ExecuteParams:    executeParams,
+		AgentSettings:    agentSettings,
+		ToolExecutions:   result.ToolExecutions,
+		WorkspaceID:      workflow.WorkspaceID,
+		WorkflowID:       workflow.ID,
+		PayloadByInputID: params.PayloadByInputID,
+		AgentNodeID:      params.NodeID,
 	}
 	err = e.publishConnectedNodeEventsAfterExecution(ctx, publishParams)
 	if err != nil {
@@ -320,11 +352,13 @@ type AgentSettings struct {
 
 // PublishEventsParams encapsulates parameters for publishConnectedNodeEventsAfterExecution
 type PublishEventsParams struct {
-	ExecuteParams   ExecuteParams
-	AgentSettings   AgentSettings
-	ToolExecutions  []interface{}
-	WorkspaceID     string
-	WorkflowID      string
+	ExecuteParams    ExecuteParams
+	AgentSettings    AgentSettings
+	ToolExecutions   []interface{}
+	WorkspaceID      string
+	WorkflowID       string
+	PayloadByInputID map[string]domain.Payload
+	AgentNodeID      string
 }
 
 // RecordHistoryParams encapsulates parameters for recordExecutionHistory
@@ -333,6 +367,8 @@ type RecordHistoryParams struct {
 	AgentSettings       AgentSettings
 	ExecutedToolNodeIDs map[string]bool
 	Recorder            domain.ExecutionHistoryRecorder
+	PayloadByInputID    map[string]domain.Payload
+	AgentNodeID         string
 }
 
 // NodeExecutionHistoryParams encapsulates parameters for recordNodeExecutionHistory
@@ -341,6 +377,7 @@ type NodeExecutionHistoryParams struct {
 	IntegrationType string
 	ActionType      string
 	Recorder        domain.ExecutionHistoryRecorder
+	ItemsByInputID  map[string]domain.NodeItems
 }
 
 func (e *AIAgentExecutorV2) ResolveAgentSettings(ctx context.Context, executeParams ExecuteParams, workflow domain.Workflow) (AgentSettings, error) {
@@ -556,7 +593,6 @@ func (e *AIAgentExecutorV2) GetNodeIDFromOutputID(outputID string) string {
 	return ""
 }
 
-
 func (e *AIAgentExecutorV2) publishConnectedNodeEventsAfterExecution(ctx context.Context, params PublishEventsParams) error {
 	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
 	if !ok {
@@ -587,6 +623,8 @@ func (e *AIAgentExecutorV2) publishConnectedNodeEventsAfterExecution(ctx context
 			AgentSettings:       params.AgentSettings,
 			ExecutedToolNodeIDs: executedToolNodeIDs,
 			Recorder:            executionContext.HistoryRecorder,
+			PayloadByInputID:    params.PayloadByInputID,
+			AgentNodeID:         params.AgentNodeID,
 		}
 		e.recordExecutionHistory(ctx, historyParams)
 	}
@@ -594,9 +632,43 @@ func (e *AIAgentExecutorV2) publishConnectedNodeEventsAfterExecution(ctx context
 	return nil
 }
 
-
 func (e *AIAgentExecutorV2) publishNodeEvents(ctx context.Context, nodeID, workflowID, executionID string) {
-	// Publish node execution started event
+	executionContext, hasContext := domain.GetWorkflowExecutionContext(ctx)
+
+	var itemsByInputID map[string]domain.NodeItems
+	var itemsByOutputID map[string]domain.NodeItems
+
+	if hasContext && executionContext.ToolTracker != nil {
+		executionContext.ToolTracker.ForEachExecution(func(trackedNodeID string, toolExec *domain.ToolExecution) {
+			if trackedNodeID == nodeID {
+				itemsByInputID = make(map[string]domain.NodeItems)
+				if len(toolExec.InputItems) > 0 {
+					inputID := fmt.Sprintf("input-%s-0", nodeID)
+					itemsByInputID[inputID] = domain.NodeItems{
+						FromNodeID: nodeID,
+						Items:      toolExec.InputItems,
+					}
+				}
+
+				itemsByOutputID = make(map[string]domain.NodeItems)
+				if len(toolExec.OutputItems) > 0 {
+					outputID := fmt.Sprintf("output-%s-0", nodeID)
+					itemsByOutputID[outputID] = domain.NodeItems{
+						FromNodeID: nodeID,
+						Items:      toolExec.OutputItems,
+					}
+				}
+			}
+		})
+	}
+
+	if itemsByInputID == nil {
+		itemsByInputID = map[string]domain.NodeItems{}
+	}
+	if itemsByOutputID == nil {
+		itemsByOutputID = map[string]domain.NodeItems{}
+	}
+
 	startedEvent := &domain.NodeExecutionStartedEvent{
 		WorkflowID:          workflowID,
 		WorkflowExecutionID: executionID,
@@ -610,14 +682,13 @@ func (e *AIAgentExecutorV2) publishNodeEvents(ctx context.Context, nodeID, workf
 		return
 	}
 
-	// Publish node execution completed event
 	completedEvent := &domain.NodeExecutedEvent{
 		WorkflowID:          workflowID,
 		WorkflowExecutionID: executionID,
 		NodeID:              nodeID,
 		Timestamp:           time.Now().UnixNano(),
-		ItemsByInputID:      map[string]domain.NodeItems{},
-		ItemsByOutputID:     map[string]domain.NodeItems{},
+		ItemsByInputID:      itemsByInputID,
+		ItemsByOutputID:     itemsByOutputID,
 		ExecutionOrder:      0, // Connected nodes don't have execution order
 	}
 
@@ -627,43 +698,142 @@ func (e *AIAgentExecutorV2) publishNodeEvents(ctx context.Context, nodeID, workf
 	}
 }
 
-func (e *AIAgentExecutorV2) recordExecutionHistory(ctx context.Context, params RecordHistoryParams) {
-	e.recordLLMExecutionIfPresent(params.ExecuteParams.LLM, params.Recorder)
-	e.recordMemoryExecutionIfPresent(params.ExecuteParams.Memory, params.Recorder)
-	e.recordToolExecutions(ctx, params.AgentSettings, params.ExecutedToolNodeIDs, params.Recorder)
+func (e *AIAgentExecutorV2) convertPayloadToItems(payloadByInputID map[string]domain.Payload, fromNodeID string) map[string]domain.NodeItems {
+	itemsByInputID := make(map[string]domain.NodeItems)
+
+	for inputID, payload := range payloadByInputID {
+		items, err := payload.ToItems()
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to convert payload to items for input %s", inputID)
+			continue
+		}
+
+		itemsByInputID[inputID] = domain.NodeItems{
+			FromNodeID: fromNodeID,
+			Items:      items,
+		}
+	}
+
+	return itemsByInputID
 }
 
-func (e *AIAgentExecutorV2) recordLLMExecutionIfPresent(llm *NodeReference, recorder domain.ExecutionHistoryRecorder) {
+func (e *AIAgentExecutorV2) recordExecutionHistory(ctx context.Context, params RecordHistoryParams) {
+	itemsByInputID := e.convertPayloadToItems(params.PayloadByInputID, params.AgentNodeID)
+
+	e.recordLLMExecutionIfPresent(params.ExecuteParams.LLM, params.Recorder, itemsByInputID)
+	e.recordMemoryExecutionIfPresent(params.ExecuteParams.Memory, params.Recorder, itemsByInputID)
+	e.recordToolExecutions(ctx, params.AgentSettings, params.ExecutedToolNodeIDs, params.Recorder, itemsByInputID, params.AgentNodeID)
+}
+
+func (e *AIAgentExecutorV2) recordLLMExecutionIfPresent(llm *NodeReference, recorder domain.ExecutionHistoryRecorder, itemsByInputID map[string]domain.NodeItems) {
 	if llm == nil {
 		return
 	}
-	e.recordNodeExecutionHistory(NodeExecutionHistoryParams{
+
+	count := e.llmExecutionCounts[llm.NodeID]
+	if count == 0 {
+		count = 1
+	}
+
+	llmItemsByInputID := make(map[string]domain.NodeItems)
+	inputID := fmt.Sprintf("input-%s-0", llm.NodeID)
+
+	var agentNodeID string
+	for _, items := range itemsByInputID {
+		agentNodeID = items.FromNodeID
+		break
+	}
+
+	inputItems := make([]domain.Item, count)
+	for i := 0; i < count; i++ {
+		inputItems[i] = domain.Item(map[string]interface{}{"prompt": "LLM processing request"})
+	}
+
+	llmItemsByInputID[inputID] = domain.NodeItems{
+		FromNodeID: agentNodeID,
+		Items:      inputItems,
+	}
+
+	llmItemsByOutputID := make(map[string]domain.NodeItems)
+	outputID := fmt.Sprintf("output-%s-0", llm.NodeID)
+
+	outputItems := make([]domain.Item, count)
+	for i := 0; i < count; i++ {
+		outputItems[i] = domain.Item(map[string]interface{}{"response": "LLM response"})
+	}
+
+	llmItemsByOutputID[outputID] = domain.NodeItems{
+		FromNodeID: llm.NodeID,
+		Items:      outputItems,
+	}
+
+	e.recordNodeExecutionHistoryWithOutput(NodeExecutionHistoryParams{
 		NodeID:          llm.NodeID,
 		IntegrationType: "openai",
 		ActionType:      "chat_completion",
 		Recorder:        recorder,
-	})
+		ItemsByInputID:  llmItemsByInputID,
+	}, llmItemsByOutputID)
 }
 
-func (e *AIAgentExecutorV2) recordMemoryExecutionIfPresent(memory *NodeReference, recorder domain.ExecutionHistoryRecorder) {
+func (e *AIAgentExecutorV2) recordMemoryExecutionIfPresent(memory *NodeReference, recorder domain.ExecutionHistoryRecorder, itemsByInputID map[string]domain.NodeItems) {
 	if memory == nil {
 		return
 	}
-	e.recordNodeExecutionHistory(NodeExecutionHistoryParams{
+
+	count := e.memoryExecutionCounts[memory.NodeID]
+	if count == 0 {
+		count = 1
+	}
+
+	memoryItemsByInputID := make(map[string]domain.NodeItems)
+	inputID := fmt.Sprintf("input-%s-0", memory.NodeID)
+
+	var agentNodeID string
+	for _, items := range itemsByInputID {
+		agentNodeID = items.FromNodeID
+		break
+	}
+
+	inputItems := make([]domain.Item, count)
+	for i := 0; i < count; i++ {
+		inputItems[i] = domain.Item(map[string]interface{}{"conversation": "Memory storing conversation"})
+	}
+
+	memoryItemsByInputID[inputID] = domain.NodeItems{
+		FromNodeID: agentNodeID,
+		Items:      inputItems,
+	}
+
+	memoryItemsByOutputID := make(map[string]domain.NodeItems)
+	outputID := fmt.Sprintf("output-%s-0", memory.NodeID)
+
+	outputItems := make([]domain.Item, count)
+	for i := 0; i < count; i++ {
+		outputItems[i] = domain.Item(map[string]interface{}{"stored": "Memory stored successfully"})
+	}
+
+	memoryItemsByOutputID[outputID] = domain.NodeItems{
+		FromNodeID: memory.NodeID,
+		Items:      outputItems,
+	}
+
+	e.recordNodeExecutionHistoryWithOutput(NodeExecutionHistoryParams{
 		NodeID:          memory.NodeID,
 		IntegrationType: "flowbaker_agent_memory",
 		ActionType:      "store_conversation",
 		Recorder:        recorder,
-	})
+		ItemsByInputID:  memoryItemsByInputID,
+	}, memoryItemsByOutputID)
 }
 
-func (e *AIAgentExecutorV2) recordToolExecutions(ctx context.Context, agentSettings AgentSettings, executedToolNodeIDs map[string]bool, recorder domain.ExecutionHistoryRecorder) {
+func (e *AIAgentExecutorV2) recordToolExecutions(ctx context.Context, agentSettings AgentSettings, executedToolNodeIDs map[string]bool, recorder domain.ExecutionHistoryRecorder, itemsByInputID map[string]domain.NodeItems, agentNodeID string) {
 	execContext, hasContext := domain.GetWorkflowExecutionContext(ctx)
-	
+
 	if e.canUseDetailedToolTracker(hasContext, execContext) {
-		e.recordDetailedToolExecutions(execContext, recorder)
+		e.recordDetailedToolExecutions(execContext, recorder, itemsByInputID, agentNodeID)
 	} else {
-		e.recordBasicToolExecutions(executedToolNodeIDs, agentSettings.Tools, recorder)
+		e.recordBasicToolExecutions(executedToolNodeIDs, agentSettings.Tools, recorder, itemsByInputID)
 	}
 }
 
@@ -671,18 +841,37 @@ func (e *AIAgentExecutorV2) canUseDetailedToolTracker(hasContext bool, execConte
 	return hasContext && execContext != nil && execContext.ToolTracker != nil
 }
 
-func (e *AIAgentExecutorV2) recordDetailedToolExecutions(execContext *domain.WorkflowExecutionContext, recorder domain.ExecutionHistoryRecorder) {
+func (e *AIAgentExecutorV2) recordDetailedToolExecutions(execContext *domain.WorkflowExecutionContext, recorder domain.ExecutionHistoryRecorder, itemsByInputID map[string]domain.NodeItems, agentNodeID string) {
 	execContext.ToolTracker.ForEachExecution(func(nodeID string, toolExec *domain.ToolExecution) {
-		e.recordNodeExecutionHistory(NodeExecutionHistoryParams{
+		toolItemsByInputID := make(map[string]domain.NodeItems)
+		inputID := fmt.Sprintf("input-%s-0", nodeID)
+		if len(toolExec.InputItems) > 0 {
+			toolItemsByInputID[inputID] = domain.NodeItems{
+				FromNodeID: agentNodeID,
+				Items:      toolExec.InputItems,
+			}
+		}
+
+		toolItemsByOutputID := make(map[string]domain.NodeItems)
+		outputID := fmt.Sprintf("output-%s-0", nodeID)
+		if len(toolExec.OutputItems) > 0 {
+			toolItemsByOutputID[outputID] = domain.NodeItems{
+				FromNodeID: nodeID,
+				Items:      toolExec.OutputItems,
+			}
+		}
+
+		e.recordNodeExecutionHistoryWithOutput(NodeExecutionHistoryParams{
 			NodeID:          nodeID,
 			IntegrationType: string(toolExec.Identifier.IntegrationType),
 			ActionType:      string(toolExec.Identifier.ActionType),
 			Recorder:        recorder,
-		})
+			ItemsByInputID:  toolItemsByInputID,
+		}, toolItemsByOutputID)
 	})
 }
 
-func (e *AIAgentExecutorV2) recordBasicToolExecutions(executedToolNodeIDs map[string]bool, tools []ToolExecutor, recorder domain.ExecutionHistoryRecorder) {
+func (e *AIAgentExecutorV2) recordBasicToolExecutions(executedToolNodeIDs map[string]bool, tools []ToolExecutor, recorder domain.ExecutionHistoryRecorder, itemsByInputID map[string]domain.NodeItems) {
 	for nodeID := range executedToolNodeIDs {
 		if tool := e.findToolByNodeID(nodeID, tools); tool != nil {
 			e.recordNodeExecutionHistory(NodeExecutionHistoryParams{
@@ -690,6 +879,7 @@ func (e *AIAgentExecutorV2) recordBasicToolExecutions(executedToolNodeIDs map[st
 				IntegrationType: string(tool.IntegrationType),
 				ActionType:      string(tool.WorkflowNode.ActionType),
 				Recorder:        recorder,
+				ItemsByInputID:  itemsByInputID,
 			})
 		}
 	}
@@ -706,25 +896,25 @@ func (e *AIAgentExecutorV2) findToolByNodeID(nodeID string, tools []ToolExecutor
 
 func (e *AIAgentExecutorV2) getExecutedToolNodeIDs(executionContext *domain.WorkflowExecutionContext, params PublishEventsParams) map[string]bool {
 	executedToolNodeIDs := e.getToolNodeIDsFromTracker(executionContext)
-	
+
 	if e.shouldUseLegacyResolution(executedToolNodeIDs) {
 		executedToolNodeIDs = e.getToolNodeIDsFromExecutions(params)
 	}
-	
+
 	return executedToolNodeIDs
 }
 
 func (e *AIAgentExecutorV2) getToolNodeIDsFromTracker(executionContext *domain.WorkflowExecutionContext) map[string]bool {
 	executedToolNodeIDs := make(map[string]bool)
-	
+
 	if !e.hasToolTracker(executionContext) {
 		return executedToolNodeIDs
 	}
-	
+
 	for _, nodeID := range executionContext.ToolTracker.GetExecutedNodeIDs() {
 		executedToolNodeIDs[nodeID] = true
 	}
-	
+
 	return executedToolNodeIDs
 }
 
@@ -739,24 +929,24 @@ func (e *AIAgentExecutorV2) shouldUseLegacyResolution(executedToolNodeIDs map[st
 func (e *AIAgentExecutorV2) getToolNodeIDsFromExecutions(params PublishEventsParams) map[string]bool {
 	toolLookup := e.buildToolLookupMap(params.AgentSettings.Tools)
 	executedToolNodeIDs := make(map[string]bool)
-	
+
 	for _, toolExecInterface := range params.ToolExecutions {
 		if nodeID := e.extractNodeIDFromExecution(toolExecInterface, toolLookup); nodeID != "" {
 			executedToolNodeIDs[nodeID] = true
 		}
 	}
-	
+
 	return executedToolNodeIDs
 }
 
 func (e *AIAgentExecutorV2) buildToolLookupMap(tools []ToolExecutor) map[string]string {
 	toolLookup := make(map[string]string)
-	
+
 	for _, tool := range tools {
 		toolName := e.generateToolName(tool)
 		toolLookup[toolName] = tool.NodeID
 	}
-	
+
 	return toolLookup
 }
 
@@ -769,15 +959,15 @@ func (e *AIAgentExecutorV2) extractNodeIDFromExecution(toolExecInterface interfa
 	if !ok {
 		return ""
 	}
-	
+
 	if e.hasMetadataNodeID(toolExec) {
 		return toolExec.Metadata.NodeID
 	}
-	
+
 	if nodeID, exists := toolLookup[toolExec.ToolName]; exists {
 		return nodeID
 	}
-	
+
 	return ""
 }
 
@@ -786,8 +976,66 @@ func (e *AIAgentExecutorV2) hasMetadataNodeID(toolExec FunctionCallExecution) bo
 }
 
 func (e *AIAgentExecutorV2) recordNodeExecutionHistory(params NodeExecutionHistoryParams) {
+	e.recordNodeExecutionHistoryWithOutput(params, map[string]domain.NodeItems{})
+}
+
+func (e *AIAgentExecutorV2) recordNodeExecutionHistoryWithOutput(params NodeExecutionHistoryParams, itemsByOutputID map[string]domain.NodeItems) {
 	now := time.Now()
-	
+
+	inputItemsCount, inputItemsSizeInBytes := e.calculateInputMetrics(params.ItemsByInputID)
+	outputItemsCount, outputItemsSizeInBytes := e.calculateOutputMetrics(itemsByOutputID)
+
+	e.recordNodeExecution(params, now, inputItemsCount, inputItemsSizeInBytes, outputItemsCount, outputItemsSizeInBytes)
+	e.recordNodeExecutionEntry(params, itemsByOutputID, now)
+}
+
+func (e *AIAgentExecutorV2) calculateInputMetrics(itemsByInputID map[string]domain.NodeItems) (domain.InputItemsCount, domain.InputItemsSizeInBytes) {
+	inputItemsCount := make(domain.InputItemsCount)
+	inputItemsSizeInBytes := make(domain.InputItemsSizeInBytes)
+
+	for inputID, nodeItems := range itemsByInputID {
+		inputItemsCount[inputID] = int64(len(nodeItems.Items))
+		inputItemsSizeInBytes[inputID] = e.calculateItemsSize(nodeItems.Items)
+	}
+
+	return inputItemsCount, inputItemsSizeInBytes
+}
+
+func (e *AIAgentExecutorV2) calculateOutputMetrics(itemsByOutputID map[string]domain.NodeItems) (domain.OutputItemsCount, domain.OutputItemsSizeInBytes) {
+	outputItemsCount := make(domain.OutputItemsCount)
+	outputItemsSizeInBytes := make(domain.OutputItemsSizeInBytes)
+
+	for outputID, nodeItems := range itemsByOutputID {
+		if index := e.extractIndexFromOutputID(outputID); index >= 0 {
+			outputItemsCount[index] = int64(len(nodeItems.Items))
+			outputItemsSizeInBytes[index] = e.calculateItemsSize(nodeItems.Items)
+		}
+	}
+
+	return outputItemsCount, outputItemsSizeInBytes
+}
+
+func (e *AIAgentExecutorV2) calculateItemsSize(items []domain.Item) int64 {
+	var totalSize int64
+	for _, item := range items {
+		if itemBytes, err := json.Marshal(item); err == nil {
+			totalSize += int64(len(itemBytes))
+		}
+	}
+	return totalSize
+}
+
+func (e *AIAgentExecutorV2) extractIndexFromOutputID(outputID string) int64 {
+	parts := strings.Split(outputID, "-")
+	if len(parts) >= 3 {
+		if index, err := strconv.ParseInt(parts[len(parts)-1], 10, 64); err == nil {
+			return index
+		}
+	}
+	return -1
+}
+
+func (e *AIAgentExecutorV2) recordNodeExecution(params NodeExecutionHistoryParams, now time.Time, inputItemsCount domain.InputItemsCount, inputItemsSizeInBytes domain.InputItemsSizeInBytes, outputItemsCount domain.OutputItemsCount, outputItemsSizeInBytes domain.OutputItemsSizeInBytes) {
 	params.Recorder.AddNodeExecution(domain.NodeExecution{
 		ID:                     xid.New().String(),
 		NodeID:                 params.NodeID,
@@ -796,16 +1044,18 @@ func (e *AIAgentExecutorV2) recordNodeExecutionHistory(params NodeExecutionHisto
 		StartedAt:              now,
 		EndedAt:                now,
 		ExecutionOrder:         0,
-		InputItemsCount:        domain.InputItemsCount{},
-		InputItemsSizeInBytes:  domain.InputItemsSizeInBytes{},
-		OutputItemsCount:       domain.OutputItemsCount{},
-		OutputItemsSizeInBytes: domain.OutputItemsSizeInBytes{},
+		InputItemsCount:        inputItemsCount,
+		InputItemsSizeInBytes:  inputItemsSizeInBytes,
+		OutputItemsCount:       outputItemsCount,
+		OutputItemsSizeInBytes: outputItemsSizeInBytes,
 	})
+}
 
+func (e *AIAgentExecutorV2) recordNodeExecutionEntry(params NodeExecutionHistoryParams, itemsByOutputID map[string]domain.NodeItems, now time.Time) {
 	params.Recorder.AddNodeExecutionEntry(domain.NodeExecutionEntry{
 		NodeID:          params.NodeID,
-		ItemsByInputID:  map[string]domain.NodeItems{},
-		ItemsByOutputID: map[string]domain.NodeItems{},
+		ItemsByInputID:  params.ItemsByInputID,
+		ItemsByOutputID: itemsByOutputID,
 		EventType:       domain.NodeExecuted,
 		Timestamp:       now.UnixNano(),
 		ExecutionOrder:  0,

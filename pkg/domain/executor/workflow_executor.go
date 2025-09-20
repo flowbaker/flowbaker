@@ -124,6 +124,7 @@ const (
 func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload domain.Payload) (ExecutionResult, error) {
 	workspaceID := w.workflow.WorkspaceID
 
+	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContextAndRecorder(ctx, workspaceID, w.workflow.ID, w.executionID, w.enableEvents, w)
 
 	log.Info().Msgf("Executing node %s", nodeID)
@@ -872,10 +873,8 @@ func ConvertPayloadsToItems(payloads []domain.Payload) []domain.Item {
 	return allItems
 }
 
-// Implement ExecutionHistoryRecorder interface
 func (w *WorkflowExecutor) AddNodeExecution(execution domain.NodeExecution) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 	w.nodeExecutions = append(w.nodeExecutions, execution)
 }
-

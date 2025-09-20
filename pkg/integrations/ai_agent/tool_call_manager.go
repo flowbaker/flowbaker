@@ -131,7 +131,6 @@ func (m *DefaultToolCallManager) DiscoverTools(ctx context.Context, toolExecutor
 		}
 	}
 
-
 	return allTools, nil
 }
 
@@ -163,7 +162,6 @@ func (m *DefaultToolCallManager) convertActionToTool(action domain.IntegrationAc
 		"properties": properties,
 		"required":   required,
 	}
-
 
 	return ToolDefinition{
 		Name:                toolName,
@@ -222,7 +220,6 @@ func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodePro
 			}
 		}
 	}
-
 
 	if len(prop.Options) > 0 {
 		var enumValues []interface{}
@@ -322,7 +319,7 @@ func (m *DefaultToolCallManager) GetPeekableData(ctx context.Context, toolDefini
 			peekParams := domain.PeekParams{
 				PeekableType: peekableType,
 				WorkspaceID:  toolDef.ToolExecutor.WorkspaceID,
-				UserID:       "", // Will be set by the integration if needed
+				UserID:       "",           // Will be set by the integration if needed
 				PayloadJSON:  []byte("{}"), // Default empty payload
 			}
 
@@ -391,11 +388,47 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		return result, err
 	}
 
+	var inputItems []domain.Item
+	if len(integrationInput.InputJSON) > 0 {
+		var payloadItems []interface{}
+		if jsonErr := json.Unmarshal(integrationInput.InputJSON, &payloadItems); jsonErr == nil {
+			for _, item := range payloadItems {
+				inputItems = append(inputItems, domain.Item(item))
+			}
+		}
+	}
 
 	output, err := toolDef.ToolExecutor.Executor.Execute(ctx, integrationInput)
 
 	result.EndTime = time.Now()
 	result.Duration = result.EndTime.Sub(result.StartTime)
+
+	var outputItems []domain.Item
+	if err == nil && len(output.ResultJSONByOutputID) > 0 {
+		for _, payload := range output.ResultJSONByOutputID {
+			items, convErr := payload.ToItems()
+			if convErr == nil {
+				outputItems = append(outputItems, items...)
+			}
+		}
+	}
+
+	if hasWorkflowCtx && workflowCtx.ToolTracker != nil {
+		toolExecution := &domain.ToolExecution{
+			Identifier: domain.ToolIdentifier{
+				NodeID:          toolNodeID,
+				IntegrationType: toolDef.ToolExecutor.IntegrationType,
+				ActionType:      toolDef.ActionType,
+			},
+			ExecutedAt:  startTime,
+			CompletedAt: time.Now(),
+			Result:      output,
+			Error:       err,
+			InputItems:  inputItems,
+			OutputItems: outputItems,
+		}
+		workflowCtx.ToolTracker.RecordExecution(toolExecution)
+	}
 
 	if err != nil {
 		result.Success = false
@@ -427,7 +460,6 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		}
 	}
 
-
 	return result, nil
 }
 
@@ -446,7 +478,6 @@ func (m *DefaultToolCallManager) resolveToolParameters(ctx context.Context, tool
 		presetSettings[key] = value
 	}
 
-
 	resolutionCtx := ParameterResolutionContext{
 		WorkflowNode:        toolDef.ToolExecutor.WorkflowNode,
 		PresetSettings:      presetSettings,
@@ -455,11 +486,10 @@ func (m *DefaultToolCallManager) resolveToolParameters(ctx context.Context, tool
 	}
 
 	result, err := m.parameterResolver.ResolveParameters(resolutionCtx)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve parameters for tool %s: %w", toolCall.Name, err)
 	}
-
 
 	err = m.resolvePeekableValues(ctx, result, toolDef)
 	if err != nil {
@@ -468,8 +498,6 @@ func (m *DefaultToolCallManager) resolveToolParameters(ctx context.Context, tool
 			Str("tool_name", toolCall.Name).
 			Msg("Failed to resolve peekable values, continuing with unresolved values")
 	}
-
-
 
 	return result, nil
 }
@@ -498,7 +526,7 @@ func (m *DefaultToolCallManager) createIntegrationInputWithResolvedParams(
 
 	integrationInput := domain.IntegrationInput{
 		ActionType: toolDef.ActionType,
-		InputJSON:  []byte("{}"),
+		InputJSON:  payloadJSON,
 		PayloadByInputID: map[string]domain.Payload{
 			"tool_call_input": domain.Payload(payloadJSON),
 		},
@@ -509,7 +537,6 @@ func (m *DefaultToolCallManager) createIntegrationInputWithResolvedParams(
 			WorkspaceID: toolDef.ToolExecutor.WorkspaceID,
 		},
 	}
-
 
 	return integrationInput, nil
 }
@@ -695,7 +722,7 @@ func (m *DefaultToolCallManager) resolvePeekableValues(ctx context.Context, reso
 		}
 
 		resolvedValue, err := m.performPeekableResolution(ctx, fieldValue, peekableType, toolDef)
-		
+
 		if err != nil {
 			log.Error().
 				Err(err).
@@ -722,7 +749,6 @@ func (m *DefaultToolCallManager) resolvePeekableValues(ctx context.Context, reso
 	return nil
 }
 
-
 // performPeekableResolution performs the actual peekable resolution using the tool executor
 func (m *DefaultToolCallManager) performPeekableResolution(ctx context.Context, displayValue interface{}, peekableType domain.IntegrationPeekableType, toolDef *ToolDefinition) (interface{}, error) {
 	// Convert display value to string for processing
@@ -741,7 +767,7 @@ func (m *DefaultToolCallManager) performPeekableResolution(ctx context.Context, 
 	peekParams := domain.PeekParams{
 		PeekableType: peekableType,
 		WorkspaceID:  toolDef.ToolExecutor.WorkspaceID,
-		UserID:       "", // Will be set by the integration if needed
+		UserID:       "",           // Will be set by the integration if needed
 		PayloadJSON:  []byte("{}"), // Default empty payload
 	}
 
@@ -764,7 +790,6 @@ func (m *DefaultToolCallManager) performPeekableResolution(ctx context.Context, 
 		return resolvedValue, nil
 	}
 
-
 	// If still no match, return the display value as-is (it might be a valid ID already)
 	return displayValue, nil
 }
@@ -776,7 +801,7 @@ func (m *DefaultToolCallManager) findMatchingPeekValue(displayValue string, peek
 	for _, item := range peekResults {
 		// Check if display value matches the content (display text)
 		if strings.ToLower(item.Content) == displayLower {
-			return item.Value  // Return the actual ID, not the display name
+			return item.Value // Return the actual ID, not the display name
 		}
 
 		// Check if display value matches the value (already an ID)
@@ -786,12 +811,12 @@ func (m *DefaultToolCallManager) findMatchingPeekValue(displayValue string, peek
 
 		// Check if display value IS the key (filename match)
 		if strings.ToLower(item.Key) == displayLower {
-			return item.Value  // Return the actual ID, not the display name
+			return item.Value // Return the actual ID, not the display name
 		}
 
 		// For file names, check if it's part of the content (handle extensions)
 		if strings.Contains(strings.ToLower(item.Content), displayLower) {
-			return item.Value  // Return the actual ID, not the display name
+			return item.Value // Return the actual ID, not the display name
 		}
 	}
 
@@ -815,4 +840,3 @@ func (m *DefaultToolCallManager) findPropertyByKey(properties []domain.NodePrope
 	}
 	return nil
 }
-
