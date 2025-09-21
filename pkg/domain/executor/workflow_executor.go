@@ -280,7 +280,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		agentNodeExecutions = mappers.DomainAgentNodeExecutionsToFlowbaker(executionContext.AgentNodeExecutions)
 
 		agentHistoryEntries := w.convertAgentExecutionsToHistoryEntries(executionContext.AgentNodeExecutions)
-		originalHistoryCount := len(historyEntries)
 		historyEntries = append(historyEntries, agentHistoryEntries...)
 
 	}
