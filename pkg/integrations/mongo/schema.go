@@ -59,7 +59,7 @@ var (
 						Name:        "Document",
 						Description: "The document to insert",
 						Required:    true,
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						SyntaxHighlightingOpts: domain.SyntaxHighlightingOpts{
 							Extension: domain.PropertySyntaxExtensionType_JSON,
 						},
@@ -116,7 +116,7 @@ var (
 									Name:        "Document",
 									Description: "The document to insert",
 									Required:    true,
-									Type:        domain.NodePropertyType_Object,
+									Type:        domain.NodePropertyType_CodeEditor,
 									SyntaxHighlightingOpts: domain.SyntaxHighlightingOpts{
 										Extension: domain.PropertySyntaxExtensionType_JSON,
 									},
@@ -164,7 +164,7 @@ var (
 						Name:        "Filter",
 						Description: "The filter criteria",
 						Required:    true,
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						SyntaxHighlightingOpts: domain.SyntaxHighlightingOpts{
 							Extension: domain.PropertySyntaxExtensionType_JSON,
 						},
@@ -209,7 +209,7 @@ var (
 						Name:        "Filter",
 						Description: "The filter criteria",
 						Required:    true,
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						SyntaxHighlightingOpts: domain.SyntaxHighlightingOpts{
 							Extension: domain.PropertySyntaxExtensionType_JSON,
 						},
@@ -268,7 +268,7 @@ var (
 						Name:        "Filter",
 						Description: "The filter criteria",
 						Required:    true,
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						SyntaxHighlightingOpts: domain.SyntaxHighlightingOpts{
 							Extension: domain.PropertySyntaxExtensionType_JSON,
 						},
@@ -278,7 +278,7 @@ var (
 						Name:        "Update",
 						Description: "The update operations to apply",
 						Required:    true,
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						SyntaxHighlightingOpts: domain.SyntaxHighlightingOpts{
 							Extension: domain.PropertySyntaxExtensionType_JSON,
 						},
@@ -323,7 +323,7 @@ var (
 						Name:        "Filter",
 						Description: "The filter criteria",
 						Required:    true,
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						SyntaxHighlightingOpts: domain.SyntaxHighlightingOpts{
 							Extension: domain.PropertySyntaxExtensionType_JSON,
 						},
@@ -333,7 +333,7 @@ var (
 						Name:        "Update",
 						Description: "The update operations to apply",
 						Required:    true,
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						SyntaxHighlightingOpts: domain.SyntaxHighlightingOpts{
 							Extension: domain.PropertySyntaxExtensionType_JSON,
 						},
@@ -378,7 +378,7 @@ var (
 						Name:        "Filter",
 						Description: "The filter criteria",
 						Required:    true,
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						SyntaxHighlightingOpts: domain.SyntaxHighlightingOpts{
 							Extension: domain.PropertySyntaxExtensionType_JSON,
 						},
@@ -423,7 +423,7 @@ var (
 						Name:        "Filter",
 						Description: "The filter criteria",
 						Required:    true,
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						SyntaxHighlightingOpts: domain.SyntaxHighlightingOpts{
 							Extension: domain.PropertySyntaxExtensionType_JSON,
 						},

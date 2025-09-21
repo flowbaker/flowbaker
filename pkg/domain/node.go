@@ -16,7 +16,7 @@ const (
 	NodePropertyType_Map           NodePropertyType = "map"
 	NodePropertyType_Date          NodePropertyType = "date"
 	NodePropertyType_File          NodePropertyType = "file"
-	NodePropertyType_Object        NodePropertyType = "object"
+	NodePropertyType_CodeEditor    NodePropertyType = "code_editor"
 	NodePropertyType_Query         NodePropertyType = "query"
 	NodePropertyType_OAuth         NodePropertyType = "oauth"
 	NodePropertyType_Endpoint      NodePropertyType = "endpoint"

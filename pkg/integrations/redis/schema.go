@@ -307,7 +307,7 @@ var (
 						Name:             "Fields",
 						Description:      "Object with field-value pairs",
 						Required:         true,
-						Type:             domain.NodePropertyType_Object,
+						Type:             domain.NodePropertyType_CodeEditor,
 						ExpressionChoice: true,
 					},
 				},

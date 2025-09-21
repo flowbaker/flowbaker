@@ -131,7 +131,6 @@ func (m *DefaultToolCallManager) DiscoverTools(ctx context.Context, toolExecutor
 		}
 	}
 
-
 	return allTools, nil
 }
 
@@ -163,7 +162,6 @@ func (m *DefaultToolCallManager) convertActionToTool(action domain.IntegrationAc
 		"properties": properties,
 		"required":   required,
 	}
-
 
 	return ToolDefinition{
 		Name:                toolName,
@@ -223,7 +221,6 @@ func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodePro
 		}
 	}
 
-
 	if len(prop.Options) > 0 {
 		var enumValues []interface{}
 		for _, option := range prop.Options {
@@ -238,7 +235,7 @@ func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodePro
 // mapNodePropertyType maps NodeProperty types to JSON Schema types
 func (m *DefaultToolCallManager) mapNodePropertyType(propType domain.NodePropertyType) string {
 	switch propType {
-	case domain.NodePropertyType_String, domain.NodePropertyType_Text, domain.NodePropertyType_TagInput:
+	case domain.NodePropertyType_String, domain.NodePropertyType_Text, domain.NodePropertyType_CodeEditor:
 		return "string"
 	case domain.NodePropertyType_Integer:
 		return "integer"
@@ -248,9 +245,9 @@ func (m *DefaultToolCallManager) mapNodePropertyType(propType domain.NodePropert
 		return "number"
 	case domain.NodePropertyType_Boolean:
 		return "boolean"
-	case domain.NodePropertyType_Array:
+	case domain.NodePropertyType_Array, domain.NodePropertyType_TagInput:
 		return "array"
-	case domain.NodePropertyType_Object, domain.NodePropertyType_Map:
+	case domain.NodePropertyType_Map:
 		return "object"
 	case domain.NodePropertyType_Date:
 		return "string"
@@ -322,7 +319,7 @@ func (m *DefaultToolCallManager) GetPeekableData(ctx context.Context, toolDefini
 			peekParams := domain.PeekParams{
 				PeekableType: peekableType,
 				WorkspaceID:  toolDef.ToolExecutor.WorkspaceID,
-				UserID:       "", // Will be set by the integration if needed
+				UserID:       "",           // Will be set by the integration if needed
 				PayloadJSON:  []byte("{}"), // Default empty payload
 			}
 
@@ -391,7 +388,6 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		return result, err
 	}
 
-
 	output, err := toolDef.ToolExecutor.Executor.Execute(ctx, integrationInput)
 
 	result.EndTime = time.Now()
@@ -427,7 +423,6 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		}
 	}
 
-
 	return result, nil
 }
 
@@ -446,7 +441,6 @@ func (m *DefaultToolCallManager) resolveToolParameters(ctx context.Context, tool
 		presetSettings[key] = value
 	}
 
-
 	resolutionCtx := ParameterResolutionContext{
 		WorkflowNode:        toolDef.ToolExecutor.WorkflowNode,
 		PresetSettings:      presetSettings,
@@ -455,11 +449,10 @@ func (m *DefaultToolCallManager) resolveToolParameters(ctx context.Context, tool
 	}
 
 	result, err := m.parameterResolver.ResolveParameters(resolutionCtx)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve parameters for tool %s: %w", toolCall.Name, err)
 	}
-
 
 	err = m.resolvePeekableValues(ctx, result, toolDef)
 	if err != nil {
@@ -468,8 +461,6 @@ func (m *DefaultToolCallManager) resolveToolParameters(ctx context.Context, tool
 			Str("tool_name", toolCall.Name).
 			Msg("Failed to resolve peekable values, continuing with unresolved values")
 	}
-
-
 
 	return result, nil
 }
@@ -509,7 +500,6 @@ func (m *DefaultToolCallManager) createIntegrationInputWithResolvedParams(
 			WorkspaceID: toolDef.ToolExecutor.WorkspaceID,
 		},
 	}
-
 
 	return integrationInput, nil
 }
@@ -695,7 +685,7 @@ func (m *DefaultToolCallManager) resolvePeekableValues(ctx context.Context, reso
 		}
 
 		resolvedValue, err := m.performPeekableResolution(ctx, fieldValue, peekableType, toolDef)
-		
+
 		if err != nil {
 			log.Error().
 				Err(err).
@@ -722,7 +712,6 @@ func (m *DefaultToolCallManager) resolvePeekableValues(ctx context.Context, reso
 	return nil
 }
 
-
 // performPeekableResolution performs the actual peekable resolution using the tool executor
 func (m *DefaultToolCallManager) performPeekableResolution(ctx context.Context, displayValue interface{}, peekableType domain.IntegrationPeekableType, toolDef *ToolDefinition) (interface{}, error) {
 	// Convert display value to string for processing
@@ -741,7 +730,7 @@ func (m *DefaultToolCallManager) performPeekableResolution(ctx context.Context, 
 	peekParams := domain.PeekParams{
 		PeekableType: peekableType,
 		WorkspaceID:  toolDef.ToolExecutor.WorkspaceID,
-		UserID:       "", // Will be set by the integration if needed
+		UserID:       "",           // Will be set by the integration if needed
 		PayloadJSON:  []byte("{}"), // Default empty payload
 	}
 
@@ -764,7 +753,6 @@ func (m *DefaultToolCallManager) performPeekableResolution(ctx context.Context, 
 		return resolvedValue, nil
 	}
 
-
 	// If still no match, return the display value as-is (it might be a valid ID already)
 	return displayValue, nil
 }
@@ -776,7 +764,7 @@ func (m *DefaultToolCallManager) findMatchingPeekValue(displayValue string, peek
 	for _, item := range peekResults {
 		// Check if display value matches the content (display text)
 		if strings.ToLower(item.Content) == displayLower {
-			return item.Value  // Return the actual ID, not the display name
+			return item.Value // Return the actual ID, not the display name
 		}
 
 		// Check if display value matches the value (already an ID)
@@ -786,12 +774,12 @@ func (m *DefaultToolCallManager) findMatchingPeekValue(displayValue string, peek
 
 		// Check if display value IS the key (filename match)
 		if strings.ToLower(item.Key) == displayLower {
-			return item.Value  // Return the actual ID, not the display name
+			return item.Value // Return the actual ID, not the display name
 		}
 
 		// For file names, check if it's part of the content (handle extensions)
 		if strings.Contains(strings.ToLower(item.Content), displayLower) {
-			return item.Value  // Return the actual ID, not the display name
+			return item.Value // Return the actual ID, not the display name
 		}
 	}
 
@@ -815,4 +803,3 @@ func (m *DefaultToolCallManager) findPropertyByKey(properties []domain.NodePrope
 	}
 	return nil
 }
-

@@ -360,21 +360,10 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 		return IntegrationOutput{}, err
 	}
 
-	inputCount := len(itemsByInputID)
+	itemsByInputOrder := make([][]Item, 0, len(itemsByInputID))
 
-	itemsByInputOrder := make([][]Item, 0)
-
-	for i := 0; i < inputCount; i++ {
-		itemsByInputOrder = append(itemsByInputOrder, make([]Item, 0))
-	}
-
-	for inputID, inputItems := range itemsByInputID {
-		order, err := GetInputOrder(inputID)
-		if err != nil {
-			return IntegrationOutput{}, err
-		}
-
-		itemsByInputOrder[order] = inputItems
+	for _, inputItems := range itemsByInputID {
+		itemsByInputOrder = append(itemsByInputOrder, inputItems)
 	}
 
 	outputs, err := actionFuncMultiInput(ctx, params, itemsByInputOrder)

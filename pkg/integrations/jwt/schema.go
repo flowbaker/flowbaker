@@ -76,7 +76,7 @@ var (
 						Key:         "claims",
 						Name:        "Claims",
 						Description: "The claims to include in the JWT token",
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						Required:    true,
 					},
 					{

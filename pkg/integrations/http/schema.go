@@ -141,7 +141,7 @@ var (
 				Key:         "body_auth",
 				Name:        "Body Authentication",
 				Description: "Authentication in request body",
-				Type:        domain.NodePropertyType_Object,
+				Type:        domain.NodePropertyType_CodeEditor,
 				Required:    true,
 				DependsOn: &domain.DependsOn{
 					PropertyKey: "generic_auth_type",
@@ -169,7 +169,7 @@ var (
 						Description: "The query params to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -189,7 +189,6 @@ var (
 								},
 							},
 						},
-						Required: true,
 					},
 					{
 						Key:         "headers",
@@ -197,7 +196,7 @@ var (
 						Description: "The headers to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -217,7 +216,6 @@ var (
 								},
 							},
 						},
-						Required: true,
 					},
 				},
 			},
@@ -323,7 +321,7 @@ var (
 						Key:         "json_body",
 						Name:        "JSON Body",
 						Description: "The JSON body to send with the request",
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
 							Value:       "json",
@@ -520,7 +518,7 @@ var (
 						Key:         "json_body",
 						Name:        "JSON Body",
 						Description: "The JSON body to send with the request",
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
 							Value:       "json",
@@ -717,7 +715,7 @@ var (
 						Key:         "json_body",
 						Name:        "JSON Body",
 						Description: "The JSON body to send with the request",
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
 							Value:       "json",
@@ -914,7 +912,7 @@ var (
 						Key:         "json_body",
 						Name:        "JSON Body",
 						Description: "The JSON body to send with the request",
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
 							Value:       "json",

@@ -99,7 +99,7 @@ var (
 						Name:        "Metadata",
 						Description: "Custom metadata to attach to the object",
 						Required:    false,
-						Type:        domain.NodePropertyType_Object,
+						Type:        domain.NodePropertyType_CodeEditor,
 					},
 				},
 			},
