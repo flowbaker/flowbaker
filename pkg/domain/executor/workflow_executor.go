@@ -124,8 +124,6 @@ const (
 func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload domain.Payload) (ExecutionResult, error) {
 	workspaceID := w.workflow.WorkspaceID
 
-	log.Info().Msgf("Executing workflow %s in workspace %s", w.workflow.ID, workspaceID)
-
 	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, workspaceID, w.workflow.ID, w.executionID, w.enableEvents)
 

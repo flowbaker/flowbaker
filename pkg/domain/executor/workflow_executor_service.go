@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 
@@ -88,58 +87,21 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 }
 
 func (s *workflowExecutorService) HandlePollingEvent(ctx context.Context, event domain.PollingEvent) (domain.PollResult, error) {
-	log.Info().
-		Str("workspaceID", event.WorkspaceID).
-		Str("workflowID", event.Workflow.ID).
-		Str("integrationType", string(event.IntegrationType)).
-		Str("triggerID", event.Trigger.ID).
-		Str("eventType", string(event.Trigger.EventType)).
-		Str("userID", event.UserID).
-		Msg("WorkflowExecutorService: Starting polling event handling")
-
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, event.WorkspaceID, event.Workflow.ID, "", false)
-
-	log.Debug().
-		Str("workspaceID", event.WorkspaceID).
-		Str("integrationType", string(event.IntegrationType)).
-		Msg("WorkflowExecutorService: Selecting integration poller")
 
 	integrationPoller, err := s.integrationSelector.SelectPoller(ctx, domain.SelectIntegrationParams{
 		IntegrationType: event.IntegrationType,
 	})
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("workspaceID", event.WorkspaceID).
-			Str("integrationType", string(event.IntegrationType)).
-			Str("workflowID", event.Workflow.ID).
-			Msgf("WorkflowExecutorService: Error selecting integration poller for type %s", event.IntegrationType)
+		log.Error().Err(err).Msgf("Error selecting integration poller for type %s", event.IntegrationType)
 		return domain.PollResult{}, err
 	}
-
-	log.Info().
-		Str("workspaceID", event.WorkspaceID).
-		Str("integrationType", string(event.IntegrationType)).
-		Str("pollerType", fmt.Sprintf("%T", integrationPoller)).
-		Msg("WorkflowExecutorService: Integration poller selected, calling HandlePollingEvent")
 
 	result, err := integrationPoller.HandlePollingEvent(ctx, event)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("workspaceID", event.WorkspaceID).
-			Str("integrationType", string(event.IntegrationType)).
-			Str("triggerID", event.Trigger.ID).
-			Str("workflowID", event.Workflow.ID).
-			Msg("WorkflowExecutorService: Failed to handle polling event")
+		log.Error().Err(err).Msg("Failed to handle polling event")
 		return domain.PollResult{}, err
 	}
-
-	log.Info().
-		Str("workspaceID", event.WorkspaceID).
-		Str("integrationType", string(event.IntegrationType)).
-		Str("lastModifiedData", result.LastModifiedData).
-		Msg("WorkflowExecutorService: Successfully handled polling event")
 
 	return result, nil
 }

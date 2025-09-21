@@ -109,34 +109,14 @@ func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
 func (c *ExecutorController) HandlePollingEvent(ctx fiber.Ctx) error {
 	workspaceID := ctx.Params("workspaceID")
 	if workspaceID == "" {
-		log.Error().Msg("HandlePollingEvent: Workspace ID is required but not provided")
 		return fiber.NewError(fiber.StatusBadRequest, "Workspace ID is required")
 	}
-
-	log.Info().
-		Str("workspaceID", workspaceID).
-		Str("method", ctx.Method()).
-		Str("path", ctx.Path()).
-		Msg("HandlePollingEvent: Received polling event request")
 
 	var req executortypes.PollingEventRequest
 
 	if err := ctx.Bind().Body(&req); err != nil {
-		log.Error().
-			Err(err).
-			Str("workspaceID", workspaceID).
-			Msg("HandlePollingEvent: Failed to bind request body")
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
-
-	log.Info().
-		Str("workspaceID", workspaceID).
-		Str("integrationType", string(req.IntegrationType)).
-		Str("triggerID", req.Trigger.ID).
-		Str("workflowID", req.Workflow.ID).
-		Str("userID", req.UserID).
-		Str("eventType", string(req.Trigger.EventType)).
-		Msg("HandlePollingEvent: Processing polling event")
 
 	// Convert executor types to domain types
 	pollingEvent := domain.PollingEvent{
@@ -149,28 +129,11 @@ func (c *ExecutorController) HandlePollingEvent(ctx fiber.Ctx) error {
 	}
 
 	// Call the executor service to handle the polling event
-	log.Debug().
-		Str("workspaceID", workspaceID).
-		Str("integrationType", string(pollingEvent.IntegrationType)).
-		Msg("HandlePollingEvent: Calling executor service")
-
 	result, err := c.executorService.HandlePollingEvent(ctx.RequestCtx(), pollingEvent)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("workspaceID", workspaceID).
-			Str("integrationType", string(req.IntegrationType)).
-			Str("triggerID", req.Trigger.ID).
-			Str("workflowID", req.Workflow.ID).
-			Msg("HandlePollingEvent: Failed to handle polling event")
+		log.Error().Err(err).Msg("Failed to handle polling event")
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to handle polling event")
 	}
-
-	log.Info().
-		Str("workspaceID", workspaceID).
-		Str("integrationType", string(req.IntegrationType)).
-		Str("lastModifiedData", result.LastModifiedData).
-		Msg("HandlePollingEvent: Successfully handled polling event")
 
 	response := executortypes.PollingEventResponse{
 		LastModifiedData: result.LastModifiedData,
