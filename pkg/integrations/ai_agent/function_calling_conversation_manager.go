@@ -709,8 +709,6 @@ func (f *FunctionCallingConversationManager) generateWithConversationAndEvents(
 			inputItems := f.buildInputItemsFromLLMRequest(req)
 			agentExecution := domain.NodeExecutionEntry{
 				NodeID:          f.executeParams.LLM.NodeID,
-				NodeType:        "llm",
-				NodeName:        "LLM",
 				Error:           err.Error(),
 				ItemsByInputID:  inputItems,
 				ItemsByOutputID: make(map[string]domain.NodeItems),
@@ -735,8 +733,6 @@ func (f *FunctionCallingConversationManager) generateWithConversationAndEvents(
 		outputItems := f.buildOutputItemsFromLLMResponse(&response, f.executeParams.LLM.NodeID)
 		agentExecution := domain.NodeExecutionEntry{
 			NodeID:          f.executeParams.LLM.NodeID,
-			NodeType:        "llm",
-			NodeName:        "LLM",
 			Error:           "",
 			ItemsByInputID:  inputItems,
 			ItemsByOutputID: outputItems,

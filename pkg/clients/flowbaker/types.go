@@ -51,11 +51,6 @@ type NodeExecutionEntry struct {
 	Error           string               `json:"error,omitempty"`
 	Timestamp       int64                `json:"timestamp"`
 	ExecutionOrder  int                  `json:"execution_order"`
-	// Agent-specific fields
-	NodeType        string    `json:"node_type,omitempty"`        // "llm", "memory", "tool"
-	NodeName        string    `json:"node_name,omitempty"`
-	ToolName        string    `json:"tool_name,omitempty"`
-	ActionType      string    `json:"action_type,omitempty"`
 }
 
 // PublishEventRequest represents the request to publish an execution event

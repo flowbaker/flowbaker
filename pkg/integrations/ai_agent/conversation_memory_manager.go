@@ -115,8 +115,6 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 			inputItems := m.buildMemoryInputItems(filter)
 			agentExecution := domain.NodeExecutionEntry{
 				NodeID:          m.memoryNodeID,
-				NodeType:        "memory",
-				NodeName:        "Memory",
 				Error:           err.Error(),
 				ItemsByInputID:  inputItems,
 				ItemsByOutputID: make(map[string]domain.NodeItems),
@@ -143,8 +141,6 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 			outputItems := m.buildMemoryOutputItems([]domain.AgentConversation{}, m.memoryNodeID)
 			agentExecution := domain.NodeExecutionEntry{
 				NodeID:          m.memoryNodeID,
-				NodeType:        "memory",
-				NodeName:        "Memory",
 				Error:           "",
 				ItemsByInputID:  inputItems,
 				ItemsByOutputID: outputItems,
@@ -171,8 +167,6 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 		outputItems := m.buildMemoryOutputItems(conversations, m.memoryNodeID)
 		agentExecution := domain.NodeExecutionEntry{
 			NodeID:          m.memoryNodeID,
-			NodeType:        "memory",
-			NodeName:        "Memory",
 			Error:           "",
 			ItemsByInputID:  inputItems,
 			ItemsByOutputID: outputItems,

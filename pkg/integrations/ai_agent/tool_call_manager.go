@@ -405,13 +405,9 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 			inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
 			agentExecution := domain.NodeExecutionEntry{
 				NodeID:          toolNodeID,
-				NodeType:        "tool",
-				NodeName:        toolDef.ToolExecutor.NodeName,
 				Error:           err.Error(),
 				ItemsByInputID:  inputItems,
 				ItemsByOutputID: make(map[string]domain.NodeItems),
-				ToolName:        toolCall.Name,
-				ActionType:      toolDef.ActionType,
 				EventType:       domain.NodeFailed,
 				Timestamp:       startTime.UnixNano(),
 				ExecutionOrder:  1,
@@ -443,13 +439,9 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		outputItems, _ := m.buildOutputItemsFromIntegrationOutput(output, toolNodeID)
 		agentExecution := domain.NodeExecutionEntry{
 			NodeID:          toolNodeID,
-			NodeType:        "tool",
-			NodeName:        toolDef.ToolExecutor.NodeName,
 			Error:           "",
 			ItemsByInputID:  inputItems,
 			ItemsByOutputID: outputItems,
-			ToolName:        toolCall.Name,
-			ActionType:      toolDef.ActionType,
 			EventType:       domain.NodeExecuted,
 			Timestamp:       startTime.UnixNano(),
 			ExecutionOrder:  1,

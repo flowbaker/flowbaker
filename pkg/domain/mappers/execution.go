@@ -67,11 +67,6 @@ func DomainNodeExecutionEntryToFlowbaker(de domain.NodeExecutionEntry) flowbaker
 		Error:           de.Error,
 		Timestamp:       de.Timestamp,
 		ExecutionOrder:  de.ExecutionOrder,
-		// Agent-specific fields
-		NodeType:        de.NodeType,
-		NodeName:        de.NodeName,
-		ToolName:        de.ToolName,
-		ActionType:      string(de.ActionType),
 	}
 }
 
@@ -145,11 +140,6 @@ func FlowbakerNodeExecutionEntryToDomain(fe flowbaker.NodeExecutionEntry) domain
 		Error:           fe.Error,
 		Timestamp:       fe.Timestamp,
 		ExecutionOrder:  fe.ExecutionOrder,
-		// Agent-specific fields
-		NodeType:        fe.NodeType,
-		NodeName:        fe.NodeName,
-		ToolName:        fe.ToolName,
-		ActionType:      domain.IntegrationActionType(fe.ActionType),
 	}
 }
 

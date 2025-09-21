@@ -15,11 +15,6 @@ type NodeExecutionEntry struct {
 	Error           string
 	Timestamp       int64
 	ExecutionOrder  int
-	// Agent-specific fields
-	NodeType        string                `json:"node_type,omitempty"`        // "llm", "memory", "tool"
-	NodeName        string                `json:"node_name,omitempty"`
-	ToolName        string                `json:"tool_name,omitempty"`
-	ActionType      IntegrationActionType `json:"action_type,omitempty"`
 }
 
 type NodeExecution struct {
