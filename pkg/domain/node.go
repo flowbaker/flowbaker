@@ -34,6 +34,13 @@ const (
 	PropertySyntaxDialectType_MongoDB    = "mongodb"
 )
 
+type DragAndDropBehavior string
+
+const (
+	DragAndDropBehavior_Expression DragAndDropBehavior = "expression"
+	DragAndDropBehavior_BasicPath  DragAndDropBehavior = "basic_path"
+)
+
 type OAuthType string
 
 var (
@@ -62,6 +69,9 @@ type NodeProperty struct {
 	Pattern   string `json:"pattern,omitempty"`    // Regex pattern for string validation
 	MinLength int    `json:"min_length,omitempty"` // For string/text
 	MaxLength int    `json:"max_length,omitempty"` // For string/text
+
+	// Drag and drop
+	DragAndDropBehavior DragAndDropBehavior `json:"drag_and_drop_behavior,omitempty"`
 
 	// Dynamic behavior
 	Dependent []string   `json:"dependent,omitempty"`  // List of properties this field depends on
