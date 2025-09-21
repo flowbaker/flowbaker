@@ -32,178 +32,70 @@ func NewDiscordPollingHandler(deps domain.IntegrationDeps) domain.IntegrationPol
 }
 
 func (i *DiscordPollingHandler) HandlePollingEvent(ctx context.Context, p domain.PollingEvent) (domain.PollResult, error) {
-	log.Info().
-		Str("workspaceID", p.WorkspaceID).
-		Str("workflowID", p.Workflow.ID).
-		Str("triggerID", p.Trigger.ID).
-		Str("eventType", string(p.Trigger.EventType)).
-		Str("userID", p.UserID).
-		Interface("integrationSettings", p.Trigger.IntegrationSettings).
-		Msg("DiscordPollingHandler: Starting to handle polling event")
-
 	credentialID, ok := p.Trigger.IntegrationSettings["credential_id"]
 	if !ok {
-		log.Error().
-			Str("workspaceID", p.WorkspaceID).
-			Str("triggerID", p.Trigger.ID).
-			Interface("integrationSettings", p.Trigger.IntegrationSettings).
-			Msg("DiscordPollingHandler: credential_id not found in integration settings")
 		return domain.PollResult{}, fmt.Errorf("credential_id not found in integration settings")
 	}
 
 	credentialIDStr, ok := credentialID.(string)
 	if !ok {
-		log.Error().
-			Str("workspaceID", p.WorkspaceID).
-			Str("triggerID", p.Trigger.ID).
-			Interface("credentialID", credentialID).
-			Msg("DiscordPollingHandler: credential_id is not a string")
 		return domain.PollResult{}, fmt.Errorf("credential_id is not a string")
 	}
 
-	log.Debug().
-		Str("workspaceID", p.WorkspaceID).
-		Str("credentialID", credentialIDStr).
-		Msg("DiscordPollingHandler: Getting decrypted credential")
-
 	credential, err := i.credentialGetter.GetDecryptedCredential(ctx, credentialIDStr)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("workspaceID", p.WorkspaceID).
-			Str("credentialID", credentialIDStr).
-			Msg("DiscordPollingHandler: Failed to get credential")
 		return domain.PollResult{}, fmt.Errorf("failed to get credential: %w", err)
 	}
 
-	log.Debug().
-		Str("workspaceID", p.WorkspaceID).
-		Str("credentialID", credentialIDStr).
-		Bool("hasToken", credential.Token != "").
-		Msg("DiscordPollingHandler: Creating Discord session")
-
 	discordSession, err := discordgo.New("Bot " + credential.Token)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("workspaceID", p.WorkspaceID).
-			Str("credentialID", credentialIDStr).
-			Msg("DiscordPollingHandler: Failed to create Discord session")
 		return domain.PollResult{}, fmt.Errorf("failed to create Discord session: %w", err)
 	}
 
-	log.Info().
-		Str("workspaceID", p.WorkspaceID).
-		Str("eventType", string(p.Trigger.EventType)).
-		Msg("DiscordPollingHandler: Processing event type")
+	log.Info().Str("eventType", string(p.Trigger.EventType)).Msg("Processing event type")
 
 	switch p.Trigger.EventType {
 	case IntegrationTriggerType_MessageReceived:
-		log.Info().
-			Str("workspaceID", p.WorkspaceID).
-			Str("triggerID", p.Trigger.ID).
-			Msg("DiscordPollingHandler: Calling PollChannelMessages")
 		return i.PollChannelMessages(ctx, p, discordSession)
 	}
 
-	log.Error().
-		Str("workspaceID", p.WorkspaceID).
-		Str("eventType", string(p.Trigger.EventType)).
-		Msg("DiscordPollingHandler: Poll function not found for event type")
 	return domain.PollResult{}, fmt.Errorf("poll function not found for event type: %s", p.Trigger.EventType)
 }
 
 func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domain.PollingEvent, discordSession *discordgo.Session) (domain.PollResult, error) {
-	log.Info().
-		Str("workspaceID", p.WorkspaceID).
-		Str("triggerID", p.Trigger.ID).
-		Str("workflowID", p.Workflow.ID).
-		Msg("DiscordPollingHandler: Starting PollChannelMessages")
-
 	if p.Trigger.IntegrationSettings == nil {
-		log.Error().
-			Str("workspaceID", p.WorkspaceID).
-			Str("triggerID", p.Trigger.ID).
-			Msg("DiscordPollingHandler: Integration settings are nil")
 		return domain.PollResult{}, fmt.Errorf("integration settings are nil")
 	}
 
-	log.Info().
-		Str("workspaceID", p.WorkspaceID).
-		Interface("channelID", p.Trigger.IntegrationSettings["channel_id"]).
-		Msg("DiscordPollingHandler: Polling channel messages")
+	log.Info().Msgf("Polling channel messages for channel %v", p.Trigger.IntegrationSettings["channel_id"])
 
 	// Get and validate channel ID
 	channelIDVal, ok := p.Trigger.IntegrationSettings["channel_id"]
 	if !ok {
-		log.Error().
-			Str("workspaceID", p.WorkspaceID).
-			Str("triggerID", p.Trigger.ID).
-			Interface("integrationSettings", p.Trigger.IntegrationSettings).
-			Msg("DiscordPollingHandler: channel_id not found in integration settings")
 		return domain.PollResult{}, fmt.Errorf("channel_id not found in integration settings")
 	}
 
 	channelID, ok := channelIDVal.(string)
 	if !ok {
-		log.Error().
-			Str("workspaceID", p.WorkspaceID).
-			Str("triggerID", p.Trigger.ID).
-			Interface("channelIDVal", channelIDVal).
-			Msg("DiscordPollingHandler: channel_id is not a string")
 		return domain.PollResult{}, fmt.Errorf("channel_id is not a string")
 	}
 
 	if channelID == "" {
-		log.Error().
-			Str("workspaceID", p.WorkspaceID).
-			Str("triggerID", p.Trigger.ID).
-			Msg("DiscordPollingHandler: channel_id is empty")
 		return domain.PollResult{}, fmt.Errorf("channel_id is empty")
 	}
 
-	log.Debug().
-		Str("workspaceID", p.WorkspaceID).
-		Str("channelID", channelID).
-		Msg("DiscordPollingHandler: Getting schedule")
-
 	schedule, err := i.taskSchedulerService.GetSchedule(ctx, p.WorkspaceID, p.Trigger.ID, p.Workflow.ID)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("workspaceID", p.WorkspaceID).
-			Str("triggerID", p.Trigger.ID).
-			Str("workflowID", p.Workflow.ID).
-			Msg("DiscordPollingHandler: Failed to get schedule")
 		return domain.PollResult{}, fmt.Errorf("failed to get schedule: %w", err)
 	}
 
 	lastModifiedData := schedule.LastModifiedData
 
-	log.Info().
-		Str("workspaceID", p.WorkspaceID).
-		Str("channelID", channelID).
-		Str("lastModifiedData", lastModifiedData).
-		Time("scheduleCreatedAt", schedule.ScheduleCreatedAt).
-		Time("lastCheckedAt", schedule.LastCheckedAt).
-		Msg("DiscordPollingHandler: Fetching messages from Discord API")
-
 	messages, err := discordSession.ChannelMessages(channelID, 100, "", lastModifiedData, "")
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("workspaceID", p.WorkspaceID).
-			Str("channelID", channelID).
-			Str("afterID", lastModifiedData).
-			Msg("DiscordPollingHandler: Failed to fetch messages from Discord API")
+		log.Error().Err(err).Str("channelID", channelID).Str("afterID", lastModifiedData).Msg("Failed to fetch messages")
 		return domain.PollResult{}, err
 	}
-
-	log.Info().
-		Str("workspaceID", p.WorkspaceID).
-		Str("channelID", channelID).
-		Int("messageCount", len(messages)).
-		Msg("DiscordPollingHandler: Successfully fetched messages from Discord API")
 
 	if lastModifiedData == "" {
 		var lastSnowflake string
