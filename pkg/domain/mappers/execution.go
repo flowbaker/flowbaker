@@ -79,6 +79,30 @@ func DomainNodeExecutionEntriesToFlowbaker(entries []domain.NodeExecutionEntry) 
 	return result
 }
 
+func DomainAgentNodeExecutionToFlowbaker(de domain.AgentNodeExecution) flowbaker.AgentNodeExecution {
+	return flowbaker.AgentNodeExecution{
+		NodeID:          de.NodeID,
+		NodeType:        de.NodeType,
+		NodeName:        de.NodeName,
+		ExecutionTime:   de.ExecutionTime,
+		Success:         de.Success,
+		Error:           de.Error,
+		ItemsByInputID:  DomainNodeItemsMapToFlowbaker(de.ItemsByInputID),
+		ItemsByOutputID: DomainNodeItemsMapToFlowbaker(de.ItemsByOutputID),
+		ToolName:        de.ToolName,
+		ActionType:      string(de.ActionType),
+		ExecutionCount:  de.ExecutionCount,
+	}
+}
+
+func DomainAgentNodeExecutionsToFlowbaker(executions []domain.AgentNodeExecution) []flowbaker.AgentNodeExecution {
+	result := make([]flowbaker.AgentNodeExecution, len(executions))
+	for i, exec := range executions {
+		result[i] = DomainAgentNodeExecutionToFlowbaker(exec)
+	}
+	return result
+}
+
 // --- Reverse mappings: Flowbaker to Domain ---
 
 // FlowbakerNodeExecutionToDomain converts a flowbaker.NodeExecution to domain.NodeExecution

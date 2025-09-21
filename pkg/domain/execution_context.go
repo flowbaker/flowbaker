@@ -14,6 +14,7 @@ type WorkflowExecutionContext struct {
 	ResponsePayload     Payload
 	ResponseHeaders     map[string][]string
 	ResponseStatusCode  int
+	AgentNodeExecutions []AgentNodeExecution
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {
@@ -28,6 +29,10 @@ func (c *WorkflowExecutionContext) SetResponseStatusCode(statusCode int) {
 	c.ResponseStatusCode = statusCode
 }
 
+func (c *WorkflowExecutionContext) AddAgentNodeExecution(execution AgentNodeExecution) {
+	c.AgentNodeExecutions = append(c.AgentNodeExecutions, execution)
+}
+
 func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool) context.Context {
 	workflowExecutionContext := &WorkflowExecutionContext{
 		WorkspaceID:         workspaceID,
@@ -37,6 +42,7 @@ func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, wo
 		ResponsePayload:     nil,
 		ResponseHeaders:     map[string][]string{},
 		ResponseStatusCode:  200,
+		AgentNodeExecutions: []AgentNodeExecution{},
 	}
 
 	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)

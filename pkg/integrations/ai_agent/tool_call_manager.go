@@ -401,10 +401,28 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		result.Success = false
 		result.Error = err.Error()
 
-		if hasWorkflowCtx && workflowCtx.EnableEvents {
-			publishErr := m.publishToolExecutionFailedEvent(ctx, workflowCtx, toolNodeID, toolCall, resolvedParams, err)
-			if publishErr != nil {
-				log.Error().Err(publishErr).Str("tool_name", toolCall.Name).Msg("Failed to publish tool execution failed event")
+		if hasWorkflowCtx {
+			inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
+			agentExecution := domain.AgentNodeExecution{
+				NodeID:          toolNodeID,
+				NodeType:        "tool",
+				NodeName:        toolDef.ToolExecutor.NodeName,
+				ExecutionTime:   startTime,
+				Success:         false,
+				Error:           err.Error(),
+				ItemsByInputID:  inputItems,
+				ItemsByOutputID: make(map[string]domain.NodeItems),
+				ToolName:        toolCall.Name,
+				ActionType:      toolDef.ActionType,
+				ExecutionCount:  1,
+			}
+			workflowCtx.AddAgentNodeExecution(agentExecution)
+
+			if workflowCtx.EnableEvents {
+				publishErr := m.publishToolExecutionFailedEvent(ctx, workflowCtx, toolNodeID, toolCall, resolvedParams, err)
+				if publishErr != nil {
+					log.Error().Err(publishErr).Str("tool_name", toolCall.Name).Msg("Failed to publish tool execution failed event")
+				}
 			}
 		}
 
@@ -420,10 +438,29 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 	result.Success = true
 	result.Result = m.formatToolResult(output)
 
-	if hasWorkflowCtx && workflowCtx.EnableEvents {
-		err = m.publishToolExecutionCompletedEvent(ctx, workflowCtx, toolNodeID, resolvedParams, output)
-		if err != nil {
-			log.Error().Err(err).Str("tool_name", toolCall.Name).Msg("Failed to publish tool execution completed event")
+	if hasWorkflowCtx {
+		inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
+		outputItems, _ := m.buildOutputItemsFromIntegrationOutput(output, toolNodeID)
+		agentExecution := domain.AgentNodeExecution{
+			NodeID:          toolNodeID,
+			NodeType:        "tool",
+			NodeName:        toolDef.ToolExecutor.NodeName,
+			ExecutionTime:   startTime,
+			Success:         true,
+			Error:           "",
+			ItemsByInputID:  inputItems,
+			ItemsByOutputID: outputItems,
+			ToolName:        toolCall.Name,
+			ActionType:      toolDef.ActionType,
+			ExecutionCount:  1,
+		}
+		workflowCtx.AddAgentNodeExecution(agentExecution)
+
+		if workflowCtx.EnableEvents {
+			err = m.publishToolExecutionCompletedEvent(ctx, workflowCtx, toolNodeID, resolvedParams, output)
+			if err != nil {
+				log.Error().Err(err).Str("tool_name", toolCall.Name).Msg("Failed to publish tool execution completed event")
+			}
 		}
 	}
 
