@@ -403,18 +403,18 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 
 		if hasWorkflowCtx {
 			inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
-			agentExecution := domain.AgentNodeExecution{
+			agentExecution := domain.NodeExecutionEntry{
 				NodeID:          toolNodeID,
 				NodeType:        "tool",
 				NodeName:        toolDef.ToolExecutor.NodeName,
-				ExecutionTime:   startTime,
-				Success:         false,
 				Error:           err.Error(),
 				ItemsByInputID:  inputItems,
 				ItemsByOutputID: make(map[string]domain.NodeItems),
 				ToolName:        toolCall.Name,
 				ActionType:      toolDef.ActionType,
-				ExecutionCount:  1,
+				EventType:       domain.NodeFailed,
+				Timestamp:       startTime.UnixNano(),
+				ExecutionOrder:  1,
 			}
 			workflowCtx.AddAgentNodeExecution(agentExecution)
 
@@ -441,18 +441,18 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 	if hasWorkflowCtx {
 		inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
 		outputItems, _ := m.buildOutputItemsFromIntegrationOutput(output, toolNodeID)
-		agentExecution := domain.AgentNodeExecution{
+		agentExecution := domain.NodeExecutionEntry{
 			NodeID:          toolNodeID,
 			NodeType:        "tool",
 			NodeName:        toolDef.ToolExecutor.NodeName,
-			ExecutionTime:   startTime,
-			Success:         true,
 			Error:           "",
 			ItemsByInputID:  inputItems,
 			ItemsByOutputID: outputItems,
 			ToolName:        toolCall.Name,
 			ActionType:      toolDef.ActionType,
-			ExecutionCount:  1,
+			EventType:       domain.NodeExecuted,
+			Timestamp:       startTime.UnixNano(),
+			ExecutionOrder:  1,
 		}
 		workflowCtx.AddAgentNodeExecution(agentExecution)
 

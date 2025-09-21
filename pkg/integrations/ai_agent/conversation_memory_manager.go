@@ -113,16 +113,16 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 
 		if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled {
 			inputItems := m.buildMemoryInputItems(filter)
-			agentExecution := domain.AgentNodeExecution{
+			agentExecution := domain.NodeExecutionEntry{
 				NodeID:          m.memoryNodeID,
 				NodeType:        "memory",
 				NodeName:        "Memory",
-				ExecutionTime:   startTime,
-				Success:         false,
 				Error:           err.Error(),
 				ItemsByInputID:  inputItems,
 				ItemsByOutputID: make(map[string]domain.NodeItems),
-				ExecutionCount:  1,
+				EventType:       domain.NodeFailed,
+				Timestamp:       startTime.UnixNano(),
+				ExecutionOrder:  1,
 			}
 			workflowCtx.AddAgentNodeExecution(agentExecution)
 
@@ -141,16 +141,16 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 		if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled {
 			inputItems := m.buildMemoryInputItems(filter)
 			outputItems := m.buildMemoryOutputItems([]domain.AgentConversation{}, m.memoryNodeID)
-			agentExecution := domain.AgentNodeExecution{
+			agentExecution := domain.NodeExecutionEntry{
 				NodeID:          m.memoryNodeID,
 				NodeType:        "memory",
 				NodeName:        "Memory",
-				ExecutionTime:   startTime,
-				Success:         true,
 				Error:           "",
 				ItemsByInputID:  inputItems,
 				ItemsByOutputID: outputItems,
-				ExecutionCount:  1,
+				EventType:       domain.NodeExecuted,
+				Timestamp:       startTime.UnixNano(),
+				ExecutionOrder:  1,
 			}
 			workflowCtx.AddAgentNodeExecution(agentExecution)
 
@@ -169,16 +169,16 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 	if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled {
 		inputItems := m.buildMemoryInputItems(filter)
 		outputItems := m.buildMemoryOutputItems(conversations, m.memoryNodeID)
-		agentExecution := domain.AgentNodeExecution{
+		agentExecution := domain.NodeExecutionEntry{
 			NodeID:          m.memoryNodeID,
 			NodeType:        "memory",
 			NodeName:        "Memory",
-			ExecutionTime:   startTime,
-			Success:         true,
 			Error:           "",
 			ItemsByInputID:  inputItems,
 			ItemsByOutputID: outputItems,
-			ExecutionCount:  1,
+			EventType:       domain.NodeExecuted,
+			Timestamp:       startTime.UnixNano(),
+			ExecutionOrder:  1,
 		}
 		workflowCtx.AddAgentNodeExecution(agentExecution)
 

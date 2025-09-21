@@ -707,16 +707,16 @@ func (f *FunctionCallingConversationManager) generateWithConversationAndEvents(
 	if err != nil {
 		if hasWorkflowCtx {
 			inputItems := f.buildInputItemsFromLLMRequest(req)
-			agentExecution := domain.AgentNodeExecution{
+			agentExecution := domain.NodeExecutionEntry{
 				NodeID:          f.executeParams.LLM.NodeID,
 				NodeType:        "llm",
 				NodeName:        "LLM",
-				ExecutionTime:   startTime,
-				Success:         false,
 				Error:           err.Error(),
 				ItemsByInputID:  inputItems,
 				ItemsByOutputID: make(map[string]domain.NodeItems),
-				ExecutionCount:  1,
+				EventType:       domain.NodeFailed,
+				Timestamp:       startTime.UnixNano(),
+				ExecutionOrder:  1,
 			}
 			workflowCtx.AddAgentNodeExecution(agentExecution)
 
@@ -733,16 +733,16 @@ func (f *FunctionCallingConversationManager) generateWithConversationAndEvents(
 	if hasWorkflowCtx {
 		inputItems := f.buildInputItemsFromLLMRequest(req)
 		outputItems := f.buildOutputItemsFromLLMResponse(&response, f.executeParams.LLM.NodeID)
-		agentExecution := domain.AgentNodeExecution{
+		agentExecution := domain.NodeExecutionEntry{
 			NodeID:          f.executeParams.LLM.NodeID,
 			NodeType:        "llm",
 			NodeName:        "LLM",
-			ExecutionTime:   startTime,
-			Success:         true,
 			Error:           "",
 			ItemsByInputID:  inputItems,
 			ItemsByOutputID: outputItems,
-			ExecutionCount:  1,
+			EventType:       domain.NodeExecuted,
+			Timestamp:       startTime.UnixNano(),
+			ExecutionOrder:  1,
 		}
 		workflowCtx.AddAgentNodeExecution(agentExecution)
 

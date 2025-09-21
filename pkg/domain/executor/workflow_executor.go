@@ -275,26 +275,21 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	nodeExecutions := mappers.DomainNodeExecutionsToFlowbaker(w.nodeExecutions)
 	historyEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(w.historyEntries)
 
-	var agentNodeExecutions []flowbaker.AgentNodeExecution
 	if executionContext, ok := domain.GetWorkflowExecutionContext(ctx); ok && executionContext != nil {
-		agentNodeExecutions = mappers.DomainAgentNodeExecutionsToFlowbaker(executionContext.AgentNodeExecutions)
-
-		agentHistoryEntries := w.convertAgentExecutionsToHistoryEntries(executionContext.AgentNodeExecutions)
+		agentHistoryEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(executionContext.AgentNodeExecutions)
 		historyEntries = append(historyEntries, agentHistoryEntries...)
-
 	}
 
 	completeParams := &flowbaker.CompleteExecutionRequest{
-		ExecutionID:         w.executionID,
-		WorkspaceID:         w.workflow.WorkspaceID,
-		WorkflowID:          w.workflow.ID,
-		TriggerNodeID:       nodeID,
-		StartedAt:           w.WorkflowExecutionStartedAt,
-		EndedAt:             time.Now(),
-		NodeExecutions:      nodeExecutions,
-		HistoryEntries:      historyEntries,
-		AgentNodeExecutions: agentNodeExecutions,
-		IsTestingWorkflow:   w.IsTestingWorkflow,
+		ExecutionID:        w.executionID,
+		WorkspaceID:        w.workflow.WorkspaceID,
+		WorkflowID:         w.workflow.ID,
+		TriggerNodeID:      nodeID,
+		StartedAt:          w.WorkflowExecutionStartedAt,
+		EndedAt:            time.Now(),
+		NodeExecutions:     nodeExecutions,
+		HistoryEntries:     historyEntries,
+		IsTestingWorkflow:  w.IsTestingWorkflow,
 	}
 
 	err = w.client.CompleteWorkflowExecution(ctx, completeParams)
@@ -885,37 +880,3 @@ func ConvertPayloadsToItems(payloads []domain.Payload) []domain.Item {
 	return allItems
 }
 
-func (w *WorkflowExecutor) convertAgentExecutionsToHistoryEntries(agentExecutions []domain.AgentNodeExecution) []flowbaker.NodeExecutionEntry {
-	var historyEntries []flowbaker.NodeExecutionEntry
-
-	for _, agentExec := range agentExecutions {
-		eventType := flowbaker.EventTypeNodeExecuted
-		if !agentExec.Success {
-			eventType = flowbaker.EventTypeNodeFailed
-		}
-
-		inputItems := make(map[string]flowbaker.NodeItems)
-		for inputID, items := range agentExec.ItemsByInputID {
-			inputItems[inputID] = mappers.DomainNodeItemsToFlowbaker(items)
-		}
-
-		outputItems := make(map[string]flowbaker.NodeItems)
-		for outputID, items := range agentExec.ItemsByOutputID {
-			outputItems[outputID] = mappers.DomainNodeItemsToFlowbaker(items)
-		}
-
-		historyEntry := flowbaker.NodeExecutionEntry{
-			NodeID:          agentExec.NodeID,
-			ItemsByInputID:  inputItems,
-			ItemsByOutputID: outputItems,
-			EventType:       eventType,
-			Error:           agentExec.Error,
-			Timestamp:       agentExec.ExecutionTime.UnixNano(),
-			ExecutionOrder:  agentExec.ExecutionCount,
-		}
-
-		historyEntries = append(historyEntries, historyEntry)
-	}
-
-	return historyEntries
-}

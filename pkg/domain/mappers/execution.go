@@ -67,6 +67,11 @@ func DomainNodeExecutionEntryToFlowbaker(de domain.NodeExecutionEntry) flowbaker
 		Error:           de.Error,
 		Timestamp:       de.Timestamp,
 		ExecutionOrder:  de.ExecutionOrder,
+		// Agent-specific fields
+		NodeType:        de.NodeType,
+		NodeName:        de.NodeName,
+		ToolName:        de.ToolName,
+		ActionType:      string(de.ActionType),
 	}
 }
 
@@ -79,29 +84,6 @@ func DomainNodeExecutionEntriesToFlowbaker(entries []domain.NodeExecutionEntry) 
 	return result
 }
 
-func DomainAgentNodeExecutionToFlowbaker(de domain.AgentNodeExecution) flowbaker.AgentNodeExecution {
-	return flowbaker.AgentNodeExecution{
-		NodeID:          de.NodeID,
-		NodeType:        de.NodeType,
-		NodeName:        de.NodeName,
-		ExecutionTime:   de.ExecutionTime,
-		Success:         de.Success,
-		Error:           de.Error,
-		ItemsByInputID:  DomainNodeItemsMapToFlowbaker(de.ItemsByInputID),
-		ItemsByOutputID: DomainNodeItemsMapToFlowbaker(de.ItemsByOutputID),
-		ToolName:        de.ToolName,
-		ActionType:      string(de.ActionType),
-		ExecutionCount:  de.ExecutionCount,
-	}
-}
-
-func DomainAgentNodeExecutionsToFlowbaker(executions []domain.AgentNodeExecution) []flowbaker.AgentNodeExecution {
-	result := make([]flowbaker.AgentNodeExecution, len(executions))
-	for i, exec := range executions {
-		result[i] = DomainAgentNodeExecutionToFlowbaker(exec)
-	}
-	return result
-}
 
 // --- Reverse mappings: Flowbaker to Domain ---
 
@@ -163,6 +145,11 @@ func FlowbakerNodeExecutionEntryToDomain(fe flowbaker.NodeExecutionEntry) domain
 		Error:           fe.Error,
 		Timestamp:       fe.Timestamp,
 		ExecutionOrder:  fe.ExecutionOrder,
+		// Agent-specific fields
+		NodeType:        fe.NodeType,
+		NodeName:        fe.NodeName,
+		ToolName:        fe.ToolName,
+		ActionType:      domain.IntegrationActionType(fe.ActionType),
 	}
 }
 

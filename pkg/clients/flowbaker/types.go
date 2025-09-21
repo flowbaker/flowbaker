@@ -51,6 +51,11 @@ type NodeExecutionEntry struct {
 	Error           string               `json:"error,omitempty"`
 	Timestamp       int64                `json:"timestamp"`
 	ExecutionOrder  int                  `json:"execution_order"`
+	// Agent-specific fields
+	NodeType        string    `json:"node_type,omitempty"`        // "llm", "memory", "tool"
+	NodeName        string    `json:"node_name,omitempty"`
+	ToolName        string    `json:"tool_name,omitempty"`
+	ActionType      string    `json:"action_type,omitempty"`
 }
 
 // PublishEventRequest represents the request to publish an execution event
@@ -59,20 +64,6 @@ type PublishEventRequest struct {
 	EventData json.RawMessage `json:"event_data"`
 }
 
-// AgentNodeExecution represents execution data for agent-related nodes
-type AgentNodeExecution struct {
-	NodeID          string               `json:"node_id"`
-	NodeType        string               `json:"node_type"` // "llm", "memory", "tool"
-	NodeName        string               `json:"node_name"`
-	ExecutionTime   time.Time            `json:"execution_time"`
-	Success         bool                 `json:"success"`
-	Error           string               `json:"error,omitempty"`
-	ItemsByInputID  map[string]NodeItems `json:"items_by_input_id"`
-	ItemsByOutputID map[string]NodeItems `json:"items_by_output_id"`
-	ToolName        string               `json:"tool_name,omitempty"`
-	ActionType      string               `json:"action_type,omitempty"`
-	ExecutionCount  int                  `json:"execution_count"`
-}
 
 // CompleteExecutionRequest represents the request to complete a workflow execution
 type CompleteExecutionRequest struct {
@@ -84,7 +75,6 @@ type CompleteExecutionRequest struct {
 	EndedAt              time.Time            `json:"ended_at"`
 	NodeExecutions       []NodeExecution      `json:"node_executions"`
 	HistoryEntries       []NodeExecutionEntry `json:"history_entries"`
-	AgentNodeExecutions  []AgentNodeExecution `json:"agent_node_executions,omitempty"`
 	IsTestingWorkflow    bool                 `json:"is_testing_workflow"`
 }
 
