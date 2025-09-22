@@ -238,7 +238,7 @@ var (
 						Description: "The query params to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -258,7 +258,6 @@ var (
 								},
 							},
 						},
-						Required: true,
 					},
 					{
 						Key:         "headers",
@@ -266,7 +265,7 @@ var (
 						Description: "The headers to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -286,7 +285,6 @@ var (
 								},
 							},
 						},
-						Required: true,
 					},
 					{
 						Key:         "body_type",
@@ -326,7 +324,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "json",
 						},
-						Required: true,
 					},
 					{
 						Key:         "text_body",
@@ -337,7 +334,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "text",
 						},
-						Required: true,
 					},
 					{
 						Key:         "urlencoded_form_data_body",
@@ -345,7 +341,7 @@ var (
 						Description: "The form data body to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -369,7 +365,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "urlencoded_form_data",
 						},
-						Required: true,
 					},
 					{
 						Key:         "multipart_form_data_body",
@@ -377,7 +372,7 @@ var (
 						Description: "The form data body to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -401,7 +396,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "multipart_form_data",
 						},
-						Required: true,
 					},
 					{
 						Key:         "file_body",
@@ -412,7 +406,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "file",
 						},
-						Required: true,
 					},
 				},
 			},
@@ -435,7 +428,7 @@ var (
 						Description: "The query params to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -455,7 +448,6 @@ var (
 								},
 							},
 						},
-						Required: true,
 					},
 					{
 						Key:         "headers",
@@ -463,7 +455,7 @@ var (
 						Description: "The headers to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -483,7 +475,6 @@ var (
 								},
 							},
 						},
-						Required: true,
 					},
 					{
 						Key:         "body_type",
@@ -523,7 +514,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "json",
 						},
-						Required: true,
 					},
 					{
 						Key:         "text_body",
@@ -534,7 +524,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "text",
 						},
-						Required: true,
 					},
 					{
 						Key:         "urlencoded_form_data_body",
@@ -542,7 +531,7 @@ var (
 						Description: "The form data body to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -566,7 +555,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "urlencoded_form_data",
 						},
-						Required: true,
 					},
 					{
 						Key:         "multipart_form_data_body",
@@ -574,7 +562,7 @@ var (
 						Description: "The form data body to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -598,7 +586,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "multipart_form_data",
 						},
-						Required: true,
 					},
 					{
 						Key:         "file_body",
@@ -609,7 +596,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "file",
 						},
-						Required: true,
 					},
 				},
 			},
@@ -632,7 +618,7 @@ var (
 						Description: "The query params to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -652,7 +638,6 @@ var (
 								},
 							},
 						},
-						Required: true,
 					},
 					{
 						Key:         "headers",
@@ -660,7 +645,7 @@ var (
 						Description: "The headers to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -680,7 +665,6 @@ var (
 								},
 							},
 						},
-						Required: true,
 					},
 					{
 						Key:         "body_type",
@@ -720,7 +704,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "json",
 						},
-						Required: true,
 					},
 					{
 						Key:         "text_body",
@@ -731,7 +714,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "text",
 						},
-						Required: true,
 					},
 					{
 						Key:         "urlencoded_form_data_body",
@@ -739,7 +721,7 @@ var (
 						Description: "The form data body to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -763,7 +745,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "urlencoded_form_data",
 						},
-						Required: true,
 					},
 					{
 						Key:         "multipart_form_data_body",
@@ -771,7 +752,7 @@ var (
 						Description: "The form data body to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -795,7 +776,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "multipart_form_data",
 						},
-						Required: true,
 					},
 					{
 						Key:         "file_body",
@@ -806,7 +786,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "file",
 						},
-						Required: true,
 					},
 				},
 			},
@@ -829,7 +808,7 @@ var (
 						Description: "The query params to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -849,7 +828,6 @@ var (
 								},
 							},
 						},
-						Required: true,
 					},
 					{
 						Key:         "headers",
@@ -857,7 +835,7 @@ var (
 						Description: "The headers to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -877,7 +855,6 @@ var (
 								},
 							},
 						},
-						Required: true,
 					},
 					{
 						Key:         "body_type",
@@ -928,7 +905,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "text",
 						},
-						Required: true,
 					},
 					{
 						Key:         "urlencoded_form_data_body",
@@ -936,7 +912,7 @@ var (
 						Description: "The form data body to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -960,7 +936,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "urlencoded_form_data",
 						},
-						Required: true,
 					},
 					{
 						Key:         "multipart_form_data_body",
@@ -968,7 +943,7 @@ var (
 						Description: "The form data body to send with the request",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
+							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
@@ -992,7 +967,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "multipart_form_data",
 						},
-						Required: true,
 					},
 					{
 						Key:         "file_body",
@@ -1003,7 +977,6 @@ var (
 							PropertyKey: "body_type",
 							Value:       "file",
 						},
-						Required: true,
 					},
 				},
 			},
