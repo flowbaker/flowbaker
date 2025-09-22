@@ -59,17 +59,18 @@ type PublishEventRequest struct {
 	EventData json.RawMessage `json:"event_data"`
 }
 
+
 // CompleteExecutionRequest represents the request to complete a workflow execution
 type CompleteExecutionRequest struct {
-	ExecutionID       string               `json:"execution_id"`
-	WorkspaceID       string               `json:"workspace_id"`
-	WorkflowID        string               `json:"workflow_id"`
-	TriggerNodeID     string               `json:"trigger_node_id"`
-	StartedAt         time.Time            `json:"started_at"`
-	EndedAt           time.Time            `json:"ended_at"`
-	NodeExecutions    []NodeExecution      `json:"node_executions"`
-	HistoryEntries    []NodeExecutionEntry `json:"history_entries"`
-	IsTestingWorkflow bool                 `json:"is_testing_workflow"`
+	ExecutionID          string               `json:"execution_id"`
+	WorkspaceID          string               `json:"workspace_id"`
+	WorkflowID           string               `json:"workflow_id"`
+	TriggerNodeID        string               `json:"trigger_node_id"`
+	StartedAt            time.Time            `json:"started_at"`
+	EndedAt              time.Time            `json:"ended_at"`
+	NodeExecutions       []NodeExecution      `json:"node_executions"`
+	HistoryEntries       []NodeExecutionEntry `json:"history_entries"`
+	IsTestingWorkflow    bool                 `json:"is_testing_workflow"`
 }
 
 // EncryptedCredential represents an encrypted credential for executor use

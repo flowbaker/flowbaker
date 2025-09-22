@@ -111,11 +111,24 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 			Err(err).
 			Msg("No previous memory found, starting fresh conversation")
 
-		// Publish memory retrieval failed event
-		if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-			publishErr := m.publishMemoryRetrievalFailedEvent(ctx, workflowCtx, workspaceID, err)
-			if publishErr != nil {
-				log.Error().Err(publishErr).Msg("Failed to publish memory retrieval failed event")
+		if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled {
+			inputItems := m.buildMemoryInputItems(filter)
+			agentExecution := domain.NodeExecutionEntry{
+				NodeID:          m.memoryNodeID,
+				Error:           err.Error(),
+				ItemsByInputID:  inputItems,
+				ItemsByOutputID: make(map[string]domain.NodeItems),
+				EventType:       domain.NodeFailed,
+				Timestamp:       startTime.UnixNano(),
+				ExecutionOrder:  1,
+			}
+			workflowCtx.AddAgentNodeExecution(agentExecution)
+
+			if workflowCtx.EnableEvents && m.eventPublisher != nil {
+				publishErr := m.publishMemoryRetrievalFailedEvent(ctx, workflowCtx, workspaceID, err)
+				if publishErr != nil {
+					log.Error().Err(publishErr).Msg("Failed to publish memory retrieval failed event")
+				}
 			}
 		}
 
@@ -123,11 +136,25 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 	}
 
 	if len(conversations) == 0 {
-		// Publish memory retrieval completed event with no results
-		if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-			publishErr := m.publishMemoryRetrievalCompletedEvent(ctx, workflowCtx, workspaceID, 0, 0, startTime)
-			if publishErr != nil {
-				log.Error().Err(publishErr).Msg("Failed to publish memory retrieval completed event")
+		if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled {
+			inputItems := m.buildMemoryInputItems(filter)
+			outputItems := m.buildMemoryOutputItems([]domain.AgentConversation{}, m.memoryNodeID)
+			agentExecution := domain.NodeExecutionEntry{
+				NodeID:          m.memoryNodeID,
+				Error:           "",
+				ItemsByInputID:  inputItems,
+				ItemsByOutputID: outputItems,
+				EventType:       domain.NodeExecuted,
+				Timestamp:       startTime.UnixNano(),
+				ExecutionOrder:  1,
+			}
+			workflowCtx.AddAgentNodeExecution(agentExecution)
+
+			if workflowCtx.EnableEvents && m.eventPublisher != nil {
+				publishErr := m.publishMemoryRetrievalCompletedEvent(ctx, workflowCtx, workspaceID, 0, 0, startTime)
+				if publishErr != nil {
+					log.Error().Err(publishErr).Msg("Failed to publish memory retrieval completed event")
+				}
 			}
 		}
 		return "", nil
@@ -135,11 +162,25 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 
 	context := m.contextBuilder.FormatMultipleConversations(conversations)
 
-	// Publish memory retrieval completed event
-	if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-		err = m.publishMemoryRetrievalCompletedEvent(ctx, workflowCtx, workspaceID, len(conversations), len(context), startTime)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to publish memory retrieval completed event")
+	if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled {
+		inputItems := m.buildMemoryInputItems(filter)
+		outputItems := m.buildMemoryOutputItems(conversations, m.memoryNodeID)
+		agentExecution := domain.NodeExecutionEntry{
+			NodeID:          m.memoryNodeID,
+			Error:           "",
+			ItemsByInputID:  inputItems,
+			ItemsByOutputID: outputItems,
+			EventType:       domain.NodeExecuted,
+			Timestamp:       startTime.UnixNano(),
+			ExecutionOrder:  1,
+		}
+		workflowCtx.AddAgentNodeExecution(agentExecution)
+
+		if workflowCtx.EnableEvents && m.eventPublisher != nil {
+			err = m.publishMemoryRetrievalCompletedEvent(ctx, workflowCtx, workspaceID, len(conversations), len(context), startTime)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to publish memory retrieval completed event")
+			}
 		}
 	}
 
@@ -713,6 +754,43 @@ func (m *DefaultConversationMemoryManager) buildMemoryEnhancementOutputItems(enh
 	return map[string]domain.NodeItems{
 		outputID: {
 			FromNodeID: m.memoryNodeID,
+			Items:      items,
+		},
+	}
+}
+
+func (m *DefaultConversationMemoryManager) buildMemoryInputItems(filter domain.ConversationFilter) map[string]domain.NodeItems {
+	inputItem := map[string]interface{}{
+		"operation":    "memory_retrieval",
+		"session_id":   filter.SessionID,
+		"workspace_id": filter.WorkspaceID,
+		"limit":        filter.Limit,
+		"status":       filter.Status,
+	}
+
+	items := []domain.Item{domain.Item(inputItem)}
+	inputID := fmt.Sprintf("input-%s-0", m.memoryNodeID)
+
+	return map[string]domain.NodeItems{
+		inputID: {
+			FromNodeID: m.agentNodeID,
+			Items:      items,
+		},
+	}
+}
+
+func (m *DefaultConversationMemoryManager) buildMemoryOutputItems(conversations []domain.AgentConversation, nodeID string) map[string]domain.NodeItems {
+	outputItem := map[string]interface{}{
+		"conversation_count": len(conversations),
+		"status":             "retrieved",
+	}
+
+	items := []domain.Item{domain.Item(outputItem)}
+	outputID := fmt.Sprintf("output-%s-0", nodeID)
+
+	return map[string]domain.NodeItems{
+		outputID: {
+			FromNodeID: nodeID,
 			Items:      items,
 		},
 	}

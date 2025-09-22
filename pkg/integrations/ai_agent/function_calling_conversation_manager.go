@@ -691,6 +691,8 @@ func (f *FunctionCallingConversationManager) generateWithConversationAndEvents(
 	// Get workflow execution context for event publishing
 	workflowCtx, hasWorkflowCtx := domain.GetWorkflowExecutionContext(ctx)
 
+	startTime := time.Now()
+
 	// Publish LLM execution started event
 	if hasWorkflowCtx && workflowCtx.EnableEvents {
 		err := f.publishLLMExecutionStartedEvent(ctx, workflowCtx)
@@ -703,21 +705,48 @@ func (f *FunctionCallingConversationManager) generateWithConversationAndEvents(
 	response, err := f.llm.GenerateWithConversation(ctx, req)
 
 	if err != nil {
-		// Publish LLM failed event
-		if hasWorkflowCtx && workflowCtx.EnableEvents {
-			publishErr := f.publishLLMExecutionFailedEvent(ctx, workflowCtx, req, err)
-			if publishErr != nil {
-				log.Error().Err(publishErr).Msg("Failed to publish LLM execution failed event")
+		if hasWorkflowCtx {
+			inputItems := f.buildInputItemsFromLLMRequest(req)
+			agentExecution := domain.NodeExecutionEntry{
+				NodeID:          f.executeParams.LLM.NodeID,
+				Error:           err.Error(),
+				ItemsByInputID:  inputItems,
+				ItemsByOutputID: make(map[string]domain.NodeItems),
+				EventType:       domain.NodeFailed,
+				Timestamp:       startTime.UnixNano(),
+				ExecutionOrder:  1,
+			}
+			workflowCtx.AddAgentNodeExecution(agentExecution)
+
+			if workflowCtx.EnableEvents {
+				publishErr := f.publishLLMExecutionFailedEvent(ctx, workflowCtx, req, err)
+				if publishErr != nil {
+					log.Error().Err(publishErr).Msg("Failed to publish LLM execution failed event")
+				}
 			}
 		}
 		return domain.ModelResponse{}, err
 	}
 
-	// Publish LLM execution completed event
-	if hasWorkflowCtx && workflowCtx.EnableEvents {
-		err = f.publishLLMExecutionCompletedEvent(ctx, workflowCtx, req, &response)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to publish LLM execution completed event")
+	if hasWorkflowCtx {
+		inputItems := f.buildInputItemsFromLLMRequest(req)
+		outputItems := f.buildOutputItemsFromLLMResponse(&response, f.executeParams.LLM.NodeID)
+		agentExecution := domain.NodeExecutionEntry{
+			NodeID:          f.executeParams.LLM.NodeID,
+			Error:           "",
+			ItemsByInputID:  inputItems,
+			ItemsByOutputID: outputItems,
+			EventType:       domain.NodeExecuted,
+			Timestamp:       startTime.UnixNano(),
+			ExecutionOrder:  1,
+		}
+		workflowCtx.AddAgentNodeExecution(agentExecution)
+
+		if workflowCtx.EnableEvents {
+			err = f.publishLLMExecutionCompletedEvent(ctx, workflowCtx, req, &response)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to publish LLM execution completed event")
+			}
 		}
 	}
 

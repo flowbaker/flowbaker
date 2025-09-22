@@ -79,6 +79,7 @@ func DomainNodeExecutionEntriesToFlowbaker(entries []domain.NodeExecutionEntry) 
 	return result
 }
 
+
 // --- Reverse mappings: Flowbaker to Domain ---
 
 // FlowbakerNodeExecutionToDomain converts a flowbaker.NodeExecution to domain.NodeExecution
