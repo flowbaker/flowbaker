@@ -7,8 +7,8 @@ import (
 var (
 	ClaudeSchema = domain.Integration{
 		ID:          domain.IntegrationType_Anthropic,
-		Name:        "Antropic (Claude)",
-		Description: "Generate content and analyze text using Anthropic's Claude AI models.",
+		Name:        "Anthropic",
+		Description: "Use Anthropic's Claude AI models to generate content and analyze text.",
 		CredentialProperties: []domain.NodeProperty{
 			{
 				Key:         "api_key",
