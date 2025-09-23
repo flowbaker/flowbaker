@@ -38,7 +38,7 @@ type GitLabIntegration struct {
 	credential       GitLabCredential
 	client           *gitlab.Client
 	actionManager    *domain.IntegrationActionManager
-	peekFuncs        map[domain.IntegrationPeekableType]func(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error)
+	peekableManager  *domain.IntegrationPeekableManager
 }
 
 type GitLabCredential struct {
@@ -78,6 +78,7 @@ func NewGitLabIntegration(ctx context.Context, deps GitLabIntegrationDependencie
 		credential:       credential,
 		client:           client,
 		actionManager:    domain.NewIntegrationActionManager(),
+		peekableManager:  domain.NewIntegrationPeekableManager(),
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
@@ -96,13 +97,12 @@ func NewGitLabIntegration(ctx context.Context, deps GitLabIntegrationDependencie
 
 	integration.actionManager = actionManager
 
-	peekFuncs := map[domain.IntegrationPeekableType]func(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error){
-		GitLabPeekable_Projects: integration.PeekProjects,
-		GitLabPeekable_Branches: integration.PeekBranches,
-		GitLabPeekable_Users:    integration.PeekUsers,
-	}
+	peekableManager := domain.NewIntegrationPeekableManager().
+		Add(GitLabPeekable_Projects, integration.PeekProjects).
+		Add(GitLabPeekable_Branches, integration.PeekBranches).
+		Add(GitLabPeekable_Users, integration.PeekUsers)
 
-	integration.peekFuncs = peekFuncs
+	integration.peekableManager = peekableManager
 
 	log.Info().Msg("GitLab integration created")
 
@@ -547,7 +547,7 @@ func (i *GitLabIntegration) ListBranches(ctx context.Context, params domain.Inte
 
 	opt := &gitlab.ListBranchesOptions{
 		ListOptions: gitlab.ListOptions{
-			PerPage: 100,
+			PerPage: 50,
 		},
 	}
 
@@ -565,18 +565,14 @@ func (i *GitLabIntegration) ListBranches(ctx context.Context, params domain.Inte
 
 // Peek function implementations
 func (i *GitLabIntegration) Peek(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	peekFunc, ok := i.peekFuncs[params.PeekableType]
-	if !ok {
-		return domain.PeekResult{}, fmt.Errorf("peek function not found")
-	}
-
-	return peekFunc(ctx, params)
+	return i.peekableManager.Run(ctx, params.PeekableType, params)
 }
 
 func (i *GitLabIntegration) PeekProjects(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	opt := &gitlab.ListProjectsOptions{
+		Membership: newBoolPtr(true),
 		ListOptions: gitlab.ListOptions{
-			PerPage: 100,
+			PerPage: 25,
 		},
 	}
 
@@ -612,7 +608,7 @@ func (i *GitLabIntegration) PeekBranches(ctx context.Context, params domain.Peek
 
 	opt := &gitlab.ListBranchesOptions{
 		ListOptions: gitlab.ListOptions{
-			PerPage: 100,
+			PerPage: 50,
 		},
 	}
 
