@@ -474,22 +474,36 @@ type GenerateEmbeddingsParams struct {
 	Input []string `json:"input"`
 }
 
-func isMaxCompletionTokensModel(model string) bool {
-	// O1-O4 models and their variants
-	if model == "o1" || model == "o1-2024-12-17" || model == "o1-mini" || model == "o1-mini-2024-09-12" ||
-		model == "o1-preview" || model == "o1-preview-2024-09-12" ||
-		model == "o2" || model == "o2-mini" || model == "o2-preview" ||
-		model == "o3" || model == "o3-2025-04-16" || model == "o3-mini" || model == "o3-mini-2025-01-31" ||
-		model == "o4" || model == "o4-mini" || model == "o4-mini-2025-04-16" {
-		return true
-	}
-
+var maxCompletionTokensModels = map[string]bool{
+	// O1 models
+	"o1":                    true,
+	"o1-2024-12-17":         true,
+	"o1-mini":               true,
+	"o1-mini-2024-09-12":    true,
+	"o1-preview":            true,
+	"o1-preview-2024-09-12": true,
+	// O2 models
+	"o2":         true,
+	"o2-mini":    true,
+	"o2-preview": true,
+	// O3 models
+	"o3":                 true,
+	"o3-2025-04-16":      true,
+	"o3-mini":            true,
+	"o3-mini-2025-01-31": true,
+	// O4 models
+	"o4":                 true,
+	"o4-mini":            true,
+	"o4-mini-2025-04-16": true,
 	// GPT-5 models
-	if model == "gpt-5" || model == "gpt-5-mini" || model == "gpt-5-nano" || model == "gpt-5-chat-latest" {
-		return true
-	}
+	"gpt-5":             true,
+	"gpt-5-mini":        true,
+	"gpt-5-nano":        true,
+	"gpt-5-chat-latest": true,
+}
 
-	return false
+func isMaxCompletionTokensModel(model string) bool {
+	return maxCompletionTokensModels[model]
 }
 
 func (i *OpenAIIntegration) GenerateEmbeddings(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
