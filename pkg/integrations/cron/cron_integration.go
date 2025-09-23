@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
+	"github.com/robfig/cron"
 
 	"github.com/rs/zerolog/log"
 )
@@ -115,14 +116,17 @@ func (h *CronPollingHandler) HandleNextRun(ctx context.Context, event domain.Pol
 		return domain.PollResult{}, fmt.Errorf("failed to get schedule: %w", err)
 	}
 
-	nextScheduledCheckAt := schedule.NextScheduledCheckAt
+	cronSchedule, err := cron.ParseStandard(cronString)
+	if err != nil {
+		return domain.PollResult{}, fmt.Errorf("failed to parse cron string: %w", err)
+	}
 
 	now := time.Now()
+	nextRun := cronSchedule.Next(schedule.NextScheduledCheckAt)
 
-	// Check if it's time to run based on the last check time
-	if now.After(nextScheduledCheckAt) {
+	if now.After(nextRun) {
 		log.Info().
-			Time("next_scheduled_check_at", nextScheduledCheckAt).
+			Time("next_run", nextRun).
 			Time("now", now).
 			Str("workflow_id", event.Workflow.ID).
 			Str("workflow_type", string(event.WorkflowType)).
