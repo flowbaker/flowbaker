@@ -400,3 +400,40 @@ func GetInputOrder(inputID string) (int, error) {
 
 	return order, nil
 }
+
+type IntegrationPeekableManager struct {
+	mtx       sync.RWMutex
+	peekFuncs map[IntegrationPeekableType]PeekFunc
+}
+
+func NewIntegrationPeekableManager() *IntegrationPeekableManager {
+	return &IntegrationPeekableManager{
+		peekFuncs: make(map[IntegrationPeekableType]PeekFunc),
+	}
+}
+
+func (m *IntegrationPeekableManager) Add(peekableType IntegrationPeekableType, peekFunc PeekFunc) *IntegrationPeekableManager {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	m.peekFuncs[peekableType] = peekFunc
+
+	return m
+}
+
+func (m *IntegrationPeekableManager) Get(peekableType IntegrationPeekableType) (PeekFunc, bool) {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+
+	peekFunc, ok := m.peekFuncs[peekableType]
+	return peekFunc, ok
+}
+
+func (m *IntegrationPeekableManager) Run(ctx context.Context, peekableType IntegrationPeekableType, params PeekParams) (PeekResult, error) {
+	peekFunc, ok := m.Get(peekableType)
+	if !ok {
+		return PeekResult{}, fmt.Errorf("peek function not found")
+	}
+
+	return peekFunc(ctx, params)
+}
