@@ -22,19 +22,6 @@ var (
 				ID:         string(IntegrationActionType_EncodeToBase64),
 				Name:       "Encode to Base64",
 				ActionType: IntegrationActionType_EncodeToBase64,
-				SupportedContexts: []domain.ActionUsageContext{
-					domain.UsageContextWorkflow,
-				},
-				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-					domain.UsageContextWorkflow: {
-						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Input"},
-						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
-						},
-					},
-				},
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "text",
@@ -50,19 +37,6 @@ var (
 				ID:         string(IntegrationActionType_DecodeFromBase64),
 				Name:       "Decode from Base64",
 				ActionType: IntegrationActionType_DecodeFromBase64,
-				SupportedContexts: []domain.ActionUsageContext{
-					domain.UsageContextWorkflow,
-				},
-				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-					domain.UsageContextWorkflow: {
-						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Input"},
-						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
-						},
-					},
-				},
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "encoded_text",
