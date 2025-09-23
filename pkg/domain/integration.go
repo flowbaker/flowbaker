@@ -53,6 +53,7 @@ const (
 	IntegrationType_SimpleMemory         IntegrationType = "simple_memory"
 	IntegrationType_FlowbakerAgentMemory IntegrationType = "flowbaker_agent_memory"
 	IntegrationType_Knowledge            IntegrationType = "flowbaker_knowledge"
+	IntegrationType_Base64               IntegrationType = "base64"
 )
 
 type Integration struct {
