@@ -39,6 +39,7 @@ const (
 	IntegrationType_Gmail                IntegrationType = "gmail"
 	IntegrationType_Drive                IntegrationType = "google_drive"
 	IntegrationType_Github               IntegrationType = "github"
+	IntegrationType_GitLab               IntegrationType = "gitlab"
 	IntegrationType_Redis                IntegrationType = "redis"
 	IntegrationType_Linear               IntegrationType = "linear"
 	IntegrationType_Anthropic            IntegrationType = "anthropic"
