@@ -124,7 +124,6 @@ func (h *CronPollingHandler) HandleNextRun(ctx context.Context, event domain.Pol
 	now := time.Now()
 	nextRun := cronSchedule.Next(schedule.NextScheduledCheckAt)
 
-	// Check if it's time to run based on the last check time
 	if now.After(nextRun) {
 		log.Info().
 			Time("next_run", nextRun).
