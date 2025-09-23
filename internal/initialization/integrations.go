@@ -4,6 +4,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/integrations/transform"
 
 	"github.com/flowbaker/flowbaker/pkg/integrations/ai_agent"
+	"github.com/flowbaker/flowbaker/pkg/integrations/base64"
 	claudeintegration "github.com/flowbaker/flowbaker/pkg/integrations/claude"
 	"github.com/flowbaker/flowbaker/pkg/integrations/condition"
 	cronintegration "github.com/flowbaker/flowbaker/pkg/integrations/cron"
@@ -166,6 +167,11 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_Transform,
 		NewCreator:      transform.NewTransformIntegrationCreator,
+	},
+
+	{
+		IntegrationType: domain.IntegrationType_Base64,
+		NewCreator:      base64.NewBase64IntegrationCreator,
 	},
 }
 
