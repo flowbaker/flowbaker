@@ -352,10 +352,6 @@ var modelOptions = []domain.NodePropertyOption{
 	{Label: "GPT-5 Nano", Value: "gpt-5-nano"},
 	{Label: "GPT-5 Chat Latest", Value: "gpt-5-chat-latest"},
 
-	// GPT-4.5 series
-	{Label: "GPT-4.5 Preview", Value: "gpt-4.5-preview"},
-	{Label: "GPT-4.5 Preview 2025-02-27", Value: "gpt-4.5-preview-2025-02-27"},
-
 	// GPT-4.1 series
 	{Label: "GPT-4.1", Value: "gpt-4.1"},
 	{Label: "GPT-4.1 2025-04-14", Value: "gpt-4.1-2025-04-14"},
@@ -377,14 +373,7 @@ var modelOptions = []domain.NodePropertyOption{
 	{Label: "O4 Mini", Value: "o4-mini"},
 	{Label: "O4 Mini 2025-04-16", Value: "o4-mini-2025-04-16"},
 
-	// GPT-4 series
-	{Label: "GPT-4 0314", Value: "gpt-4-0314"},
-	{Label: "GPT-4 0613", Value: "gpt-4-0613"},
-	{Label: "GPT-4 32K", Value: "gpt-4-32k"},
-	{Label: "GPT-4 32K 0314", Value: "gpt-4-32k-0314"},
-	{Label: "GPT-4 32K 0613", Value: "gpt-4-32k-0613"},
 	// GPT-4o series
-
 	{Label: "GPT-4o 2024-05-13", Value: "gpt-4o-2024-05-13"},
 	{Label: "GPT-4o 2024-08-06", Value: "gpt-4o-2024-08-06"},
 	{Label: "GPT-4o 2024-11-20", Value: "gpt-4o-2024-11-20"},
@@ -396,16 +385,7 @@ var modelOptions = []domain.NodePropertyOption{
 	{Label: "GPT-4 Turbo", Value: "gpt-4-turbo"},
 	{Label: "GPT-4 Turbo 2024-04-09", Value: "gpt-4-turbo-2024-04-09"},
 	{Label: "GPT-4 Turbo Preview", Value: "gpt-4-turbo-preview"},
-	{Label: "GPT-4 0125 Preview", Value: "gpt-4-0125-preview"},
-	{Label: "GPT-4 1106 Preview", Value: "gpt-4-1106-preview"},
-	{Label: "GPT-4 Vision Preview", Value: "gpt-4-vision-preview"},
 
 	// GPT-3.5 series
 	{Label: "GPT-3.5 Turbo 0125", Value: "gpt-3.5-turbo-0125"},
-	{Label: "GPT-3.5 Turbo 1106", Value: "gpt-3.5-turbo-1106"},
-	{Label: "GPT-3.5 Turbo 0613", Value: "gpt-3.5-turbo-0613"},
-	{Label: "GPT-3.5 Turbo 0301", Value: "gpt-3.5-turbo-0301"},
-	{Label: "GPT-3.5 Turbo 16K", Value: "gpt-3.5-turbo-16k"},
-	{Label: "GPT-3.5 Turbo 16K 0613", Value: "gpt-3.5-turbo-16k-0613"},
-	{Label: "GPT-3.5 Turbo Instruct", Value: "gpt-3.5-turbo-instruct"},
 }

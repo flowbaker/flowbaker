@@ -120,10 +120,11 @@ func (i *OpenAIIntegration) Execute(ctx context.Context, params domain.Integrati
 }
 
 type ChatCompletionParams struct {
-	Model       string                         `json:"model"`
-	Messages    []openai.ChatCompletionMessage `json:"messages"`
-	Temperature float32                        `json:"temperature"`
-	MaxTokens   int                            `json:"max_tokens"`
+	Model               string                         `json:"model"`
+	Messages            []openai.ChatCompletionMessage `json:"messages"`
+	Temperature         float32                        `json:"temperature"`
+	MaxTokens           int                            `json:"max_tokens"`
+	MaxCompletionTokens int                            `json:"max_completion_tokens"`
 }
 
 func (i *OpenAIIntegration) ChatCompletion(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -137,7 +138,12 @@ func (i *OpenAIIntegration) ChatCompletion(ctx context.Context, params domain.In
 		Model:       p.Model,
 		Messages:    p.Messages,
 		Temperature: p.Temperature,
-		MaxTokens:   p.MaxTokens,
+	}
+
+	if isMaxCompletionTokensModel(p.Model) {
+		req.MaxCompletionTokens = p.MaxCompletionTokens
+	} else {
+		req.MaxTokens = p.MaxTokens
 	}
 
 	resp, err := i.client.CreateChatCompletion(ctx, req)
@@ -278,12 +284,13 @@ func (i *OpenAIIntegration) PeekModels(ctx context.Context) (domain.PeekResult, 
 
 // AgentChatParams represents parameters for AI agent chat requests
 type AgentChatParams struct {
-	Model        string                         `json:"model"`
-	Messages     []openai.ChatCompletionMessage `json:"messages"`
-	Tools        []openai.Tool                  `json:"tools,omitempty"`
-	SystemPrompt string                         `json:"system_prompt,omitempty"`
-	Temperature  float32                        `json:"temperature"`
-	MaxTokens    int                            `json:"max_tokens"`
+	Model               string                         `json:"model"`
+	Messages            []openai.ChatCompletionMessage `json:"messages"`
+	Tools               []openai.Tool                  `json:"tools,omitempty"`
+	SystemPrompt        string                         `json:"system_prompt,omitempty"`
+	Temperature         float32                        `json:"temperature"`
+	MaxTokens           int                            `json:"max_tokens"`
+	MaxCompletionTokens int                            `json:"max_completion_tokens"`
 }
 
 // Add the AgentChat handler implementation
@@ -312,8 +319,13 @@ func (i *OpenAIIntegration) AgentChat(ctx context.Context, params domain.Integra
 		Model:       p.Model,
 		Messages:    messages,
 		Temperature: p.Temperature,
-		MaxTokens:   p.MaxTokens,
 		Tools:       p.Tools,
+	}
+
+	if isMaxCompletionTokensModel(p.Model) {
+		req.MaxCompletionTokens = p.MaxCompletionTokens
+	} else {
+		req.MaxTokens = p.MaxTokens
 	}
 
 	resp, err := i.client.CreateChatCompletion(ctx, req)
@@ -411,7 +423,12 @@ func (i *OpenAIIntegration) GenerateWithConversation(ctx context.Context, req do
 		Messages:    messages,
 		Tools:       tools,
 		Temperature: temperature,
-		MaxTokens:   maxTokens,
+	}
+
+	if isMaxCompletionTokensModel(model) {
+		openaiReq.MaxCompletionTokens = maxTokens
+	} else {
+		openaiReq.MaxTokens = maxTokens
 	}
 
 	resp, err := i.client.CreateChatCompletion(ctx, openaiReq)
@@ -455,6 +472,24 @@ func (i *OpenAIIntegration) GenerateWithConversation(ctx context.Context, req do
 type GenerateEmbeddingsParams struct {
 	Model string   `json:"model"`
 	Input []string `json:"input"`
+}
+
+func isMaxCompletionTokensModel(model string) bool {
+	// O1-O4 models and their variants
+	if model == "o1" || model == "o1-2024-12-17" || model == "o1-mini" || model == "o1-mini-2024-09-12" ||
+		model == "o1-preview" || model == "o1-preview-2024-09-12" ||
+		model == "o2" || model == "o2-mini" || model == "o2-preview" ||
+		model == "o3" || model == "o3-2025-04-16" || model == "o3-mini" || model == "o3-mini-2025-01-31" ||
+		model == "o4" || model == "o4-mini" || model == "o4-mini-2025-04-16" {
+		return true
+	}
+
+	// GPT-5 models
+	if model == "gpt-5" || model == "gpt-5-mini" || model == "gpt-5-nano" || model == "gpt-5-chat-latest" {
+		return true
+	}
+
+	return false
 }
 
 func (i *OpenAIIntegration) GenerateEmbeddings(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
