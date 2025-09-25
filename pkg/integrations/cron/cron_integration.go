@@ -122,9 +122,10 @@ func (h *CronPollingHandler) HandleNextRun(ctx context.Context, event domain.Pol
 	}
 
 	now := time.Now()
-	nextRun := cronSchedule.Next(schedule.NextScheduledCheckAt)
+	nextRun := cronSchedule.Next(schedule.LastCheckedAt)
+	shouldRun := now.After(nextRun)
 
-	if now.After(nextRun) {
+	if shouldRun {
 		log.Info().
 			Time("next_run", nextRun).
 			Time("now", now).
