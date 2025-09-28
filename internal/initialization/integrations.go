@@ -1,6 +1,7 @@
 package initialization
 
 import (
+	"github.com/flowbaker/flowbaker/pkg/integrations/router"
 	"github.com/flowbaker/flowbaker/pkg/integrations/transform"
 
 	"github.com/flowbaker/flowbaker/pkg/integrations/ai_agent"
@@ -168,10 +169,13 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 		IntegrationType: domain.IntegrationType_Transform,
 		NewCreator:      transform.NewTransformIntegrationCreator,
 	},
-
 	{
 		IntegrationType: domain.IntegrationType_Base64,
 		NewCreator:      base64.NewBase64IntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_Router,
+		NewCreator:      router.NewRouterIntegrationCreator,
 	},
 }
 
