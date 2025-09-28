@@ -5,25 +5,25 @@ import (
 )
 
 const (
-	IntegrationActionType_Route domain.IntegrationActionType = "route"
+	IntegrationActionType_Classify domain.IntegrationActionType = "classify"
 )
 
 var (
 	Schema = schema
 
 	schema domain.Integration = domain.Integration{
-		ID:                   domain.IntegrationType_Router,
-		Name:                 "Router",
-		Description:          "Route data to different paths based on AI classification.",
+		ID:                   domain.IntegrationType_ContentClassifier,
+		Name:                 "Content Classifier",
+		Description:          "Classify content into different categories based on AI classification.",
 		CanTestConnection:    false,
 		IsCredentialOptional: true,
 		CredentialProperties: []domain.NodeProperty{},
 		Triggers:             []domain.IntegrationTrigger{},
 		Actions: []domain.IntegrationAction{
 			{
-				ID:          "route",
-				Name:        "Route",
-				ActionType:  IntegrationActionType_Route,
+				ID:          "classify",
+				Name:        "Classify Content",
+				ActionType:  IntegrationActionType_Classify,
 				Description: "Route data to different paths based on AI classification.",
 				SupportedContexts: []domain.ActionUsageContext{
 					domain.UsageContextWorkflow,
@@ -42,14 +42,14 @@ var (
 					{
 						Key:         "content",
 						Name:        "Content",
-						Description: "The content to route through the router.",
+						Description: "The content to classify.",
 						Required:    true,
 						Type:        domain.NodePropertyType_Text,
 					},
 					{
-						Key:              "classifications",
-						Name:             "Classifications",
-						Description:      "The classifications of the data.",
+						Key:              "categories",
+						Name:             "Categories",
+						Description:      "The categories to classify the content into.",
 						Required:         true,
 						Type:             domain.NodePropertyType_Array,
 						GeneratesHandles: true,
@@ -67,13 +67,13 @@ var (
 								{
 									Key:         "Name",
 									Name:        "Name",
-									Description: "The name of the classification.",
+									Description: "The name of the category.",
 									Type:        domain.NodePropertyType_String,
 								},
 								{
 									Key:         "Description",
 									Name:        "Description",
-									Description: "The description of the classification.",
+									Description: "The description of the category.",
 									Type:        domain.NodePropertyType_String,
 								},
 							},

@@ -574,15 +574,15 @@ type GetRoutesResponse struct {
 }
 
 type ClassifyContentRequest struct {
-	Content         string                  `json:"content"`
-	Classifications []ContentClassification `json:"classifications"`
+	Content    string                          `json:"content"`
+	Categories []ContentClassificationCategory `json:"categories"`
 }
 
-type ContentClassification struct {
+type ContentClassificationCategory struct {
 	Key         string `json:"key"`
 	Description string `json:"description"`
 }
 
 type ClassifyContentResponse struct {
-	SelectedClassification string `json:"selected_classification"`
+	SelectedCategory string `json:"selected_category"`
 }

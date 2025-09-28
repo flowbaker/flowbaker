@@ -6,7 +6,6 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 	"github.com/gosimple/slug"
-	"github.com/rs/zerolog/log"
 )
 
 type RouterIntegrationCreator struct {
@@ -51,7 +50,7 @@ func NewRouterIntegration(ctx context.Context, deps RouterIntegrationDependencie
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
-		AddPerItemRoutable(IntegrationActionType_Route, integration.Route)
+		AddPerItemRoutable(IntegrationActionType_Classify, integration.Classify)
 
 	integration.actionManager = actionManager
 
@@ -63,16 +62,16 @@ func (r *RouterIntegration) Execute(ctx context.Context, params domain.Integrati
 }
 
 type RouteParams struct {
-	Content         string           `json:"content"`
-	Classifications []Classification `json:"classifications"`
+	Content    string     `json:"content"`
+	Categories []Category `json:"categories"`
 }
 
-type Classification struct {
+type Category struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
-func (r *RouterIntegration) Route(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.RoutableOutput, error) {
+func (r *RouterIntegration) Classify(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.RoutableOutput, error) {
 	p := RouteParams{}
 
 	err := r.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
@@ -80,38 +79,43 @@ func (r *RouterIntegration) Route(ctx context.Context, params domain.Integration
 		return domain.RoutableOutput{}, err
 	}
 
-	log.Debug().Interface("p", p).Msg("Route params")
-
-	convertedClassifications := make([]domain.Classification, len(p.Classifications))
+	convertedCategories := make([]domain.ClassificationCategory, len(p.Categories))
 
 	slugsToIndex := make(map[string]int)
 
-	for i, classification := range p.Classifications {
-		keySlug := slug.Make(classification.Name)
+	for i, category := range p.Categories {
+		keySlug := slug.Make(category.Name)
 
 		slugsToIndex[keySlug] = i
 
-		convertedClassifications[i] = domain.Classification{
+		convertedCategories[i] = domain.ClassificationCategory{
 			Key:         keySlug,
-			Description: classification.Description,
+			Description: category.Description,
 		}
 	}
 
+	if len(convertedCategories) == 0 {
+		return domain.RoutableOutput{
+			Item:        item,
+			OutputIndex: 0,
+		}, nil
+	}
+
 	classification, err := r.executorModelManager.ClassifyContent(ctx, domain.ClassifyContentParams{
-		WorkspaceID:     r.workspaceID,
-		Content:         p.Content,
-		Classifications: convertedClassifications,
+		WorkspaceID: r.workspaceID,
+		Content:     p.Content,
+		Categories:  convertedCategories,
 	})
 	if err != nil {
 		return domain.RoutableOutput{}, err
 	}
 
-	selectedClassificationIndex, ok := slugsToIndex[classification.SelectedClassification]
+	selectedClassificationIndex, ok := slugsToIndex[classification.SelectedClassificationCategory]
 	if !ok {
 		return domain.RoutableOutput{}, fmt.Errorf("no selected classification")
 	}
 
-	if selectedClassificationIndex < 0 || selectedClassificationIndex >= len(convertedClassifications) {
+	if selectedClassificationIndex < 0 || selectedClassificationIndex >= len(convertedCategories) {
 		return domain.RoutableOutput{}, fmt.Errorf("selected classification index out of bounds")
 	}
 

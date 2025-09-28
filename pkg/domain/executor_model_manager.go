@@ -7,16 +7,16 @@ type ExecutorModelManager interface {
 }
 
 type ClassifyContentParams struct {
-	WorkspaceID     string
-	Content         string
-	Classifications []Classification
+	WorkspaceID string
+	Content     string
+	Categories  []ClassificationCategory
 }
 
-type Classification struct {
+type ClassificationCategory struct {
 	Key         string `json:"key"`
 	Description string `json:"description"`
 }
 
 type ClassifyContentResult struct {
-	SelectedClassification string
+	SelectedClassificationCategory string
 }

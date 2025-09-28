@@ -54,7 +54,7 @@ const (
 	IntegrationType_FlowbakerAgentMemory IntegrationType = "flowbaker_agent_memory"
 	IntegrationType_Knowledge            IntegrationType = "flowbaker_knowledge"
 	IntegrationType_Base64               IntegrationType = "base64"
-	IntegrationType_Router               IntegrationType = "router"
+	IntegrationType_ContentClassifier    IntegrationType = "content_classifier"
 )
 
 type Integration struct {

@@ -23,24 +23,24 @@ func NewExecutorModelManager(deps ExecutorModelManagerDependencies) domain.Execu
 }
 
 func (m *executorModelManager) ClassifyContent(ctx context.Context, params domain.ClassifyContentParams) (domain.ClassifyContentResult, error) {
-	convertedClassifications := make([]flowbaker.ContentClassification, len(params.Classifications))
+	convertedCategories := make([]flowbaker.ContentClassificationCategory, len(params.Categories))
 
-	for i, classification := range params.Classifications {
-		convertedClassifications[i] = flowbaker.ContentClassification{
+	for i, classification := range params.Categories {
+		convertedCategories[i] = flowbaker.ContentClassificationCategory{
 			Key:         classification.Key,
 			Description: classification.Description,
 		}
 	}
 
 	response, err := m.client.ClassifyContent(ctx, params.WorkspaceID, &flowbaker.ClassifyContentRequest{
-		Content:         params.Content,
-		Classifications: convertedClassifications,
+		Content:    params.Content,
+		Categories: convertedCategories,
 	})
 	if err != nil {
 		return domain.ClassifyContentResult{}, fmt.Errorf("failed to classify content: %w", err)
 	}
 
 	return domain.ClassifyContentResult{
-		SelectedClassification: response.SelectedClassification,
+		SelectedClassificationCategory: response.SelectedCategory,
 	}, nil
 }
