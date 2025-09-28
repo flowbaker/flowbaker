@@ -109,6 +109,10 @@ type NodeProperty struct {
 
 	IsApplicableToHTTP bool `json:"is_applicable_to_http"` // Whether this field is applicable to HTTP requests
 	IsCustomOAuthable  bool `json:"is_custom_oauthable"`   // Whether this field is custom oauthable
+
+	// Dynamic handle generation
+	GeneratesHandles     bool                     `json:"generates_handles,omitempty"`      // Whether this property generates handles
+	HandleGenerationOpts *HandleGenerationOptions `json:"handle_generation_opts,omitempty"` // Options for handle generation
 }
 
 type SyntaxHighlightingOpts struct {
@@ -203,4 +207,12 @@ func NewEndpointPropertDataFromMap(from any) (EndpointPropertyData, error) {
 		ProductionURL: productionURL,
 		Method:        method,
 	}, nil
+}
+
+type HandleGenerationOptions struct {
+	HandleType        string             `json:"handle_type"`         // "output" or "input"
+	NameFromProperty  string             `json:"name_from_property"`  // Property key to get handle name from
+	TypeFromProperty  string             `json:"type_from_property"`  // Property key to get handle type from (optional)
+	DefaultHandleType NodeHandleType     `json:"default_handle_type"` // Default handle type if type_from_property is empty
+	Position          NodeHandlePosition `json:"position"`            // Handle position
 }
