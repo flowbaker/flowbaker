@@ -20,3 +20,6 @@ func (p Payload) ToItems() ([]Item, error) {
 
 	return items, nil
 }
+func (p Payload) IsEmpty() bool {
+	return len(p) == 0 || string(p) == `[]`
+}

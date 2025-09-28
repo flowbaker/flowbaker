@@ -279,15 +279,15 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	}
 
 	completeParams := &flowbaker.CompleteExecutionRequest{
-		ExecutionID:        w.executionID,
-		WorkspaceID:        w.workflow.WorkspaceID,
-		WorkflowID:         w.workflow.ID,
-		TriggerNodeID:      nodeID,
-		StartedAt:          w.WorkflowExecutionStartedAt,
-		EndedAt:            time.Now(),
-		NodeExecutions:     nodeExecutions,
-		HistoryEntries:     historyEntries,
-		IsTestingWorkflow:  w.IsTestingWorkflow,
+		ExecutionID:       w.executionID,
+		WorkspaceID:       w.workflow.WorkspaceID,
+		WorkflowID:        w.workflow.ID,
+		TriggerNodeID:     nodeID,
+		StartedAt:         w.WorkflowExecutionStartedAt,
+		EndedAt:           time.Now(),
+		NodeExecutions:    nodeExecutions,
+		HistoryEntries:    historyEntries,
+		IsTestingWorkflow: w.IsTestingWorkflow,
 	}
 
 	err = w.client.CompleteWorkflowExecution(ctx, completeParams)
@@ -409,15 +409,17 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, execution NodeExecut
 			continue
 		}
 
-		for _, node := range nodes {
-			err := w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
-				FromNodeID: executedNode.ID,
-				Node:       node,
-				OutputID:   outputID,
-				Payload:    payload,
-			})
-			if err != nil {
-				return err
+		if !payload.IsEmpty() {
+			for _, node := range nodes {
+				err := w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
+					FromNodeID: executedNode.ID,
+					Node:       node,
+					OutputID:   outputID,
+					Payload:    payload,
+				})
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -438,7 +440,6 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, execution NodeExecut
 			FromNodeID: node.ID,
 			Items:      items,
 		}
-
 	}
 
 	itemsByInputID := map[string]domain.NodeItems{}
@@ -877,4 +878,3 @@ func ConvertPayloadsToItems(payloads []domain.Payload) []domain.Item {
 
 	return allItems
 }
-
