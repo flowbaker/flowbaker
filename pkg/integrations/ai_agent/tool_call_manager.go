@@ -149,7 +149,9 @@ func (m *DefaultToolCallManager) convertActionToTool(action domain.IntegrationAc
 	}
 
 	for _, prop := range action.Properties {
-		propSchema := m.convertNodePropertyToSchema(prop)
+		isProvidedByAgent := m.isPropertyProvidedByAgent(prop.Key, toolExec.WorkflowNode)
+
+		propSchema := m.convertNodePropertyToSchema(prop, isProvidedByAgent)
 		properties[prop.Key] = propSchema
 
 		if prop.Required {
@@ -174,12 +176,18 @@ func (m *DefaultToolCallManager) convertActionToTool(action domain.IntegrationAc
 }
 
 // convertNodePropertyToSchema converts a NodeProperty to JSON Schema format
-func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodeProperty) map[string]interface{} {
+func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodeProperty, isProvidedByAgent bool) map[string]interface{} {
 	schema := map[string]interface{}{
 		"type": m.mapNodePropertyType(prop.Type),
 	}
 
-	if prop.Description != "" {
+	if prop.Type == domain.NodePropertyType_CodeEditor && isProvidedByAgent {
+		description := prop.Description
+		if description == "" {
+			description = "JSON formatted data"
+		}
+		schema["description"] = description + " (REQUIRED: This field expects valid JSON format. Always provide a JSON object or array, not a plain string. Examples: {\"key\": \"value\"}, {\"name\": \"John\", \"age\": 30}, or [{\"id\": 1}, {\"id\": 2}]. Do NOT send plain strings like \"value\" - wrap them in a JSON object.)"
+	} else if prop.Description != "" {
 		schema["description"] = prop.Description
 	}
 
@@ -194,7 +202,7 @@ func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodePro
 				itemsRequired := []string{}
 
 				for _, itemProp := range prop.ArrayOpts.ItemProperties {
-					itemsProperties[itemProp.Key] = m.convertNodePropertyToSchema(itemProp)
+					itemsProperties[itemProp.Key] = m.convertNodePropertyToSchema(itemProp, isProvidedByAgent)
 					if itemProp.Required {
 						itemsRequired = append(itemsRequired, itemProp.Key)
 					}
@@ -831,4 +839,17 @@ func (m *DefaultToolCallManager) findPropertyByKey(properties []domain.NodePrope
 		}
 	}
 	return nil
+}
+
+func (m *DefaultToolCallManager) isPropertyProvidedByAgent(propertyKey string, workflowNode *domain.WorkflowNode) bool {
+	if workflowNode == nil {
+		return false
+	}
+
+	for _, agentPath := range workflowNode.ProvidedByAgent {
+		if agentPath == propertyKey {
+			return true
+		}
+	}
+	return false
 }
