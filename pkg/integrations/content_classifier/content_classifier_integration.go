@@ -79,6 +79,10 @@ func (r *RouterIntegration) Classify(ctx context.Context, params domain.Integrat
 		return domain.RoutableOutput{}, err
 	}
 
+	if len(p.Content) == 0 {
+		return domain.RoutableOutput{}, fmt.Errorf("no content provided")
+	}
+
 	convertedCategories := make([]domain.ClassificationCategory, len(p.Categories))
 
 	slugsToIndex := make(map[string]int)
