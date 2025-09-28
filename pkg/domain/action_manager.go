@@ -462,25 +462,33 @@ func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actio
 		outputs = append(outputs, output)
 	}
 
-	outputsByIndex := make([][]Item, len(outputs))
+	outputsByIndex := make(map[int][]Item)
 
 	for _, output := range outputs {
-		if output.OutputIndex < 0 || output.OutputIndex >= len(outputsByIndex) {
-			return IntegrationOutput{}, fmt.Errorf("output index out of bounds")
-		}
-
 		outputsByIndex[output.OutputIndex] = append(outputsByIndex[output.OutputIndex], output.Item)
 	}
 
-	resultJSONs := make([]Payload, len(outputsByIndex))
+	maxOutputIndex := -1
 
-	for i, outputs := range outputsByIndex {
+	for outputIndex := range outputsByIndex {
+		if outputIndex > maxOutputIndex {
+			maxOutputIndex = outputIndex
+		}
+	}
+
+	resultJSONs := make([]Payload, maxOutputIndex+1)
+
+	for i := range resultJSONs {
+		resultJSONs[i] = []byte(`[]`)
+	}
+
+	for outputIndex, outputs := range outputsByIndex {
 		resultJSON, err := json.Marshal(outputs)
 		if err != nil {
 			return IntegrationOutput{}, err
 		}
 
-		resultJSONs[i] = resultJSON
+		resultJSONs[outputIndex] = resultJSON
 	}
 
 	return IntegrationOutput{
