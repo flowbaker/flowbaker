@@ -100,6 +100,10 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		Client: config.FlowbakerClient,
 	})
 
+	executorModelManager := managers.NewExecutorModelManager(managers.ExecutorModelManagerDependencies{
+		Client: config.FlowbakerClient,
+	})
+
 	integrationDeps := domain.IntegrationDeps{
 		FlowbakerClient:            config.FlowbakerClient,
 		IntegrationSelector:        integrationSelector,
@@ -112,6 +116,7 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		ExecutorIntegrationManager: executorIntegrationManager,
 		ExecutorScheduleManager:    executorScheduleManager,
 		ExecutorKnowledgeManager:   executorKnowledgeManager,
+		ExecutorModelManager:       executorModelManager,
 	}
 
 	if err := registerIntegrations(integrationSelector, integrationDeps); err != nil {
