@@ -54,6 +54,7 @@ const (
 	IntegrationType_FlowbakerAgentMemory IntegrationType = "flowbaker_agent_memory"
 	IntegrationType_Knowledge            IntegrationType = "flowbaker_knowledge"
 	IntegrationType_Base64               IntegrationType = "base64"
+	IntegrationType_Router               IntegrationType = "router"
 )
 
 type Integration struct {
@@ -203,6 +204,7 @@ type IntegrationDeps struct {
 	ExecutorIntegrationManager ExecutorIntegrationManager
 	ExecutorScheduleManager    ExecutorScheduleManager
 	ExecutorKnowledgeManager   ExecutorKnowledgeManager
+	ExecutorModelManager       ExecutorModelManager
 }
 
 type IntegrationParameterBinder interface {
