@@ -29,6 +29,13 @@ const (
 	PropertySyntaxExtensionType_JSON = "json"
 )
 
+type CodeLanguageType string
+
+const (
+	CodeLanguageType_JSON CodeLanguageType = "json"
+	CodeLanguageType_SQL  CodeLanguageType = "sql"
+)
+
 const (
 	PropertySyntaxDialectType_PostgreSQL = "postgresql"
 	PropertySyntaxDialectType_MongoDB    = "mongodb"
@@ -95,6 +102,9 @@ type NodeProperty struct {
 
 	// Syntax highlighting
 	SyntaxHighlightingOpts SyntaxHighlightingOpts `json:"syntax_highlighting_opts"`
+
+	// Code editor specific settings
+	CodeLanguage CodeLanguageType `json:"code_language,omitempty"` // Language for code editor type (e.g., "json", "sql")
 
 	// Dynamic data loading
 	Peekable                    bool                              `json:"peekable"`                                // Whether this field can load options dynamically

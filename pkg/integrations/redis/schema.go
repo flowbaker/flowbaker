@@ -308,6 +308,7 @@ var (
 						Description:      "Object with field-value pairs",
 						Required:         true,
 						Type:             domain.NodePropertyType_CodeEditor,
+						CodeLanguage:     domain.CodeLanguageType_JSON,
 						ExpressionChoice: true,
 					},
 				},

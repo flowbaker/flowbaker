@@ -181,7 +181,7 @@ func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodePro
 		"type": m.mapNodePropertyType(prop.Type),
 	}
 
-	if prop.Type == domain.NodePropertyType_CodeEditor && isProvidedByAgent {
+	if prop.Type == domain.NodePropertyType_CodeEditor && prop.CodeLanguage == domain.CodeLanguageType_JSON && isProvidedByAgent {
 		description := prop.Description
 		if description == "" {
 			description = "JSON formatted data"
