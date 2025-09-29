@@ -17,7 +17,13 @@ type ActionFuncPerItemMulti func(ctx context.Context, params IntegrationInput, i
 type ActionFuncPerItemWithFile func(ctx context.Context, params IntegrationInput, item Item) (ItemWithFile, error)
 type ActionFuncPerItemMultiWithFile func(ctx context.Context, params IntegrationInput, item Item) ([]ItemWithFile, error)
 type ActionFuncMultiInput func(ctx context.Context, params IntegrationInput, items [][]Item) ([]Item, error)
+type ActionFuncPerItemRoutable func(ctx context.Context, params IntegrationInput, item Item) (RoutableOutput, error)
 type PeekFunc func(ctx context.Context, params PeekParams) (PeekResult, error)
+
+type RoutableOutput struct {
+	Item        any
+	OutputIndex int
+}
 
 type IntegrationActionManager struct {
 	mtx                        sync.RWMutex
@@ -26,6 +32,7 @@ type IntegrationActionManager struct {
 	actionFuncsPerItemMulti    map[IntegrationActionType]ActionFuncPerItemMulti
 	actionFuncsPerItemWithFile map[IntegrationActionType]ActionFuncPerItemWithFile
 	actionFuncsMultiInput      map[IntegrationActionType]ActionFuncMultiInput
+	actionFuncsPerItemRoutable map[IntegrationActionType]ActionFuncPerItemRoutable
 }
 
 func NewIntegrationActionManager() *IntegrationActionManager {
@@ -35,6 +42,7 @@ func NewIntegrationActionManager() *IntegrationActionManager {
 		actionFuncsPerItemMulti:    make(map[IntegrationActionType]ActionFuncPerItemMulti),
 		actionFuncsPerItemWithFile: make(map[IntegrationActionType]ActionFuncPerItemWithFile),
 		actionFuncsMultiInput:      make(map[IntegrationActionType]ActionFuncMultiInput),
+		actionFuncsPerItemRoutable: make(map[IntegrationActionType]ActionFuncPerItemRoutable),
 	}
 }
 
@@ -82,6 +90,15 @@ func (m *IntegrationActionManager) AddPerItemWithFile(actionType IntegrationActi
 	return m
 }
 
+func (m *IntegrationActionManager) AddPerItemRoutable(actionType IntegrationActionType, actionFunc ActionFuncPerItemRoutable) *IntegrationActionManager {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	m.actionFuncsPerItemRoutable[actionType] = actionFunc
+
+	return m
+}
+
 func (m *IntegrationActionManager) AddMultiInput(actionType IntegrationActionType, actionFunc ActionFuncMultiInput) *IntegrationActionManager {
 	m.actionFuncsMultiInput[actionType] = actionFunc
 
@@ -120,6 +137,14 @@ func (m *IntegrationActionManager) GetPerItemWithFile(actionType IntegrationActi
 	return actionFunc, ok
 }
 
+func (m *IntegrationActionManager) GetPerItemRoutable(actionType IntegrationActionType) (ActionFuncPerItemRoutable, bool) {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+
+	actionFunc, ok := m.actionFuncsPerItemRoutable[actionType]
+	return actionFunc, ok
+}
+
 func (m *IntegrationActionManager) Run(ctx context.Context, actionType IntegrationActionType, params IntegrationInput) (IntegrationOutput, error) {
 	_, ok := m.GetPerItem(actionType)
 	if ok {
@@ -136,6 +161,10 @@ func (m *IntegrationActionManager) Run(ctx context.Context, actionType Integrati
 
 	if _, ok := m.GetMultiInput(actionType); ok {
 		return m.RunMultiInput(ctx, actionType, params)
+	}
+
+	if _, ok := m.GetPerItemRoutable(actionType); ok {
+		return m.RunPerItemRoutable(ctx, actionType, params)
 	}
 
 	actionFunc, ok := m.Get(actionType)
@@ -384,6 +413,86 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 		ResultJSONByOutputID: []Payload{
 			resultJSON,
 		},
+	}, nil
+}
+
+func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actionType IntegrationActionType, params IntegrationInput) (IntegrationOutput, error) {
+	actionFuncPerItemRoutable, ok := m.GetPerItemRoutable(actionType)
+	if !ok {
+		return IntegrationOutput{}, fmt.Errorf("action not found")
+	}
+
+	itemsByInputID, err := params.GetItemsByInputID()
+	if err != nil {
+		return IntegrationOutput{}, err
+	}
+
+	allItems := make([]any, 0)
+
+	for _, items := range itemsByInputID {
+		for _, item := range items {
+			allItems = append(allItems, item)
+		}
+	}
+
+	outputs := make([]RoutableOutput, 0)
+
+	for _, item := range allItems {
+		output, err := actionFuncPerItemRoutable(ctx, params, item)
+		if err != nil {
+			return IntegrationOutput{}, err
+		}
+
+		if output.Item == nil {
+			continue
+		}
+
+		if array, isArray := output.Item.([]any); isArray {
+			if len(array) == 0 {
+				continue
+			}
+		}
+
+		if object, isObject := output.Item.(map[string]any); isObject {
+			if len(object) == 0 {
+				continue
+			}
+		}
+
+		outputs = append(outputs, output)
+	}
+
+	outputsByIndex := make(map[int][]Item)
+
+	for _, output := range outputs {
+		outputsByIndex[output.OutputIndex] = append(outputsByIndex[output.OutputIndex], output.Item)
+	}
+
+	maxOutputIndex := -1
+
+	for outputIndex := range outputsByIndex {
+		if outputIndex > maxOutputIndex {
+			maxOutputIndex = outputIndex
+		}
+	}
+
+	resultJSONs := make([]Payload, maxOutputIndex+1)
+
+	for i := range resultJSONs {
+		resultJSONs[i] = []byte(`[]`)
+	}
+
+	for outputIndex, outputs := range outputsByIndex {
+		resultJSON, err := json.Marshal(outputs)
+		if err != nil {
+			return IntegrationOutput{}, err
+		}
+
+		resultJSONs[outputIndex] = resultJSON
+	}
+
+	return IntegrationOutput{
+		ResultJSONByOutputID: resultJSONs,
 	}, nil
 }
 

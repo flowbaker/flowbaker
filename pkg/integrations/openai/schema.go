@@ -69,7 +69,7 @@ var (
 									ArrayOpts: &domain.ArrayPropertyOptions{
 										MinItems: 1,
 										MaxItems: 100,
-										ItemType: domain.NodePropertyType_String,
+										ItemType: domain.NodePropertyType_Map,
 										ItemProperties: []domain.NodeProperty{
 											{
 												Key:         "type",

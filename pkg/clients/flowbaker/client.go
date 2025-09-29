@@ -87,6 +87,9 @@ type ClientInterface interface {
 
 	// Route operations (for executor clients)
 	GetRoutes(ctx context.Context, req GetRoutesRequest) (GetRoutesResponse, error)
+
+	// LLM operations (for executor clients)
+	ClassifyContent(ctx context.Context, workspaceID string, req *ClassifyContentRequest) (*ClassifyContentResponse, error)
 }
 
 // Client provides a high-level interface for interacting with the Flowbaker API
@@ -1599,4 +1602,33 @@ func (c *Client) GetRoutes(ctx context.Context, req GetRoutesRequest) (GetRoutes
 	}
 
 	return result, nil
+}
+
+func (c *Client) ClassifyContent(ctx context.Context, workspaceID string, req *ClassifyContentRequest) (*ClassifyContentResponse, error) {
+	if c.config.ExecutorID == "" {
+		return nil, fmt.Errorf("executor ID is required for classify content requests")
+	}
+
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID is required")
+	}
+
+	if req == nil {
+		return nil, fmt.Errorf("classify content request is required")
+	}
+
+	path := fmt.Sprintf("/v1/workspaces/%s/classifications", workspaceID)
+
+	resp, err := c.doRequestWithExecutorID(ctx, "POST", path, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to classify content: %w", err)
+	}
+
+	var result ClassifyContentResponse
+
+	if err := c.handleResponse(resp, &result); err != nil {
+		return nil, fmt.Errorf("failed to process classify content response: %w", err)
+	}
+
+	return &result, nil
 }
