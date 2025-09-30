@@ -92,6 +92,7 @@ type NodeProperty struct {
 	ArrayOpts               *ArrayPropertyOptions        `json:"array_opts,omitempty"`                // For array type
 	MapOpts                 *MapPropertyOptions          `json:"map_opts,omitempty"`                  // For map type
 	CredentialSelectionOpts *CredentialSelectionOptions  `json:"credential_selection_opts,omitempty"` // For credential selection type
+	EndpointPropertyOpts    *EndpointPropertyOptions     `json:"endpoint_property_opts,omitempty"`    // For endpoint type
 
 	// Syntax highlighting
 	SyntaxHighlightingOpts SyntaxHighlightingOpts `json:"syntax_highlighting_opts"`
@@ -173,6 +174,10 @@ type MultipleNodePropertyOption struct {
 	Label             string               `json:"label"`
 	Value             string               `json:"value"`
 	SubNodeProperties []NodePropertyOption `json:"sub_node_properties,omitempty"`
+}
+
+type EndpointPropertyOptions struct {
+	AllowedMethods []string `json:"allowed_methods,omitempty"`
 }
 
 type EndpointPropertyData struct {

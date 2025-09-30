@@ -736,6 +736,9 @@ var (
 						Description: "The webhook URL endpoint for Stripe events",
 						Required:    true,
 						Type:        domain.NodePropertyType_Endpoint,
+						EndpointPropertyOpts: &domain.EndpointPropertyOptions{
+							AllowedMethods: []string{"POST"},
+						},
 					},
 					{
 						Key:         "selected_events",
