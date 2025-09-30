@@ -140,6 +140,9 @@ var (
 						Description: "The path of the request",
 						Required:    true,
 						Type:        domain.NodePropertyType_Endpoint,
+						EndpointPropertyOpts: &domain.EndpointPropertyOptions{
+							AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
+						},
 					},
 					{
 						Key:         "respond_type",

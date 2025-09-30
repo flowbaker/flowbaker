@@ -497,6 +497,9 @@ var (
 						Description: "The project key to monitor (e.g., 'PROJ'). If empty, listens to organization/instance level events if applicable for selected event types.",
 						Required:    true,
 						Type:        domain.NodePropertyType_Endpoint,
+						EndpointPropertyOpts: &domain.EndpointPropertyOptions{
+							AllowedMethods: []string{"POST"},
+						},
 					},
 					{
 						Key:         "selected_events",
