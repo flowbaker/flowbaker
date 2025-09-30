@@ -160,6 +160,7 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 			}
 
 			err = i.taskPublisher.EnqueueTask(ctx, p.WorkspaceID, domain.ExecuteWorkflowTask{
+				WorkspaceID:  p.WorkspaceID,
 				WorkflowID:   p.Workflow.ID,
 				UserID:       p.UserID,
 				WorkflowType: p.WorkflowType,
