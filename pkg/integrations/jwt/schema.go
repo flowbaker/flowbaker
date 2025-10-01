@@ -73,11 +73,12 @@ var (
 				Description: "Create a JWT token",
 				Properties: []domain.NodeProperty{
 					{
-						Key:         "claims",
-						Name:        "Claims",
-						Description: "The claims to include in the JWT token",
-						Type:        domain.NodePropertyType_CodeEditor,
-						Required:    true,
+						Key:          "claims",
+						Name:         "Claims",
+						Description:  "The claims to include in the JWT token",
+						Type:         domain.NodePropertyType_CodeEditor,
+						CodeLanguage: domain.CodeLanguageType_JSON,
+						Required:     true,
 					},
 					{
 						Key:         "expire_seconds",
