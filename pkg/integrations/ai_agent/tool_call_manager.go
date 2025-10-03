@@ -229,6 +229,12 @@ func (m *DefaultToolCallManager) convertNodePropertyToSchema(prop domain.NodePro
 		}
 	}
 
+	if prop.Type == domain.NodePropertyType_TagInput {
+		schema["items"] = map[string]interface{}{
+			"type": "string",
+		}
+	}
+
 	if len(prop.Options) > 0 {
 		var enumValues []interface{}
 		for _, option := range prop.Options {
