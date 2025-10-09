@@ -2,6 +2,8 @@ package executor
 
 import (
 	"time"
+
+	api "github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 )
 
 // HealthCheckResponse represents the response from a health check
@@ -219,4 +221,15 @@ type WorkspaceAssignment struct {
 
 type UnregisterWorkspaceResponse struct {
 	Success bool `json:"success"`
+}
+
+type RerunNodeRequest struct {
+	ExecutionID        string                 `json:"execution_id"`
+	NodeID             string                 `json:"node_id"`
+	Node               WorkflowNode           `json:"node"`
+	NodeExecutionEntry api.NodeExecutionEntry `json:"node_execution_entry"`
+}
+
+type RerunNodeResponse struct {
+	Payload []byte `json:"payload"`
 }

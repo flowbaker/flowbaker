@@ -23,6 +23,7 @@ type WorkflowExecutorService interface {
 	HandlePollingEvent(ctx context.Context, event domain.PollingEvent) (domain.PollResult, error)
 	TestConnection(ctx context.Context, params TestConnectionParams) (bool, error)
 	PeekData(ctx context.Context, params PeekDataParams) (domain.PeekResult, error)
+	RerunNode(ctx context.Context, params RerunNodeParams) (ExecutionResult, error)
 }
 
 type workflowExecutorService struct {
@@ -198,4 +199,14 @@ func (s *workflowExecutorService) PeekData(ctx context.Context, params PeekDataP
 	}
 
 	return result, nil
+}
+
+type RerunNodeParams struct {
+	ExecutionID        string
+	NodeID             string
+	NodeExecutionEntry flowbaker.NodeExecutionEntry
+}
+
+func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNodeParams) (ExecutionResult, error) {
+	return ExecutionResult{}, nil
 }
