@@ -226,7 +226,7 @@ type UnregisterWorkspaceResponse struct {
 type RerunNodeRequest struct {
 	ExecutionID        string                 `json:"execution_id"`
 	NodeID             string                 `json:"node_id"`
-	Node               WorkflowNode           `json:"node"`
+	Workflow           Workflow               `json:"workflow"`
 	NodeExecutionEntry api.NodeExecutionEntry `json:"node_execution_entry"`
 }
 

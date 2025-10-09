@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain/executor"
 
 	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
@@ -111,23 +112,20 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 			Err(err).
 			Msg("No previous memory found, starting fresh conversation")
 
-		if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled {
+		if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled && workflowCtx.ExecutionObserver != nil {
 			inputItems := m.buildMemoryInputItems(filter)
-			agentExecution := domain.NodeExecutionEntry{
-				NodeID:          m.memoryNodeID,
-				Error:           err.Error(),
-				ItemsByInputID:  inputItems,
-				ItemsByOutputID: make(map[string]domain.NodeItems),
-				EventType:       domain.NodeFailed,
-				Timestamp:       startTime.UnixNano(),
-				ExecutionOrder:  1,
-			}
-			workflowCtx.AddAgentNodeExecution(agentExecution)
 
-			if workflowCtx.EnableEvents && m.eventPublisher != nil {
-				publishErr := m.publishMemoryRetrievalFailedEvent(ctx, workflowCtx, workspaceID, err)
-				if publishErr != nil {
-					log.Error().Err(publishErr).Msg("Failed to publish memory retrieval failed event")
+			if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
+				failedEvent := executor.NodeExecutionFailedEvent{
+					NodeID:         m.memoryNodeID,
+					ItemsByInputID: inputItems,
+					Error:          err,
+					Timestamp:      time.Now(),
+				}
+
+				notifyErr := observer.Notify(ctx, failedEvent)
+				if notifyErr != nil {
+					log.Error().Err(notifyErr).Msg("Failed to notify observer about memory retrieval failure")
 				}
 			}
 		}
@@ -136,24 +134,24 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 	}
 
 	if len(conversations) == 0 {
-		if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled {
+		if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled && workflowCtx.ExecutionObserver != nil {
 			inputItems := m.buildMemoryInputItems(filter)
 			outputItems := m.buildMemoryOutputItems([]domain.AgentConversation{}, m.memoryNodeID)
-			agentExecution := domain.NodeExecutionEntry{
-				NodeID:          m.memoryNodeID,
-				Error:           "",
-				ItemsByInputID:  inputItems,
-				ItemsByOutputID: outputItems,
-				EventType:       domain.NodeExecuted,
-				Timestamp:       startTime.UnixNano(),
-				ExecutionOrder:  1,
-			}
-			workflowCtx.AddAgentNodeExecution(agentExecution)
 
-			if workflowCtx.EnableEvents && m.eventPublisher != nil {
-				publishErr := m.publishMemoryRetrievalCompletedEvent(ctx, workflowCtx, workspaceID, 0, 0, startTime)
-				if publishErr != nil {
-					log.Error().Err(publishErr).Msg("Failed to publish memory retrieval completed event")
+			if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
+				completedEvent := executor.NodeExecutionCompletedEvent{
+					NodeID:          m.memoryNodeID,
+					ItemsByInputID:  inputItems,
+					ItemsByOutputID: outputItems,
+					ExecutionOrder:  1,
+					StartedAt:       startTime,
+					EndedAt:         time.Now(),
+					Timestamp:       time.Now(),
+				}
+
+				notifyErr := observer.Notify(ctx, completedEvent)
+				if notifyErr != nil {
+					log.Error().Err(notifyErr).Msg("Failed to notify observer about memory retrieval completion")
 				}
 			}
 		}
@@ -162,24 +160,24 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 
 	context := m.contextBuilder.FormatMultipleConversations(conversations)
 
-	if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled {
+	if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled && workflowCtx.ExecutionObserver != nil {
 		inputItems := m.buildMemoryInputItems(filter)
 		outputItems := m.buildMemoryOutputItems(conversations, m.memoryNodeID)
-		agentExecution := domain.NodeExecutionEntry{
-			NodeID:          m.memoryNodeID,
-			Error:           "",
-			ItemsByInputID:  inputItems,
-			ItemsByOutputID: outputItems,
-			EventType:       domain.NodeExecuted,
-			Timestamp:       startTime.UnixNano(),
-			ExecutionOrder:  1,
-		}
-		workflowCtx.AddAgentNodeExecution(agentExecution)
 
-		if workflowCtx.EnableEvents && m.eventPublisher != nil {
-			err = m.publishMemoryRetrievalCompletedEvent(ctx, workflowCtx, workspaceID, len(conversations), len(context), startTime)
-			if err != nil {
-				log.Error().Err(err).Msg("Failed to publish memory retrieval completed event")
+		if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
+			completedEvent := executor.NodeExecutionCompletedEvent{
+				NodeID:          m.memoryNodeID,
+				ItemsByInputID:  inputItems,
+				ItemsByOutputID: outputItems,
+				ExecutionOrder:  1,
+				StartedAt:       startTime,
+				EndedAt:         time.Now(),
+				Timestamp:       time.Now(),
+			}
+
+			notifyErr := observer.Notify(ctx, completedEvent)
+			if notifyErr != nil {
+				log.Error().Err(notifyErr).Msg("Failed to notify observer about memory retrieval completion")
 			}
 		}
 	}

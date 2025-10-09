@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain/executor"
 
 	"github.com/rs/zerolog/log"
 )
@@ -411,23 +412,20 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		result.Success = false
 		result.Error = err.Error()
 
-		if hasWorkflowCtx {
+		if hasWorkflowCtx && workflowCtx.ExecutionObserver != nil {
 			inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
-			agentExecution := domain.NodeExecutionEntry{
-				NodeID:          toolNodeID,
-				Error:           err.Error(),
-				ItemsByInputID:  inputItems,
-				ItemsByOutputID: make(map[string]domain.NodeItems),
-				EventType:       domain.NodeFailed,
-				Timestamp:       startTime.UnixNano(),
-				ExecutionOrder:  1,
-			}
-			workflowCtx.AddAgentNodeExecution(agentExecution)
 
-			if workflowCtx.EnableEvents {
-				publishErr := m.publishToolExecutionFailedEvent(ctx, workflowCtx, toolNodeID, toolCall, resolvedParams, err)
-				if publishErr != nil {
-					log.Error().Err(publishErr).Str("tool_name", toolCall.Name).Msg("Failed to publish tool execution failed event")
+			if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
+				failedEvent := executor.NodeExecutionFailedEvent{
+					NodeID:         toolNodeID,
+					ItemsByInputID: inputItems,
+					Error:          err,
+					Timestamp:      time.Now(),
+				}
+
+				notifyErr := observer.Notify(ctx, failedEvent)
+				if notifyErr != nil {
+					log.Error().Err(notifyErr).Str("tool_name", toolCall.Name).Msg("Failed to notify observer about tool execution failure")
 				}
 			}
 		}
@@ -444,24 +442,24 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 	result.Success = true
 	result.Result = m.formatToolResult(output)
 
-	if hasWorkflowCtx {
+	if hasWorkflowCtx && workflowCtx.ExecutionObserver != nil {
 		inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
 		outputItems, _ := m.buildOutputItemsFromIntegrationOutput(output, toolNodeID)
-		agentExecution := domain.NodeExecutionEntry{
-			NodeID:          toolNodeID,
-			Error:           "",
-			ItemsByInputID:  inputItems,
-			ItemsByOutputID: outputItems,
-			EventType:       domain.NodeExecuted,
-			Timestamp:       startTime.UnixNano(),
-			ExecutionOrder:  1,
-		}
-		workflowCtx.AddAgentNodeExecution(agentExecution)
 
-		if workflowCtx.EnableEvents {
-			err = m.publishToolExecutionCompletedEvent(ctx, workflowCtx, toolNodeID, resolvedParams, output)
-			if err != nil {
-				log.Error().Err(err).Str("tool_name", toolCall.Name).Msg("Failed to publish tool execution completed event")
+		if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
+			completedEvent := executor.NodeExecutionCompletedEvent{
+				NodeID:          toolNodeID,
+				ItemsByInputID:  inputItems,
+				ItemsByOutputID: outputItems,
+				ExecutionOrder:  1,
+				StartedAt:       startTime,
+				EndedAt:         time.Now(),
+				Timestamp:       time.Now(),
+			}
+
+			notifyErr := observer.Notify(ctx, completedEvent)
+			if notifyErr != nil {
+				log.Error().Err(notifyErr).Str("tool_name", toolCall.Name).Msg("Failed to notify observer about tool execution completion")
 			}
 		}
 	}

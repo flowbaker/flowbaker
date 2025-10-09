@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain/executor"
 
 	"github.com/rs/zerolog/log"
 )
@@ -552,19 +553,19 @@ func (f *FunctionCallingConversationManager) formatFieldOptions(toolName, fieldK
 		return ""
 	}
 
-	return fmt.Sprintf("For tool '%s', parameter '%s', available options: %s", 
+	return fmt.Sprintf("For tool '%s', parameter '%s', available options: %s",
 		toolName, fieldKey, strings.Join(options, ", "))
 }
 
 func (f *FunctionCallingConversationManager) extractOptions(peekResults []domain.PeekResultItem) []string {
 	var options []string
-	
+
 	for _, item := range peekResults {
 		if item.Content != "" {
 			options = append(options, fmt.Sprintf(`"%s"`, item.Content))
 		}
 	}
-	
+
 	return options
 }
 
@@ -705,47 +706,44 @@ func (f *FunctionCallingConversationManager) generateWithConversationAndEvents(
 	response, err := f.llm.GenerateWithConversation(ctx, req)
 
 	if err != nil {
-		if hasWorkflowCtx {
+		if hasWorkflowCtx && workflowCtx.ExecutionObserver != nil {
 			inputItems := f.buildInputItemsFromLLMRequest(req)
-			agentExecution := domain.NodeExecutionEntry{
-				NodeID:          f.executeParams.LLM.NodeID,
-				Error:           err.Error(),
-				ItemsByInputID:  inputItems,
-				ItemsByOutputID: make(map[string]domain.NodeItems),
-				EventType:       domain.NodeFailed,
-				Timestamp:       startTime.UnixNano(),
-				ExecutionOrder:  1,
-			}
-			workflowCtx.AddAgentNodeExecution(agentExecution)
 
-			if workflowCtx.EnableEvents {
-				publishErr := f.publishLLMExecutionFailedEvent(ctx, workflowCtx, req, err)
-				if publishErr != nil {
-					log.Error().Err(publishErr).Msg("Failed to publish LLM execution failed event")
+			if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
+				failedEvent := executor.NodeExecutionFailedEvent{
+					NodeID:         f.executeParams.LLM.NodeID,
+					ItemsByInputID: inputItems,
+					Error:          err,
+					Timestamp:      time.Now(),
+				}
+
+				notifyErr := observer.Notify(ctx, failedEvent)
+				if notifyErr != nil {
+					log.Error().Err(notifyErr).Msg("Failed to notify observer about LLM execution failure")
 				}
 			}
 		}
 		return domain.ModelResponse{}, err
 	}
 
-	if hasWorkflowCtx {
+	if hasWorkflowCtx && workflowCtx.ExecutionObserver != nil {
 		inputItems := f.buildInputItemsFromLLMRequest(req)
 		outputItems := f.buildOutputItemsFromLLMResponse(&response, f.executeParams.LLM.NodeID)
-		agentExecution := domain.NodeExecutionEntry{
-			NodeID:          f.executeParams.LLM.NodeID,
-			Error:           "",
-			ItemsByInputID:  inputItems,
-			ItemsByOutputID: outputItems,
-			EventType:       domain.NodeExecuted,
-			Timestamp:       startTime.UnixNano(),
-			ExecutionOrder:  1,
-		}
-		workflowCtx.AddAgentNodeExecution(agentExecution)
 
-		if workflowCtx.EnableEvents {
-			err = f.publishLLMExecutionCompletedEvent(ctx, workflowCtx, req, &response)
-			if err != nil {
-				log.Error().Err(err).Msg("Failed to publish LLM execution completed event")
+		if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
+			completedEvent := executor.NodeExecutionCompletedEvent{
+				NodeID:          f.executeParams.LLM.NodeID,
+				ItemsByInputID:  inputItems,
+				ItemsByOutputID: outputItems,
+				ExecutionOrder:  1,
+				StartedAt:       startTime,
+				EndedAt:         time.Now(),
+				Timestamp:       time.Now(),
+			}
+
+			notifyErr := observer.Notify(ctx, completedEvent)
+			if notifyErr != nil {
+				log.Error().Err(notifyErr).Msg("Failed to notify observer about LLM execution completion")
 			}
 		}
 	}

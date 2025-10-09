@@ -14,7 +14,9 @@ type WorkflowExecutionContext struct {
 	ResponsePayload     Payload
 	ResponseHeaders     map[string][]string
 	ResponseStatusCode  int
-	AgentNodeExecutions []NodeExecutionEntry
+	// ExecutionObserver is stored as interface{} to avoid import cycles with pkg/domain/executor.
+	// Cast to *executor.ExecutionObserver when needed.
+	ExecutionObserver interface{}
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {
@@ -29,11 +31,7 @@ func (c *WorkflowExecutionContext) SetResponseStatusCode(statusCode int) {
 	c.ResponseStatusCode = statusCode
 }
 
-func (c *WorkflowExecutionContext) AddAgentNodeExecution(execution NodeExecutionEntry) {
-	c.AgentNodeExecutions = append(c.AgentNodeExecutions, execution)
-}
-
-func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool) context.Context {
+func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool, observer interface{}) context.Context {
 	workflowExecutionContext := &WorkflowExecutionContext{
 		WorkspaceID:         workspaceID,
 		WorkflowID:          workflowID,
@@ -42,7 +40,7 @@ func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, wo
 		ResponsePayload:     nil,
 		ResponseHeaders:     map[string][]string{},
 		ResponseStatusCode:  200,
-		AgentNodeExecutions: []NodeExecutionEntry{},
+		ExecutionObserver:   observer,
 	}
 
 	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)

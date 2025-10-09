@@ -13,7 +13,6 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
-	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -93,6 +92,7 @@ type WorkflowExecutor struct {
 }
 
 type WorkflowExecutorDeps struct {
+	ExecutionID           string
 	Workflow              domain.Workflow
 	Selector              domain.IntegrationSelector
 	EventPublisher        domain.EventPublisher
@@ -120,19 +120,17 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) WorkflowExecutor {
 		}
 	}
 
-	executionID := xid.New().String()
-
 	// Initialize execution observer
 	observer := NewExecutionObserver()
 
 	// Create handlers
-	historyRecorder := NewHistoryRecorder(deps.IsTestingWorkflow)
+	historyRecorder := NewHistoryRecorder()
 	usageCollector := NewUsageCollector()
 	eventBroadcaster := NewEventBroadcaster(
 		deps.OrderedEventPublisher,
 		deps.EnableEvents,
 		deps.Workflow.ID,
-		executionID,
+		deps.ExecutionID,
 	)
 
 	// Subscribe handlers to observer
@@ -141,7 +139,7 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) WorkflowExecutor {
 	observer.Subscribe(eventBroadcaster)
 
 	return WorkflowExecutor{
-		executionID:                executionID,
+		executionID:                deps.ExecutionID,
 		workflow:                   deps.Workflow,
 		waitingExecutionTasks:      []WaitingExecutionTask{},
 		executionQueue:             []NodeExecutionTask{},
@@ -170,7 +168,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	workspaceID := w.workflow.WorkspaceID
 
 	ctx = domain.NewContextWithEventOrder(ctx)
-	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, workspaceID, w.workflow.ID, w.executionID, w.enableEvents)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, workspaceID, w.workflow.ID, w.executionID, w.enableEvents, w.observer)
 
 	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
 
@@ -237,11 +235,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	// Convert domain types to flowbaker types using mappers
 	nodeExecutions := mappers.DomainNodeExecutionsToFlowbaker(w.usageCollector.GetNodeExecutions())
 	historyEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(w.historyRecorder.GetHistoryEntries())
-
-	if executionContext, ok := domain.GetWorkflowExecutionContext(ctx); ok && executionContext != nil {
-		agentHistoryEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(executionContext.AgentNodeExecutions)
-		historyEntries = append(historyEntries, agentHistoryEntries...)
-	}
 
 	completeParams := &flowbaker.CompleteExecutionRequest{
 		ExecutionID:       w.executionID,

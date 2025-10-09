@@ -50,6 +50,7 @@ func NewWorkflowExecutorService(deps WorkflowExecutorServiceDependencies) Workfl
 }
 
 type ExecuteParams struct {
+	ExecutionID       string
 	Workflow          domain.Workflow
 	EventName         string
 	PayloadJSON       string
@@ -59,6 +60,7 @@ type ExecuteParams struct {
 
 func (s *workflowExecutorService) Execute(ctx context.Context, params ExecuteParams) (ExecutionResult, error) {
 	workflowExecutor := NewWorkflowExecutor(WorkflowExecutorDeps{
+		ExecutionID:           params.ExecutionID,
 		Workflow:              params.Workflow,
 		Selector:              s.integrationSelector,
 		EnableEvents:          params.EnableEvents,
@@ -88,7 +90,7 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 }
 
 func (s *workflowExecutorService) HandlePollingEvent(ctx context.Context, event domain.PollingEvent) (domain.PollResult, error) {
-	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, event.WorkspaceID, event.Workflow.ID, "", false)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, event.WorkspaceID, event.Workflow.ID, "", false, nil)
 
 	integrationPoller, err := s.integrationSelector.SelectPoller(ctx, domain.SelectIntegrationParams{
 		IntegrationType: event.IntegrationType,
@@ -115,7 +117,7 @@ type TestConnectionParams struct {
 }
 
 func (s *workflowExecutorService) TestConnection(ctx context.Context, params TestConnectionParams) (bool, error) {
-	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, params.WorkspaceID, "", "", false)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, params.WorkspaceID, "", "", false, nil)
 
 	credential, err := s.credentialManager.GetFullCredential(ctx, params.CredentialID)
 	if err != nil {
@@ -162,7 +164,7 @@ type PeekDataParams struct {
 }
 
 func (s *workflowExecutorService) PeekData(ctx context.Context, params PeekDataParams) (domain.PeekResult, error) {
-	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, params.WorkspaceID, "", "", false)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, params.WorkspaceID, "", "", false, nil)
 
 	integrationCreator, err := s.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
 		IntegrationType: params.IntegrationType,
@@ -203,10 +205,50 @@ func (s *workflowExecutorService) PeekData(ctx context.Context, params PeekDataP
 
 type RerunNodeParams struct {
 	ExecutionID        string
+	WorkspaceID        string
 	NodeID             string
-	NodeExecutionEntry flowbaker.NodeExecutionEntry
+	NodeExecutionEntry domain.NodeExecutionEntry
+	Workflow           domain.Workflow
 }
 
 func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNodeParams) (ExecutionResult, error) {
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, params.WorkspaceID, params.Workflow.ID, params.ExecutionID, true, nil)
+
+	workflowExecutor := NewWorkflowExecutor(WorkflowExecutorDeps{
+		ExecutionID:           params.ExecutionID,
+		Selector:              s.integrationSelector,
+		EnableEvents:          true,
+		Workflow:              params.Workflow,
+		IsTestingWorkflow:     true,
+		ExecutorClient:        s.flowbakerClient,
+		OrderedEventPublisher: s.orderedEventPublisher,
+	})
+
+	executionEntry := params.NodeExecutionEntry
+
+	payloadByInputID := make(SourceNodePayloadByInputID)
+
+	for inputID, items := range executionEntry.ItemsByInputID {
+		itemsJSON, err := json.Marshal(items.Items)
+		if err != nil {
+			return ExecutionResult{}, err
+		}
+
+		payloadByInputID[inputID] = SourceNodePayload{
+			SourceNodeID: items.FromNodeID,
+			Payload:      itemsJSON,
+		}
+	}
+
+	task := NodeExecutionTask{
+		NodeID:           params.NodeID,
+		PayloadByInputID: payloadByInputID,
+	}
+
+	err := workflowExecutor.ExecuteNode(ctx, task, int64(executionEntry.ExecutionOrder))
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
 	return ExecutionResult{}, nil
 }

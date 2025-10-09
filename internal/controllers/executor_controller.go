@@ -84,6 +84,7 @@ func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
 	log.Info().Msgf("Starting execution for workflow %s in workspace %s", req.Workflow.ID, workspaceID)
 
 	p := executor.ExecuteParams{
+		ExecutionID:       req.ExecutionID,
 		Workflow:          mappers.ExecutorWorkflowToDomain(req.Workflow),
 		EventName:         req.EventName,
 		PayloadJSON:       string(req.PayloadJSON),
@@ -117,7 +118,13 @@ func (c *ExecutorController) RerunNode(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 
-	result, err := c.executorService.RerunNode(ctx.RequestCtx(), executor.RerunNodeParams{})
+	result, err := c.executorService.RerunNode(ctx.RequestCtx(), executor.RerunNodeParams{
+		ExecutionID:        req.ExecutionID,
+		WorkspaceID:        workspaceID,
+		NodeID:             req.NodeID,
+		NodeExecutionEntry: mappers.FlowbakerNodeExecutionEntryToDomain(req.NodeExecutionEntry),
+		Workflow:           mappers.ExecutorWorkflowToDomain(&req.Workflow),
+	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to rerun node")
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to rerun node")

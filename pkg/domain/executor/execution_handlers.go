@@ -12,25 +12,19 @@ import (
 
 // HistoryRecorder records node execution history
 type HistoryRecorder struct {
-	historyEntries    []domain.NodeExecutionEntry
-	isTestingWorkflow bool
-	mutex             sync.Mutex
+	historyEntries []domain.NodeExecutionEntry
+	mutex          sync.Mutex
 }
 
 // NewHistoryRecorder creates a new history recorder
-func NewHistoryRecorder(isTestingWorkflow bool) *HistoryRecorder {
+func NewHistoryRecorder() *HistoryRecorder {
 	return &HistoryRecorder{
-		historyEntries:    []domain.NodeExecutionEntry{},
-		isTestingWorkflow: isTestingWorkflow,
+		historyEntries: []domain.NodeExecutionEntry{},
 	}
 }
 
 // HandleEvent processes execution events and records history
 func (h *HistoryRecorder) HandleEvent(ctx context.Context, event ExecutionEvent) error {
-	if h.isTestingWorkflow {
-		return nil
-	}
-
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 

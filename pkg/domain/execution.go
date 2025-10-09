@@ -16,7 +16,6 @@ type NodeExecutionEntry struct {
 	Timestamp       int64
 	ExecutionOrder  int
 }
-
 type NodeExecution struct {
 	ID                     string
 	NodeID                 string
