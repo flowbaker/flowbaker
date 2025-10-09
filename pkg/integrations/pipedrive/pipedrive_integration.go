@@ -182,6 +182,14 @@ func (i *PipedriveIntegration) Execute(ctx context.Context, params domain.Integr
 	return i.actionManager.Run(ctx, params.ActionType, params)
 }
 
+func (i *PipedriveIntegration) makeRequestV1(ctx context.Context, method, endpoint string, body any) ([]byte, error) {
+	return i.makeRequest(ctx, method, endpoint, body, PipedriveVersionV1)
+}
+
+func (i *PipedriveIntegration) makeRequestV2(ctx context.Context, method, endpoint string, body any) ([]byte, error) {
+	return i.makeRequest(ctx, method, endpoint, body, PipedriveVersionV2)
+}
+
 type PipedriveVersion string
 
 const (
@@ -236,14 +244,6 @@ func (i *PipedriveIntegration) makeRequest(ctx context.Context, method, endpoint
 	}
 
 	return respBody, nil
-}
-
-func (i *PipedriveIntegration) makeRequestV1(ctx context.Context, method, endpoint string, body any) ([]byte, error) {
-	return i.makeRequest(ctx, method, endpoint, body, PipedriveVersionV1)
-}
-
-func (i *PipedriveIntegration) makeRequestV2(ctx context.Context, method, endpoint string, body any) ([]byte, error) {
-	return i.makeRequest(ctx, method, endpoint, body, PipedriveVersionV2)
 }
 
 type CreateDealParams struct {
