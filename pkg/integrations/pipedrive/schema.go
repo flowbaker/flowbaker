@@ -17,13 +17,6 @@ var (
 				Required:    true,
 				Type:        domain.NodePropertyType_String,
 			},
-			{
-				Key:         "domain",
-				Name:        "Company Domain",
-				Description: "Your Pipedrive company domain (e.g., 'mycompany' for mycompany.pipedrive.com)",
-				Required:    true,
-				Type:        domain.NodePropertyType_String,
-			},
 		},
 		Actions: []domain.IntegrationAction{
 			{
@@ -811,7 +804,7 @@ var (
 						Type:        domain.NodePropertyType_String,
 					},
 					{
-						Key:         "email",
+						Key:         "emails",
 						Name:        "Email",
 						Description: "Email address(es) of the person",
 						Required:    false,
@@ -819,8 +812,8 @@ var (
 						RegexKey:    "email",
 					},
 					{
-						Key:         "phone",
-						Name:        "Phone",
+						Key:         "phones",
+						Name:        "Phones",
 						Description: "Phone number(s) of the person",
 						Required:    false,
 						Type:        domain.NodePropertyType_TagInput,
@@ -880,15 +873,15 @@ var (
 						Type:        domain.NodePropertyType_String,
 					},
 					{
-						Key:         "email",
-						Name:        "Email",
+						Key:         "emails",
+						Name:        "Emails",
 						Description: "Email address(es) of the person",
 						Required:    false,
 						Type:        domain.NodePropertyType_TagInput,
 						RegexKey:    "email",
 					},
 					{
-						Key:         "phone",
+						Key:         "phones",
 						Name:        "Phone",
 						Description: "Phone number(s) of the person",
 						Required:    false,
@@ -907,9 +900,13 @@ var (
 					{
 						Key:         "visible_to",
 						Name:        "Visible To",
-						Description: "The visibility of the person",
+						Description: "The visibility of the organization",
 						Required:    false,
 						Type:        domain.NodePropertyType_Number,
+						Options: []domain.NodePropertyOption{
+							{Label: "Owner & followers", Value: 1},
+							{Label: "Entire company", Value: 3},
+						},
 					},
 					{
 						Key:          "owner_id",

@@ -89,7 +89,6 @@ func (c *PipedriveIntegrationCreator) CreateIntegration(ctx context.Context, p d
 
 type PipedriveIntegration struct {
 	apiToken string
-	domain   string
 	binder   domain.IntegrationParameterBinder
 
 	actionManager *domain.IntegrationActionManager
@@ -98,7 +97,6 @@ type PipedriveIntegration struct {
 
 type PipedriveCredential struct {
 	APIToken string `json:"api_token"`
-	Domain   string `json:"domain"`
 }
 
 type PipedriveIntegrationDependencies struct {
@@ -115,7 +113,6 @@ func NewPipedriveIntegration(ctx context.Context, deps PipedriveIntegrationDepen
 
 	integration := &PipedriveIntegration{
 		apiToken: credential.APIToken,
-		domain:   credential.Domain,
 		binder:   deps.ParameterBinder,
 	}
 
@@ -205,9 +202,9 @@ func (i *PipedriveIntegration) makeRequest(ctx context.Context, method, endpoint
 
 	var url string
 	if version == PipedriveVersionV1 {
-		url = fmt.Sprintf("https://%s.pipedrive.com/%s%s%sapi_token=%s", i.domain, version, endpoint, separator, i.apiToken)
+		url = fmt.Sprintf("https://api.pipedrive.com/%s%s%sapi_token=%s", version, endpoint, separator, i.apiToken)
 	} else {
-		url = fmt.Sprintf("https://%s.pipedrive.com/api/v2%s%sapi_token=%s", i.domain, endpoint, separator, i.apiToken)
+		url = fmt.Sprintf("https://api.pipedrive.com/api/v2%s%sapi_token=%s", endpoint, separator, i.apiToken)
 	}
 
 	var reqBody io.Reader
@@ -450,20 +447,29 @@ func (i *PipedriveIntegration) ListDeals(ctx context.Context, params domain.Inte
 }
 
 type CreatePersonParams struct {
-	Name  string   `json:"name"`
-	Email []string `json:"email,omitempty"`
-	Phone []string `json:"phone,omitempty"`
-	OrgID int      `json:"org_id,omitempty"`
+	Name   string   `json:"name"`
+	Emails []string `json:"emails,omitempty"`
+	Phones []string `json:"phones,omitempty"`
+	OrgID  int      `json:"org_id,omitempty"`
 }
 
-type PersonOutputItem struct {
-	ID         int      `json:"id"`
-	Name       string   `json:"name"`
-	Email      []string `json:"email,omitempty"`
-	Phone      []string `json:"phone,omitempty"`
-	OrgID      int      `json:"org_id,omitempty"`
-	AddTime    string   `json:"add_time,omitempty"`
-	UpdateTime string   `json:"update_time,omitempty"`
+type CreatePersonRequest struct {
+	Name   string              `json:"name"`
+	Emails []CreatePersonEmail `json:"emails,omitempty"`
+	Phones []CreatePersonPhone `json:"phones,omitempty"`
+	OrgID  int                 `json:"org_id,omitempty"`
+}
+
+type CreatePersonPhone struct {
+	Value   string `json:"value"`
+	Primary bool   `json:"primary,omitempty"`
+	Label   string `json:"label,omitempty"`
+}
+
+type CreatePersonEmail struct {
+	Value   string `json:"value"`
+	Primary bool   `json:"primary,omitempty"`
+	Label   string `json:"label,omitempty"`
 }
 
 func (i *PipedriveIntegration) CreatePerson(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -473,7 +479,28 @@ func (i *PipedriveIntegration) CreatePerson(ctx context.Context, params domain.I
 		return nil, err
 	}
 
-	respBody, err := i.makeRequestV2(ctx, "POST", "/persons", p)
+	phones := []CreatePersonPhone{}
+	for _, phone := range p.Phones {
+		phones = append(phones, CreatePersonPhone{
+			Value: phone,
+		})
+	}
+
+	emails := []CreatePersonEmail{}
+	for _, email := range p.Emails {
+		emails = append(emails, CreatePersonEmail{
+			Value: email,
+		})
+	}
+
+	request := CreatePersonRequest{
+		Name:   p.Name,
+		Emails: emails,
+		Phones: phones,
+		OrgID:  p.OrgID,
+	}
+
+	respBody, err := i.makeRequestV2(ctx, "POST", "/persons", request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create person: %w", err)
 	}
@@ -487,11 +514,18 @@ func (i *PipedriveIntegration) CreatePerson(ctx context.Context, params domain.I
 }
 
 type UpdatePersonParams struct {
-	ID    int      `json:"id"`
-	Name  string   `json:"name,omitempty"`
-	Email []string `json:"email,omitempty"`
-	Phone []string `json:"phone,omitempty"`
-	OrgID int      `json:"org_id,omitempty"`
+	ID     int      `json:"id"`
+	Name   string   `json:"name,omitempty"`
+	Emails []string `json:"email,omitempty"`
+	Phones []string `json:"phone,omitempty"`
+	OrgID  int      `json:"org_id,omitempty"`
+}
+
+type UpdatePersonRequest struct {
+	Name   string   `json:"name,omitempty"`
+	Emails []string `json:"email,omitempty"`
+	Phones []string `json:"phone,omitempty"`
+	OrgID  int      `json:"org_id,omitempty"`
 }
 
 func (i *PipedriveIntegration) UpdatePerson(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -503,7 +537,14 @@ func (i *PipedriveIntegration) UpdatePerson(ctx context.Context, params domain.I
 
 	endpoint := fmt.Sprintf("/persons/%d", p.ID)
 
-	respBody, err := i.makeRequestV2(ctx, "PUT", endpoint, p)
+	request := UpdatePersonRequest{
+		Name:   p.Name,
+		Emails: p.Emails,
+		Phones: p.Phones,
+		OrgID:  p.OrgID,
+	}
+
+	respBody, err := i.makeRequestV2(ctx, "PATCH", endpoint, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update person: %w", err)
 	}
