@@ -65,6 +65,7 @@ const (
 	PipedriveIntegrationPeekable_Products      domain.IntegrationPeekableType = "products"
 	PipedriveIntegrationPeekable_Projects      domain.IntegrationPeekableType = "projects"
 	PipedriveIntegrationPeekable_Leads         domain.IntegrationPeekableType = "leads"
+	PipedriveIntegrationPeekable_Labels        domain.IntegrationPeekableType = "labels"
 )
 
 type PipedriveIntegrationCreator struct {
@@ -168,6 +169,7 @@ func NewPipedriveIntegration(ctx context.Context, deps PipedriveIntegrationDepen
 		PipedriveIntegrationPeekable_Products:      integration.PeekProducts,
 		PipedriveIntegrationPeekable_Projects:      integration.PeekProjects,
 		PipedriveIntegrationPeekable_Leads:         integration.PeekLeads,
+		PipedriveIntegrationPeekable_Labels:        integration.PeekLabels,
 	}
 
 	integration.peekFuncs = peekFuncs
@@ -245,8 +247,9 @@ func (i *PipedriveIntegration) makeRequest(ctx context.Context, method, endpoint
 
 type CreateDealParams struct {
 	Title      string `json:"title"`
-	Value      int    `json:"value,omitempty"`
+	Value      string `json:"value,omitempty"`
 	Currency   string `json:"currency,omitempty"`
+	UserID     int    `json:"user_id,omitempty"`
 	PersonID   int    `json:"person_id,omitempty"`
 	OrgID      int    `json:"org_id,omitempty"`
 	PipelineID int    `json:"pipeline_id,omitempty"`
@@ -275,15 +278,42 @@ func (i *PipedriveIntegration) CreateDeal(ctx context.Context, params domain.Int
 }
 
 type UpdateDealParams struct {
-	ID         int    `json:"id"`
-	Title      string `json:"title,omitempty"`
-	Value      int    `json:"value,omitempty"`
-	Currency   string `json:"currency,omitempty"`
-	PersonID   int    `json:"person_id,omitempty"`
-	OrgID      int    `json:"org_id,omitempty"`
-	PipelineID int    `json:"pipeline_id,omitempty"`
-	StageID    int    `json:"stage_id,omitempty"`
-	Status     string `json:"status,omitempty"`
+	ID                int    `json:"id"`
+	Title             string `json:"title,omitempty"`
+	Value             int    `json:"value,omitempty"`
+	Currency          string `json:"currency,omitempty"`
+	OwnerID           int    `json:"owner_id,omitempty"`
+	PersonID          int    `json:"person_id,omitempty"`
+	OrgID             int    `json:"org_id,omitempty"`
+	PipelineID        int    `json:"pipeline_id,omitempty"`
+	StageID           int    `json:"stage_id,omitempty"`
+	Status            string `json:"status,omitempty"`
+	LostReason        string `json:"lost_reason,omitempty"`
+	VisibleTo         int    `json:"visible_to,omitempty"`
+	ExpectedCloseDate string `json:"expected_close_date,omitempty"`
+	Label             []int  `json:"label,omitempty"`
+	Channel           int    `json:"channel,omitempty"`
+	ChannelID         string `json:"channel_id,omitempty"`
+	CloseTime         string `json:"close_time,omitempty"`
+}
+
+type UpdateDealRequest struct {
+	Title             string `json:"title,omitempty"`
+	Value             int    `json:"value,omitempty"`
+	Currency          string `json:"currency,omitempty"`
+	OwnerID           int    `json:"owner_id,omitempty"`
+	PersonID          int    `json:"person_id,omitempty"`
+	OrgID             int    `json:"org_id,omitempty"`
+	PipelineID        int    `json:"pipeline_id,omitempty"`
+	StageID           int    `json:"stage_id,omitempty"`
+	Status            string `json:"status,omitempty"`
+	LostReason        string `json:"lost_reason,omitempty"`
+	VisibleTo         int    `json:"visible_to,omitempty"`
+	ExpectedCloseDate string `json:"expected_close_date,omitempty"`
+	Label             []int  `json:"label,omitempty"`
+	Channel           int    `json:"channel,omitempty"`
+	ChannelID         string `json:"channel_id,omitempty"`
+	CloseTime         string `json:"close_time,omitempty"`
 }
 
 func (i *PipedriveIntegration) UpdateDeal(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -293,8 +323,27 @@ func (i *PipedriveIntegration) UpdateDeal(ctx context.Context, params domain.Int
 		return nil, err
 	}
 
+	request := UpdateDealRequest{
+		Title:             p.Title,
+		Value:             p.Value,
+		Currency:          p.Currency,
+		OwnerID:           p.OwnerID,
+		PersonID:          p.PersonID,
+		OrgID:             p.OrgID,
+		PipelineID:        p.PipelineID,
+		StageID:           p.StageID,
+		Status:            p.Status,
+		LostReason:        p.LostReason,
+		VisibleTo:         p.VisibleTo,
+		ExpectedCloseDate: p.ExpectedCloseDate,
+		Label:             p.Label,
+		Channel:           p.Channel,
+		CloseTime:         p.CloseTime,
+		ChannelID:         p.ChannelID,
+	}
+
 	endpoint := fmt.Sprintf("/deals/%d", p.ID)
-	respBody, err := i.makeRequestV2(ctx, "PUT", endpoint, p)
+	respBody, err := i.makeRequestV2(ctx, "PATCH", endpoint, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update deal: %w", err)
 	}
@@ -357,6 +406,22 @@ func (i *PipedriveIntegration) DeleteDeal(ctx context.Context, params domain.Int
 	return response, nil
 }
 
+type ListDealsParams struct {
+	OwnerID       int      `json:"owner_id,omitempty"`
+	PersonID      int      `json:"person_id,omitempty"`
+	OrgID         int      `json:"org_id,omitempty"`
+	PipelineID    int      `json:"pipeline_id,omitempty"`
+	StageID       int      `json:"stage_id,omitempty"`
+	Status        string   `json:"status,omitempty"`
+	UpdatedSince  string   `json:"updated_since,omitempty"`
+	UpdatedUntil  string   `json:"updated_until,omitempty"`
+	SortBy        string   `json:"sort_by,omitempty"`
+	SortDirection string   `json:"sort_direction,omitempty"`
+	IncludeFields []string `json:"include_fields,omitempty"`
+	Limit         int      `json:"limit,omitempty"`
+	Cursor        string   `json:"cursor,omitempty"`
+}
+
 type ListDealsResponse struct {
 	Data []map[string]interface{} `json:"data"`
 }
@@ -370,49 +435,39 @@ func (i *PipedriveIntegration) ListDeals(ctx context.Context, params domain.Inte
 
 	queryParams := url.Values{}
 
-	if p.QueryMode == "filter" {
-		if p.FilterID > 0 {
-			queryParams.Add("filter_id", strconv.Itoa(p.FilterID))
-		}
-	} else {
-		if p.IDs != "" {
-			queryParams.Add("ids", p.IDs)
-		}
-		if p.OwnerID > 0 {
-			queryParams.Add("owner_id", strconv.Itoa(p.OwnerID))
-		}
-		if p.PersonID > 0 {
-			queryParams.Add("person_id", strconv.Itoa(p.PersonID))
-		}
-		if p.OrgID > 0 {
-			queryParams.Add("org_id", strconv.Itoa(p.OrgID))
-		}
-		if p.PipelineID > 0 {
-			queryParams.Add("pipeline_id", strconv.Itoa(p.PipelineID))
-		}
-		if p.StageID > 0 {
-			queryParams.Add("stage_id", strconv.Itoa(p.StageID))
-		}
-		if p.Status != "" {
-			queryParams.Add("status", p.Status)
-		}
-		if p.UpdatedSince != "" {
-			queryParams.Add("updated_since", p.UpdatedSince)
-		}
-		if p.UpdatedUntil != "" {
-			queryParams.Add("updated_until", p.UpdatedUntil)
-		}
-		if p.SortBy != "" {
-			queryParams.Add("sort_by", p.SortBy)
-		}
-		if p.SortDirection != "" {
-			queryParams.Add("sort_direction", p.SortDirection)
-		}
-		if p.IncludeFields != "" {
-			queryParams.Add("include_fields", p.IncludeFields)
-		}
-		if p.CustomFields != "" {
-			queryParams.Add("custom_fields", p.CustomFields)
+	if p.OwnerID > 0 {
+		queryParams.Add("owner_id", strconv.Itoa(p.OwnerID))
+	}
+	if p.PersonID > 0 {
+		queryParams.Add("person_id", strconv.Itoa(p.PersonID))
+	}
+	if p.OrgID > 0 {
+		queryParams.Add("org_id", strconv.Itoa(p.OrgID))
+	}
+	if p.PipelineID > 0 {
+		queryParams.Add("pipeline_id", strconv.Itoa(p.PipelineID))
+	}
+	if p.StageID > 0 {
+		queryParams.Add("stage_id", strconv.Itoa(p.StageID))
+	}
+	if p.Status != "" {
+		queryParams.Add("status", p.Status)
+	}
+	if p.UpdatedSince != "" {
+		queryParams.Add("updated_since", p.UpdatedSince)
+	}
+	if p.UpdatedUntil != "" {
+		queryParams.Add("updated_until", p.UpdatedUntil)
+	}
+	if p.SortBy != "" {
+		queryParams.Add("sort_by", p.SortBy)
+	}
+	if p.SortDirection != "" {
+		queryParams.Add("sort_direction", p.SortDirection)
+	}
+	if len(p.IncludeFields) > 0 {
+		for _, field := range p.IncludeFields {
+			queryParams.Add("include_fields", field)
 		}
 	}
 
@@ -589,6 +644,17 @@ type CreateOrganizationParams struct {
 	Address   string `json:"address,omitempty"`
 }
 
+type CreateOrganizationRequest struct {
+	Name      string  `json:"name"`
+	OwnerID   int     `json:"owner_id,omitempty"`
+	VisibleTo int     `json:"visible_to,omitempty"`
+	Address   Address `json:"address,omitempty"`
+}
+
+type Address struct {
+	Value string `json:"value,omitempty"`
+}
+
 type OrganizationOutputItem struct {
 	ID         int    `json:"id"`
 	Name       string `json:"name"`
@@ -603,7 +669,17 @@ func (i *PipedriveIntegration) CreateOrganization(ctx context.Context, params do
 		return nil, err
 	}
 
-	respBody, err := i.makeRequestV2(ctx, "POST", "/organizations", p)
+	address := Address{
+		Value: p.Address,
+	}
+
+	request := CreateOrganizationRequest{
+		Name:      p.Name,
+		OwnerID:   p.OwnerID,
+		VisibleTo: p.VisibleTo,
+		Address:   address,
+	}
+	respBody, err := i.makeRequestV2(ctx, "POST", "/organizations", request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create organization: %w", err)
 	}
@@ -649,6 +725,13 @@ type UpdateOrganizationParams struct {
 	Address   string `json:"address,omitempty"`
 }
 
+type UpdateOrganizationRequest struct {
+	Name      string  `json:"name,omitempty"`
+	OwnerID   int     `json:"owner_id,omitempty"`
+	VisibleTo int     `json:"visible_to,omitempty"`
+	Address   Address `json:"address,omitempty"`
+}
+
 func (i *PipedriveIntegration) UpdateOrganization(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
 	p := UpdateOrganizationParams{}
 	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
@@ -656,8 +739,18 @@ func (i *PipedriveIntegration) UpdateOrganization(ctx context.Context, params do
 		return nil, err
 	}
 
+	address := Address{
+		Value: p.Address,
+	}
+
 	endpoint := fmt.Sprintf("/organizations/%d", p.ID)
-	respBody, err := i.makeRequestV2(ctx, "PUT", endpoint, p)
+	request := UpdateOrganizationRequest{
+		Name:      p.Name,
+		OwnerID:   p.OwnerID,
+		VisibleTo: p.VisibleTo,
+		Address:   address,
+	}
+	respBody, err := i.makeRequestV2(ctx, "PATCH", endpoint, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update organization: %w", err)
 	}
@@ -668,26 +761,6 @@ func (i *PipedriveIntegration) UpdateOrganization(ctx context.Context, params do
 	}
 
 	return response, nil
-}
-
-type ListDealsParams struct {
-	QueryMode     string `json:"query_mode,omitempty"`
-	FilterID      int    `json:"filter_id,omitempty"`
-	IDs           string `json:"ids,omitempty"`
-	OwnerID       int    `json:"owner_id,omitempty"`
-	PersonID      int    `json:"person_id,omitempty"`
-	OrgID         int    `json:"org_id,omitempty"`
-	PipelineID    int    `json:"pipeline_id,omitempty"`
-	StageID       int    `json:"stage_id,omitempty"`
-	Status        string `json:"status,omitempty"`
-	UpdatedSince  string `json:"updated_since,omitempty"`
-	UpdatedUntil  string `json:"updated_until,omitempty"`
-	SortBy        string `json:"sort_by,omitempty"`
-	SortDirection string `json:"sort_direction,omitempty"`
-	IncludeFields string `json:"include_fields,omitempty"`
-	CustomFields  string `json:"custom_fields,omitempty"`
-	Limit         int    `json:"limit,omitempty"`
-	Cursor        string `json:"cursor,omitempty"`
 }
 
 type DeletePersonParams struct {
@@ -743,25 +816,27 @@ func (i *PipedriveIntegration) ListPersons(ctx context.Context, params domain.In
 
 	queryParams := url.Values{}
 
-	if p.QueryMode == "filter" {
-		if p.FilterID > 0 {
-			queryParams.Add("filter_id", strconv.Itoa(p.FilterID))
-		}
-	} else {
-		if p.IDs != "" {
-			queryParams.Add("ids", p.IDs)
-		}
-		if p.OwnerID > 0 {
-			queryParams.Add("owner_id", strconv.Itoa(p.OwnerID))
-		}
-		if p.OrgID > 0 {
-			queryParams.Add("org_id", strconv.Itoa(p.OrgID))
-		}
-		if p.UpdatedSince != "" {
-			queryParams.Add("updated_since", p.UpdatedSince)
-		}
-		if p.UpdatedUntil != "" {
-			queryParams.Add("updated_until", p.UpdatedUntil)
+	if p.OwnerID > 0 {
+		queryParams.Add("owner_id", strconv.Itoa(p.OwnerID))
+	}
+	if p.OrgID > 0 {
+		queryParams.Add("org_id", strconv.Itoa(p.OrgID))
+	}
+	if p.UpdatedSince != "" {
+		queryParams.Add("updated_since", p.UpdatedSince)
+	}
+	if p.UpdatedUntil != "" {
+		queryParams.Add("updated_until", p.UpdatedUntil)
+	}
+	if p.SortBy != "" {
+		queryParams.Add("sort_by", p.SortBy)
+	}
+	if p.SortDirection != "" {
+		queryParams.Add("sort_direction", p.SortDirection)
+	}
+	if len(p.IncludeFields) > 0 {
+		for _, field := range p.IncludeFields {
+			queryParams.Add("include_fields", field)
 		}
 	}
 
@@ -821,18 +896,14 @@ func (i *PipedriveIntegration) DeleteOrganization(ctx context.Context, params do
 }
 
 type ListOrganizationsParams struct {
-	QueryMode     string `json:"query_mode,omitempty"`
-	FilterID      int    `json:"filter_id,omitempty"`
-	IDs           string `json:"ids,omitempty"`
-	OwnerID       int    `json:"owner_id,omitempty"`
-	UpdatedSince  string `json:"updated_since,omitempty"`
-	UpdatedUntil  string `json:"updated_until,omitempty"`
-	SortBy        string `json:"sort_by,omitempty"`
-	SortDirection string `json:"sort_direction,omitempty"`
-	IncludeFields string `json:"include_fields,omitempty"`
-	CustomFields  string `json:"custom_fields,omitempty"`
-	Limit         int    `json:"limit,omitempty"`
-	Cursor        string `json:"cursor,omitempty"`
+	OwnerID       int      `json:"owner_id,omitempty"`
+	UpdatedSince  string   `json:"updated_since,omitempty"`
+	UpdatedUntil  string   `json:"updated_until,omitempty"`
+	SortBy        string   `json:"sort_by,omitempty"`
+	SortDirection string   `json:"sort_direction,omitempty"`
+	IncludeFields []string `json:"include_fields,omitempty"`
+	Limit         int      `json:"limit,omitempty"`
+	Cursor        string   `json:"cursor,omitempty"`
 }
 
 type ListOrganizationsResponse struct {
@@ -848,34 +919,24 @@ func (i *PipedriveIntegration) ListOrganizations(ctx context.Context, params dom
 
 	queryParams := url.Values{}
 
-	if p.QueryMode == "filter" {
-		if p.FilterID > 0 {
-			queryParams.Add("filter_id", strconv.Itoa(p.FilterID))
-		}
-	} else {
-		if p.IDs != "" {
-			queryParams.Add("ids", p.IDs)
-		}
-		if p.OwnerID > 0 {
-			queryParams.Add("owner_id", strconv.Itoa(p.OwnerID))
-		}
-		if p.UpdatedSince != "" {
-			queryParams.Add("updated_since", p.UpdatedSince)
-		}
-		if p.UpdatedUntil != "" {
-			queryParams.Add("updated_until", p.UpdatedUntil)
-		}
-		if p.SortBy != "" {
-			queryParams.Add("sort_by", p.SortBy)
-		}
-		if p.SortDirection != "" {
-			queryParams.Add("sort_direction", p.SortDirection)
-		}
-		if p.IncludeFields != "" {
-			queryParams.Add("include_fields", p.IncludeFields)
-		}
-		if p.CustomFields != "" {
-			queryParams.Add("custom_fields", p.CustomFields)
+	if p.OwnerID > 0 {
+		queryParams.Add("owner_id", strconv.Itoa(p.OwnerID))
+	}
+	if p.UpdatedSince != "" {
+		queryParams.Add("updated_since", p.UpdatedSince)
+	}
+	if p.UpdatedUntil != "" {
+		queryParams.Add("updated_until", p.UpdatedUntil)
+	}
+	if p.SortBy != "" {
+		queryParams.Add("sort_by", p.SortBy)
+	}
+	if p.SortDirection != "" {
+		queryParams.Add("sort_direction", p.SortDirection)
+	}
+	if len(p.IncludeFields) > 0 {
+		for _, field := range p.IncludeFields {
+			queryParams.Add("include_fields", field)
 		}
 	}
 
@@ -1123,13 +1184,18 @@ func (i *PipedriveIntegration) DeleteActivity(ctx context.Context, params domain
 }
 
 type ListActivitiesParams struct {
-	Cursor string `json:"cursor,omitempty"`
-	Limit  int    `json:"limit,omitempty"`
-	Since  string `json:"since,omitempty"`
-	Until  string `json:"until,omitempty"`
-	UserID int    `json:"user_id,omitempty"`
-	Done   string `json:"done,omitempty"`
-	Type   string `json:"type,omitempty"`
+	OwnerID       int      `json:"owner_id,omitempty"`
+	DealID        int      `json:"deal_id,omitempty"`
+	PersonID      int      `json:"person_id,omitempty"`
+	OrgID         int      `json:"org_id,omitempty"`
+	Done          string   `json:"done,omitempty"`
+	UpdatedSince  string   `json:"updated_since,omitempty"`
+	UpdatedUntil  string   `json:"updated_until,omitempty"`
+	SortBy        string   `json:"sort_by,omitempty"`
+	SortDirection string   `json:"sort_direction,omitempty"`
+	IncludeFields []string `json:"include_fields,omitempty"`
+	Limit         int      `json:"limit,omitempty"`
+	Cursor        string   `json:"cursor,omitempty"`
 }
 
 type ListActivitiesResponse struct {
@@ -1143,32 +1209,51 @@ func (i *PipedriveIntegration) ListActivities(ctx context.Context, params domain
 		return nil, err
 	}
 
-	endpoint := "/activities"
 	queryParams := url.Values{}
 
-	if p.Cursor != "" {
-		queryParams.Add("cursor", p.Cursor)
+	if p.OwnerID > 0 {
+		queryParams.Add("owner_id", strconv.Itoa(p.OwnerID))
 	}
+	if p.DealID > 0 {
+		queryParams.Add("deal_id", strconv.Itoa(p.DealID))
+	}
+	if p.PersonID > 0 {
+		queryParams.Add("person_id", strconv.Itoa(p.PersonID))
+	}
+	if p.OrgID > 0 {
+		queryParams.Add("org_id", strconv.Itoa(p.OrgID))
+	}
+	if p.Done != "" && p.Done != "all" {
+		queryParams.Add("done", p.Done)
+	}
+	if p.UpdatedSince != "" {
+		queryParams.Add("updated_since", p.UpdatedSince)
+	}
+	if p.UpdatedUntil != "" {
+		queryParams.Add("updated_until", p.UpdatedUntil)
+	}
+	if p.SortBy != "" {
+		queryParams.Add("sort_by", p.SortBy)
+	}
+	if p.SortDirection != "" {
+		queryParams.Add("sort_direction", p.SortDirection)
+	}
+	if len(p.IncludeFields) > 0 {
+		for _, field := range p.IncludeFields {
+			queryParams.Add("include_fields", field)
+		}
+	}
+
 	if p.Limit > 0 {
 		queryParams.Add("limit", strconv.Itoa(p.Limit))
 	}
-	if p.Since != "" {
-		queryParams.Add("since", p.Since)
-	}
-	if p.Until != "" {
-		queryParams.Add("until", p.Until)
-	}
-	if p.Done != "" {
-		if p.Done == "true" {
-			queryParams.Add("done", "true")
-		}
-		if p.Done == "false" {
-			queryParams.Add("done", "false")
-		}
+	if p.Cursor != "" {
+		queryParams.Add("cursor", p.Cursor)
 	}
 
+	endpoint := "/activities"
 	if len(queryParams) > 0 {
-		endpoint = endpoint + "?" + queryParams.Encode()
+		endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams.Encode())
 	}
 
 	respBody, err := i.makeRequestV2(ctx, "GET", endpoint, nil)
@@ -2009,6 +2094,40 @@ func (i *PipedriveIntegration) PeekLeads(ctx context.Context, params domain.Peek
 			Key:     fmt.Sprintf("%d", lead.ID),
 			Value:   fmt.Sprintf("%d", lead.ID),
 			Content: lead.Title,
+		})
+	}
+
+	return domain.PeekResult{
+		Result: results,
+	}, nil
+}
+
+func (i *PipedriveIntegration) PeekLabels(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
+	respBody, err := i.makeRequestV1(ctx, "GET", "/labels", nil)
+	if err != nil {
+		return domain.PeekResult{}, fmt.Errorf("failed to get labels: %w", err)
+	}
+
+	var response struct {
+		Success bool `json:"success"`
+		Data    []struct {
+			ID   int    `json:"id"`
+			Name string `json:"name"`
+		} `json:"data"`
+	}
+
+	log.Println("response", response)
+
+	if err := json.Unmarshal(respBody, &response); err != nil {
+		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	var results []domain.PeekResultItem
+	for _, label := range response.Data {
+		results = append(results, domain.PeekResultItem{
+			Key:     fmt.Sprintf("%d", label.ID),
+			Value:   fmt.Sprintf("%d", label.ID),
+			Content: label.Name,
 		})
 	}
 

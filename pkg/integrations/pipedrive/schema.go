@@ -4,6 +4,29 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
+const (
+	PipedriveIntegrationTriggerType_PipedriveUniversalTrigger domain.IntegrationTriggerEventType = "pipedrive_universal_trigger"
+
+	IntegrationEventType_PipedriveCreateAction domain.IntegrationTriggerEventType = "create"
+	IntegrationEventType_PipedriveUpdateAction domain.IntegrationTriggerEventType = "change"
+	IntegrationEventType_PipedriveDeleteAction domain.IntegrationTriggerEventType = "delete"
+
+	IntegrationEventType_PipedriveActivities    domain.IntegrationTriggerEventType = "activity"
+	IntegrationEventType_PipedriveDeals         domain.IntegrationTriggerEventType = "deal"
+	IntegrationEventType_PipedrivePersons       domain.IntegrationTriggerEventType = "person"
+	IntegrationEventType_PipedriveOrganizations domain.IntegrationTriggerEventType = "organization"
+	IntegrationEventType_PipedriveProjects      domain.IntegrationTriggerEventType = "project"
+	IntegrationEventType_PipedriveLeads         domain.IntegrationTriggerEventType = "lead"
+	IntegrationEventType_PipedriveLabels        domain.IntegrationTriggerEventType = "label"
+	IntegrationEventType_PipedriveNotes         domain.IntegrationTriggerEventType = "note"
+	IntegrationEventType_PipedriveProducts      domain.IntegrationTriggerEventType = "product"
+	IntegrationEventType_PipedriveStages        domain.IntegrationTriggerEventType = "stage"
+	IntegrationEventType_PipedriveUsers         domain.IntegrationTriggerEventType = "user"
+	IntegrationEventType_PipedrivePipelines     domain.IntegrationTriggerEventType = "pipeline"
+	IntegrationEventType_PipedriveFields        domain.IntegrationTriggerEventType = "field"
+	IntegrationEventType_PipedriveFilters       domain.IntegrationTriggerEventType = "filter"
+)
+
 var (
 	PipedriveSchema = domain.Integration{
 		ID:          domain.IntegrationType_Pipedrive,
@@ -16,6 +39,75 @@ var (
 				Description: "Your Pipedrive API token",
 				Required:    true,
 				Type:        domain.NodePropertyType_String,
+			},
+			{
+				Key:         "http_auth_username",
+				Name:        "HTTP Authentication Username",
+				Description: "The username used to authenticate webhook requests. Only required when using webhooks with HTTP authentication",
+				Required:    false,
+				Type:        domain.NodePropertyType_String,
+			},
+			{
+				Key:         "http_auth_password",
+				Name:        "HTTP Authentication Password",
+				Description: "The password used to authenticate webhook requests. Only required when using webhooks with HTTP authentication",
+				Required:    false,
+				Type:        domain.NodePropertyType_String,
+			},
+		},
+		Triggers: []domain.IntegrationTrigger{
+			{
+				ID:          "pipedrive_event_listener",
+				EventType:   PipedriveIntegrationTriggerType_PipedriveUniversalTrigger,
+				Name:        "Pipedrive Event",
+				Description: "Trigger when any Pipedrive event occurs (deals, persons, activities, etc.)",
+				Properties: []domain.NodeProperty{
+					{
+						Key:         "path",
+						Name:        "Webhook URL",
+						Description: "The webhook URL endpoint for Pipedrive events",
+						Required:    true,
+						Type:        domain.NodePropertyType_Endpoint,
+						EndpointPropertyOpts: &domain.EndpointPropertyOptions{
+							AllowedMethods: []string{"POST"},
+						},
+					},
+					{
+						Key:         "selected_pipedrive_actions",
+						Name:        "Pipedrive Actions",
+						Description: "Select which Pipedrive actions should trigger this workflow",
+						Type:        domain.NodePropertyType_ListTagInput,
+						Required:    true,
+						Options: []domain.NodePropertyOption{
+							{Label: "Create", Value: string(IntegrationEventType_PipedriveCreateAction)},
+							{Label: "Update", Value: string(IntegrationEventType_PipedriveUpdateAction)},
+							{Label: "Delete", Value: string(IntegrationEventType_PipedriveDeleteAction)},
+						},
+					},
+					{
+						Key:         "selected_pipedrive_entities",
+						Name:        "Pipedrive Objects",
+						Description: "Select which Pipedrive objects should trigger this workflow",
+						Type:        domain.NodePropertyType_ListTagInput,
+						Required:    true,
+						Options: []domain.NodePropertyOption{
+							{Label: "Activities", Value: string(IntegrationEventType_PipedriveActivities)},
+							{Label: "Deals", Value: string(IntegrationEventType_PipedriveDeals)},
+							{Label: "Persons", Value: string(IntegrationEventType_PipedrivePersons)},
+							{Label: "Organizations", Value: string(IntegrationEventType_PipedriveOrganizations)},
+							{Label: "Projects", Value: string(IntegrationEventType_PipedriveProjects)},
+							{Label: "Leads", Value: string(IntegrationEventType_PipedriveLeads)},
+							{Label: "Labels", Value: string(IntegrationEventType_PipedriveLabels)},
+							{Label: "Notes", Value: string(IntegrationEventType_PipedriveNotes)},
+							{Label: "Products", Value: string(IntegrationEventType_PipedriveProducts)},
+							{Label: "Stages", Value: string(IntegrationEventType_PipedriveStages)},
+							{Label: "Users", Value: string(IntegrationEventType_PipedriveUsers)},
+							{Label: "Pipelines", Value: string(IntegrationEventType_PipedrivePipelines)},
+							{Label: "Fields", Value: string(IntegrationEventType_PipedriveFields)},
+							{Label: "Filters", Value: string(IntegrationEventType_PipedriveFilters)},
+						},
+					},
+				},
 			},
 		},
 		Actions: []domain.IntegrationAction{
@@ -277,13 +369,6 @@ var (
 						Type:        domain.NodePropertyType_Boolean,
 					},
 					{
-						Key:         "location",
-						Name:        "Location",
-						Description: "Location of the activity",
-						Required:    false,
-						Type:        domain.NodePropertyType_Text,
-					},
-					{
 						Key:         "public_description",
 						Name:        "Public Description",
 						Description: "Public description of the activity",
@@ -340,6 +425,13 @@ var (
 				ActionType:  PipedriveIntegrationActionType_ListActivities,
 				Properties: []domain.NodeProperty{
 					{
+						Key:         "limit",
+						Name:        "Limit",
+						Description: "Number of items to return (max 500, default 100)",
+						Required:    false,
+						Type:        domain.NodePropertyType_Number,
+					},
+					{
 						Key:         "cursor",
 						Name:        "Cursor",
 						Description: "For pagination, the marker representing the first item on the next page",
@@ -347,27 +439,41 @@ var (
 						Type:        domain.NodePropertyType_String,
 					},
 					{
-						Key:         "limit",
-						Name:        "Limit",
-						Description: "For pagination, the limit of entries to be returned (max 500, default 100)",
-						Required:    false,
-						Type:        domain.NodePropertyType_Number,
+						Key:          "owner_id",
+						Name:         "Owner ID",
+						Description:  "If supplied, only activities owned by the specified user are returned",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Users,
 					},
 					{
-						Key:         "since",
-						Name:        "Since",
-						Description: "The time boundary that points to the start of the range of data. Datetime in ISO 8601 format (e.g. 2022-11-01 08:55:59)",
-						Required:    false,
-						Type:        domain.NodePropertyType_String,
+						Key:          "deal_id",
+						Name:         "Deal ID",
+						Description:  "If supplied, only activities linked to the specified deal are returned",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Deals,
 					},
 					{
-						Key:         "until",
-						Name:        "Until",
-						Description: "The time boundary that points to the end of the range of data. Datetime in ISO 8601 format (e.g. 2022-11-01 08:55:59)",
-						Required:    false,
-						Type:        domain.NodePropertyType_String,
+						Key:          "person_id",
+						Name:         "Person ID",
+						Description:  "If supplied, only activities whose primary participant is the given person are returned",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Persons,
 					},
-
+					{
+						Key:          "org_id",
+						Name:         "Organization ID",
+						Description:  "If supplied, only activities linked to the specified organization are returned",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Organizations,
+					},
 					{
 						Key:         "done",
 						Name:        "Done",
@@ -378,6 +484,54 @@ var (
 							{Label: "All", Value: "all"},
 							{Label: "Not Done", Value: "false"},
 							{Label: "Done", Value: "true"},
+						},
+					},
+					{
+						Key:         "updated_since",
+						Name:        "Updated Since",
+						Description: "If set, only activities with an update_time later than or equal to this time are returned (RFC3339 format, e.g. 2025-01-01T10:20:00Z)",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
+					},
+					{
+						Key:         "updated_until",
+						Name:        "Updated Until",
+						Description: "If set, only activities with an update_time earlier than this time are returned (RFC3339 format, e.g. 2025-01-01T10:20:00Z)",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
+					},
+					{
+						Key:         "sort_by",
+						Name:        "Sort By",
+						Description: "The field to sort by",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
+						Options: []domain.NodePropertyOption{
+							{Label: "ID", Value: "id"},
+							{Label: "Update Time", Value: "update_time"},
+							{Label: "Add Time", Value: "add_time"},
+							{Label: "Due Date", Value: "due_date"},
+						},
+					},
+					{
+						Key:         "sort_direction",
+						Name:        "Sort Direction",
+						Description: "The sorting direction",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
+						Options: []domain.NodePropertyOption{
+							{Label: "Ascending", Value: "asc"},
+							{Label: "Descending", Value: "desc"},
+						},
+					},
+					{
+						Key:         "include_fields",
+						Name:        "Include Fields",
+						Description: "Optional comma separated string array of additional fields to include",
+						Required:    false,
+						Type:        domain.NodePropertyType_ListTagInput,
+						Options: []domain.NodePropertyOption{
+							{Label: "Attendees", Value: "attendees"},
 						},
 					},
 				},
@@ -412,8 +566,17 @@ var (
 						PeekableType: PipedriveIntegrationPeekable_Currencies,
 					},
 					{
+						Key:          "user_id",
+						Name:         "Owner",
+						Description:  "The ID of the user who will be marked as the owner of this deal",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Users,
+					},
+					{
 						Key:          "person_id",
-						Name:         "Person ID",
+						Name:         "Person",
 						Description:  "The ID of the person this deal is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
@@ -422,7 +585,7 @@ var (
 					},
 					{
 						Key:          "org_id",
-						Name:         "Organization ID",
+						Name:         "Organization",
 						Description:  "The ID of the organization this deal is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
@@ -450,7 +613,7 @@ var (
 					{
 						Key:         "status",
 						Name:        "Status",
-						Description: "The status of the deal (open, won, lost, deleted)",
+						Description: "The status of the deal",
 						Required:    false,
 						Type:        domain.NodePropertyType_String,
 						Options: []domain.NodePropertyOption{
@@ -501,8 +664,17 @@ var (
 						PeekableType: PipedriveIntegrationPeekable_Currencies,
 					},
 					{
+						Key:          "owner_id",
+						Name:         "Owner",
+						Description:  "The ID of the user who will be marked as the owner of this deal",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Users,
+					},
+					{
 						Key:          "person_id",
-						Name:         "Person ID",
+						Name:         "Person",
 						Description:  "The ID of the person this deal is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
@@ -511,7 +683,7 @@ var (
 					},
 					{
 						Key:          "org_id",
-						Name:         "Organization ID",
+						Name:         "Organization",
 						Description:  "The ID of the organization this deal is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
@@ -539,7 +711,7 @@ var (
 					{
 						Key:         "status",
 						Name:        "Status",
-						Description: "The status of the deal (open, won, lost, deleted)",
+						Description: "The status of the deal",
 						Required:    false,
 						Type:        domain.NodePropertyType_String,
 						Options: []domain.NodePropertyOption{
@@ -548,6 +720,37 @@ var (
 							{Label: "Lost", Value: "lost"},
 							{Label: "Deleted", Value: "deleted"},
 						},
+					},
+					{
+						Key:         "lost_reason",
+						Name:        "Lost Reason",
+						Description: "The reason why the deal was lost",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "status",
+							Value:       "lost",
+						},
+					},
+					{
+						Key:         "visible_to",
+						Name:        "Visible To",
+						Description: "The visibility of the deal",
+						Required:    false,
+						Type:        domain.NodePropertyType_Number,
+						Options: []domain.NodePropertyOption{
+							{Label: "Owner & followers", Value: 1},
+							{Label: "Entire company", Value: 3},
+							{Label: "Owner, followers and users in the visibility group(s)", Value: 5},
+							{Label: "Entire company and users in the visibility group(s)", Value: 7},
+						},
+					},
+					{
+						Key:         "expected_close_date",
+						Name:        "Expected Close Date",
+						Description: "The expected close date of the deal (YYYY-MM-DD)",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
 					},
 				},
 			},
@@ -591,107 +794,51 @@ var (
 				Description: "Get a list of all deals from Pipedrive",
 				ActionType:  PipedriveIntegrationActionType_ListDeals,
 				Properties: []domain.NodeProperty{
-					// {
-					// 	Key:         "query_mode",
-					// 	Name:        "Filter Mode",
-					// 	Description: "Choose how to filter the results (not required)",
-					// 	Required:    false,
-					// 	Type:        domain.NodePropertyType_String,
-					// 	Options: []domain.NodePropertyOption{
-					// 		{Label: "No Filter", Value: "none"},
-					// 		{Label: "Custom Filters", Value: "custom"},
-					// 		{Label: "Saved Filter", Value: "filter"},
-					// 	},
-					// },
-					// {
-					// 	Key:         "filter_id",
-					// 	Name:        "Filter ID",
-					// 	Description: "Select a saved filter",
-					// 	Required:    false,
-					// 	Type:        domain.NodePropertyType_Number,
-					// 	DependsOn: &domain.DependsOn{
-					// 		PropertyKey: "query_mode",
-					// 		Value:       "filter",
-					// 	},
-					// 	Peekable:     true,
-					// 	PeekableType: PipedriveIntegrationPeekable_SavedFilters,
-					// },
-					// {
-					// 	Key:         "ids",
-					// 	Name:        "IDs",
-					// 	Description: "Comma separated string array of up to 100 entity ids to fetch ",
-					// 	Required:    false,
-					// 	Type:        domain.NodePropertyType_String,
-					// 	DependsOn: &domain.DependsOn{
-					// 		PropertyKey: "query_mode",
-					// 		Value:       "custom",
-					// 	},
-					// },
-					// {
-					// 	Key:          "owner_id",
-					// 	Name:         "Owner ID",
-					// 	Description:  "Filter by deal owner ",
-					// 	Required:     false,
-					// 	Type:         domain.NodePropertyType_Number,
-					// 	Peekable:     true,
-					// 	PeekableType: PipedriveIntegrationPeekable_Users,
-					// 	DependsOn: &domain.DependsOn{
-					// 		PropertyKey: "query_mode",
-					// 		Value:       "custom",
-					// 	},
-					// },
-					// {
-					// 	Key:          "person_id",
-					// 	Name:         "Person ID",
-					// 	Description:  "Filter by linked person ",
-					// 	Required:     false,
-					// 	Type:         domain.NodePropertyType_Number,
-					// 	Peekable:     true,
-					// 	PeekableType: PipedriveIntegrationPeekable_Persons,
-					// 	DependsOn: &domain.DependsOn{
-					// 		PropertyKey: "query_mode",
-					// 		Value:       "custom",
-					// 	},
-					// },
-					// {
-					// 	Key:          "org_id",
-					// 	Name:         "Organization ID",
-					// 	Description:  "Filter by organization ",
-					// 	Required:     false,
-					// 	Type:         domain.NodePropertyType_Number,
-					// 	Peekable:     true,
-					// 	PeekableType: PipedriveIntegrationPeekable_Organizations,
-					// 	DependsOn: &domain.DependsOn{
-					// 		PropertyKey: "query_mode",
-					// 		Value:       "custom",
-					// 	},
-					// },
-					// {
-					// 	Key:          "pipeline_id",
-					// 	Name:         "Pipeline ID",
-					// 	Description:  "Filter by pipeline ",
-					// 	Required:     false,
-					// 	Type:         domain.NodePropertyType_Number,
-					// 	Peekable:     true,
-					// 	PeekableType: PipedriveIntegrationPeekable_Pipelines,
-					// 	DependsOn: &domain.DependsOn{
-					// 		PropertyKey: "query_mode",
-					// 		Value:       "custom",
-					// 	},
-					// },
-					// {
-					// 	Key:          "stage_id",
-					// 	Name:         "Stage ID",
-					// 	Description:  "Filter by stage ",
-					// 	Required:     false,
-					// 	Type:         domain.NodePropertyType_Number,
-					// 	Peekable:     true,
-					// 	PeekableType: PipedriveIntegrationPeekable_Stages,
-					// 	DependsOn: &domain.DependsOn{
-					// 		PropertyKey: "query_mode",
-					// 		Value:       "custom",
-					// 	},
-					// },
+					{
+						Key:          "owner_id",
+						Name:         "Owner ID",
+						Description:  "Filter by deal owner ",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Users,
+					},
+					{
+						Key:          "person_id",
+						Name:         "Person ID",
+						Description:  "Filter by linked person ",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Persons,
+					},
+					{
+						Key:          "org_id",
+						Name:         "Organization ID",
+						Description:  "Filter by organization ",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Organizations,
+					},
+					{
+						Key:          "pipeline_id",
+						Name:         "Pipeline ID",
+						Description:  "Filter by pipeline ",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Pipelines,
+					},
+					{
+						Key:          "stage_id",
+						Name:         "Stage ID",
+						Description:  "Filter by stage ",
+						Required:     false,
+						Type:         domain.NodePropertyType_Number,
+						Peekable:     true,
+						PeekableType: PipedriveIntegrationPeekable_Stages,
+					},
 					{
 						Key:         "limit",
 						Name:        "Limit",
@@ -765,27 +912,19 @@ var (
 						Options: []domain.NodePropertyOption{
 							{Label: "Next Activity ID", Value: "next_activity_id"},
 							{Label: "Last Activity ID", Value: "last_activity_id"},
-							{Label: "Open Deals Count", Value: "open_deals_count"},
-							{Label: "Related Open Deals Count", Value: "related_open_deals_count"},
-							{Label: "Closed Deals Count", Value: "closed_deals_count"},
-							{Label: "Related Closed Deals Count", Value: "related_closed_deals_count"},
-							{Label: "Participant Open Deals Count", Value: "participant_open_deals_count"},
-							{Label: "Participant Closed Deals Count", Value: "participant_closed_deals_count"},
+							{Label: "First Won Time", Value: "first_won_time"},
+							{Label: "Products Count", Value: "products_count"},
+							{Label: "Files Count", Value: "files_count"},
+							{Label: "Notes Count", Value: "notes_count"},
+							{Label: "Followers Count", Value: "followers_count"},
 							{Label: "Email Messages Count", Value: "email_messages_count"},
 							{Label: "Activities Count", Value: "activities_count"},
 							{Label: "Done Activities Count", Value: "done_activities_count"},
 							{Label: "Undone Activities Count", Value: "undone_activities_count"},
-							{Label: "Files Count", Value: "files_count"},
-							{Label: "Notes Count", Value: "notes_count"},
-							{Label: "Followers Count", Value: "followers_count"},
-							{Label: "Won Deals Count", Value: "won_deals_count"},
-							{Label: "Related Won Deals Count", Value: "related_won_deals_count"},
-							{Label: "Lost Deals Count", Value: "lost_deals_count"},
-							{Label: "Related Lost Deals Count", Value: "related_lost_deals_count"},
+							{Label: "Participants Count", Value: "participants_count"},
 							{Label: "Last Incoming Mail Time", Value: "last_incoming_mail_time"},
 							{Label: "Last Outgoing Mail Time", Value: "last_outgoing_mail_time"},
-							{Label: "Marketing Status", Value: "marketing_status"},
-							{Label: "DOI Status", Value: "doi_status"},
+							{Label: "Smart BCC Email", Value: "smart_bcc_email"},
 						},
 					},
 				},
@@ -1080,7 +1219,7 @@ var (
 					{
 						Key:         "address",
 						Name:        "Address",
-						Description: "Address object with fields like street, city, country, postal_code",
+						Description: "Full address text",
 						Required:    false,
 						Type:        domain.NodePropertyType_Text,
 					},
@@ -1131,7 +1270,7 @@ var (
 					{
 						Key:         "address",
 						Name:        "Address",
-						Description: "Address object with fields like street, city, country, postal_code",
+						Description: "Full address text",
 						Required:    false,
 						Type:        domain.NodePropertyType_Text,
 					},
@@ -1177,6 +1316,13 @@ var (
 				Description: "Get a list of all organizations from Pipedrive",
 				ActionType:  PipedriveIntegrationActionType_ListOrganizations,
 				Properties: []domain.NodeProperty{
+					{
+						Key:         "limit",
+						Name:        "Limit",
+						Description: "Number of items to return (max 500, default 100)",
+						Required:    false,
+						Type:        domain.NodePropertyType_Number,
+					},
 					{
 						Key:         "cursor",
 						Name:        "Cursor",
@@ -1224,7 +1370,7 @@ var (
 					{
 						Key:         "include_fields",
 						Name:        "Include Fields",
-						Description: "Optional comma separated string array of additional fields to include. ",
+						Description: "Optional comma separated string array of additional fields to include",
 						Required:    false,
 						Type:        domain.NodePropertyType_ListTagInput,
 						Options: []domain.NodePropertyOption{
@@ -1234,9 +1380,8 @@ var (
 							{Label: "Related Open Deals Count", Value: "related_open_deals_count"},
 							{Label: "Closed Deals Count", Value: "closed_deals_count"},
 							{Label: "Related Closed Deals Count", Value: "related_closed_deals_count"},
-							{Label: "Participant Open Deals Count", Value: "participant_open_deals_count"},
-							{Label: "Participant Closed Deals Count", Value: "participant_closed_deals_count"},
 							{Label: "Email Messages Count", Value: "email_messages_count"},
+							{Label: "People Count", Value: "people_count"},
 							{Label: "Activities Count", Value: "activities_count"},
 							{Label: "Done Activities Count", Value: "done_activities_count"},
 							{Label: "Undone Activities Count", Value: "undone_activities_count"},
@@ -1247,10 +1392,6 @@ var (
 							{Label: "Related Won Deals Count", Value: "related_won_deals_count"},
 							{Label: "Lost Deals Count", Value: "lost_deals_count"},
 							{Label: "Related Lost Deals Count", Value: "related_lost_deals_count"},
-							{Label: "Last Incoming Mail Time", Value: "last_incoming_mail_time"},
-							{Label: "Last Outgoing Mail Time", Value: "last_outgoing_mail_time"},
-							{Label: "Marketing Status", Value: "marketing_status"},
-							{Label: "DOI Status", Value: "doi_status"},
 						},
 					},
 				},
@@ -1695,6 +1836,5 @@ var (
 			// 	},
 			// },
 		},
-		Triggers: []domain.IntegrationTrigger{},
 	}
 )
