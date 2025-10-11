@@ -43,14 +43,14 @@ var (
 			{
 				Key:         "http_auth_username",
 				Name:        "HTTP Authentication Username",
-				Description: "The username used to authenticate webhook requests. Only required when using webhooks with HTTP authentication",
+				Description: "Username to secure your webhook endpoints from unauthorized access. Leave empty if you don't plan to use webhook triggers, but when webhooks are active, this field becomes required for your protection.",
 				Required:    false,
 				Type:        domain.NodePropertyType_String,
 			},
 			{
 				Key:         "http_auth_password",
 				Name:        "HTTP Authentication Password",
-				Description: "The password used to authenticate webhook requests. Only required when using webhooks with HTTP authentication",
+				Description: "Password to secure your webhook endpoints from unauthorized access. Leave empty if you don't plan to use webhook triggers, but when webhooks are active, this field becomes required for your protection.",
 				Required:    false,
 				Type:        domain.NodePropertyType_String,
 			},
