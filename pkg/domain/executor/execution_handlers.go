@@ -24,7 +24,7 @@ func NewHistoryRecorder() *HistoryRecorder {
 }
 
 // HandleEvent processes execution events and records history
-func (h *HistoryRecorder) HandleEvent(ctx context.Context, event ExecutionEvent) error {
+func (h *HistoryRecorder) HandleEvent(ctx context.Context, event domain.ExecutionEvent) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
@@ -84,7 +84,7 @@ func NewEventBroadcaster(
 }
 
 // HandleEvent processes execution events and publishes them externally
-func (b *EventBroadcaster) HandleEvent(ctx context.Context, event ExecutionEvent) error {
+func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.ExecutionEvent) error {
 	if !b.enableEvents {
 		return nil
 	}
@@ -145,7 +145,7 @@ func NewUsageCollector() *UsageCollector {
 }
 
 // HandleEvent processes execution events and collects usage data
-func (u *UsageCollector) HandleEvent(ctx context.Context, event ExecutionEvent) error {
+func (u *UsageCollector) HandleEvent(ctx context.Context, event domain.ExecutionEvent) error {
 	switch e := event.(type) {
 	case NodeExecutionCompletedEvent:
 		u.mutex.Lock()

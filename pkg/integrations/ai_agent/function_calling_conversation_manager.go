@@ -709,18 +709,16 @@ func (f *FunctionCallingConversationManager) generateWithConversationAndEvents(
 		if hasWorkflowCtx && workflowCtx.ExecutionObserver != nil {
 			inputItems := f.buildInputItemsFromLLMRequest(req)
 
-			if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
-				failedEvent := executor.NodeExecutionFailedEvent{
-					NodeID:         f.executeParams.LLM.NodeID,
-					ItemsByInputID: inputItems,
-					Error:          err,
-					Timestamp:      time.Now(),
-				}
+			failedEvent := executor.NodeExecutionFailedEvent{
+				NodeID:         f.executeParams.LLM.NodeID,
+				ItemsByInputID: inputItems,
+				Error:          err,
+				Timestamp:      time.Now(),
+			}
 
-				notifyErr := observer.Notify(ctx, failedEvent)
-				if notifyErr != nil {
-					log.Error().Err(notifyErr).Msg("Failed to notify observer about LLM execution failure")
-				}
+			notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, failedEvent)
+			if notifyErr != nil {
+				log.Error().Err(notifyErr).Msg("Failed to notify observer about LLM execution failure")
 			}
 		}
 		return domain.ModelResponse{}, err
@@ -730,21 +728,19 @@ func (f *FunctionCallingConversationManager) generateWithConversationAndEvents(
 		inputItems := f.buildInputItemsFromLLMRequest(req)
 		outputItems := f.buildOutputItemsFromLLMResponse(&response, f.executeParams.LLM.NodeID)
 
-		if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
-			completedEvent := executor.NodeExecutionCompletedEvent{
-				NodeID:          f.executeParams.LLM.NodeID,
-				ItemsByInputID:  inputItems,
-				ItemsByOutputID: outputItems,
-				ExecutionOrder:  1,
-				StartedAt:       startTime,
-				EndedAt:         time.Now(),
-				Timestamp:       time.Now(),
-			}
+		completedEvent := executor.NodeExecutionCompletedEvent{
+			NodeID:          f.executeParams.LLM.NodeID,
+			ItemsByInputID:  inputItems,
+			ItemsByOutputID: outputItems,
+			ExecutionOrder:  1,
+			StartedAt:       startTime,
+			EndedAt:         time.Now(),
+			Timestamp:       time.Now(),
+		}
 
-			notifyErr := observer.Notify(ctx, completedEvent)
-			if notifyErr != nil {
-				log.Error().Err(notifyErr).Msg("Failed to notify observer about LLM execution completion")
-			}
+		notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, completedEvent)
+		if notifyErr != nil {
+			log.Error().Err(notifyErr).Msg("Failed to notify observer about LLM execution completion")
 		}
 	}
 

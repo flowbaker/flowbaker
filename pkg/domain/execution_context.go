@@ -14,9 +14,7 @@ type WorkflowExecutionContext struct {
 	ResponsePayload     Payload
 	ResponseHeaders     map[string][]string
 	ResponseStatusCode  int
-	// ExecutionObserver is stored as interface{} to avoid import cycles with pkg/domain/executor.
-	// Cast to *executor.ExecutionObserver when needed.
-	ExecutionObserver interface{}
+	ExecutionObserver   ExecutionObserver
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {
@@ -31,7 +29,7 @@ func (c *WorkflowExecutionContext) SetResponseStatusCode(statusCode int) {
 	c.ResponseStatusCode = statusCode
 }
 
-func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool, observer interface{}) context.Context {
+func NewContextWithWorkflowExecutionContext(ctx context.Context, workspaceID, workflowID, workflowExecutionID string, enableEvents bool, observer ExecutionObserver) context.Context {
 	workflowExecutionContext := &WorkflowExecutionContext{
 		WorkspaceID:         workspaceID,
 		WorkflowID:          workflowID,

@@ -415,18 +415,16 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		if hasWorkflowCtx && workflowCtx.ExecutionObserver != nil {
 			inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
 
-			if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
-				failedEvent := executor.NodeExecutionFailedEvent{
-					NodeID:         toolNodeID,
-					ItemsByInputID: inputItems,
-					Error:          err,
-					Timestamp:      time.Now(),
-				}
+			failedEvent := executor.NodeExecutionFailedEvent{
+				NodeID:         toolNodeID,
+				ItemsByInputID: inputItems,
+				Error:          err,
+				Timestamp:      time.Now(),
+			}
 
-				notifyErr := observer.Notify(ctx, failedEvent)
-				if notifyErr != nil {
-					log.Error().Err(notifyErr).Str("tool_name", toolCall.Name).Msg("Failed to notify observer about tool execution failure")
-				}
+			notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, failedEvent)
+			if notifyErr != nil {
+				log.Error().Err(notifyErr).Str("tool_name", toolCall.Name).Msg("Failed to notify observer about tool execution failure")
 			}
 		}
 
@@ -446,21 +444,19 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
 		outputItems, _ := m.buildOutputItemsFromIntegrationOutput(output, toolNodeID)
 
-		if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
-			completedEvent := executor.NodeExecutionCompletedEvent{
-				NodeID:          toolNodeID,
-				ItemsByInputID:  inputItems,
-				ItemsByOutputID: outputItems,
-				ExecutionOrder:  1,
-				StartedAt:       startTime,
-				EndedAt:         time.Now(),
-				Timestamp:       time.Now(),
-			}
+		completedEvent := executor.NodeExecutionCompletedEvent{
+			NodeID:          toolNodeID,
+			ItemsByInputID:  inputItems,
+			ItemsByOutputID: outputItems,
+			ExecutionOrder:  1,
+			StartedAt:       startTime,
+			EndedAt:         time.Now(),
+			Timestamp:       time.Now(),
+		}
 
-			notifyErr := observer.Notify(ctx, completedEvent)
-			if notifyErr != nil {
-				log.Error().Err(notifyErr).Str("tool_name", toolCall.Name).Msg("Failed to notify observer about tool execution completion")
-			}
+		notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, completedEvent)
+		if notifyErr != nil {
+			log.Error().Err(notifyErr).Str("tool_name", toolCall.Name).Msg("Failed to notify observer about tool execution completion")
 		}
 	}
 

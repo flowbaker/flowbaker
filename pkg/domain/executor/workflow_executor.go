@@ -84,9 +84,8 @@ type WorkflowExecutor struct {
 	WorkflowExecutionStartedAt time.Time
 
 	client   flowbaker.ClientInterface
-	observer *ExecutionObserver
+	observer domain.ExecutionObserver
 
-	// Handler references for accessing their state
 	historyRecorder *HistoryRecorder
 	usageCollector  *UsageCollector
 }

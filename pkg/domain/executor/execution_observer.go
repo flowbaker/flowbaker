@@ -7,26 +7,13 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
-type ExecutionEventType string
-
-const (
-	ExecutionEventTypeNodeExecutionStarted       ExecutionEventType = "node_execution_started"
-	ExecutionEventTypeNodeExecutionCompleted     ExecutionEventType = "node_execution_completed"
-	ExecutionEventTypeNodeExecutionFailed        ExecutionEventType = "node_execution_failed"
-	ExecutionEventTypeWorkflowExecutionCompleted ExecutionEventType = "workflow_execution_completed"
-)
-
-type ExecutionEvent interface {
-	GetEventType() ExecutionEventType
-}
-
 type NodeExecutionStartedEvent struct {
 	NodeID    string
 	Timestamp time.Time
 }
 
-func (NodeExecutionStartedEvent) GetEventType() ExecutionEventType {
-	return ExecutionEventTypeNodeExecutionStarted
+func (NodeExecutionStartedEvent) GetEventType() domain.ExecutionEventType {
+	return domain.ExecutionEventTypeNodeExecutionStarted
 }
 
 type NodeExecutionCompletedEvent struct {
@@ -43,8 +30,8 @@ type NodeExecutionCompletedEvent struct {
 	Timestamp                  time.Time
 }
 
-func (NodeExecutionCompletedEvent) GetEventType() ExecutionEventType {
-	return ExecutionEventTypeNodeExecutionCompleted
+func (NodeExecutionCompletedEvent) GetEventType() domain.ExecutionEventType {
+	return domain.ExecutionEventTypeNodeExecutionCompleted
 }
 
 type NodeExecutionFailedEvent struct {
@@ -55,37 +42,33 @@ type NodeExecutionFailedEvent struct {
 	Timestamp        time.Time
 }
 
-func (NodeExecutionFailedEvent) GetEventType() ExecutionEventType {
-	return ExecutionEventTypeNodeExecutionFailed
+func (NodeExecutionFailedEvent) GetEventType() domain.ExecutionEventType {
+	return domain.ExecutionEventTypeNodeExecutionFailed
 }
 
 type WorkflowExecutionCompletedEvent struct {
 	Timestamp time.Time
 }
 
-func (WorkflowExecutionCompletedEvent) GetEventType() ExecutionEventType {
-	return ExecutionEventTypeWorkflowExecutionCompleted
+func (WorkflowExecutionCompletedEvent) GetEventType() domain.ExecutionEventType {
+	return domain.ExecutionEventTypeWorkflowExecutionCompleted
 }
 
-type ExecutionEventHandler interface {
-	HandleEvent(ctx context.Context, event ExecutionEvent) error
+type executionObserver struct {
+	handlers []domain.ExecutionEventHandler
 }
 
-type ExecutionObserver struct {
-	handlers []ExecutionEventHandler
-}
-
-func NewExecutionObserver() *ExecutionObserver {
-	return &ExecutionObserver{
-		handlers: []ExecutionEventHandler{},
+func NewExecutionObserver() *executionObserver {
+	return &executionObserver{
+		handlers: []domain.ExecutionEventHandler{},
 	}
 }
 
-func (o *ExecutionObserver) Subscribe(handler ExecutionEventHandler) {
+func (o *executionObserver) Subscribe(handler domain.ExecutionEventHandler) {
 	o.handlers = append(o.handlers, handler)
 }
 
-func (o *ExecutionObserver) Notify(ctx context.Context, event ExecutionEvent) error {
+func (o *executionObserver) Notify(ctx context.Context, event domain.ExecutionEvent) error {
 	for _, handler := range o.handlers {
 		if err := handler.HandleEvent(ctx, event); err != nil {
 			return err

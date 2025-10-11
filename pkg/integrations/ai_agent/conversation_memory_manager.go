@@ -115,18 +115,16 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 		if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled && workflowCtx.ExecutionObserver != nil {
 			inputItems := m.buildMemoryInputItems(filter)
 
-			if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
-				failedEvent := executor.NodeExecutionFailedEvent{
-					NodeID:         m.memoryNodeID,
-					ItemsByInputID: inputItems,
-					Error:          err,
-					Timestamp:      time.Now(),
-				}
+			failedEvent := executor.NodeExecutionFailedEvent{
+				NodeID:         m.memoryNodeID,
+				ItemsByInputID: inputItems,
+				Error:          err,
+				Timestamp:      time.Now(),
+			}
 
-				notifyErr := observer.Notify(ctx, failedEvent)
-				if notifyErr != nil {
-					log.Error().Err(notifyErr).Msg("Failed to notify observer about memory retrieval failure")
-				}
+			notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, failedEvent)
+			if notifyErr != nil {
+				log.Error().Err(notifyErr).Msg("Failed to notify observer about memory retrieval failure")
 			}
 		}
 
@@ -138,33 +136,6 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 			inputItems := m.buildMemoryInputItems(filter)
 			outputItems := m.buildMemoryOutputItems([]domain.AgentConversation{}, m.memoryNodeID)
 
-			if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
-				completedEvent := executor.NodeExecutionCompletedEvent{
-					NodeID:          m.memoryNodeID,
-					ItemsByInputID:  inputItems,
-					ItemsByOutputID: outputItems,
-					ExecutionOrder:  1,
-					StartedAt:       startTime,
-					EndedAt:         time.Now(),
-					Timestamp:       time.Now(),
-				}
-
-				notifyErr := observer.Notify(ctx, completedEvent)
-				if notifyErr != nil {
-					log.Error().Err(notifyErr).Msg("Failed to notify observer about memory retrieval completion")
-				}
-			}
-		}
-		return "", nil
-	}
-
-	context := m.contextBuilder.FormatMultipleConversations(conversations)
-
-	if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled && workflowCtx.ExecutionObserver != nil {
-		inputItems := m.buildMemoryInputItems(filter)
-		outputItems := m.buildMemoryOutputItems(conversations, m.memoryNodeID)
-
-		if observer, ok := workflowCtx.ExecutionObserver.(*executor.ExecutionObserver); ok {
 			completedEvent := executor.NodeExecutionCompletedEvent{
 				NodeID:          m.memoryNodeID,
 				ItemsByInputID:  inputItems,
@@ -175,10 +146,34 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 				Timestamp:       time.Now(),
 			}
 
-			notifyErr := observer.Notify(ctx, completedEvent)
+			notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, completedEvent)
 			if notifyErr != nil {
 				log.Error().Err(notifyErr).Msg("Failed to notify observer about memory retrieval completion")
 			}
+		}
+
+		return "", nil
+	}
+
+	context := m.contextBuilder.FormatMultipleConversations(conversations)
+
+	if hasWorkflowCtx && m.memoryNodeID != "" && m.config.Enabled && workflowCtx.ExecutionObserver != nil {
+		inputItems := m.buildMemoryInputItems(filter)
+		outputItems := m.buildMemoryOutputItems(conversations, m.memoryNodeID)
+
+		completedEvent := executor.NodeExecutionCompletedEvent{
+			NodeID:          m.memoryNodeID,
+			ItemsByInputID:  inputItems,
+			ItemsByOutputID: outputItems,
+			ExecutionOrder:  1,
+			StartedAt:       startTime,
+			EndedAt:         time.Now(),
+			Timestamp:       time.Now(),
+		}
+
+		notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, completedEvent)
+		if notifyErr != nil {
+			log.Error().Err(notifyErr).Msg("Failed to notify observer about memory retrieval completion")
 		}
 	}
 
