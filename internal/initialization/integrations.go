@@ -32,6 +32,7 @@ import (
 	slackintegration "github.com/flowbaker/flowbaker/pkg/integrations/slack"
 	"github.com/flowbaker/flowbaker/pkg/integrations/storage"
 	"github.com/flowbaker/flowbaker/pkg/integrations/stripe"
+	"github.com/flowbaker/flowbaker/pkg/integrations/teams"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
@@ -152,6 +153,11 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 		IntegrationType:     domain.IntegrationType_Github,
 		NewCreator:          githubintegration.NewGithubIntegrationCreator,
 		NewConnectionTester: githubintegration.NewGitHubConnectionTester,
+	},
+	{
+		IntegrationType:     domain.IntegrationType_Teams,
+		NewCreator:          teams.NewTeamsIntegrationCreator,
+		NewConnectionTester: teams.NewTeamsConnectionTester,
 	},
 	{
 		IntegrationType: domain.IntegrationType_SendResponse,
