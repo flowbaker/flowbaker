@@ -8,8 +8,9 @@ import (
 )
 
 type NodeExecutionStartedEvent struct {
-	NodeID    string
-	Timestamp time.Time
+	NodeID        string
+	Timestamp     time.Time
+	IsReExecution bool
 }
 
 func (NodeExecutionStartedEvent) GetEventType() domain.ExecutionEventType {
@@ -28,6 +29,7 @@ type NodeExecutionCompletedEvent struct {
 	IntegrationType            domain.IntegrationType
 	IntegrationActionType      domain.IntegrationActionType
 	Timestamp                  time.Time
+	IsReExecution              bool
 }
 
 func (NodeExecutionCompletedEvent) GetEventType() domain.ExecutionEventType {
@@ -40,6 +42,7 @@ type NodeExecutionFailedEvent struct {
 	ItemsByInputID   map[string]domain.NodeItems
 	Error            error
 	Timestamp        time.Time
+	IsReExecution    bool
 }
 
 func (NodeExecutionFailedEvent) GetEventType() domain.ExecutionEventType {

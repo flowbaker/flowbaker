@@ -197,7 +197,11 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 
 		executionCount++
 
-		err := w.ExecuteNode(ctx, execution, int64(executionCount))
+		err := w.ExecuteNode(ctx, ExecuteNodeParams{
+			Task:           execution,
+			ExecutionOrder: int64(executionCount),
+			Propagate:      true,
+		})
 		if err != nil {
 			log.Error().Err(err).Msg("Error executing node")
 
@@ -278,21 +282,29 @@ const (
 	ExecutionNodeTypeTrigger ExecutionNodeType = "trigger"
 )
 
-func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, execution NodeExecutionTask, executionOrder int64) error {
-	log.Debug().Msgf("Executing node %s", execution.NodeID)
+type ExecuteNodeParams struct {
+	Task           NodeExecutionTask
+	ExecutionOrder int64
+	Propagate      bool
+	IsReExecution  bool
+}
+
+func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams) error {
+	execution := p.Task
+	executionOrder := p.ExecutionOrder
+	propagate := p.Propagate
 
 	nodeExecutionStartedAt := time.Now()
 
-	// Notify started
 	err := w.observer.Notify(ctx, NodeExecutionStartedEvent{
-		NodeID:    execution.NodeID,
-		Timestamp: nodeExecutionStartedAt,
+		NodeID:        execution.NodeID,
+		Timestamp:     nodeExecutionStartedAt,
+		IsReExecution: p.IsReExecution,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to notify node execution started")
 	}
 
-	// Dispatch to appropriate executor
 	var result NodeExecutionResult
 	var nodeID string
 
@@ -312,26 +324,27 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, execution NodeExecut
 
 	nodeExecutionEndedAt := time.Now()
 
-	// Process outputs and queue downstream nodes
-	for outputIndex, payload := range result.Output.ResultJSONByOutputID {
-		outputID := fmt.Sprintf(OutputHandleFormat, nodeID, outputIndex)
+	if propagate {
+		for outputIndex, payload := range result.Output.ResultJSONByOutputID {
+			outputID := fmt.Sprintf(OutputHandleFormat, nodeID, outputIndex)
 
-		nodes, ok := w.nodesByEventName[outputID]
-		if !ok {
-			log.Info().Msgf("No nodes registered for event %d", outputIndex)
-			continue
-		}
+			nodes, ok := w.nodesByEventName[outputID]
+			if !ok {
+				log.Info().Msgf("No nodes registered for event %d", outputIndex)
+				continue
+			}
 
-		if !payload.IsEmpty() {
-			for _, node := range nodes {
-				err := w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
-					FromNodeID: nodeID,
-					Node:       node,
-					OutputID:   outputID,
-					Payload:    payload,
-				})
-				if err != nil {
-					return err
+			if !payload.IsEmpty() {
+				for _, node := range nodes {
+					err := w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
+						FromNodeID: nodeID,
+						Node:       node,
+						OutputID:   outputID,
+						Payload:    payload,
+					})
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -354,6 +367,7 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, execution NodeExecut
 		IntegrationType:            result.IntegrationType,
 		IntegrationActionType:      result.IntegrationActionType,
 		Timestamp:                  time.Now(),
+		IsReExecution:              p.IsReExecution,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to notify node execution completed")
