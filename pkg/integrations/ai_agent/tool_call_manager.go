@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain/executor"
 
 	"github.com/rs/zerolog/log"
 )
@@ -74,14 +75,14 @@ type DefaultToolCallManager struct {
 	parameterBinder            domain.IntegrationParameterBinder
 	parameterResolver          *AIParameterResolver
 	peekableResolver           *PeekableValueResolver
-	eventPublisher             domain.EventPublisher
+	executionObserver          domain.ExecutionObserver
 }
 
 type DefaultToolCallManagerDeps struct {
 	AgentNodeID                string
 	ExecutorIntegrationManager domain.ExecutorIntegrationManager
 	ParameterBinder            domain.IntegrationParameterBinder
-	EventPublisher             domain.EventPublisher
+	ExecutionObserver          domain.ExecutionObserver
 }
 
 // NewDefaultToolCallManager creates a new DefaultToolCallManager
@@ -92,7 +93,7 @@ func NewDefaultToolCallManager(deps DefaultToolCallManagerDeps) ToolCallManager 
 		parameterBinder:            deps.ParameterBinder,
 		parameterResolver:          NewAIParameterResolver(),
 		peekableResolver:           NewPeekableValueResolver(deps.ExecutorIntegrationManager),
-		eventPublisher:             deps.EventPublisher,
+		executionObserver:          deps.ExecutionObserver,
 	}
 }
 
@@ -378,7 +379,7 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 	workflowCtx, hasWorkflowCtx := domain.GetWorkflowExecutionContext(ctx)
 
 	if hasWorkflowCtx && workflowCtx.EnableEvents {
-		err = m.publishToolExecutionStartedEvent(ctx, workflowCtx, toolNodeID)
+		err = m.publishToolExecutionStartedEvent(ctx, toolNodeID)
 		if err != nil {
 			log.Error().Err(err).Str("tool_name", toolCall.Name).Msg("Failed to publish tool execution started event")
 		}
@@ -411,24 +412,19 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 		result.Success = false
 		result.Error = err.Error()
 
-		if hasWorkflowCtx {
+		if hasWorkflowCtx && workflowCtx.ExecutionObserver != nil {
 			inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
-			agentExecution := domain.NodeExecutionEntry{
-				NodeID:          toolNodeID,
-				Error:           err.Error(),
-				ItemsByInputID:  inputItems,
-				ItemsByOutputID: make(map[string]domain.NodeItems),
-				EventType:       domain.NodeFailed,
-				Timestamp:       startTime.UnixNano(),
-				ExecutionOrder:  1,
-			}
-			workflowCtx.AddAgentNodeExecution(agentExecution)
 
-			if workflowCtx.EnableEvents {
-				publishErr := m.publishToolExecutionFailedEvent(ctx, workflowCtx, toolNodeID, toolCall, resolvedParams, err)
-				if publishErr != nil {
-					log.Error().Err(publishErr).Str("tool_name", toolCall.Name).Msg("Failed to publish tool execution failed event")
-				}
+			failedEvent := executor.NodeExecutionFailedEvent{
+				NodeID:         toolNodeID,
+				ItemsByInputID: inputItems,
+				Error:          err,
+				Timestamp:      time.Now(),
+			}
+
+			notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, failedEvent)
+			if notifyErr != nil {
+				log.Error().Err(notifyErr).Str("tool_name", toolCall.Name).Msg("Failed to notify observer about tool execution failure")
 			}
 		}
 
@@ -444,25 +440,21 @@ func (m *DefaultToolCallManager) ExecuteToolCall(ctx context.Context, toolCall d
 	result.Success = true
 	result.Result = m.formatToolResult(output)
 
-	if hasWorkflowCtx {
+	if hasWorkflowCtx && workflowCtx.ExecutionObserver != nil {
 		inputItems, _ := m.buildInputItemsFromParameters(resolvedParams)
 		outputItems, _ := m.buildOutputItemsFromIntegrationOutput(output, toolNodeID)
-		agentExecution := domain.NodeExecutionEntry{
+
+		completedEvent := executor.NodeExecutionCompletedEvent{
 			NodeID:          toolNodeID,
-			Error:           "",
 			ItemsByInputID:  inputItems,
 			ItemsByOutputID: outputItems,
-			EventType:       domain.NodeExecuted,
-			Timestamp:       startTime.UnixNano(),
-			ExecutionOrder:  1,
+			StartedAt:       startTime,
+			EndedAt:         time.Now(),
 		}
-		workflowCtx.AddAgentNodeExecution(agentExecution)
 
-		if workflowCtx.EnableEvents {
-			err = m.publishToolExecutionCompletedEvent(ctx, workflowCtx, toolNodeID, resolvedParams, output)
-			if err != nil {
-				log.Error().Err(err).Str("tool_name", toolCall.Name).Msg("Failed to publish tool execution completed event")
-			}
+		notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, completedEvent)
+		if notifyErr != nil {
+			log.Error().Err(notifyErr).Str("tool_name", toolCall.Name).Msg("Failed to notify observer about tool execution completion")
 		}
 	}
 
@@ -570,79 +562,14 @@ func (m *DefaultToolCallManager) formatToolResult(output domain.IntegrationOutpu
 // publishToolExecutionStartedEvent publishes a NodeExecutionStartedEvent for tool call
 func (m *DefaultToolCallManager) publishToolExecutionStartedEvent(
 	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
 	nodeID string,
 ) error {
-	event := &domain.NodeExecutionStartedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              nodeID,
-		Timestamp:           time.Now().UnixNano(),
+	event := &executor.NodeExecutionStartedEvent{
+		NodeID:    nodeID,
+		Timestamp: time.Now(),
 	}
 
-	return m.eventPublisher.PublishEvent(ctx, event)
-}
-
-// publishToolExecutionCompletedEvent publishes a NodeExecutedEvent for successful tool call
-func (m *DefaultToolCallManager) publishToolExecutionCompletedEvent(
-	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
-	nodeID string,
-	resolvedParams *ParameterResolutionResult,
-	output domain.IntegrationOutput,
-) error {
-	inputItems, err := m.buildInputItemsFromParameters(resolvedParams)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to build input items for tool execution event")
-		inputItems = make(map[string]domain.NodeItems)
-	}
-
-	outputItems, err := m.buildOutputItemsFromIntegrationOutput(output, nodeID)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to build output items for tool execution event")
-		outputItems = make(map[string]domain.NodeItems)
-	}
-
-	event := &domain.NodeExecutedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              nodeID,
-		ItemsByInputID:      inputItems,
-		ItemsByOutputID:     outputItems,
-		Timestamp:           time.Now().UnixNano(),
-		ExecutionOrder:      0, // OrderedEventPublisher will handle ordering via EventOrder field
-	}
-
-	return m.eventPublisher.PublishEvent(ctx, event)
-}
-
-// publishToolExecutionFailedEvent publishes a NodeFailedEvent for failed tool call
-func (m *DefaultToolCallManager) publishToolExecutionFailedEvent(
-	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
-	nodeID string,
-	toolCall domain.ToolCall,
-	resolvedParams *ParameterResolutionResult,
-	err error,
-) error {
-	inputItems, itemsErr := m.buildInputItemsFromParameters(resolvedParams)
-	if itemsErr != nil {
-		log.Error().Err(itemsErr).Msg("Failed to build input items for tool execution failed event")
-		inputItems = make(map[string]domain.NodeItems)
-	}
-
-	event := &domain.NodeFailedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              nodeID,
-		Error:               err.Error(),
-		ExecutionOrder:      0, // OrderedEventPublisher will handle ordering via EventOrder field
-		Timestamp:           time.Now().UnixNano(),
-		ItemsByInputID:      inputItems,
-		ItemsByOutputID:     make(map[string]domain.NodeItems), // No output on failure
-	}
-
-	return m.eventPublisher.PublishEvent(ctx, event)
+	return m.executionObserver.Notify(ctx, event)
 }
 
 // buildInputItemsFromParameters converts resolved parameters to NodeItems format
@@ -827,24 +754,6 @@ func (m *DefaultToolCallManager) findMatchingPeekValue(displayValue string, peek
 	}
 
 	return ""
-}
-
-func (m *DefaultToolCallManager) findActionByType(actions []domain.IntegrationAction, actionType domain.IntegrationActionType) *domain.IntegrationAction {
-	for _, action := range actions {
-		if action.ActionType == actionType {
-			return &action
-		}
-	}
-	return nil
-}
-
-func (m *DefaultToolCallManager) findPropertyByKey(properties []domain.NodeProperty, key string) *domain.NodeProperty {
-	for _, prop := range properties {
-		if prop.Key == key {
-			return &prop
-		}
-	}
-	return nil
 }
 
 func (m *DefaultToolCallManager) isPropertyProvidedByAgent(propertyKey string, workflowNode *domain.WorkflowNode) bool {

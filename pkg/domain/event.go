@@ -73,6 +73,7 @@ type NodeExecutionStartedEvent struct {
 	Timestamp           int64  `json:"timestamp"`
 	WorkflowExecutionID string `json:"workflow_execution_id"`
 	EventOrder          int    `json:"event_order"`
+	IsReExecution       bool   `json:"is_re_execution"`
 }
 
 func (e *NodeExecutionStartedEvent) GetType() EventType {
@@ -96,6 +97,7 @@ type NodeExecutedEvent struct {
 	ExecutionOrder      int                  `json:"execution_order"`
 	WorkflowExecutionID string               `json:"workflow_execution_id"`
 	EventOrder          int                  `json:"event_order"`
+	IsReExecution       bool                 `json:"is_re_execution"`
 }
 
 func (e *NodeExecutedEvent) GetType() EventType {
@@ -120,6 +122,7 @@ type NodeFailedEvent struct {
 	ItemsByInputID      map[string]NodeItems `json:"items_by_input_id"`
 	ItemsByOutputID     map[string]NodeItems `json:"items_by_output_id"`
 	EventOrder          int                  `json:"event_order"`
+	IsReExecution       bool                 `json:"is_re_execution"`
 }
 
 func (e *NodeFailedEvent) GetType() EventType {
