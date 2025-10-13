@@ -7,6 +7,10 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
+type ReExecutableEvent interface {
+	SetIsReExecution(isReExecution bool) domain.ExecutionEvent
+}
+
 type NodeExecutionStartedEvent struct {
 	NodeID        string
 	Timestamp     time.Time
@@ -15,6 +19,12 @@ type NodeExecutionStartedEvent struct {
 
 func (NodeExecutionStartedEvent) GetEventType() domain.ExecutionEventType {
 	return domain.ExecutionEventTypeNodeExecutionStarted
+}
+
+func (e NodeExecutionStartedEvent) SetIsReExecution(isReExecution bool) domain.ExecutionEvent {
+	e.IsReExecution = isReExecution
+
+	return e
 }
 
 type NodeExecutionCompletedEvent struct {
@@ -28,7 +38,6 @@ type NodeExecutionCompletedEvent struct {
 	EndedAt                    time.Time
 	IntegrationType            domain.IntegrationType
 	IntegrationActionType      domain.IntegrationActionType
-	Timestamp                  time.Time
 	IsReExecution              bool
 }
 
@@ -36,17 +45,28 @@ func (NodeExecutionCompletedEvent) GetEventType() domain.ExecutionEventType {
 	return domain.ExecutionEventTypeNodeExecutionCompleted
 }
 
+func (e NodeExecutionCompletedEvent) SetIsReExecution(isReExecution bool) domain.ExecutionEvent {
+	e.IsReExecution = isReExecution
+
+	return e
+}
+
 type NodeExecutionFailedEvent struct {
-	NodeID           string
-	PayloadByInputID SourceNodePayloadByInputID
-	ItemsByInputID   map[string]domain.NodeItems
-	Error            error
-	Timestamp        time.Time
-	IsReExecution    bool
+	NodeID         string
+	ItemsByInputID map[string]domain.NodeItems
+	Error          error
+	Timestamp      time.Time
+	IsReExecution  bool
 }
 
 func (NodeExecutionFailedEvent) GetEventType() domain.ExecutionEventType {
 	return domain.ExecutionEventTypeNodeExecutionFailed
+}
+
+func (e NodeExecutionFailedEvent) SetIsReExecution(isReExecution bool) domain.ExecutionEvent {
+	e.IsReExecution = isReExecution
+
+	return e
 }
 
 type WorkflowExecutionCompletedEvent struct {
@@ -72,6 +92,16 @@ func (o *executionObserver) Subscribe(handler domain.ExecutionEventHandler) {
 }
 
 func (o *executionObserver) Notify(ctx context.Context, event domain.ExecutionEvent) error {
+	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
+	if ok {
+		if executionContext.IsReExecution {
+			reExecutableEvent, ok := event.(ReExecutableEvent)
+			if ok {
+				event = reExecutableEvent.SetIsReExecution(true)
+			}
+		}
+	}
+
 	for _, handler := range o.handlers {
 		if err := handler.HandleEvent(ctx, event); err != nil {
 			return err

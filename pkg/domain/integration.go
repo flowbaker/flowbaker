@@ -216,7 +216,6 @@ func (o IntegrationOutput) ToItemsByOutputID(nodeID string) map[string]NodeItems
 
 type IntegrationDeps struct {
 	FlowbakerClient            flowbaker.ClientInterface
-	ExecutorEventPublisher     EventPublisher
 	ExecutorTaskPublisher      ExecutorTaskPublisher
 	TaskSchedulerService       TaskSchedulerService
 	ParameterBinder            IntegrationParameterBinder

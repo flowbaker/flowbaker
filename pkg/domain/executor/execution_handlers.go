@@ -35,7 +35,7 @@ func (h *HistoryRecorder) HandleEvent(ctx context.Context, event domain.Executio
 			ItemsByInputID:  e.ItemsByInputID,
 			ItemsByOutputID: e.ItemsByOutputID,
 			EventType:       domain.NodeExecuted,
-			Timestamp:       e.Timestamp.UnixNano(),
+			Timestamp:       e.EndedAt.UnixNano(),
 			ExecutionOrder:  int(e.ExecutionOrder),
 		})
 
@@ -104,7 +104,7 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			WorkflowID:          b.workflowID,
 			WorkflowExecutionID: b.executionID,
 			NodeID:              e.NodeID,
-			Timestamp:           e.Timestamp.UnixNano(),
+			Timestamp:           e.EndedAt.UnixNano(),
 			ItemsByInputID:      e.ItemsByInputID,
 			ItemsByOutputID:     e.ItemsByOutputID,
 			ExecutionOrder:      int(e.ExecutionOrder),

@@ -90,7 +90,13 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 }
 
 func (s *workflowExecutorService) HandlePollingEvent(ctx context.Context, event domain.PollingEvent) (domain.PollResult, error) {
-	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, event.WorkspaceID, event.Workflow.ID, "", false, nil)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
+		WorkspaceID:         event.WorkspaceID,
+		WorkflowID:          event.Workflow.ID,
+		WorkflowExecutionID: "",
+		EnableEvents:        false,
+		Observer:            nil,
+	})
 
 	integrationPoller, err := s.integrationSelector.SelectPoller(ctx, domain.SelectIntegrationParams{
 		IntegrationType: event.IntegrationType,
@@ -117,7 +123,13 @@ type TestConnectionParams struct {
 }
 
 func (s *workflowExecutorService) TestConnection(ctx context.Context, params TestConnectionParams) (bool, error) {
-	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, params.WorkspaceID, "", "", false, nil)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
+		WorkspaceID:         params.WorkspaceID,
+		WorkflowID:          "",
+		WorkflowExecutionID: "",
+		EnableEvents:        false,
+		Observer:            nil,
+	})
 
 	credential, err := s.credentialManager.GetFullCredential(ctx, params.CredentialID)
 	if err != nil {
@@ -164,7 +176,13 @@ type PeekDataParams struct {
 }
 
 func (s *workflowExecutorService) PeekData(ctx context.Context, params PeekDataParams) (domain.PeekResult, error) {
-	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, params.WorkspaceID, "", "", false, nil)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
+		WorkspaceID:         params.WorkspaceID,
+		WorkflowID:          "",
+		WorkflowExecutionID: "",
+		EnableEvents:        false,
+		Observer:            nil,
+	})
 
 	integrationCreator, err := s.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
 		IntegrationType: params.IntegrationType,
@@ -223,7 +241,14 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 	})
 
 	ctx = domain.NewContextWithEventOrder(ctx)
-	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, params.WorkspaceID, params.Workflow.ID, params.ExecutionID, true, workflowExecutor.observer)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
+		WorkspaceID:         params.WorkspaceID,
+		WorkflowID:          params.Workflow.ID,
+		WorkflowExecutionID: params.ExecutionID,
+		EnableEvents:        true,
+		Observer:            workflowExecutor.observer,
+		IsReExecution:       true,
+	})
 
 	executionEntry := params.NodeExecutionEntry
 
@@ -250,7 +275,6 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		Task:           task,
 		ExecutionOrder: int64(executionEntry.ExecutionOrder),
 		Propagate:      true,
-		IsReExecution:  true,
 	})
 	if err != nil {
 		return ExecutionResult{}, err

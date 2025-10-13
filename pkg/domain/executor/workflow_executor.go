@@ -167,7 +167,13 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	workspaceID := w.workflow.WorkspaceID
 
 	ctx = domain.NewContextWithEventOrder(ctx)
-	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, workspaceID, w.workflow.ID, w.executionID, w.enableEvents, w.observer)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
+		WorkspaceID:         workspaceID,
+		WorkflowID:          w.workflow.ID,
+		WorkflowExecutionID: w.executionID,
+		EnableEvents:        w.enableEvents,
+		Observer:            w.observer,
+	})
 
 	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
 
@@ -207,11 +213,10 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 
 			// Notify observers about node failure
 			errNotify := w.observer.Notify(ctx, NodeExecutionFailedEvent{
-				NodeID:           execution.NodeID,
-				PayloadByInputID: execution.PayloadByInputID,
-				ItemsByInputID:   execution.PayloadByInputID.ToItemsByInputID(),
-				Error:            err,
-				Timestamp:        time.Now(),
+				NodeID:         execution.NodeID,
+				ItemsByInputID: execution.PayloadByInputID.ToItemsByInputID(),
+				Error:          err,
+				Timestamp:      time.Now(),
 			})
 			if errNotify != nil {
 				log.Error().Err(errNotify).Str("workflow_id", w.workflow.ID).Msg("executor: failed to notify node failed event")
@@ -286,7 +291,6 @@ type ExecuteNodeParams struct {
 	Task           NodeExecutionTask
 	ExecutionOrder int64
 	Propagate      bool
-	IsReExecution  bool
 }
 
 func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams) error {
@@ -297,9 +301,8 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	nodeExecutionStartedAt := time.Now()
 
 	err := w.observer.Notify(ctx, NodeExecutionStartedEvent{
-		NodeID:        execution.NodeID,
-		Timestamp:     nodeExecutionStartedAt,
-		IsReExecution: p.IsReExecution,
+		NodeID:    execution.NodeID,
+		Timestamp: nodeExecutionStartedAt,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to notify node execution started")
@@ -362,12 +365,10 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 		ItemsByInputID:             itemsByInputID,
 		ItemsByOutputID:            itemsByOutputID,
 		ExecutionOrder:             executionOrder,
-		StartedAt:                  nodeExecutionStartedAt,
-		EndedAt:                    nodeExecutionEndedAt,
 		IntegrationType:            result.IntegrationType,
 		IntegrationActionType:      result.IntegrationActionType,
-		Timestamp:                  time.Now(),
-		IsReExecution:              p.IsReExecution,
+		StartedAt:                  nodeExecutionStartedAt,
+		EndedAt:                    nodeExecutionEndedAt,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to notify node execution completed")

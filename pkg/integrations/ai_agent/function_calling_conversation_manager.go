@@ -79,18 +79,18 @@ type FunctionCallExecution struct {
 
 // FunctionCallingConversationManager manages function calling pattern conversations
 type FunctionCallingConversationManager struct {
-	agentNodeID     string
-	llm             domain.IntegrationLLM
-	memory          domain.IntegrationMemory
-	toolExecutors   []ToolExecutor
-	toolCallManager ToolCallManager
-	toolDefinitions []ToolDefinition
-	stateManager    FunctionCallingStateManager
-	errorHandler    *FunctionCallingErrorHandler
-	eventPublisher  domain.EventPublisher
-	executeParams   ExecuteParams
-	llmNodeParams   LLMNodeParams
-	memoryManager   ConversationMemoryManager
+	agentNodeID       string
+	llm               domain.IntegrationLLM
+	memory            domain.IntegrationMemory
+	toolExecutors     []ToolExecutor
+	toolCallManager   ToolCallManager
+	toolDefinitions   []ToolDefinition
+	stateManager      FunctionCallingStateManager
+	errorHandler      *FunctionCallingErrorHandler
+	executionObserver domain.ExecutionObserver
+	executeParams     ExecuteParams
+	llmNodeParams     LLMNodeParams
+	memoryManager     ConversationMemoryManager
 }
 
 // FunctionCallingStateManager handles state persistence and recovery for function calling
@@ -107,32 +107,32 @@ type FunctionCallingErrorHandler struct {
 }
 
 type FunctionCallingConversationManagerDeps struct {
-	AgentNodeID     string
-	LLM             domain.IntegrationLLM
-	Memory          domain.IntegrationMemory
-	ToolExecutors   []ToolExecutor
-	ToolCallManager ToolCallManager
-	StateManager    FunctionCallingStateManager
-	EventPublisher  domain.EventPublisher
-	ExecuteParams   ExecuteParams
-	MemoryManager   ConversationMemoryManager
-	LLMNodeParams   LLMNodeParams
+	AgentNodeID       string
+	LLM               domain.IntegrationLLM
+	Memory            domain.IntegrationMemory
+	ToolExecutors     []ToolExecutor
+	ToolCallManager   ToolCallManager
+	StateManager      FunctionCallingStateManager
+	ExecutionObserver domain.ExecutionObserver
+	ExecuteParams     ExecuteParams
+	MemoryManager     ConversationMemoryManager
+	LLMNodeParams     LLMNodeParams
 }
 
 // NewFunctionCallingConversationManager creates a new function calling conversation manager
 func NewFunctionCallingConversationManager(deps FunctionCallingConversationManagerDeps) *FunctionCallingConversationManager {
 	return &FunctionCallingConversationManager{
-		agentNodeID:     deps.AgentNodeID,
-		llm:             deps.LLM,
-		memory:          deps.Memory,
-		toolExecutors:   deps.ToolExecutors,
-		toolCallManager: deps.ToolCallManager,
-		stateManager:    deps.StateManager,
-		errorHandler:    NewFunctionCallingErrorHandler(),
-		eventPublisher:  deps.EventPublisher,
-		executeParams:   deps.ExecuteParams,
-		memoryManager:   deps.MemoryManager,
-		llmNodeParams:   deps.LLMNodeParams,
+		agentNodeID:       deps.AgentNodeID,
+		llm:               deps.LLM,
+		memory:            deps.Memory,
+		toolExecutors:     deps.ToolExecutors,
+		toolCallManager:   deps.ToolCallManager,
+		stateManager:      deps.StateManager,
+		errorHandler:      NewFunctionCallingErrorHandler(),
+		executionObserver: deps.ExecutionObserver,
+		executeParams:     deps.ExecuteParams,
+		memoryManager:     deps.MemoryManager,
+		llmNodeParams:     deps.LLMNodeParams,
 	}
 }
 
@@ -732,10 +732,8 @@ func (f *FunctionCallingConversationManager) generateWithConversationAndEvents(
 			NodeID:          f.executeParams.LLM.NodeID,
 			ItemsByInputID:  inputItems,
 			ItemsByOutputID: outputItems,
-			ExecutionOrder:  1,
 			StartedAt:       startTime,
 			EndedAt:         time.Now(),
-			Timestamp:       time.Now(),
 		}
 
 		notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, completedEvent)
@@ -752,64 +750,13 @@ func (f *FunctionCallingConversationManager) publishLLMExecutionStartedEvent(
 	ctx context.Context,
 	workflowCtx *domain.WorkflowExecutionContext,
 ) error {
-	event := &domain.NodeExecutionStartedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              f.executeParams.LLM.NodeID,
-		Timestamp:           time.Now().UnixNano(),
+	event := &executor.NodeExecutionStartedEvent{
+		NodeID:        f.executeParams.LLM.NodeID,
+		Timestamp:     time.Now(),
+		IsReExecution: workflowCtx.IsReExecution,
 	}
 
-	return f.eventPublisher.PublishEvent(ctx, event)
-}
-
-// publishLLMExecutionCompletedEvent publishes a NodeExecutedEvent for successful LLM call
-func (f *FunctionCallingConversationManager) publishLLMExecutionCompletedEvent(
-	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
-	req domain.GenerateRequest,
-	response *domain.ModelResponse,
-) error {
-	// Build input items from LLM request
-	inputItems := f.buildInputItemsFromLLMRequest(req)
-
-	// Build output items from LLM response
-	outputItems := f.buildOutputItemsFromLLMResponse(response, f.executeParams.LLM.NodeID)
-
-	event := &domain.NodeExecutedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              f.executeParams.LLM.NodeID,
-		ItemsByInputID:      inputItems,
-		ItemsByOutputID:     outputItems,
-		Timestamp:           time.Now().UnixNano(),
-		ExecutionOrder:      0, // OrderedEventPublisher will handle ordering via EventOrder field
-	}
-
-	return f.eventPublisher.PublishEvent(ctx, event)
-}
-
-// publishLLMExecutionFailedEvent publishes a NodeFailedEvent for failed LLM call
-func (f *FunctionCallingConversationManager) publishLLMExecutionFailedEvent(
-	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
-	req domain.GenerateRequest,
-	err error,
-) error {
-	// Build input items from LLM request
-	inputItems := f.buildInputItemsFromLLMRequest(req)
-
-	event := &domain.NodeFailedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              f.executeParams.LLM.NodeID,
-		Error:               err.Error(),
-		ExecutionOrder:      0, // OrderedEventPublisher will handle ordering via EventOrder field
-		Timestamp:           time.Now().UnixNano(),
-		ItemsByInputID:      inputItems,
-		ItemsByOutputID:     make(map[string]domain.NodeItems), // No output on failure
-	}
-
-	return f.eventPublisher.PublishEvent(ctx, event)
+	return f.executionObserver.Notify(ctx, event)
 }
 
 // buildInputItemsFromLLMRequest converts LLM request to NodeItems format

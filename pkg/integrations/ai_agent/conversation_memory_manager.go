@@ -38,22 +38,22 @@ type ConversationMemoryConfig struct {
 
 // DefaultConversationMemoryManager implements ConversationMemoryManager
 type DefaultConversationMemoryManager struct {
-	memory         domain.IntegrationMemory
-	contextBuilder MemoryContextBuilder
-	recordBuilder  ConversationRecordBuilder
-	config         ConversationMemoryConfig
-	agentNodeID    string
-	eventPublisher domain.EventPublisher
-	memoryNodeID   string
+	memory            domain.IntegrationMemory
+	contextBuilder    MemoryContextBuilder
+	recordBuilder     ConversationRecordBuilder
+	config            ConversationMemoryConfig
+	agentNodeID       string
+	executionObserver domain.ExecutionObserver
+	memoryNodeID      string
 }
 
 // ConversationMemoryManagerDependencies contains dependencies for memory manager
 type ConversationMemoryManagerDependencies struct {
-	Memory         domain.IntegrationMemory
-	AgentNodeID    string
-	Config         ConversationMemoryConfig
-	EventPublisher domain.EventPublisher
-	MemoryNodeID   string
+	Memory            domain.IntegrationMemory
+	AgentNodeID       string
+	Config            ConversationMemoryConfig
+	ExecutionObserver domain.ExecutionObserver
+	MemoryNodeID      string
 }
 
 // NewConversationMemoryManager creates a new conversation memory manager
@@ -63,13 +63,13 @@ func NewConversationMemoryManager(deps ConversationMemoryManagerDependencies) Co
 	}
 
 	return &DefaultConversationMemoryManager{
-		memory:         deps.Memory,
-		contextBuilder: NewMemoryContextBuilder(deps.Config),
-		recordBuilder:  NewConversationRecordBuilder(deps.AgentNodeID, deps.Config),
-		config:         deps.Config,
-		agentNodeID:    deps.AgentNodeID,
-		eventPublisher: deps.EventPublisher,
-		memoryNodeID:   deps.MemoryNodeID,
+		memory:            deps.Memory,
+		contextBuilder:    NewMemoryContextBuilder(deps.Config),
+		recordBuilder:     NewConversationRecordBuilder(deps.AgentNodeID, deps.Config),
+		config:            deps.Config,
+		agentNodeID:       deps.AgentNodeID,
+		executionObserver: deps.ExecutionObserver,
+		memoryNodeID:      deps.MemoryNodeID,
 	}
 }
 
@@ -85,8 +85,8 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 	workflowCtx, hasWorkflowCtx := domain.GetWorkflowExecutionContext(ctx)
 
 	// Publish memory retrieval started event
-	if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-		err := m.publishMemoryRetrievalStartedEvent(ctx, workflowCtx, workspaceID)
+	if hasWorkflowCtx && workflowCtx.EnableEvents && m.executionObserver != nil && m.memoryNodeID != "" {
+		err := m.publishMemoryRetrievalStartedEvent(ctx)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to publish memory retrieval started event")
 		}
@@ -140,10 +140,8 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 				NodeID:          m.memoryNodeID,
 				ItemsByInputID:  inputItems,
 				ItemsByOutputID: outputItems,
-				ExecutionOrder:  1,
 				StartedAt:       startTime,
 				EndedAt:         time.Now(),
-				Timestamp:       time.Now(),
 			}
 
 			notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, completedEvent)
@@ -165,10 +163,8 @@ func (m *DefaultConversationMemoryManager) RetrieveMemoryContext(ctx context.Con
 			NodeID:          m.memoryNodeID,
 			ItemsByInputID:  inputItems,
 			ItemsByOutputID: outputItems,
-			ExecutionOrder:  1,
 			StartedAt:       startTime,
 			EndedAt:         time.Now(),
-			Timestamp:       time.Now(),
 		}
 
 		notifyErr := workflowCtx.ExecutionObserver.Notify(ctx, completedEvent)
@@ -198,8 +194,8 @@ func (m *DefaultConversationMemoryManager) StoreConversationStart(ctx context.Co
 	workflowCtx, hasWorkflowCtx := domain.GetWorkflowExecutionContext(ctx)
 
 	// Publish memory storage started event
-	if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-		err := m.publishMemoryStorageStartedEvent(ctx, workflowCtx, conversationID, "start")
+	if hasWorkflowCtx && workflowCtx.EnableEvents && m.executionObserver != nil && m.memoryNodeID != "" {
+		err := m.publishMemoryStorageStartedEvent(ctx)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to publish memory storage started event")
 		}
@@ -226,8 +222,8 @@ func (m *DefaultConversationMemoryManager) StoreConversationStart(ctx context.Co
 
 	if err != nil {
 		// Publish memory storage failed event
-		if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-			publishErr := m.publishMemoryStorageFailedEvent(ctx, workflowCtx, conversationID, "start", err)
+		if hasWorkflowCtx && workflowCtx.EnableEvents && m.executionObserver != nil && m.memoryNodeID != "" {
+			publishErr := m.publishMemoryStorageFailedEvent(ctx, conversationID, "start", err)
 			if publishErr != nil {
 				log.Error().Err(publishErr).Msg("Failed to publish memory storage failed event")
 			}
@@ -236,8 +232,8 @@ func (m *DefaultConversationMemoryManager) StoreConversationStart(ctx context.Co
 	}
 
 	// Publish memory storage completed event
-	if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-		publishErr := m.publishMemoryStorageCompletedEvent(ctx, workflowCtx, conversationID, "start", record.ID, startTime)
+	if hasWorkflowCtx && workflowCtx.EnableEvents && m.executionObserver != nil && m.memoryNodeID != "" {
+		publishErr := m.publishMemoryStorageCompletedEvent(ctx, conversationID, "start", record.ID, startTime)
 		if publishErr != nil {
 			log.Error().Err(publishErr).Msg("Failed to publish memory storage completed event")
 		}
@@ -264,8 +260,8 @@ func (m *DefaultConversationMemoryManager) StoreConversationComplete(
 	workflowCtx, hasWorkflowCtx := domain.GetWorkflowExecutionContext(ctx)
 
 	// Publish memory storage started event
-	if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-		err := m.publishMemoryStorageStartedEvent(ctx, workflowCtx, state.ConversationID, "complete")
+	if hasWorkflowCtx && workflowCtx.EnableEvents && m.memoryNodeID != "" {
+		err := m.publishMemoryStorageStartedEvent(ctx)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to publish memory storage started event")
 		}
@@ -276,8 +272,8 @@ func (m *DefaultConversationMemoryManager) StoreConversationComplete(
 
 	if err != nil {
 		// Publish memory storage failed event
-		if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-			publishErr := m.publishMemoryStorageFailedEvent(ctx, workflowCtx, state.ConversationID, "complete", err)
+		if hasWorkflowCtx && workflowCtx.EnableEvents && m.memoryNodeID != "" {
+			publishErr := m.publishMemoryStorageFailedEvent(ctx, state.ConversationID, "complete", err)
 			if publishErr != nil {
 				log.Error().Err(publishErr).Msg("Failed to publish memory storage failed event")
 			}
@@ -286,8 +282,8 @@ func (m *DefaultConversationMemoryManager) StoreConversationComplete(
 	}
 
 	// Publish memory storage completed event
-	if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-		publishErr := m.publishMemoryStorageCompletedEvent(ctx, workflowCtx, state.ConversationID, "complete", record.ID, startTime)
+	if hasWorkflowCtx && workflowCtx.EnableEvents && m.memoryNodeID != "" {
+		publishErr := m.publishMemoryStorageCompletedEvent(ctx, state.ConversationID, "complete", record.ID, startTime)
 		if publishErr != nil {
 			log.Error().Err(publishErr).Msg("Failed to publish memory storage completed event")
 		}
@@ -308,8 +304,8 @@ func (m *DefaultConversationMemoryManager) EnhanceSystemPrompt(ctx context.Conte
 	workflowCtx, hasWorkflowCtx := domain.GetWorkflowExecutionContext(ctx)
 
 	// Publish memory enhancement started event
-	if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-		err := m.publishMemoryEnhancementStartedEvent(ctx, workflowCtx, workspaceID)
+	if hasWorkflowCtx && workflowCtx.EnableEvents && m.memoryNodeID != "" {
+		err := m.publishMemoryEnhancementStartedEvent(ctx)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to publish memory enhancement started event")
 		}
@@ -320,8 +316,8 @@ func (m *DefaultConversationMemoryManager) EnhanceSystemPrompt(ctx context.Conte
 		log.Error().Err(err).Msg("Failed to retrieve memory context for system prompt")
 
 		// Publish memory enhancement failed event
-		if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-			publishErr := m.publishMemoryEnhancementFailedEvent(ctx, workflowCtx, workspaceID, err)
+		if hasWorkflowCtx && workflowCtx.EnableEvents && m.memoryNodeID != "" {
+			publishErr := m.publishMemoryEnhancementFailedEvent(ctx, workspaceID, err)
 			if publishErr != nil {
 				log.Error().Err(publishErr).Msg("Failed to publish memory enhancement failed event")
 			}
@@ -332,8 +328,8 @@ func (m *DefaultConversationMemoryManager) EnhanceSystemPrompt(ctx context.Conte
 
 	if memoryContext == "" {
 		// Publish memory enhancement completed event with no context
-		if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-			publishErr := m.publishMemoryEnhancementCompletedEvent(ctx, workflowCtx, workspaceID, len(basePrompt), len(basePrompt), 0, startTime)
+		if hasWorkflowCtx && workflowCtx.EnableEvents && m.memoryNodeID != "" {
+			publishErr := m.publishMemoryEnhancementCompletedEvent(ctx, workspaceID, len(basePrompt), len(basePrompt), 0, startTime)
 			if publishErr != nil {
 				log.Error().Err(publishErr).Msg("Failed to publish memory enhancement completed event")
 			}
@@ -344,8 +340,8 @@ func (m *DefaultConversationMemoryManager) EnhanceSystemPrompt(ctx context.Conte
 	enhanced := m.contextBuilder.EnhanceSystemPrompt(basePrompt, memoryContext)
 
 	// Publish memory enhancement completed event
-	if hasWorkflowCtx && workflowCtx.EnableEvents && m.eventPublisher != nil && m.memoryNodeID != "" {
-		publishErr := m.publishMemoryEnhancementCompletedEvent(ctx, workflowCtx, workspaceID, len(basePrompt), len(enhanced), len(memoryContext), startTime)
+	if hasWorkflowCtx && workflowCtx.EnableEvents && m.memoryNodeID != "" {
+		publishErr := m.publishMemoryEnhancementCompletedEvent(ctx, workspaceID, len(basePrompt), len(enhanced), len(memoryContext), startTime)
 		if publishErr != nil {
 			log.Error().Err(publishErr).Msg("Failed to publish memory enhancement completed event")
 		}
@@ -415,139 +411,28 @@ func (m *NoOpConversationMemoryManager) EnhanceSystemPrompt(ctx context.Context,
 }
 
 // publishMemoryRetrievalStartedEvent publishes a NodeExecutionStartedEvent for memory retrieval
-func (m *DefaultConversationMemoryManager) publishMemoryRetrievalStartedEvent(
-	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
-	workspaceID string,
-) error {
-	event := &domain.NodeExecutionStartedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              m.memoryNodeID,
-		Timestamp:           time.Now().UnixNano(),
+func (m *DefaultConversationMemoryManager) publishMemoryRetrievalStartedEvent(ctx context.Context) error {
+	event := &executor.NodeExecutionStartedEvent{
+		NodeID:    m.memoryNodeID,
+		Timestamp: time.Now(),
 	}
 
-	return m.eventPublisher.PublishEvent(ctx, event)
-}
-
-// publishMemoryRetrievalCompletedEvent publishes a NodeExecutedEvent for successful memory retrieval
-func (m *DefaultConversationMemoryManager) publishMemoryRetrievalCompletedEvent(
-	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
-	workspaceID string,
-	conversationsFound int,
-	contextLength int,
-	startTime time.Time,
-) error {
-	duration := time.Since(startTime).Milliseconds()
-
-	// Build input items from retrieval parameters
-	inputItems := m.buildMemoryRetrievalInputItems(workspaceID)
-
-	// Build output items from retrieval results
-	outputItems := m.buildMemoryRetrievalOutputItems(conversationsFound, contextLength, duration)
-
-	event := &domain.NodeExecutedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              m.memoryNodeID,
-		ItemsByInputID:      inputItems,
-		ItemsByOutputID:     outputItems,
-		Timestamp:           time.Now().UnixNano(),
-		ExecutionOrder:      0, // OrderedEventPublisher will handle ordering via EventOrder field
-	}
-
-	return m.eventPublisher.PublishEvent(ctx, event)
-}
-
-// publishMemoryRetrievalFailedEvent publishes a NodeFailedEvent for failed memory retrieval
-func (m *DefaultConversationMemoryManager) publishMemoryRetrievalFailedEvent(
-	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
-	workspaceID string,
-	err error,
-) error {
-	// Build input items from retrieval parameters
-	inputItems := m.buildMemoryRetrievalInputItems(workspaceID)
-
-	event := &domain.NodeFailedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              m.memoryNodeID,
-		Error:               err.Error(),
-		ExecutionOrder:      0, // OrderedEventPublisher will handle ordering via EventOrder field
-		Timestamp:           time.Now().UnixNano(),
-		ItemsByInputID:      inputItems,
-		ItemsByOutputID:     make(map[string]domain.NodeItems), // No output on failure
-	}
-
-	return m.eventPublisher.PublishEvent(ctx, event)
-}
-
-// buildMemoryRetrievalInputItems builds input items for memory retrieval events
-func (m *DefaultConversationMemoryManager) buildMemoryRetrievalInputItems(workspaceID string) map[string]domain.NodeItems {
-	inputItem := map[string]interface{}{
-		"operation":          "memory_retrieval",
-		"session_id":         m.config.SessionID,
-		"workspace_id":       workspaceID,
-		"conversation_count": m.config.ConversationCount,
-		"include_tools":      m.config.IncludeToolUsage,
-		"max_context_length": m.config.MaxContextLength,
-	}
-
-	items := []domain.Item{domain.Item(inputItem)}
-
-	inputID := "memory_input"
-	return map[string]domain.NodeItems{
-		inputID: {
-			FromNodeID: m.agentNodeID, // Memory operations originate from AI agent
-			Items:      items,
-		},
-	}
-}
-
-// buildMemoryRetrievalOutputItems builds output items for memory retrieval events
-func (m *DefaultConversationMemoryManager) buildMemoryRetrievalOutputItems(conversationsFound, contextLength int, durationMs int64) map[string]domain.NodeItems {
-	outputItem := map[string]interface{}{
-		"operation":             "memory_retrieval",
-		"conversations_found":   conversationsFound,
-		"context_length":        contextLength,
-		"retrieval_duration_ms": durationMs,
-		"success":               true,
-	}
-
-	items := []domain.Item{domain.Item(outputItem)}
-
-	outputID := fmt.Sprintf("output-%s-0", m.memoryNodeID)
-	return map[string]domain.NodeItems{
-		outputID: {
-			FromNodeID: m.memoryNodeID,
-			Items:      items,
-		},
-	}
+	return m.executionObserver.Notify(ctx, event)
 }
 
 // publishMemoryStorageStartedEvent publishes a NodeExecutionStartedEvent for memory storage
-func (m *DefaultConversationMemoryManager) publishMemoryStorageStartedEvent(
-	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
-	conversationID string,
-	phase string,
-) error {
-	event := &domain.NodeExecutionStartedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              m.memoryNodeID,
-		Timestamp:           time.Now().UnixNano(),
+func (m *DefaultConversationMemoryManager) publishMemoryStorageStartedEvent(ctx context.Context) error {
+	event := &executor.NodeExecutionStartedEvent{
+		NodeID:    m.memoryNodeID,
+		Timestamp: time.Now(),
 	}
 
-	return m.eventPublisher.PublishEvent(ctx, event)
+	return m.executionObserver.Notify(ctx, event)
 }
 
 // publishMemoryStorageCompletedEvent publishes a NodeExecutedEvent for successful memory storage
 func (m *DefaultConversationMemoryManager) publishMemoryStorageCompletedEvent(
 	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
 	conversationID string,
 	phase string,
 	recordID string,
@@ -561,23 +446,20 @@ func (m *DefaultConversationMemoryManager) publishMemoryStorageCompletedEvent(
 	// Build output items from storage results
 	outputItems := m.buildMemoryStorageOutputItems(recordID, phase, duration)
 
-	event := &domain.NodeExecutedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              m.memoryNodeID,
-		ItemsByInputID:      inputItems,
-		ItemsByOutputID:     outputItems,
-		Timestamp:           time.Now().UnixNano(),
-		ExecutionOrder:      0, // OrderedEventPublisher will handle ordering via EventOrder field
+	event := &executor.NodeExecutionCompletedEvent{
+		NodeID:          m.memoryNodeID,
+		ItemsByInputID:  inputItems,
+		ItemsByOutputID: outputItems,
+		StartedAt:       startTime,
+		EndedAt:         time.Now(),
 	}
 
-	return m.eventPublisher.PublishEvent(ctx, event)
+	return m.executionObserver.Notify(ctx, event)
 }
 
 // publishMemoryStorageFailedEvent publishes a NodeFailedEvent for failed memory storage
 func (m *DefaultConversationMemoryManager) publishMemoryStorageFailedEvent(
 	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
 	conversationID string,
 	phase string,
 	err error,
@@ -585,40 +467,29 @@ func (m *DefaultConversationMemoryManager) publishMemoryStorageFailedEvent(
 	// Build input items from storage parameters
 	inputItems := m.buildMemoryStorageInputItems(conversationID, phase)
 
-	event := &domain.NodeFailedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              m.memoryNodeID,
-		Error:               err.Error(),
-		ExecutionOrder:      0, // OrderedEventPublisher will handle ordering via EventOrder field
-		Timestamp:           time.Now().UnixNano(),
-		ItemsByInputID:      inputItems,
-		ItemsByOutputID:     make(map[string]domain.NodeItems), // No output on failure
+	event := &executor.NodeExecutionFailedEvent{
+		NodeID:         m.memoryNodeID,
+		Error:          err,
+		Timestamp:      time.Now(),
+		ItemsByInputID: inputItems,
 	}
 
-	return m.eventPublisher.PublishEvent(ctx, event)
+	return m.executionObserver.Notify(ctx, event)
 }
 
 // publishMemoryEnhancementStartedEvent publishes a NodeExecutionStartedEvent for memory enhancement
-func (m *DefaultConversationMemoryManager) publishMemoryEnhancementStartedEvent(
-	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
-	workspaceID string,
-) error {
-	event := &domain.NodeExecutionStartedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              m.memoryNodeID,
-		Timestamp:           time.Now().UnixNano(),
+func (m *DefaultConversationMemoryManager) publishMemoryEnhancementStartedEvent(ctx context.Context) error {
+	event := &executor.NodeExecutionStartedEvent{
+		NodeID:    m.memoryNodeID,
+		Timestamp: time.Now(),
 	}
 
-	return m.eventPublisher.PublishEvent(ctx, event)
+	return m.executionObserver.Notify(ctx, event)
 }
 
 // publishMemoryEnhancementCompletedEvent publishes a NodeExecutedEvent for successful memory enhancement
 func (m *DefaultConversationMemoryManager) publishMemoryEnhancementCompletedEvent(
 	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
 	workspaceID string,
 	basePromptLength int,
 	enhancedPromptLength int,
@@ -633,41 +504,34 @@ func (m *DefaultConversationMemoryManager) publishMemoryEnhancementCompletedEven
 	// Build output items from enhancement results
 	outputItems := m.buildMemoryEnhancementOutputItems(enhancedPromptLength, contextLength, duration)
 
-	event := &domain.NodeExecutedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              m.memoryNodeID,
-		ItemsByInputID:      inputItems,
-		ItemsByOutputID:     outputItems,
-		Timestamp:           time.Now().UnixNano(),
-		ExecutionOrder:      0, // OrderedEventPublisher will handle ordering via EventOrder field
+	event := &executor.NodeExecutionCompletedEvent{
+		NodeID:          m.memoryNodeID,
+		ItemsByInputID:  inputItems,
+		ItemsByOutputID: outputItems,
+		StartedAt:       startTime,
+		EndedAt:         time.Now(),
 	}
 
-	return m.eventPublisher.PublishEvent(ctx, event)
+	return m.executionObserver.Notify(ctx, event)
 }
 
 // publishMemoryEnhancementFailedEvent publishes a NodeFailedEvent for failed memory enhancement
 func (m *DefaultConversationMemoryManager) publishMemoryEnhancementFailedEvent(
 	ctx context.Context,
-	workflowCtx *domain.WorkflowExecutionContext,
 	workspaceID string,
 	err error,
 ) error {
 	// Build input items from enhancement parameters
 	inputItems := m.buildMemoryEnhancementInputItems(workspaceID, 0)
 
-	event := &domain.NodeFailedEvent{
-		WorkflowID:          workflowCtx.WorkflowID,
-		WorkflowExecutionID: workflowCtx.WorkflowExecutionID,
-		NodeID:              m.memoryNodeID,
-		Error:               err.Error(),
-		ExecutionOrder:      0, // OrderedEventPublisher will handle ordering via EventOrder field
-		Timestamp:           time.Now().UnixNano(),
-		ItemsByInputID:      inputItems,
-		ItemsByOutputID:     make(map[string]domain.NodeItems), // No output on failure
+	event := &executor.NodeExecutionFailedEvent{
+		NodeID:         m.memoryNodeID,
+		Error:          err,
+		Timestamp:      time.Now(),
+		ItemsByInputID: inputItems,
 	}
 
-	return m.eventPublisher.PublishEvent(ctx, event)
+	return m.executionObserver.Notify(ctx, event)
 }
 
 // buildMemoryStorageInputItems builds input items for memory storage events
