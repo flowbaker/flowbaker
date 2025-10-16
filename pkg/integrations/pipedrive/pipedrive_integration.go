@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -1926,8 +1925,6 @@ func (i *PipedriveIntegration) PeekDeals(ctx context.Context, params domain.Peek
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	log.Printf("PeekDeals: %+v", response)
-
 	var results []domain.PeekResultItem
 	for _, deal := range response.Data {
 		results = append(results, domain.PeekResultItem{
@@ -2115,8 +2112,6 @@ func (i *PipedriveIntegration) PeekLabels(ctx context.Context, params domain.Pee
 			Name string `json:"name"`
 		} `json:"data"`
 	}
-
-	log.Println("response", response)
 
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
