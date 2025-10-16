@@ -2,6 +2,7 @@ package teams
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"github.com/flowbaker/flowbaker/internal/managers"
 	"github.com/flowbaker/flowbaker/pkg/domain"
 	auth "github.com/microsoft/kiota-authentication-azure-go"
+	absser "github.com/microsoft/kiota-abstractions-go/serialization"
+	jsonser "github.com/microsoft/kiota-serialization-json-go"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
@@ -37,7 +40,6 @@ func (c *TeamsIntegrationCreator) CreateIntegration(ctx context.Context, p domai
 	})
 }
 
-// TeamsIntegration implements the domain.IntegrationExecutor interface for Microsoft Teams
 type TeamsIntegration struct {
 	graphClient *msgraphsdk.GraphServiceClient
 
@@ -47,7 +49,6 @@ type TeamsIntegration struct {
 	actionManager *domain.IntegrationActionManager
 	peekFuncs     map[domain.IntegrationPeekableType]func(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error)
 
-	// Store access token for debugging
 	accessToken string
 	tokenExpiry time.Time
 }
@@ -66,12 +67,21 @@ func NewTeamsIntegration(ctx context.Context, deps TeamsIntegrationDependencies)
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
-		AddPerItem(TeamsActionType_SendMessage, integration.SendMessage).
+		AddPerItem(TeamsActionType_SendChannelMessage, integration.SendChannelMessage).
+		AddPerItem(TeamsActionType_SendChatMessage, integration.SendChatMessage).
 		AddPerItem(TeamsActionType_CreateChannel, integration.CreateChannel).
-		AddPerItem(TeamsActionType_CreateTeam, integration.CreateTeam)
+		AddPerItem(TeamsActionType_CreateTeam, integration.CreateTeam).
+		AddPerItem(TeamsActionType_DeleteChannel, integration.DeleteChannel).
+		AddPerItem(TeamsActionType_GetChannel, integration.GetChannel).
+		AddPerItemMulti(TeamsActionType_GetManyChannels, integration.GetManyChannels).
+		AddPerItem(TeamsActionType_UpdateChannel, integration.UpdateChannel).
+		AddPerItemMulti(TeamsActionType_GetChannelMessages, integration.GetChannelMessages).
+		AddPerItem(TeamsActionType_GetChatMessage, integration.GetChatMessage).
+		AddPerItemMulti(TeamsActionType_GetManyChatMessages, integration.GetManyChatMessages)
 
 	peekFuncs := map[domain.IntegrationPeekableType]func(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error){
 		TeamsPeekable_Channels: integration.PeekChannels,
+		TeamsPeekable_Chats:    integration.PeekChats,
 		TeamsPeekable_Teams:    integration.PeekTeams,
 	}
 
@@ -87,27 +97,9 @@ func NewTeamsIntegration(ctx context.Context, deps TeamsIntegrationDependencies)
 		return nil, fmt.Errorf("failed to get decrypted Teams OAuth credential: %w", err)
 	}
 
-	// Log token information for debugging
-	tokenLength := len(oauthAccount.AccessToken)
-	tokenPreview := ""
-	if tokenLength > 30 {
-		tokenPreview = oauthAccount.AccessToken[:20] + "..." + oauthAccount.AccessToken[tokenLength-10:]
-	} else {
-		tokenPreview = oauthAccount.AccessToken
-	}
-
-	log.Info().
-		Str("credential_id", deps.CredentialID).
-		Int("token_length", tokenLength).
-		Str("token_preview", tokenPreview).
-		Time("expiry", oauthAccount.Expiry).
-		Msg("Teams OAuth token retrieved for integration initialization")
-
-	// Store token info for debugging
 	integration.accessToken = oauthAccount.AccessToken
 	integration.tokenExpiry = oauthAccount.Expiry
 
-	// Create a credential provider for Microsoft Graph
 	credential := &TeamsTokenCredential{accessToken: oauthAccount.AccessToken}
 	authProvider, err := auth.NewAzureIdentityAuthenticationProvider(credential)
 	if err != nil {
@@ -136,19 +128,8 @@ func (i *TeamsIntegration) Peek(ctx context.Context, params domain.PeekParams) (
 	return peekFunc(ctx, params)
 }
 
-// SendMessage sends a message to a Teams channel or chat
-func (i *TeamsIntegration) SendMessage(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
-	// Log token being used in this action for debugging
-	tokenLength := len(i.accessToken)
-
-	log.Info().
-		Int("token_length", tokenLength).
-		Str("token_preview", i.accessToken).
-		Time("token_expiry", i.tokenExpiry).
-		Bool("token_expired", i.tokenExpiry.Before(time.Now())).
-		Msg("SendMessage: OAuth token being used for this action")
-
-	params := SendMessageParams{}
+func (i *TeamsIntegration) SendChannelMessage(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	params := SendChannelMessageParams{}
 	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
 		return nil, fmt.Errorf("failed to bind parameters: %w", err)
 	}
@@ -160,124 +141,64 @@ func (i *TeamsIntegration) SendMessage(ctx context.Context, input domain.Integra
 		return nil, fmt.Errorf("message is required")
 	}
 
-	// Determine content type
+	teamID, channelID, err := parseChannelID(params.ChannelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse channel_id: %w", err)
+	}
+
 	contentType := models.HTML_BODYTYPE
 	if params.ContentType != nil && *params.ContentType == "text" {
 		contentType = models.TEXT_BODYTYPE
 	}
 
-	// Create the message
 	requestBody := models.NewChatMessage()
 	body := models.NewItemBody()
 	body.SetContent(&params.Message)
 	body.SetContentType(&contentType)
 	requestBody.SetBody(body)
 
-	// Check if it's a chat (starts with "chat:")
-	if strings.HasPrefix(params.ChannelID, "chat:") {
-		chatID := strings.TrimPrefix(params.ChannelID, "chat:")
-
-		log.Info().Str("chat_id", chatID).Str("message_preview", func() string {
-			if len(params.Message) > 50 {
-				return params.Message[:50] + "..."
-			}
-			return params.Message
-		}()).Msg("Sending message to Teams chat")
-
-		// Send message to chat
-		result, err := i.graphClient.Chats().ByChatId(chatID).Messages().Post(ctx, requestBody, nil)
-		if err != nil {
-			// Extract detailed error information
-			errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
-
-			log.Error().
-				Err(err).
-				Str("chat_id", chatID).
-				Str("error_type", fmt.Sprintf("%T", err)).
-				Str("error_code", errorCode).
-				Str("error_message", errorMessage).
-				Str("error_details", errorDetails).
-				Msg("Failed to send message to Teams chat")
-
-			// Check for specific error codes and messages
-			fullError := strings.ToLower(errorCode + " " + errorMessage)
-
-			if strings.Contains(fullError, "license") {
-				return nil, fmt.Errorf("failed to send message: This operation requires a Microsoft Teams license. Error: %s - %s", errorCode, errorMessage)
-			}
-			if strings.Contains(fullError, "forbidden") || strings.Contains(fullError, "unauthorized") || errorCode == "Forbidden" || errorCode == "Unauthorized" {
-				return nil, fmt.Errorf("insufficient permissions to send message. Make sure admin consent is granted for ChatMessage.Send permission. Error: %s - %s", errorCode, errorMessage)
-			}
-			if strings.Contains(fullError, "not found") || errorCode == "NotFound" {
-				return nil, fmt.Errorf("chat with ID '%s' not found. Error: %s - %s", chatID, errorCode, errorMessage)
-			}
-
-			return nil, fmt.Errorf("failed to send message to Teams chat: [%s] %s", errorCode, errorMessage)
-		}
-
-		log.Info().Str("chat_id", chatID).Msg("Successfully sent message to Teams chat")
-		return result, nil
-	}
-
-	// Parse channel ID to get team ID and channel ID
-	// Expected format: teamId:channelId
-	teamID, channelID, err := parseChannelID(params.ChannelID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse channel_id: %w", err)
-	}
-
-	log.Info().
-		Str("team_id", teamID).
-		Str("channel_id", channelID).
-		Str("message_preview", func() string {
-			if len(params.Message) > 50 {
-				return params.Message[:50] + "..."
-			}
-			return params.Message
-		}()).
-		Msg("Sending message to Teams channel")
-
-	// Send the message to channel
 	result, err := i.graphClient.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().Post(ctx, requestBody, nil)
 	if err != nil {
-		// Extract detailed error information
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
-
-		log.Error().
-			Err(err).
-			Str("team_id", teamID).
-			Str("channel_id", channelID).
-			Str("error_type", fmt.Sprintf("%T", err)).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
-			Msg("Failed to send message to Teams channel")
-
-		// Check for specific error codes and messages
-		fullError := strings.ToLower(errorCode + " " + errorMessage)
-
-		if strings.Contains(fullError, "license") {
-			return nil, fmt.Errorf("failed to send message: This operation requires a Microsoft Teams license. Error: %s - %s", errorCode, errorMessage)
-		}
-		if strings.Contains(fullError, "forbidden") || strings.Contains(fullError, "unauthorized") || errorCode == "Forbidden" || errorCode == "Unauthorized" {
-			return nil, fmt.Errorf("insufficient permissions to send message. Make sure admin consent is granted for ChannelMessage.Send permission. Error: %s - %s", errorCode, errorMessage)
-		}
-		if strings.Contains(fullError, "not found") || errorCode == "NotFound" {
-			return nil, fmt.Errorf("channel or team not found. Make sure team ID '%s' and channel ID '%s' are correct. Error: %s - %s", teamID, channelID, errorCode, errorMessage)
-		}
-
+		errorCode, errorMessage, _ := extractODataErrorDetails(err)
 		return nil, fmt.Errorf("failed to send message to Teams channel: [%s] %s", errorCode, errorMessage)
 	}
 
-	log.Info().
-		Str("team_id", teamID).
-		Str("channel_id", channelID).
-		Msg("Successfully sent message to Teams channel")
-
-	return result, nil
+	return convertToRawJSON(result)
 }
 
-// CreateChannel creates a new channel in a Teams team
+func (i *TeamsIntegration) SendChatMessage(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	params := SendChatMessageParams{}
+	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
+		return nil, fmt.Errorf("failed to bind parameters: %w", err)
+	}
+
+	if params.ChatID == "" {
+		return nil, fmt.Errorf("chat_id is required")
+	}
+	if params.Message == "" {
+		return nil, fmt.Errorf("message is required")
+	}
+
+	contentType := models.HTML_BODYTYPE
+	if params.ContentType != nil && *params.ContentType == "text" {
+		contentType = models.TEXT_BODYTYPE
+	}
+
+	requestBody := models.NewChatMessage()
+	body := models.NewItemBody()
+	body.SetContent(&params.Message)
+	body.SetContentType(&contentType)
+	requestBody.SetBody(body)
+
+	result, err := i.graphClient.Chats().ByChatId(params.ChatID).Messages().Post(ctx, requestBody, nil)
+	if err != nil {
+		errorCode, errorMessage, _ := extractODataErrorDetails(err)
+		return nil, fmt.Errorf("failed to send message to Teams chat: [%s] %s", errorCode, errorMessage)
+	}
+
+	return convertToRawJSON(result)
+}
+
 func (i *TeamsIntegration) CreateChannel(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
 	params := CreateChannelParams{}
 	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
@@ -291,24 +212,11 @@ func (i *TeamsIntegration) CreateChannel(ctx context.Context, input domain.Integ
 		return nil, fmt.Errorf("channel_name is required")
 	}
 
-	log.Info().
-		Str("team_id", params.TeamID).
-		Str("channel_name", params.ChannelName).
-		Str("channel_type", func() string {
-			if params.ChannelType != nil {
-				return *params.ChannelType
-			}
-			return "standard"
-		}()).
-		Msg("Creating Teams channel")
-
-	// Determine channel membership type
 	membershipType := models.STANDARD_CHANNELMEMBERSHIPTYPE
 	if params.ChannelType != nil && *params.ChannelType == "private" {
 		membershipType = models.PRIVATE_CHANNELMEMBERSHIPTYPE
 	}
 
-	// Create the channel
 	requestBody := models.NewChannel()
 	requestBody.SetDisplayName(&params.ChannelName)
 	requestBody.SetMembershipType(&membershipType)
@@ -317,56 +225,16 @@ func (i *TeamsIntegration) CreateChannel(ctx context.Context, input domain.Integ
 		requestBody.SetDescription(params.ChannelDescription)
 	}
 
-	// Create channel in the team
 	result, err := i.graphClient.Teams().ByTeamId(params.TeamID).Channels().Post(ctx, requestBody, nil)
 	if err != nil {
-		// Extract detailed error information
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
-
-		log.Error().
-			Err(err).
-			Str("team_id", params.TeamID).
-			Str("channel_name", params.ChannelName).
-			Str("error_type", fmt.Sprintf("%T", err)).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
-			Msg("Failed to create Teams channel")
-
-		// Check for specific error codes and messages
-		fullError := strings.ToLower(errorCode + " " + errorMessage)
-
-		if strings.Contains(fullError, "license") {
-			return nil, fmt.Errorf("failed to create channel: This operation requires a Microsoft Teams license. Error: %s - %s", errorCode, errorMessage)
-		}
-		if strings.Contains(fullError, "duplicate") || strings.Contains(fullError, "already exists") || strings.Contains(fullError, "conflict") {
-			return nil, fmt.Errorf("channel '%s' already exists in this team. Error: %s - %s", params.ChannelName, errorCode, errorMessage)
-		}
-		if strings.Contains(fullError, "forbidden") || strings.Contains(fullError, "unauthorized") || errorCode == "Forbidden" || errorCode == "Authorization_RequestDenied" {
-			return nil, fmt.Errorf("insufficient permissions to create channel. Make sure admin consent is granted for Channel.Create permission. Error: %s - %s", errorCode, errorMessage)
-		}
-		if strings.Contains(fullError, "not found") || errorCode == "NotFound" {
-			return nil, fmt.Errorf("team with ID '%s' not found. Make sure the team exists and you have access. Error: %s - %s", params.TeamID, errorCode, errorMessage)
-		}
+		errorCode, errorMessage, _ := extractODataErrorDetails(err)
 
 		return nil, fmt.Errorf("failed to create Teams channel: [%s] %s", errorCode, errorMessage)
 	}
 
-	log.Info().
-		Str("team_id", params.TeamID).
-		Str("channel_name", params.ChannelName).
-		Str("channel_id", func() string {
-			if result.GetId() != nil {
-				return *result.GetId()
-			}
-			return "unknown"
-		}()).
-		Msg("Successfully created Teams channel")
-
-	return result, nil
+	return convertToRawJSON(result)
 }
 
-// CreateTeam creates a new Microsoft Teams team
 func (i *TeamsIntegration) CreateTeam(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
 	params := CreateTeamParams{}
 	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
@@ -377,28 +245,15 @@ func (i *TeamsIntegration) CreateTeam(ctx context.Context, input domain.Integrat
 		return nil, fmt.Errorf("team_name is required")
 	}
 
-	log.Info().
-		Str("team_name", params.TeamName).
-		Str("visibility", func() string {
-			if params.TeamVisibility != nil {
-				return *params.TeamVisibility
-			}
-			return "private"
-		}()).
-		Msg("Creating Microsoft Teams team")
-
-	// Determine team visibility
 	visibility := "Private"
 	if params.TeamVisibility != nil && *params.TeamVisibility == "public" {
 		visibility = "Public"
 	}
 
-	// First, create a Microsoft 365 Group
 	groupRequestBody := models.NewGroup()
 	groupRequestBody.SetDisplayName(&params.TeamName)
 	groupRequestBody.SetMailEnabled(func() *bool { b := true; return &b }())
 	groupRequestBody.SetMailNickname(func() *string {
-		// Create a valid mail nickname from team name (lowercase, no spaces)
 		nickname := strings.ToLower(strings.ReplaceAll(params.TeamName, " ", "-"))
 		return &nickname
 	}())
@@ -409,37 +264,12 @@ func (i *TeamsIntegration) CreateTeam(ctx context.Context, input domain.Integrat
 		groupRequestBody.SetDescription(params.TeamDescription)
 	}
 
-	// Set group types to indicate it will be a Team
 	groupTypes := []string{"Unified"}
 	groupRequestBody.SetGroupTypes(groupTypes)
 
-	// Create the group
 	group, err := i.graphClient.Groups().Post(ctx, groupRequestBody, nil)
 	if err != nil {
-		// Extract detailed error information
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
-
-		log.Error().
-			Err(err).
-			Str("team_name", params.TeamName).
-			Str("error_type", fmt.Sprintf("%T", err)).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
-			Msg("Failed to create Microsoft 365 Group")
-
-		// Check for specific error codes and messages
-		fullError := strings.ToLower(errorCode + " " + errorMessage)
-
-		if strings.Contains(fullError, "license") {
-			return nil, fmt.Errorf("failed to create Team: This operation requires a Microsoft Teams license. Error: %s - %s", errorCode, errorMessage)
-		}
-		if strings.Contains(fullError, "insufficient privileges") || strings.Contains(fullError, "authorization") || errorCode == "Authorization_RequestDenied" {
-			return nil, fmt.Errorf("insufficient permissions to create team. Make sure admin consent is granted for Group.ReadWrite.All permission. Error: %s - %s", errorCode, errorMessage)
-		}
-		if strings.Contains(fullError, "duplicate") || strings.Contains(fullError, "already exists") {
-			return nil, fmt.Errorf("team or group with name '%s' already exists. Error: %s - %s", params.TeamName, errorCode, errorMessage)
-		}
+		errorCode, errorMessage, _ := extractODataErrorDetails(err)
 
 		return nil, fmt.Errorf("failed to create Microsoft 365 Group: [%s] %s", errorCode, errorMessage)
 	}
@@ -450,12 +280,8 @@ func (i *TeamsIntegration) CreateTeam(ctx context.Context, input domain.Integrat
 
 	groupID := *group.GetId()
 
-	log.Info().Str("group_id", groupID).Str("team_name", params.TeamName).Msg("Successfully created Microsoft 365 Group, now converting to Team")
-
-	// Convert the group to a Team by adding Team settings
 	teamRequestBody := models.NewTeam()
 
-	// Set messaging settings
 	messagingSettings := models.NewTeamMessagingSettings()
 	allowUserEditMessages := true
 	allowUserDeleteMessages := true
@@ -463,60 +289,298 @@ func (i *TeamsIntegration) CreateTeam(ctx context.Context, input domain.Integrat
 	messagingSettings.SetAllowUserDeleteMessages(&allowUserDeleteMessages)
 	teamRequestBody.SetMessagingSettings(messagingSettings)
 
-	// Set fun settings
 	funSettings := models.NewTeamFunSettings()
 	allowGiphy := true
 	funSettings.SetAllowGiphy(&allowGiphy)
 	teamRequestBody.SetFunSettings(funSettings)
 
-	// Convert group to team
 	team, err := i.graphClient.Groups().ByGroupId(groupID).Team().Put(ctx, teamRequestBody, nil)
 	if err != nil {
-		// Extract detailed error information
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
-
-		log.Error().
-			Err(err).
-			Str("group_id", groupID).
-			Str("team_name", params.TeamName).
-			Str("error_type", fmt.Sprintf("%T", err)).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
-			Msg("Failed to convert group to Team")
-
-		// Check for specific error codes and messages
-		fullError := strings.ToLower(errorCode + " " + errorMessage)
-
-		if strings.Contains(fullError, "license") {
-			return nil, fmt.Errorf("failed to create Team: This operation requires a Microsoft Teams license. Error: %s - %s", errorCode, errorMessage)
-		}
-		if strings.Contains(fullError, "insufficient privileges") || strings.Contains(fullError, "authorization") || errorCode == "Authorization_RequestDenied" {
-			return nil, fmt.Errorf("insufficient permissions to convert group to team. Make sure admin consent is granted for Group.ReadWrite.All and TeamSettings.ReadWrite.All permissions. Error: %s - %s", errorCode, errorMessage)
-		}
+		errorCode, errorMessage, _ := extractODataErrorDetails(err)
 
 		return nil, fmt.Errorf("failed to convert group to Team: [%s] %s", errorCode, errorMessage)
 	}
 
-	log.Info().
-		Str("group_id", groupID).
-		Str("team_name", params.TeamName).
-		Str("team_id", func() string {
-			if team.GetId() != nil {
-				return *team.GetId()
-			}
-			return groupID
-		}()).
-		Msg("Successfully created Teams team")
-
-	return team, nil
+	return convertToRawJSON(team)
 }
 
-// PeekChannels returns available Teams channels
+func (i *TeamsIntegration) DeleteChannel(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	params := DeleteChannelParams{}
+	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
+		return nil, fmt.Errorf("failed to bind parameters: %w", err)
+	}
+
+	if params.ChannelID == "" {
+		return nil, fmt.Errorf("channel_id is required")
+	}
+
+	teamID, channelID, err := parseChannelID(params.ChannelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse channel_id: %w", err)
+	}
+
+	err = i.graphClient.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Delete(ctx, nil)
+	if err != nil {
+		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+
+		log.Error().
+			Err(err).
+			Str("team_id", teamID).
+			Str("channel_id", channelID).
+			Str("error_code", errorCode).
+			Str("error_message", errorMessage).
+			Str("error_details", errorDetails).
+			Msg("Failed to delete Teams channel")
+
+		return nil, fmt.Errorf("failed to delete Teams channel: [%s] %s", errorCode, errorMessage)
+	}
+
+	return map[string]interface{}{
+		"success":    true,
+		"team_id":    teamID,
+		"channel_id": channelID,
+	}, nil
+}
+
+func (i *TeamsIntegration) GetChannel(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	params := GetChannelParams{}
+	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
+		return nil, fmt.Errorf("failed to bind parameters: %w", err)
+	}
+
+	if params.TeamID == "" {
+		return nil, fmt.Errorf("team_id is required")
+	}
+	if params.ChannelID == "" {
+		return nil, fmt.Errorf("channel_id is required")
+	}
+
+	result, err := i.graphClient.Teams().ByTeamId(params.TeamID).Channels().ByChannelId(params.ChannelID).Get(ctx, nil)
+	if err != nil {
+		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+
+		log.Error().
+			Err(err).
+			Str("team_id", params.TeamID).
+			Str("channel_id", params.ChannelID).
+			Str("error_code", errorCode).
+			Str("error_message", errorMessage).
+			Str("error_details", errorDetails).
+			Msg("Failed to get Teams channel")
+
+		return nil, fmt.Errorf("failed to get Teams channel: [%s] %s", errorCode, errorMessage)
+	}
+
+	return convertToRawJSON(result)
+}
+
+func (i *TeamsIntegration) GetManyChannels(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
+	params := GetManyChannelsParams{}
+	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
+		return nil, fmt.Errorf("failed to bind parameters: %w", err)
+	}
+
+	if params.TeamID == "" {
+		return nil, fmt.Errorf("team_id is required")
+	}
+
+	result, err := i.graphClient.Teams().ByTeamId(params.TeamID).Channels().Get(ctx, nil)
+	if err != nil {
+		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+
+		log.Error().
+			Err(err).
+			Str("team_id", params.TeamID).
+			Str("error_code", errorCode).
+			Str("error_message", errorMessage).
+			Str("error_details", errorDetails).
+			Msg("Failed to get Teams channels")
+
+		return nil, fmt.Errorf("failed to get Teams channels: [%s] %s", errorCode, errorMessage)
+	}
+
+	if result != nil && result.GetValue() != nil {
+		channels := result.GetValue()
+		items := make([]domain.Item, 0, len(channels))
+		for _, channel := range channels {
+			channelMap, err := convertToRawJSON(channel)
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to convert channel to JSON")
+				continue
+			}
+			items = append(items, channelMap)
+		}
+		return items, nil
+	}
+
+	return []domain.Item{}, nil
+}
+
+func (i *TeamsIntegration) UpdateChannel(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	params := UpdateChannelParams{}
+	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
+		return nil, fmt.Errorf("failed to bind parameters: %w", err)
+	}
+
+	if params.TeamID == "" {
+		return nil, fmt.Errorf("team_id is required")
+	}
+	if params.ChannelID == "" {
+		return nil, fmt.Errorf("channel_id is required")
+	}
+
+	requestBody := models.NewChannel()
+	if params.ChannelName != nil && *params.ChannelName != "" {
+		requestBody.SetDisplayName(params.ChannelName)
+	}
+	if params.ChannelDescription != nil {
+		requestBody.SetDescription(params.ChannelDescription)
+	}
+
+	result, err := i.graphClient.Teams().ByTeamId(params.TeamID).Channels().ByChannelId(params.ChannelID).Patch(ctx, requestBody, nil)
+	if err != nil {
+		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+
+		log.Error().
+			Err(err).
+			Str("team_id", params.TeamID).
+			Str("channel_id", params.ChannelID).
+			Str("error_code", errorCode).
+			Str("error_message", errorMessage).
+			Str("error_details", errorDetails).
+			Msg("Failed to update Teams channel")
+
+		return nil, fmt.Errorf("failed to update Teams channel: [%s] %s", errorCode, errorMessage)
+	}
+
+	return convertToRawJSON(result)
+}
+
+func (i *TeamsIntegration) GetChannelMessages(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
+	params := GetChannelMessagesParams{}
+	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
+		return nil, fmt.Errorf("failed to bind parameters: %w", err)
+	}
+
+	if params.ChannelID == "" {
+		return nil, fmt.Errorf("channel_id is required")
+	}
+
+	teamID, channelID, err := parseChannelID(params.ChannelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse channel_id: %w", err)
+	}
+
+	result, err := i.graphClient.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().Get(ctx, nil)
+	if err != nil {
+		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+
+		log.Error().
+			Err(err).
+			Str("team_id", teamID).
+			Str("channel_id", channelID).
+			Str("error_code", errorCode).
+			Str("error_message", errorMessage).
+			Str("error_details", errorDetails).
+			Msg("Failed to get channel messages")
+
+		return nil, fmt.Errorf("failed to get channel messages: [%s] %s", errorCode, errorMessage)
+	}
+
+	if result != nil && result.GetValue() != nil {
+		messages := result.GetValue()
+		items := make([]domain.Item, 0, len(messages))
+		for _, message := range messages {
+			messageMap, err := convertToRawJSON(message)
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to convert message to JSON")
+				continue
+			}
+			items = append(items, messageMap)
+		}
+		return items, nil
+	}
+
+	return []domain.Item{}, nil
+}
+
+func (i *TeamsIntegration) GetChatMessage(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	params := GetChatMessageParams{}
+	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
+		return nil, fmt.Errorf("failed to bind parameters: %w", err)
+	}
+
+	if params.ChatID == "" {
+		return nil, fmt.Errorf("chat_id is required")
+	}
+	if params.MessageID == "" {
+		return nil, fmt.Errorf("message_id is required")
+	}
+
+	result, err := i.graphClient.Chats().ByChatId(params.ChatID).Messages().ByChatMessageId(params.MessageID).Get(ctx, nil)
+	if err != nil {
+		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+
+		log.Error().
+			Err(err).
+			Str("chat_id", params.ChatID).
+			Str("message_id", params.MessageID).
+			Str("error_code", errorCode).
+			Str("error_message", errorMessage).
+			Str("error_details", errorDetails).
+			Msg("Failed to get chat message")
+
+		return nil, fmt.Errorf("failed to get chat message: [%s] %s", errorCode, errorMessage)
+	}
+
+	return convertToRawJSON(result)
+}
+
+func (i *TeamsIntegration) GetManyChatMessages(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
+	params := GetManyChatMessagesParams{}
+	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
+		return nil, fmt.Errorf("failed to bind parameters: %w", err)
+	}
+
+	if params.ChatID == "" {
+		return nil, fmt.Errorf("chat_id is required")
+	}
+
+	result, err := i.graphClient.Chats().ByChatId(params.ChatID).Messages().Get(ctx, nil)
+	if err != nil {
+		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+
+		log.Error().
+			Err(err).
+			Str("chat_id", params.ChatID).
+			Str("error_code", errorCode).
+			Str("error_message", errorMessage).
+			Str("error_details", errorDetails).
+			Msg("Failed to get chat messages")
+
+		return nil, fmt.Errorf("failed to get chat messages: [%s] %s", errorCode, errorMessage)
+	}
+
+	if result != nil && result.GetValue() != nil {
+		messages := result.GetValue()
+		items := make([]domain.Item, 0, len(messages))
+		for _, message := range messages {
+			messageMap, err := convertToRawJSON(message)
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to convert message to JSON")
+				continue
+			}
+			items = append(items, messageMap)
+		}
+		return items, nil
+	}
+
+	return []domain.Item{}, nil
+}
+
 func (i *TeamsIntegration) PeekChannels(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	var results []domain.PeekResultItem
 
-	// Get all teams for the user (requires Teams license)
 	teamsResult, err := i.graphClient.Me().JoinedTeams().Get(ctx, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get joined teams")
@@ -528,9 +592,6 @@ func (i *TeamsIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 		return domain.PeekResult{Result: results}, nil
 	}
 
-	teamCount := len(teamsResult.GetValue())
-	log.Info().Int("team_count", teamCount).Msg("Found teams via JoinedTeams API")
-
 	for _, team := range teamsResult.GetValue() {
 		if team.GetId() == nil || team.GetDisplayName() == nil {
 			continue
@@ -539,9 +600,6 @@ func (i *TeamsIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 		teamID := *team.GetId()
 		teamName := *team.GetDisplayName()
 
-		log.Info().Str("team_id", teamID).Str("team_name", teamName).Msg("Getting channels for team")
-
-		// Get channels for this team
 		channelsResult, err := i.graphClient.Teams().ByTeamId(teamID).Channels().Get(ctx, nil)
 		if err != nil {
 			log.Warn().Err(err).Str("team_id", teamID).Str("team_name", teamName).Msg("Failed to get channels for team")
@@ -549,8 +607,6 @@ func (i *TeamsIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 		}
 
 		if channelsResult != nil && channelsResult.GetValue() != nil {
-			channelCount := len(channelsResult.GetValue())
-			log.Info().Str("team_name", teamName).Int("channel_count", channelCount).Msg("Found channels in team")
 
 			for _, channel := range channelsResult.GetValue() {
 				if channel.GetId() == nil || channel.GetDisplayName() == nil {
@@ -561,8 +617,6 @@ func (i *TeamsIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 				channelName := *channel.GetDisplayName()
 				channelKey := fmt.Sprintf("%s:%s", teamID, channelID)
 
-				log.Info().Str("channel_name", channelName).Str("channel_id", channelID).Str("team_name", teamName).Msg("Adding channel to results")
-
 				results = append(results, domain.PeekResultItem{
 					Key:     channelKey,
 					Value:   channelKey,
@@ -572,15 +626,12 @@ func (i *TeamsIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 		}
 	}
 
-	log.Info().Int("total_channels", len(results)).Msg("Total channels found")
 	return domain.PeekResult{Result: results}, nil
 }
 
-// PeekTeams returns available Teams
 func (i *TeamsIntegration) PeekTeams(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	var results []domain.PeekResultItem
 
-	// Use JoinedTeams API (requires Teams license)
 	teamsResult, err := i.graphClient.Me().JoinedTeams().Get(ctx, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get joined teams")
@@ -592,9 +643,6 @@ func (i *TeamsIntegration) PeekTeams(ctx context.Context, params domain.PeekPara
 		return domain.PeekResult{Result: results}, nil
 	}
 
-	teamCount := len(teamsResult.GetValue())
-	log.Info().Int("team_count", teamCount).Msg("Found teams via JoinedTeams API")
-
 	for _, team := range teamsResult.GetValue() {
 		if team.GetId() == nil || team.GetDisplayName() == nil {
 			continue
@@ -603,8 +651,6 @@ func (i *TeamsIntegration) PeekTeams(ctx context.Context, params domain.PeekPara
 		teamID := *team.GetId()
 		teamName := *team.GetDisplayName()
 
-		log.Info().Str("team_id", teamID).Str("team_name", teamName).Msg("Found Team")
-
 		results = append(results, domain.PeekResultItem{
 			Key:     teamID,
 			Value:   teamID,
@@ -612,11 +658,134 @@ func (i *TeamsIntegration) PeekTeams(ctx context.Context, params domain.PeekPara
 		})
 	}
 
-	log.Info().Int("total_teams", len(results)).Msg("Total teams found")
 	return domain.PeekResult{Result: results}, nil
 }
 
-// Helper function to extract detailed error information from ODataError
+func (i *TeamsIntegration) PeekChats(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
+	var results []domain.PeekResultItem
+
+	chatsResult, err := i.graphClient.Me().Chats().Get(ctx, nil)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get chats")
+		return domain.PeekResult{}, fmt.Errorf("failed to get chats: %w", err)
+	}
+
+	if chatsResult == nil || chatsResult.GetValue() == nil {
+		return domain.PeekResult{Result: results}, nil
+	}
+
+	for _, chat := range chatsResult.GetValue() {
+		if chat.GetId() == nil {
+			continue
+		}
+
+		chatID := *chat.GetId()
+		chatType := i.getChatType(chat)
+		chatName := i.buildChatName(ctx, chat, chatID, chatType)
+
+		results = append(results, domain.PeekResultItem{
+			Key:     chatID,
+			Value:   chatID,
+			Content: chatName,
+		})
+	}
+
+	return domain.PeekResult{Result: results}, nil
+}
+
+func (i *TeamsIntegration) getChatType(chat models.Chatable) string {
+	if chat.GetChatType() == nil {
+		return "Chat"
+	}
+
+	switch *chat.GetChatType() {
+	case models.ONEONONE_CHATTYPE:
+		return "1:1"
+	case models.GROUP_CHATTYPE:
+		return "Group"
+	case models.MEETING_CHATTYPE:
+		return "Meeting"
+	default:
+		return "Chat"
+	}
+}
+
+func (i *TeamsIntegration) buildChatName(ctx context.Context, chat models.Chatable, chatID, chatType string) string {
+	if topic := chat.GetTopic(); topic != nil && *topic != "" {
+		return fmt.Sprintf("[%s] %s", chatType, *topic)
+	}
+
+	memberNames := i.getChatMemberNames(ctx, chatID)
+	if len(memberNames) == 0 {
+		return fmt.Sprintf("[%s] Chat %s", chatType, chatID[:8])
+	}
+
+	if len(memberNames) > 3 {
+		return fmt.Sprintf("[%s] %s and %d others", chatType, strings.Join(memberNames[:3], ", "), len(memberNames)-3)
+	}
+
+	return fmt.Sprintf("[%s] %s", chatType, strings.Join(memberNames, ", "))
+}
+
+func (i *TeamsIntegration) getChatMemberNames(ctx context.Context, chatID string) []string {
+	members, err := i.graphClient.Chats().ByChatId(chatID).Members().Get(ctx, nil)
+	if err != nil || members == nil || members.GetValue() == nil {
+		return nil
+	}
+
+	var memberNames []string
+	for _, member := range members.GetValue() {
+		if aadMember, ok := member.(interface{ GetDisplayName() *string }); ok {
+			if displayName := aadMember.GetDisplayName(); displayName != nil && *displayName != "" {
+				memberNames = append(memberNames, *displayName)
+			}
+		}
+	}
+
+	return memberNames
+}
+
+func convertToRawJSON(result interface{}) (map[string]interface{}, error) {
+	if parsable, ok := result.(absser.Parsable); ok {
+		writer := jsonser.NewJsonSerializationWriter()
+		err := writer.WriteObjectValue("", parsable)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize with Kiota: %w", err)
+		}
+
+		jsonBytes, err := writer.GetSerializedContent()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get serialized content: %w", err)
+		}
+
+		var rawMap map[string]interface{}
+		if err := json.Unmarshal(jsonBytes, &rawMap); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
+		}
+
+		return rawMap, nil
+	}
+
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal result to JSON: %w", err)
+	}
+
+	var rawMap map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &rawMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal to map: %w", err)
+	}
+
+	return rawMap, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func extractODataErrorDetails(err error) (code string, message string, details string) {
 	if odataErr, ok := err.(*odataerrors.ODataError); ok {
 		mainErr := odataErr.GetErrorEscaped()
@@ -628,7 +797,6 @@ func extractODataErrorDetails(err error) (code string, message string, details s
 				message = *mainErr.GetMessage()
 			}
 
-			// Try to get inner error details
 			if innerErr := mainErr.GetInnerError(); innerErr != nil {
 				details = fmt.Sprintf("InnerError: %+v", innerErr)
 			}
@@ -645,20 +813,16 @@ func extractODataErrorDetails(err error) (code string, message string, details s
 	return code, message, details
 }
 
-// Helper function to parse channel ID
 func parseChannelID(channelID string) (teamID string, channelIDParsed string, err error) {
-	// Split by ':'
-	parts := strings.Split(channelID, ":")
+	parts := strings.SplitN(channelID, ":", 2)
 
 	if len(parts) == 2 {
 		return parts[0], parts[1], nil
 	}
 
-	// If no colon, assume it's just the channel ID and we need to find the team
 	return "", "", fmt.Errorf("channel_id must be in format 'teamId:channelId'")
 }
 
-// TeamsTokenCredential implements the Azure Identity credential interface
 type TeamsTokenCredential struct {
 	accessToken string
 }
@@ -670,9 +834,14 @@ func (c *TeamsTokenCredential) GetToken(ctx context.Context, options policy.Toke
 	}, nil
 }
 
-// Action Parameters
-type SendMessageParams struct {
+type SendChannelMessageParams struct {
 	ChannelID   string  `json:"channel_id"`
+	Message     string  `json:"message"`
+	ContentType *string `json:"content_type,omitempty"`
+}
+
+type SendChatMessageParams struct {
+	ChatID      string  `json:"chat_id"`
 	Message     string  `json:"message"`
 	ContentType *string `json:"content_type,omitempty"`
 }
@@ -688,4 +857,39 @@ type CreateTeamParams struct {
 	TeamName        string  `json:"team_name"`
 	TeamDescription *string `json:"team_description,omitempty"`
 	TeamVisibility  *string `json:"team_visibility,omitempty"`
+}
+
+type DeleteChannelParams struct {
+	ChannelID string `json:"channel_id"`
+}
+
+type GetChannelParams struct {
+	TeamID    string `json:"team_id"`
+	ChannelID string `json:"channel_id"`
+}
+
+type GetManyChannelsParams struct {
+	TeamID string `json:"team_id"`
+}
+
+type UpdateChannelParams struct {
+	TeamID             string  `json:"team_id"`
+	ChannelID          string  `json:"channel_id"`
+	ChannelName        *string `json:"channel_name,omitempty"`
+	ChannelDescription *string `json:"channel_description,omitempty"`
+}
+
+type GetChannelMessagesParams struct {
+	ChannelID string `json:"channel_id"`
+	Top       *int   `json:"top,omitempty"`
+}
+
+type GetChatMessageParams struct {
+	ChatID    string `json:"chat_id"`
+	MessageID string `json:"message_id"`
+}
+
+type GetManyChatMessagesParams struct {
+	ChatID string `json:"chat_id"`
+	Top    *int   `json:"top,omitempty"`
 }
