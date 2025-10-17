@@ -24,6 +24,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/integrations/linear"
 	mongodb "github.com/flowbaker/flowbaker/pkg/integrations/mongo"
 	"github.com/flowbaker/flowbaker/pkg/integrations/openai"
+	pipedriveintegration "github.com/flowbaker/flowbaker/pkg/integrations/pipedrive"
 	"github.com/flowbaker/flowbaker/pkg/integrations/postgresql"
 	"github.com/flowbaker/flowbaker/pkg/integrations/redis"
 	resendintegration "github.com/flowbaker/flowbaker/pkg/integrations/resend"
@@ -176,6 +177,10 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_ContentClassifier,
 		NewCreator:      router.NewRouterIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_Pipedrive,
+		NewCreator:      pipedriveintegration.NewPipedriveIntegrationCreator,
 	},
 }
 

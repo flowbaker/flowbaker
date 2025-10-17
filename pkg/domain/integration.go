@@ -55,6 +55,7 @@ const (
 	IntegrationType_Knowledge            IntegrationType = "flowbaker_knowledge"
 	IntegrationType_Base64               IntegrationType = "base64"
 	IntegrationType_ContentClassifier    IntegrationType = "content_classifier"
+	IntegrationType_Pipedrive            IntegrationType = "pipedrive"
 )
 
 type Integration struct {
