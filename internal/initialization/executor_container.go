@@ -111,7 +111,6 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		ExecutorCredentialManager:  executorCredentialManager,
 		ParameterBinder:            kangarooBinder,
 		AgentMemoryService:         executorAgentMemoryService,
-		ExecutorEventPublisher:     orderedEventPublisher,
 		ExecutorTaskPublisher:      executorTaskPublisher,
 		ExecutorIntegrationManager: executorIntegrationManager,
 		ExecutorScheduleManager:    executorScheduleManager,

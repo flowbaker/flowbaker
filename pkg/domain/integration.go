@@ -3,8 +3,10 @@ package domain
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -192,9 +194,29 @@ type IntegrationOutput struct {
 	ResultJSONByOutputID []Payload
 }
 
+func (o IntegrationOutput) ToItemsByOutputID(nodeID string) map[string]NodeItems {
+	itemsByOutputID := map[string]NodeItems{}
+
+	for outputIndex, payload := range o.ResultJSONByOutputID {
+		items, err := payload.ToItems()
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to convert payload to items for output %d", outputIndex)
+			continue
+		}
+
+		outputID := fmt.Sprintf("output-%s-%d", nodeID, outputIndex)
+
+		itemsByOutputID[outputID] = NodeItems{
+			FromNodeID: nodeID,
+			Items:      items,
+		}
+	}
+
+	return itemsByOutputID
+}
+
 type IntegrationDeps struct {
 	FlowbakerClient            flowbaker.ClientInterface
-	ExecutorEventPublisher     EventPublisher
 	ExecutorTaskPublisher      ExecutorTaskPublisher
 	TaskSchedulerService       TaskSchedulerService
 	ParameterBinder            IntegrationParameterBinder
