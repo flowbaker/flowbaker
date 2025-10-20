@@ -5,7 +5,6 @@ import (
 )
 
 var (
-	// 12 Temel Endpoint - 12 Main Actions
 	StartupsWatchActionType_GetStartup   domain.IntegrationActionType = "get_startup"
 	StartupsWatchActionType_ListStartups domain.IntegrationActionType = "list_startups"
 	// StartupsWatchActionType_SearchStartups   domain.IntegrationActionType = "search_startups"
