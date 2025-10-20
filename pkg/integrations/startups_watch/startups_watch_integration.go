@@ -11,6 +11,7 @@ import (
 
 	"github.com/flowbaker/flowbaker/internal/managers"
 	"github.com/flowbaker/flowbaker/pkg/domain"
+	"github.com/gofiber/fiber/v2/log"
 )
 
 type StartupsWatchCredential struct {
@@ -50,7 +51,7 @@ type StartupsWatchIntegrationDependencies struct {
 	CredentialGetter domain.CredentialGetter[StartupsWatchCredential]
 }
 
-type StartupsResponse struct {
+type ListStartupsResponse struct {
 	Startups []any `json:"startups"`
 }
 
@@ -71,20 +72,19 @@ func NewStartupsWatchIntegration(ctx context.Context, deps StartupsWatchIntegrat
 		integration.token = credential.Token
 	}
 
-	// Setup action manager with 12 endpoints
 	actionManager := domain.NewIntegrationActionManager().
 		AddPerItem(StartupsWatchActionType_GetStartup, integration.GetStartup).
-		AddPerItemMulti(StartupsWatchActionType_ListStartups, integration.ListStartups).
-		AddPerItemMulti(StartupsWatchActionType_SearchStartups, integration.SearchStartups).
-		AddPerItem(StartupsWatchActionType_GetPerson, integration.GetPerson).
-		AddPerItemMulti(StartupsWatchActionType_ListPeople, integration.ListPeople).
-		AddPerItemMulti(StartupsWatchActionType_SearchPeople, integration.SearchPeople).
-		AddPerItem(StartupsWatchActionType_GetInvestor, integration.GetInvestor).
-		AddPerItemMulti(StartupsWatchActionType_ListInvestors, integration.ListInvestors).
-		AddPerItemMulti(StartupsWatchActionType_SearchInvestors, integration.SearchInvestors).
-		AddPerItemMulti(StartupsWatchActionType_ListInvestments, integration.ListInvestments).
-		AddPerItemMulti(StartupsWatchActionType_ListAcquisitions, integration.ListAcquisitions).
-		AddPerItemMulti(StartupsWatchActionType_ListEvents, integration.ListEvents)
+		AddPerItemMulti(StartupsWatchActionType_ListStartups, integration.ListStartups)
+		// AddPerItemMulti(StartupsWatchActionType_SearchStartups, integration.SearchStartups).
+		// AddPerItem(StartupsWatchActionType_GetPerson, integration.GetPerson).
+		// AddPerItemMulti(StartupsWatchActionType_ListPeople, integration.ListPeople).
+		// AddPerItemMulti(StartupsWatchActionType_SearchPeople, integration.SearchPeople).
+		// AddPerItem(StartupsWatchActionType_GetInvestor, integration.GetInvestor).
+		// AddPerItemMulti(StartupsWatchActionType_ListInvestors, integration.ListInvestors).
+		// AddPerItemMulti(StartupsWatchActionType_SearchInvestors, integration.SearchInvestors).
+		// AddPerItemMulti(StartupsWatchActionType_ListInvestments, integration.ListInvestments).
+		// AddPerItemMulti(StartupsWatchActionType_ListAcquisitions, integration.ListAcquisitions).
+		// AddPerItemMulti(StartupsWatchActionType_ListEvents, integration.ListEvents)
 
 	integration.actionManager = actionManager
 
@@ -217,7 +217,15 @@ func (i *StartupsWatchIntegration) GetStartup(ctx context.Context, input domain.
 		return nil, err
 	}
 
-	return response, nil
+	log.Infof("DEBUG: Get Startup API Response: %s", string(response))
+
+	var startup any
+	if err := json.Unmarshal(response, &startup); err != nil {
+		log.Infof("DEBUG: API Response that failed to unmarshal: %s", string(response))
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return domain.Item(startup), nil
 }
 
 func (i *StartupsWatchIntegration) ListStartups(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
@@ -239,7 +247,7 @@ func (i *StartupsWatchIntegration) ListStartups(ctx context.Context, input domai
 		return nil, err
 	}
 
-	var startupsResp StartupsResponse
+	var startupsResp ListStartupsResponse
 	if err := json.Unmarshal(response, &startupsResp); err != nil {
 		fmt.Printf("DEBUG: API Response that failed to unmarshal: %s\n", string(response))
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
@@ -253,6 +261,7 @@ func (i *StartupsWatchIntegration) ListStartups(ctx context.Context, input domai
 	return items, nil
 }
 
+// functions since here are not implemented
 func (i *StartupsWatchIntegration) SearchStartups(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
 	params := SearchStartupsParams{}
 	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
