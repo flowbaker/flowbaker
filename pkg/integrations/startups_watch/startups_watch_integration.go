@@ -217,8 +217,6 @@ func (i *StartupsWatchIntegration) GetStartup(ctx context.Context, input domain.
 		return nil, err
 	}
 
-	log.Infof("DEBUG: Get Startup API Response: %s", string(response))
-
 	var startup any
 	if err := json.Unmarshal(response, &startup); err != nil {
 		log.Infof("DEBUG: API Response that failed to unmarshal: %s", string(response))
