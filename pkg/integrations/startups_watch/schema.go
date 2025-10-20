@@ -50,7 +50,6 @@ var (
 			},
 		},
 		Actions: []domain.IntegrationAction{
-			// 1. Get Startup
 			{
 				ID:          "get_startup",
 				Name:        "Get Startup",
@@ -65,7 +64,6 @@ var (
 						Type:        domain.NodePropertyType_String,
 					},
 				},
-				// look what it is
 				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow, domain.UsageContextTool},
 			},
 			{
