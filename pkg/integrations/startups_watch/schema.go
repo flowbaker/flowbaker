@@ -80,9 +80,9 @@ var (
 						Type:        domain.NodePropertyType_Integer,
 					},
 					{
-						Key:         "limit",
-						Name:        "Limit",
-						Description: "Number of results per page (max: 100, default: 20)",
+						Key:         "per_page",
+						Name:        "Per Page",
+						Description: "Number of results per page (max: 100, default: 25)",
 						Required:    false,
 						Type:        domain.NodePropertyType_Integer,
 					},

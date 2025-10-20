@@ -147,8 +147,8 @@ type GetStartupParams struct {
 }
 
 type ListStartupsParams struct {
-	Page  int `json:"page,omitempty"`
-	Limit int `json:"limit,omitempty"`
+	Page    int `json:"page,omitempty"`
+	PerPage int `json:"per_page,omitempty"`
 }
 
 type SearchStartupsParams struct {
@@ -236,8 +236,8 @@ func (i *StartupsWatchIntegration) ListStartups(ctx context.Context, input domai
 	if params.Page > 0 {
 		queryParams["page"] = strconv.Itoa(params.Page)
 	}
-	if params.Limit > 0 {
-		queryParams["limit"] = strconv.Itoa(params.Limit)
+	if params.PerPage > 0 {
+		queryParams["per_page"] = strconv.Itoa(params.PerPage)
 	}
 
 	response, err := i.makeRequest(ctx, "/startups", queryParams)
