@@ -58,6 +58,7 @@ const (
 	IntegrationType_Base64               IntegrationType = "base64"
 	IntegrationType_ContentClassifier    IntegrationType = "content_classifier"
 	IntegrationType_Pipedrive            IntegrationType = "pipedrive"
+	IntegrationType_StartupsWatch        IntegrationType = "startups_watch"
 )
 
 type Integration struct {

@@ -31,6 +31,7 @@ import (
 	s3integration "github.com/flowbaker/flowbaker/pkg/integrations/s3"
 	sendresponse "github.com/flowbaker/flowbaker/pkg/integrations/send_response"
 	slackintegration "github.com/flowbaker/flowbaker/pkg/integrations/slack"
+	startupswatchintegration "github.com/flowbaker/flowbaker/pkg/integrations/startups_watch"
 	"github.com/flowbaker/flowbaker/pkg/integrations/storage"
 	"github.com/flowbaker/flowbaker/pkg/integrations/stripe"
 
@@ -177,6 +178,10 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_ContentClassifier,
 		NewCreator:      router.NewRouterIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_StartupsWatch,
+		NewCreator:      startupswatchintegration.NewStartupsWatchIntegrationCreator,
 	},
 	{
 		IntegrationType: domain.IntegrationType_Pipedrive,
