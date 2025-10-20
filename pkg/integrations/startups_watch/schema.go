@@ -21,6 +21,10 @@ var (
 )
 
 var (
+	IntegrationTriggerType_OnNewStartups domain.IntegrationTriggerEventType = "on_new_startups"
+)
+
+var (
 	StartupsWatchSchema = domain.Integration{
 		ID:                   domain.IntegrationType_StartupsWatch,
 		Name:                 "Startups.watch",
@@ -35,6 +39,15 @@ var (
 				Required:    true,
 				Type:        domain.NodePropertyType_String,
 				IsSecret:    true,
+			},
+		},
+		Triggers: []domain.IntegrationTrigger{
+			{
+				ID:          "on_new_startups",
+				Name:        "On New Startups",
+				Description: "Trigger when new startups are added",
+				EventType:   IntegrationTriggerType_OnNewStartups,
+				Properties:  []domain.NodeProperty{},
 			},
 		},
 		Actions: []domain.IntegrationAction{

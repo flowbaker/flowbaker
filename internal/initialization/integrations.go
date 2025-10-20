@@ -180,8 +180,9 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 		NewCreator:      router.NewRouterIntegrationCreator,
 	},
 	{
-		IntegrationType: domain.IntegrationType_StartupsWatch,
-		NewCreator:      startupswatchintegration.NewStartupsWatchIntegrationCreator,
+		IntegrationType:        domain.IntegrationType_StartupsWatch,
+		NewCreator:             startupswatchintegration.NewStartupsWatchIntegrationCreator,
+		NewPollingEventHandler: startupswatchintegration.NewStartupsWatchPollingHandler,
 	},
 	{
 		IntegrationType: domain.IntegrationType_Pipedrive,
