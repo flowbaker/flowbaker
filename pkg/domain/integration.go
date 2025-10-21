@@ -22,6 +22,7 @@ type IntegrationPeekablePaginationType string
 const (
 	IntegrationType_Empty                IntegrationType = "empty"
 	IntegrationType_Discord              IntegrationType = "discord"
+	IntegrationType_Switch               IntegrationType = "switch"
 	IntegrationType_Slack                IntegrationType = "slack"
 	IntegrationType_Dropbox              IntegrationType = "dropbox"
 	IntegrationType_Email                IntegrationType = "email"
