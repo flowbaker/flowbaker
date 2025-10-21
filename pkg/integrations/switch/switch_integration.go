@@ -34,26 +34,39 @@ type SwitchIntegrationDependencies struct {
 }
 
 type SwitchParams struct {
-	ConditionType      string        `json:"condition_type"`
-	ConditionString    string        `json:"condition_string,omitempty"`
-	ConditionNumber    float64       `json:"condition_number,omitempty"`
-	ConditionBoolean   bool          `json:"condition_boolean,omitempty"`
-	ConditionDate      string        `json:"condition_date,omitempty"`
-	ConditionArray     interface{}   `json:"condition_array,omitempty"`
-	ConditionObject    interface{}   `json:"condition_object,omitempty"`
+	ConditionType    string  `json:"condition_type"`
+	ConditionString  string  `json:"condition_string,omitempty"`
+	ConditionNumber  float64 `json:"condition_number,omitempty"`
+	ConditionBoolean bool    `json:"condition_boolean,omitempty"`
+	ConditionDate    string  `json:"condition_date,omitempty"`
+	// TODO: Handle data format for array
+	ConditionArray interface{} `json:"condition_array,omitempty"`
+	// TODO: Handle data format for object
+	ConditionObject interface{} `json:"condition_object,omitempty"`
+	// TODO: Handle data format for deep equal
 	ConditionDeepEqual interface{}   `json:"condition_deep_equal,omitempty"`
 	Routes             []SwitchRoute `json:"routes"`
 }
 
 type SwitchRoute struct {
-	Name           string      `json:"Name"`
-	RouteString    string      `json:"route_string,omitempty"`
-	RouteNumber    float64     `json:"route_number,omitempty"`
-	RouteBoolean   bool        `json:"route_boolean,omitempty"`
-	RouteDate      string      `json:"route_date,omitempty"`
+	Name             string          `json:"Name"`
+	RouteString      string          `json:"route_string,omitempty"`
+	QueryTypeString  QueryTypeString `json:"query_type_string,omitempty"`
+	RouteNumber      float64         `json:"route_number,omitempty"`
+	QueryTypeNumber  QueryTypeNumber `json:"query_type_number,omitempty"`
+	RouteBoolean     bool            `json:"route_boolean,omitempty"`
+	QueryTypeBoolean string          `json:"query_type_boolean,omitempty"`
+	RouteDate        string          `json:"route_date,omitempty"`
+	QueryTypeDate    string          `json:"query_type_date,omitempty"`
+	// TODO: Handle data format for array
 	RouteArray     interface{} `json:"route_array,omitempty"`
-	RouteObject    interface{} `json:"route_object,omitempty"`
-	RouteDeepEqual interface{} `json:"route_deep_equal,omitempty"`
+	QueryTypeArray string      `json:"query_type_array,omitempty"`
+	// TODO: Handle data format for object
+	RouteObject     interface{} `json:"route_object,omitempty"`
+	QueryTypeObject string      `json:"query_type_object,omitempty"`
+	// TODO: Handle data format for deep equal
+	RouteDeepEqual     interface{} `json:"route_deep_equal,omitempty"`
+	QueryTypeDeepEqual string      `json:"query_type_deep_equal,omitempty"`
 }
 
 func NewSwitchIntegration(deps SwitchIntegrationDependencies) (*SwitchIntegration, error) {
@@ -97,12 +110,8 @@ func (i *SwitchIntegration) Switch(ctx context.Context, params domain.Integratio
 		if matches {
 			enhancedItem := make(map[string]any)
 
-			if itemMap, ok := item.(map[string]any); ok {
-				for k, v := range itemMap {
-					enhancedItem[k] = v
-				}
-			} else {
-				enhancedItem["original_item"] = item
+			for k, v := range item.(map[string]any) {
+				enhancedItem[k] = v
 			}
 
 			enhancedItem["switch_result"] = map[string]any{
@@ -141,17 +150,19 @@ func (i *SwitchIntegration) Switch(ctx context.Context, params domain.Integratio
 func (i *SwitchIntegration) evaluateCondition(conditionType string, params SwitchParams, route SwitchRoute) (bool, error) {
 	switch conditionType {
 	case "string":
-		return i.evaluateStringCondition(params.ConditionString, route.RouteString)
+		return i.evaluateStringCondition(params.ConditionString, route.RouteString, route.QueryTypeString)
 	case "number":
-		return i.evaluateNumberCondition(params.ConditionNumber, route.RouteNumber)
+		return i.evaluateNumberCondition(params.ConditionNumber, route.RouteNumber, route.QueryTypeNumber)
 	case "boolean":
 		return i.evaluateBooleanCondition(params.ConditionBoolean, route.RouteBoolean)
 	case "date":
 		return i.evaluateDateCondition(params.ConditionDate, route.RouteDate)
+		// TODO: Handle data format for array
 	case "array":
-		return i.evaluateArrayCondition(params.ConditionArray, route.RouteArray)
+		return i.evaluateArrayCondition(params.ConditionArray.([]any), route.RouteArray.([]any))
+		// TODO: Handle data format for object
 	case "object":
-		return i.evaluateObjectCondition(params.ConditionObject, route.RouteObject)
+		return i.evaluateObjectCondition(params.ConditionObject.(map[string]any), route.RouteObject.(map[string]any))
 	case "deep_equal":
 		return i.evaluateDeepEqualCondition(params.ConditionDeepEqual, route.RouteDeepEqual)
 	default:
@@ -159,62 +170,48 @@ func (i *SwitchIntegration) evaluateCondition(conditionType string, params Switc
 	}
 }
 
-func (i *SwitchIntegration) evaluateStringCondition(inputValue interface{}, routeValue string) (bool, error) {
-	inputStr, ok := inputValue.(string)
-	if !ok {
-		return false, fmt.Errorf("input value is not a string")
-	}
-
-	return inputStr == routeValue, nil
-}
-
-func (i *SwitchIntegration) evaluateNumberCondition(inputValue interface{}, routeValue float64) (bool, error) {
-	var inputNum float64
-
-	switch v := inputValue.(type) {
-	case float64:
-		inputNum = v
-	case float32:
-		inputNum = float64(v)
-	case int:
-		inputNum = float64(v)
-	case int64:
-		inputNum = float64(v)
-	case int32:
-		inputNum = float64(v)
+func (i *SwitchIntegration) evaluateStringCondition(inputValue string, routeValue string, queryType QueryTypeString) (bool, error) {
+	switch queryType {
+	case QueryTypeString_Equals:
+		return inputValue == routeValue, nil
+	case QueryTypeString_NotEquals:
+		return inputValue != routeValue, nil
 	default:
-		return false, fmt.Errorf("input value is not a number")
+		return false, fmt.Errorf("unsupported query type: %s", queryType)
 	}
-
-	return inputNum == routeValue, nil
 }
 
-func (i *SwitchIntegration) evaluateBooleanCondition(inputValue interface{}, routeValue bool) (bool, error) {
-	inputBool, ok := inputValue.(bool)
-	if !ok {
-		return false, fmt.Errorf("input value is not a boolean")
+func (i *SwitchIntegration) evaluateNumberCondition(inputValue float64, routeValue float64, queryType QueryTypeNumber) (bool, error) {
+	switch queryType {
+	case QueryTypeNumber_Equals:
+		return inputValue == routeValue, nil
+	case QueryTypeNumber_NotEquals:
+		return inputValue != routeValue, nil
+	case QueryTypeNumber_GreaterThan:
+		return inputValue > routeValue, nil
+	case QueryTypeNumber_LessThan:
+		return inputValue < routeValue, nil
+	default:
+		return false, fmt.Errorf("unsupported query type: %s", queryType)
 	}
-
-	return inputBool == routeValue, nil
 }
 
-func (i *SwitchIntegration) evaluateDateCondition(inputValue interface{}, routeValue string) (bool, error) {
-	inputDate, ok := inputValue.(string)
-	if !ok {
-		return false, fmt.Errorf("input value is not a string")
-	}
-
-	return inputDate == routeValue, nil
+func (i *SwitchIntegration) evaluateBooleanCondition(inputValue bool, routeValue bool) (bool, error) {
+	return inputValue == routeValue, nil
 }
 
-func (i *SwitchIntegration) evaluateArrayCondition(inputValue, routeValue interface{}) (bool, error) {
+func (i *SwitchIntegration) evaluateDateCondition(inputValue string, routeValue string) (bool, error) {
+	return inputValue == routeValue, nil
+}
+
+func (i *SwitchIntegration) evaluateArrayCondition(inputValue []any, routeValue []any) (bool, error) {
 	return reflect.DeepEqual(inputValue, routeValue), nil
 }
 
-func (i *SwitchIntegration) evaluateObjectCondition(inputValue, routeValue interface{}) (bool, error) {
+func (i *SwitchIntegration) evaluateObjectCondition(inputValue map[string]any, routeValue map[string]any) (bool, error) {
 	return reflect.DeepEqual(inputValue, routeValue), nil
 }
 
-func (i *SwitchIntegration) evaluateDeepEqualCondition(inputValue, routeValue interface{}) (bool, error) {
+func (i *SwitchIntegration) evaluateDeepEqualCondition(inputValue any, routeValue any) (bool, error) {
 	return reflect.DeepEqual(inputValue, routeValue), nil
 }

@@ -6,6 +6,22 @@ const (
 	IntegrationActionType_Switch domain.IntegrationActionType = "switch"
 )
 
+type QueryTypeString string
+
+const (
+	QueryTypeString_Equals    QueryTypeString = "is_equal"
+	QueryTypeString_NotEquals QueryTypeString = "is_not_equal"
+)
+
+type QueryTypeNumber string
+
+const (
+	QueryTypeNumber_Equals      QueryTypeNumber = "is_equal"
+	QueryTypeNumber_NotEquals   QueryTypeNumber = "is_not_equal"
+	QueryTypeNumber_GreaterThan QueryTypeNumber = "is_greater_than"
+	QueryTypeNumber_LessThan    QueryTypeNumber = "is_less_than"
+)
+
 var (
 	Schema = schema
 
@@ -167,6 +183,21 @@ var (
 									},
 								},
 								{
+									Key:         "query_type_string",
+									Name:        "Query Type String",
+									Description: "The query type to use for the string route",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									DependsOn: &domain.DependsOn{
+										PropertyKey: "condition_type",
+										Value:       "string",
+									},
+									Options: []domain.NodePropertyOption{
+										{Label: "Equals", Value: QueryTypeString_Equals},
+										{Label: "Not Equals", Value: QueryTypeString_NotEquals},
+									},
+								},
+								{
 									Key:         "route_number",
 									Name:        "Route Number",
 									Description: "The number value to match the route against",
@@ -175,6 +206,23 @@ var (
 									DependsOn: &domain.DependsOn{
 										PropertyKey: "condition_type",
 										Value:       "number",
+									},
+								},
+								{
+									Key:         "query_type_number",
+									Name:        "Query Type Number",
+									Description: "The query type to use for the number route",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									DependsOn: &domain.DependsOn{
+										PropertyKey: "condition_type",
+										Value:       "number",
+									},
+									Options: []domain.NodePropertyOption{
+										{Label: "Equals", Value: QueryTypeNumber_Equals},
+										{Label: "Not Equals", Value: QueryTypeNumber_NotEquals},
+										{Label: "Greater Than", Value: QueryTypeNumber_GreaterThan},
+										{Label: "Less Than", Value: QueryTypeNumber_LessThan},
 									},
 								},
 								{
