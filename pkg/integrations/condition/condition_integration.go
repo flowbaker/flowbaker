@@ -28,9 +28,8 @@ func (c *ConditionIntegrationCreator) CreateIntegration(ctx context.Context, p d
 }
 
 type ConditionIntegration struct {
-	binder domain.IntegrationParameterBinder
-
-	actionFuncs map[domain.IntegrationActionType]func(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error)
+	binder        domain.IntegrationParameterBinder
+	actionManager *domain.IntegrationActionManager
 }
 
 type ConditionIntegrationDependencies struct {
@@ -42,23 +41,24 @@ func NewConditionIntegration(deps ConditionIntegrationDependencies) (*ConditionI
 		binder: deps.ParameterBinder,
 	}
 
-	actionFuncs := map[domain.IntegrationActionType]func(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error){
-		IntegrationActionType_IfStreams: integration.ifStreams,
-	}
+	actionManager := domain.NewIntegrationActionManager().
+		AddPerItemRoutable(IntegrationActionType_IfStreams, integration.ifStreams).
+		AddPerItemRoutable(IntegrationActionType_Switch, integration.Switch)
 
-	integration.actionFuncs = actionFuncs
+	integration.actionManager = actionManager
 
 	return integration, nil
 }
 
-type Conditions struct {
+// Internal format structures
+type Condition struct {
 	Condition1    string `json:"condition1"`
 	Condition2    string `json:"condition2"`
 	ConditionType string `json:"condition_type"`
 }
 
 type ConditionParams struct {
-	Conditions        []Conditions      `json:"conditions"`
+	Conditions        []Condition       `json:"conditions"`
 	ConditionRelation ConditionRelation `json:"relation_type"`
 }
 
@@ -69,71 +69,77 @@ const (
 	ConditionRelationOr  ConditionRelation = "or"
 )
 
-func (i *ConditionIntegration) Execute(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	actionFunc, ok := i.actionFuncs[params.ActionType]
-	if !ok {
-		return domain.IntegrationOutput{}, fmt.Errorf("action not found")
-	}
-
-	return actionFunc(ctx, params)
+type SwitchParams struct {
+	ValueType    string        `json:"value_type"`
+	ValueString  string        `json:"value_string,omitempty"`
+	ValueNumber  float64       `json:"value_number,omitempty"`
+	ValueBoolean bool          `json:"value_boolean,omitempty"`
+	ValueDate    string        `json:"value_date,omitempty"`
+	ValueArray   interface{}   `json:"value_array,omitempty"`
+	ValueObject  interface{}   `json:"value_object,omitempty"`
+	Routes       []SwitchValue `json:"routes,omitempty"`
 }
 
-func (i *ConditionIntegration) ifStreams(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
+// TODO: THERE ARE MANY ANY TYPES HERE, WE NEED TO HANDLE THEM CORRECTLY
+type SwitchValue struct {
+	Key                    string               `json:"Name"`
+	ValueString            any                  `json:"value_string,omitempty"`
+	ValueStringComparison  ConditionTypeString  `json:"value_string_comparison,omitempty"`
+	ValueNumber            any                  `json:"value_number,omitempty"`
+	ValueNumberComparison  ConditionTypeNumber  `json:"value_number_comparison,omitempty"`
+	ValueBoolean           any                  `json:"value_boolean,omitempty"`
+	ValueBooleanComparison ConditionTypeBoolean `json:"value_boolean_comparison,omitempty"`
+	ValueDate              any                  `json:"value_date,omitempty"`
+	ValueDateComparison    ConditionTypeDate    `json:"value_date_comparison,omitempty"`
+	// TODO: Handle data format for array
+	ValueArray           interface{}        `json:"value_array,omitempty"`
+	ValueArrayComparison ConditionTypeArray `json:"value_array_comparison,omitempty"`
+	// TODO: Handle data format for object
+	ValueObject           interface{}         `json:"value_object,omitempty"`
+	ValueObjectComparison ConditionTypeObject `json:"value_object_comparison,omitempty"`
+}
 
-	itemsByInputID, err := params.GetItemsByInputID()
+func (i *ConditionIntegration) Execute(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
+	return i.actionManager.Run(ctx, params.ActionType, params)
+}
+
+func (i *ConditionIntegration) ifStreams(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.RoutableOutput, error) {
+	conditionParams := ConditionParams{}
+	err := i.binder.BindToStruct(ctx, item, &conditionParams, params.IntegrationParams.Settings)
 	if err != nil {
-		return domain.IntegrationOutput{}, err
+		return domain.RoutableOutput{}, err
 	}
 
-	allItems := []domain.Item{}
-	for _, items := range itemsByInputID {
-		allItems = append(allItems, items...)
+	result := conditionParams.ConditionRelation == ConditionRelationAnd
+	if conditionParams.ConditionRelation == ConditionRelationOr {
+		result = false
 	}
 
-	outputItems := [][]domain.Item{{}, {}}
-
-	for _, item := range allItems {
-		conditionParams := ConditionParams{}
-		err := i.binder.BindToStruct(ctx, item, &conditionParams, params.IntegrationParams.Settings)
+	for _, condition := range conditionParams.Conditions {
+		conditionResult, err := EvaluateCondition(condition)
 		if err != nil {
-			return domain.IntegrationOutput{}, err
+			return domain.RoutableOutput{}, fmt.Errorf("failed to evaluate condition: %w", err)
 		}
 
-		result := false
-		for _, condition := range conditionParams.Conditions {
-			conditionResult, err := EvaluateCondition(condition)
-			if err != nil {
-				return domain.IntegrationOutput{}, fmt.Errorf("failed to evaluate condition: %w", err)
-			}
-			if conditionParams.ConditionRelation == ConditionRelationAnd {
-				result = result && conditionResult
-			} else {
-				result = result || conditionResult
-			}
-		}
-
-		if result {
-			outputItems[0] = append(outputItems[0], item)
+		if conditionParams.ConditionRelation == ConditionRelationAnd {
+			result = result && conditionResult
 		} else {
-			outputItems[1] = append(outputItems[1], item)
+			result = result || conditionResult
 		}
 	}
 
-	resultByOutputID := make([]domain.Payload, 0)
-	for _, items := range outputItems {
-		payload, err := json.Marshal(items)
-		if err != nil {
-			return domain.IntegrationOutput{}, fmt.Errorf("failed to marshal output items: %w", err)
-		}
-		resultByOutputID = append(resultByOutputID, domain.Payload(payload))
+	outputIndex := 1
+	if result {
+		outputIndex = 0
 	}
 
-	return domain.IntegrationOutput{
-		ResultJSONByOutputID: resultByOutputID,
+	return domain.RoutableOutput{
+		Item:        item,
+		OutputIndex: outputIndex,
 	}, nil
 }
 
-func EvaluateCondition(conditions Conditions) (bool, error) {
+func EvaluateCondition(conditions Condition) (bool, error) {
 	if conditions.Condition1 == "" && conditions.Condition2 == "" {
 		return false, nil
 	}
@@ -167,35 +173,189 @@ func EvaluateCondition(conditions Conditions) (bool, error) {
 	}
 }
 
-func evaluateStringCondition(conditionType string, conditions Conditions) (bool, error) {
-	switch conditionType {
-	case "is_equal":
-		return conditions.Condition1 == conditions.Condition2, nil
-	case "is_not_equal":
-		return conditions.Condition1 != conditions.Condition2, nil
-	case "contains":
-		return strings.Contains(conditions.Condition1, conditions.Condition2), nil
-	case "does_not_contain":
-		return !strings.Contains(conditions.Condition1, conditions.Condition2), nil
-	case "starts_with":
-		return strings.HasPrefix(conditions.Condition1, conditions.Condition2), nil
-	case "ends_with":
-		return strings.HasSuffix(conditions.Condition1, conditions.Condition2), nil
-	case "does_not_start_with":
-		return !strings.HasPrefix(conditions.Condition1, conditions.Condition2), nil
-	case "does_not_end_with":
-		return !strings.HasSuffix(conditions.Condition1, conditions.Condition2), nil
-	case "is_empty":
-		return conditions.Condition1 == "", nil
-	case "is_not_empty":
+func (i *ConditionIntegration) Switch(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.RoutableOutput, error) {
+	p := SwitchParams{}
+
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return domain.RoutableOutput{}, err
+	}
+
+	if len(p.Routes) == 0 {
+		return domain.RoutableOutput{}, fmt.Errorf("no routes defined")
+	}
+
+	fmt.Println("Switch params: ", p)
+
+	for routeIndex, route := range p.Routes {
+		matches, err := i.evaluateValueComparison(p, route)
+		if err != nil {
+			return domain.RoutableOutput{}, err
+		}
+
+		if matches {
+			enhancedItem := make(map[string]any)
+
+			for k, v := range item.(map[string]any) {
+				enhancedItem[k] = v
+			}
+
+			enhancedItem["switch_result"] = map[string]any{
+				"matched_route_key":   route.Key,
+				"matched_route_index": routeIndex,
+				"comparison_type":     p.ValueType,
+			}
+
+			switch p.ValueType {
+			case "string":
+				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueString
+			case "number":
+				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueNumber
+			case "boolean":
+				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueBoolean
+			case "date":
+				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueDate
+			case "array":
+				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueArray
+			case "object":
+				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueObject
+			}
+
+			switch p.ValueType {
+			case "string":
+				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueString
+			case "number":
+				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueNumber
+			case "boolean":
+				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueBoolean
+			case "date":
+				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueDate
+			case "array":
+				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueArray
+			case "object":
+				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueObject
+			}
+
+			return domain.RoutableOutput{
+				Item:        enhancedItem,
+				OutputIndex: routeIndex,
+			}, nil
+		}
+	}
+
+	return domain.RoutableOutput{}, fmt.Errorf("no matching route found for input value")
+}
+
+func (i *ConditionIntegration) evaluateValueComparison(params SwitchParams, route SwitchValue) (bool, error) {
+	// Determine which field is actually filled in the route
+	actualValueType, err := i.determineActualValueType(route)
+	if err != nil {
+		return false, err
+	}
+
+	// Use the actual value type from route instead of the declared valueType
+	switch actualValueType {
+	case "string":
+		if route.ValueStringComparison == "" {
+			return false, fmt.Errorf("string comparison type is required")
+		}
+		return evaluateStringCondition(string(route.ValueStringComparison), Condition{
+			Condition1: route.ValueString.(string),
+			Condition2: params.ValueString,
+		})
+	case "number":
+		if route.ValueNumberComparison == "" {
+			return false, fmt.Errorf("number comparison type is required")
+		}
+		return evaluateNumberCondition(string(route.ValueNumberComparison), Condition{
+			Condition1: fmt.Sprintf("%f", params.ValueNumber),
+			Condition2: fmt.Sprintf("%f", route.ValueNumber),
+		})
+	case "boolean":
+		if route.ValueBooleanComparison == "" {
+			return false, fmt.Errorf("boolean comparison type is required")
+		}
+		return evaluateBooleanCondition(string(route.ValueBooleanComparison), Condition{
+			Condition1: fmt.Sprintf("%t", params.ValueBoolean),
+			Condition2: fmt.Sprintf("%t", route.ValueBoolean),
+		})
+	case "date":
+		if route.ValueDateComparison == "" {
+			return false, fmt.Errorf("date comparison type is required")
+		}
+		return evaluateDateCondition(string(route.ValueDateComparison), Condition{
+			Condition1: params.ValueDate,
+			Condition2: route.ValueDate.(string),
+		})
+	default:
+		return false, fmt.Errorf("no valid value found in route or unsupported type: %s", actualValueType)
+	}
+}
+
+func (i *ConditionIntegration) determineActualValueType(route SwitchValue) (string, error) {
+	// Check which field has a non-empty value by looking at comparison types first
+	// This is more reliable since user has to set comparison type to use a field
+
+	if route.ValueStringComparison != "" {
+		return "string", nil
+	}
+	if route.ValueNumberComparison != "" {
+		return "number", nil
+	}
+	if route.ValueBooleanComparison != "" {
+		return "boolean", nil
+	}
+	if route.ValueDateComparison != "" {
+		return "date", nil
+	}
+
+	// Fallback: check actual values (less reliable due to empty string issues)
+	if route.ValueString != "" {
+		return "string", nil
+	}
+	if route.ValueNumber != "" {
+		return "number", nil
+	}
+	if route.ValueDate != "" {
+		return "date", nil
+	}
+
+	return "", fmt.Errorf("no comparison type set for route '%s'", route.Key)
+}
+
+func evaluateStringCondition(conditionType string, conditions Condition) (bool, error) {
+	switch ConditionTypeString(conditionType) {
+	case ConditionTypeString_Exists:
 		return conditions.Condition1 != "", nil
-	case "matches_regex":
+	case ConditionTypeString_DoesNotExist:
+		return conditions.Condition1 == "", nil
+	case ConditionTypeString_IsEqual:
+		return conditions.Condition1 == conditions.Condition2, nil
+	case ConditionTypeString_IsNotEqual:
+		return conditions.Condition1 != conditions.Condition2, nil
+	case ConditionTypeString_Contains:
+		return strings.Contains(conditions.Condition1, conditions.Condition2), nil
+	case ConditionTypeString_DoesNotContain:
+		return !strings.Contains(conditions.Condition1, conditions.Condition2), nil
+	case ConditionTypeString_StartsWith:
+		return strings.HasPrefix(conditions.Condition1, conditions.Condition2), nil
+	case ConditionTypeString_EndsWith:
+		return strings.HasSuffix(conditions.Condition1, conditions.Condition2), nil
+	case ConditionTypeString_DoesNotStartWith:
+		return !strings.HasPrefix(conditions.Condition1, conditions.Condition2), nil
+	case ConditionTypeString_DoesNotEndWith:
+		return !strings.HasSuffix(conditions.Condition1, conditions.Condition2), nil
+	case ConditionTypeString_IsEmpty:
+		return conditions.Condition1 == "", nil
+	case ConditionTypeString_IsNotEmpty:
+		return conditions.Condition1 != "", nil
+	case ConditionTypeString_MatchesRegex:
 		matched, err := regexp.MatchString(conditions.Condition2, conditions.Condition1)
 		if err != nil {
 			return false, fmt.Errorf("regex parse error in matches_regex: %w", err)
 		}
 		return matched, nil
-	case "does_not_match_regex":
+	case ConditionTypeString_DoesNotMatchRegex:
 		matched, err := regexp.MatchString(conditions.Condition2, conditions.Condition1)
 		if err != nil {
 			return false, fmt.Errorf("regex parse error in does_not_match_regex: %w", err)
@@ -206,17 +366,19 @@ func evaluateStringCondition(conditionType string, conditions Conditions) (bool,
 	}
 }
 
-func evaluateNumberCondition(conditionType string, conditions Conditions) (bool, error) {
-	switch conditionType {
-	case "exists":
+func evaluateNumberCondition(conditionType string, conditions Condition) (bool, error) {
+	switch ConditionTypeNumber(conditionType) {
+	case ConditionTypeNumber_Exists:
 		return conditions.Condition1 != "", nil
-	case "does_not_exist":
+	case ConditionTypeNumber_DoesNotExist:
 		return conditions.Condition1 == "", nil
 	}
 
+	// Parse string values to float64 for number comparison
 	num1, err1 := parseFloat64(conditions.Condition1)
 	num2, err2 := parseFloat64(conditions.Condition2)
 
+	// If parsing failed, return error
 	if err1 != nil {
 		return false, fmt.Errorf("failed to parse condition1 as number '%s': %w", conditions.Condition1, err1)
 	}
@@ -224,44 +386,48 @@ func evaluateNumberCondition(conditionType string, conditions Conditions) (bool,
 		return false, fmt.Errorf("failed to parse condition2 as number '%s': %w", conditions.Condition2, err2)
 	}
 
-	switch conditionType {
-	case "is_equal":
+	switch ConditionTypeNumber(conditionType) {
+	case ConditionTypeNumber_IsEqual:
 		return num1 == num2, nil
-	case "is_not_equal":
+	case ConditionTypeNumber_IsNotEqual:
 		return num1 != num2, nil
-	case "is_greater_than":
+	case ConditionTypeNumber_IsGreaterThan:
 		return num1 > num2, nil
-	case "is_less_than":
+	case ConditionTypeNumber_IsLessThan:
 		return num1 < num2, nil
-	case "is_greater_than_or_equal":
+	case ConditionTypeNumber_IsGreaterThanOrEqual:
 		return num1 >= num2, nil
-	case "is_less_than_or_equal":
+	case ConditionTypeNumber_IsLessThanOrEqual:
 		return num1 <= num2, nil
 	default:
 		return false, fmt.Errorf("unknown number condition type: %s", conditionType)
 	}
 }
 
-func evaluateBooleanCondition(conditionType string, conditions Conditions) (bool, error) {
-	switch conditionType {
-	case "is_equal":
+func evaluateBooleanCondition(conditionType string, conditions Condition) (bool, error) {
+	switch ConditionTypeBoolean(conditionType) {
+	case ConditionTypeBoolean_Exists:
+		return conditions.Condition1 != "", nil
+	case ConditionTypeBoolean_DoesNotExist:
+		return conditions.Condition1 == "", nil
+	case ConditionTypeBoolean_IsEqual:
 		return conditions.Condition1 == conditions.Condition2, nil
-	case "is_not_equal":
+	case ConditionTypeBoolean_IsNotEqual:
 		return conditions.Condition1 != conditions.Condition2, nil
-	case "is_true":
+	case ConditionTypeBoolean_IsTrue:
 		return strings.ToLower(conditions.Condition1) == "true", nil
-	case "is_false":
+	case ConditionTypeBoolean_IsFalse:
 		return strings.ToLower(conditions.Condition1) == "false", nil
 	default:
 		return false, fmt.Errorf("unknown boolean condition type: %s", conditionType)
 	}
 }
 
-func evaluateDateCondition(conditionType string, conditions Conditions) (bool, error) {
-	switch conditionType {
-	case "exists":
+func evaluateDateCondition(conditionType string, conditions Condition) (bool, error) {
+	switch ConditionTypeDate(conditionType) {
+	case ConditionTypeDate_Exists:
 		return conditions.Condition1 != "", nil
-	case "does_not_exist":
+	case ConditionTypeDate_DoesNotExist:
 		return conditions.Condition1 == "", nil
 	}
 
@@ -275,27 +441,27 @@ func evaluateDateCondition(conditionType string, conditions Conditions) (bool, e
 		return false, fmt.Errorf("failed to parse condition2 as date '%s': %w", conditions.Condition2, err2)
 	}
 
-	switch conditionType {
-	case "is_equal":
+	switch ConditionTypeDate(conditionType) {
+	case ConditionTypeDate_IsEqual:
 		return date1.Equal(date2), nil
-	case "is_not_equal":
+	case ConditionTypeDate_IsNotEqual:
 		return !date1.Equal(date2), nil
-	case "is_after":
+	case ConditionTypeDate_IsAfter:
 		return date1.After(date2), nil
-	case "is_before":
+	case ConditionTypeDate_IsBefore:
 		return date1.Before(date2), nil
-	case "is_after_or_equal":
+	case ConditionTypeDate_IsAfterOrEqual:
 		return date1.After(date2) || date1.Equal(date2), nil
-	case "is_before_or_equal":
+	case ConditionTypeDate_IsBeforeOrEqual:
 		return date1.Before(date2) || date1.Equal(date2), nil
 	default:
 		return false, fmt.Errorf("unknown date condition type: %s", conditionType)
 	}
 }
 
-func evaluateArrayCondition(conditionType string, conditions Conditions) (bool, error) {
-	switch conditionType {
-	case "does_not_exist":
+func evaluateArrayCondition(conditionType string, conditions Condition) (bool, error) {
+	switch ConditionTypeArray(conditionType) {
+	case ConditionTypeArray_DoesNotExist:
 		var arr []interface{}
 		err := json.Unmarshal([]byte(conditions.Condition1), &arr)
 		return err != nil, nil
@@ -307,30 +473,30 @@ func evaluateArrayCondition(conditionType string, conditions Conditions) (bool, 
 		return false, fmt.Errorf("failed to parse condition1 as JSON array '%s': %w", conditions.Condition1, err)
 	}
 
-	switch conditionType {
-	case "exists":
+	switch ConditionTypeArray(conditionType) {
+	case ConditionTypeArray_Exists:
 		return true, nil
-	case "is_empty":
+	case ConditionTypeArray_IsEmpty:
 		return len(arr) == 0, nil
-	case "is_not_empty":
+	case ConditionTypeArray_IsNotEmpty:
 		return len(arr) > 0, nil
-	case "contains":
+	case ConditionTypeArray_Contains:
 		return arrayContains(arr, conditions.Condition2), nil
-	case "does_not_contain":
+	case ConditionTypeArray_DoesNotContain:
 		return !arrayContains(arr, conditions.Condition2), nil
-	case "length_equals":
+	case ConditionTypeArray_LengthEquals:
 		targetLen, err := parseFloat64(conditions.Condition2)
 		if err != nil {
 			return false, fmt.Errorf("failed to parse length value '%s': %w", conditions.Condition2, err)
 		}
 		return float64(len(arr)) == targetLen, nil
-	case "length_greater_than":
+	case ConditionTypeArray_LengthGreaterThan:
 		targetLen, err := parseFloat64(conditions.Condition2)
 		if err != nil {
 			return false, fmt.Errorf("failed to parse length value '%s': %w", conditions.Condition2, err)
 		}
 		return float64(len(arr)) > targetLen, nil
-	case "length_less_than":
+	case ConditionTypeArray_LengthLessThan:
 		targetLen, err := parseFloat64(conditions.Condition2)
 		if err != nil {
 			return false, fmt.Errorf("failed to parse length value '%s': %w", conditions.Condition2, err)
@@ -341,9 +507,9 @@ func evaluateArrayCondition(conditionType string, conditions Conditions) (bool, 
 	}
 }
 
-func evaluateObjectCondition(conditionType string, condition Conditions) (bool, error) {
-	switch conditionType {
-	case "does_not_exist":
+func evaluateObjectCondition(conditionType string, condition Condition) (bool, error) {
+	switch ConditionTypeObject(conditionType) {
+	case ConditionTypeObject_DoesNotExist:
 		var obj map[string]interface{}
 		err := json.Unmarshal([]byte(condition.Condition1), &obj)
 		return err != nil, nil
@@ -355,16 +521,17 @@ func evaluateObjectCondition(conditionType string, condition Conditions) (bool, 
 		return false, fmt.Errorf("failed to parse condition1 as JSON object '%s': %w", condition.Condition1, err)
 	}
 
-	switch conditionType {
-	case "exists":
+	switch ConditionTypeObject(conditionType) {
+	case ConditionTypeObject_Exists:
 		return true, nil
-	case "has_key":
+	case ConditionTypeObject_HasKey:
 		_, exists := obj[condition.Condition2]
 		return exists, nil
-	case "does_not_have_key":
+	case ConditionTypeObject_DoesNotHaveKey:
 		_, exists := obj[condition.Condition2]
 		return !exists, nil
-	case "key_equals":
+	case ConditionTypeObject_KeyEquals:
+		// Condition2 should be in format "key:value"
 		parts := strings.SplitN(condition.Condition2, ":", 2)
 		if len(parts) != 2 {
 			return false, fmt.Errorf("key_equals condition requires format 'key:value', got: %s", condition.Condition2)
@@ -373,6 +540,7 @@ func evaluateObjectCondition(conditionType string, condition Conditions) (bool, 
 		if !exists {
 			return false, nil
 		}
+		// Convert value to string for comparison
 		valStr, ok := val.(string)
 		if !ok {
 			valBytes, err := json.Marshal(val)
@@ -382,7 +550,7 @@ func evaluateObjectCondition(conditionType string, condition Conditions) (bool, 
 			valStr = string(valBytes)
 		}
 		return valStr == parts[1], nil
-	case "key_not_equals":
+	case ConditionTypeObject_KeyNotEquals:
 		parts := strings.SplitN(condition.Condition2, ":", 2)
 		if len(parts) != 2 {
 			return false, fmt.Errorf("key_not_equals condition requires format 'key:value', got: %s", condition.Condition2)
@@ -391,6 +559,7 @@ func evaluateObjectCondition(conditionType string, condition Conditions) (bool, 
 		if !exists {
 			return true, nil
 		}
+		// Convert value to string for comparison
 		valStr, ok := val.(string)
 		if !ok {
 			valBytes, err := json.Marshal(val)
@@ -405,6 +574,7 @@ func evaluateObjectCondition(conditionType string, condition Conditions) (bool, 
 	}
 }
 
+// Helper function to parse string to float64
 func parseFloat64(s string) (float64, error) {
 	if s == "" {
 		return 0, fmt.Errorf("empty string")
@@ -416,6 +586,7 @@ func parseFloat64(s string) (float64, error) {
 
 func arrayContains(arr []interface{}, target string) bool {
 	for _, item := range arr {
+		// Convert item to string for comparison
 		var itemStr string
 		switch v := item.(type) {
 		case string:
