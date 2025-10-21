@@ -95,9 +95,9 @@ func (i *SwitchIntegration) Switch(ctx context.Context, params domain.Integratio
 		}
 
 		if matches {
-			enhancedItem := make(map[string]interface{})
+			enhancedItem := make(map[string]any)
 
-			if itemMap, ok := item.(map[string]interface{}); ok {
+			if itemMap, ok := item.(map[string]any); ok {
 				for k, v := range itemMap {
 					enhancedItem[k] = v
 				}
@@ -105,7 +105,7 @@ func (i *SwitchIntegration) Switch(ctx context.Context, params domain.Integratio
 				enhancedItem["original_item"] = item
 			}
 
-			enhancedItem["switch_result"] = map[string]interface{}{
+			enhancedItem["switch_result"] = map[string]any{
 				"matched_route":       route.Name,
 				"matched_route_index": routeIndex,
 				"condition_type":      p.ConditionType,
@@ -113,19 +113,19 @@ func (i *SwitchIntegration) Switch(ctx context.Context, params domain.Integratio
 
 			switch p.ConditionType {
 			case "string":
-				enhancedItem["switch_result"].(map[string]interface{})["matched_value"] = route.RouteString
+				enhancedItem["switch_result"].(map[string]any)["matched_value"] = route.RouteString
 			case "number":
-				enhancedItem["switch_result"].(map[string]interface{})["matched_value"] = route.RouteNumber
+				enhancedItem["switch_result"].(map[string]any)["matched_value"] = route.RouteNumber
 			case "boolean":
-				enhancedItem["switch_result"].(map[string]interface{})["matched_value"] = route.RouteBoolean
+				enhancedItem["switch_result"].(map[string]any)["matched_value"] = route.RouteBoolean
 			case "date":
-				enhancedItem["switch_result"].(map[string]interface{})["matched_value"] = route.RouteDate
+				enhancedItem["switch_result"].(map[string]any)["matched_value"] = route.RouteDate
 			case "array":
-				enhancedItem["switch_result"].(map[string]interface{})["matched_value"] = route.RouteArray
+				enhancedItem["switch_result"].(map[string]any)["matched_value"] = route.RouteArray
 			case "object":
-				enhancedItem["switch_result"].(map[string]interface{})["matched_value"] = route.RouteObject
+				enhancedItem["switch_result"].(map[string]any)["matched_value"] = route.RouteObject
 			case "deep_equal":
-				enhancedItem["switch_result"].(map[string]interface{})["matched_value"] = route.RouteDeepEqual
+				enhancedItem["switch_result"].(map[string]any)["matched_value"] = route.RouteDeepEqual
 			}
 
 			return domain.RoutableOutput{
