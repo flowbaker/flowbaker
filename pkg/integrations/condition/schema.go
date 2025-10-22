@@ -308,15 +308,15 @@ var (
 						Options: []domain.NodePropertyOption{
 							{Label: "String", Value: "string"},
 							{Label: "Number", Value: "number"},
-							{Label: "Boolean", Value: "boolean"},
-							{Label: "Date", Value: "date"},
-							{Label: "Array", Value: "array"},
-							{Label: "Object", Value: "object"},
-							{Label: "Deep Equal", Value: "deep_equal"},
+							// {Label: "Boolean", Value: "boolean"},
+							// {Label: "Date", Value: "date"},
+							// {Label: "Array", Value: "array"},
+							// {Label: "Object", Value: "object"},
+							// {Label: "Deep Equal", Value: "deep_equal"},
 						},
 					},
 					{
-						Key:         "value_string",
+						Key:         "value",
 						Name:        "Value",
 						Description: "The string value to match the condition against",
 						Required:    true,
@@ -327,7 +327,7 @@ var (
 						},
 					},
 					{
-						Key:         "value_number",
+						Key:         "value",
 						Name:        "Value",
 						Description: "The number value to match the condition against",
 						Required:    true,
@@ -338,7 +338,7 @@ var (
 						},
 					},
 					{
-						Key:         "value_boolean",
+						Key:         "value",
 						Name:        "Value",
 						Description: "The boolean value to match the condition against",
 						Required:    true,
@@ -349,7 +349,7 @@ var (
 						},
 					},
 					{
-						Key:         "value_date",
+						Key:         "value",
 						Name:        "Value",
 						Description: "The date value to match the condition against",
 						Required:    true,
@@ -360,7 +360,7 @@ var (
 						},
 					},
 					{
-						Key:         "value_array",
+						Key:         "value",
 						Name:        "Value",
 						Description: "The array value to match the condition against",
 						Required:    true,
@@ -371,7 +371,7 @@ var (
 						},
 					},
 					{
-						Key:         "value_object",
+						Key:         "value",
 						Name:        "Value",
 						Description: "The object value to match the condition against",
 						Required:    true,
@@ -408,7 +408,7 @@ var (
 								},
 
 								{
-									Key:         "value_string",
+									Key:         "value",
 									Name:        "Value",
 									Description: "The type of value to execute if the condition is met",
 									Type:        domain.NodePropertyType_Text,
@@ -419,7 +419,7 @@ var (
 									},
 								},
 								{
-									Key:         "value_string_comparison",
+									Key:         "value_comparison",
 									Name:        "Value Comparison",
 									Description: "The comparison type to use for the string value",
 									Required:    true,
@@ -436,7 +436,7 @@ var (
 									},
 								},
 								{
-									Key:         "value_number",
+									Key:         "value",
 									Name:        "Value",
 									Description: "The number value to match the condition against",
 									Type:        domain.NodePropertyType_Number,
@@ -447,7 +447,7 @@ var (
 									},
 								},
 								{
-									Key:         "value_number_comparison",
+									Key:         "value_comparison",
 									Name:        "Value Comparison",
 									Description: "The comparison type to use for the number value",
 									Required:    true,
@@ -461,10 +461,12 @@ var (
 										{Label: "Not Equals", Value: ConditionTypeNumber_IsNotEqual},
 										{Label: "Greater Than", Value: ConditionTypeNumber_IsGreaterThan},
 										{Label: "Less Than", Value: ConditionTypeNumber_IsLessThan},
+										{Label: "Greater Than or Equal", Value: ConditionTypeNumber_IsGreaterThanOrEqual},
+										{Label: "Less Than or Equal", Value: ConditionTypeNumber_IsLessThanOrEqual},
 									},
 								},
 								{
-									Key:         "value_boolean",
+									Key:         "value",
 									Name:        "Value",
 									Description: "The boolean value to match the condition against",
 									Type:        domain.NodePropertyType_Boolean,
@@ -475,7 +477,7 @@ var (
 									},
 								},
 								{
-									Key:         "value_date",
+									Key:         "value",
 									Name:        "Value",
 									Description: "The date value to match the condition against",
 									Type:        domain.NodePropertyType_Date,
@@ -486,7 +488,7 @@ var (
 									},
 								},
 								{
-									Key:         "value_array",
+									Key:         "value",
 									Name:        "Value",
 									Description: "The array value to match the condition against",
 									Type:        domain.NodePropertyType_CodeEditor,
@@ -497,7 +499,7 @@ var (
 									},
 								},
 								{
-									Key:         "value_object",
+									Key:         "value",
 									Name:        "Value",
 									Description: "The object value to match the condition against",
 									Type:        domain.NodePropertyType_CodeEditor,
