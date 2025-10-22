@@ -34,7 +34,6 @@ import (
 	startupswatchintegration "github.com/flowbaker/flowbaker/pkg/integrations/startups_watch"
 	"github.com/flowbaker/flowbaker/pkg/integrations/storage"
 	"github.com/flowbaker/flowbaker/pkg/integrations/stripe"
-	switchintegration "github.com/flowbaker/flowbaker/pkg/integrations/switch"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
@@ -188,10 +187,6 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_Pipedrive,
 		NewCreator:      pipedriveintegration.NewPipedriveIntegrationCreator,
-	},
-	{
-		IntegrationType: domain.IntegrationType_Switch,
-		NewCreator:      switchintegration.NewSwitchIntegrationCreator,
 	},
 }
 
