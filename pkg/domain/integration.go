@@ -60,6 +60,8 @@ const (
 	IntegrationType_ContentClassifier    IntegrationType = "content_classifier"
 	IntegrationType_Pipedrive            IntegrationType = "pipedrive"
 	IntegrationType_StartupsWatch        IntegrationType = "startups_watch"
+	IntegrationType_Manipulation         IntegrationType = "manipulation"
+	IntegrationType_SplitArray           IntegrationType = "split_array"
 )
 
 type Integration struct {

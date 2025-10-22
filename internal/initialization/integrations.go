@@ -22,6 +22,7 @@ import (
 	jwtintegration "github.com/flowbaker/flowbaker/pkg/integrations/jwt"
 	"github.com/flowbaker/flowbaker/pkg/integrations/knowledge"
 	"github.com/flowbaker/flowbaker/pkg/integrations/linear"
+	"github.com/flowbaker/flowbaker/pkg/integrations/manipulation"
 	mongodb "github.com/flowbaker/flowbaker/pkg/integrations/mongo"
 	"github.com/flowbaker/flowbaker/pkg/integrations/openai"
 	pipedriveintegration "github.com/flowbaker/flowbaker/pkg/integrations/pipedrive"
@@ -31,6 +32,7 @@ import (
 	s3integration "github.com/flowbaker/flowbaker/pkg/integrations/s3"
 	sendresponse "github.com/flowbaker/flowbaker/pkg/integrations/send_response"
 	slackintegration "github.com/flowbaker/flowbaker/pkg/integrations/slack"
+	"github.com/flowbaker/flowbaker/pkg/integrations/split_array"
 	startupswatchintegration "github.com/flowbaker/flowbaker/pkg/integrations/startups_watch"
 	"github.com/flowbaker/flowbaker/pkg/integrations/storage"
 	"github.com/flowbaker/flowbaker/pkg/integrations/stripe"
@@ -178,6 +180,14 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_ContentClassifier,
 		NewCreator:      router.NewRouterIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_Manipulation,
+		NewCreator:      manipulation.NewManipulationIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_SplitArray,
+		NewCreator:      split_array.NewSplitArrayIntegrationCreator,
 	},
 	{
 		IntegrationType:        domain.IntegrationType_StartupsWatch,

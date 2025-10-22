@@ -35,8 +35,8 @@ type Kangaroo struct {
 func NewKangaroo(options *types.EvaluatorOptions) *Kangaroo {
 	if options == nil {
 		options = &types.EvaluatorOptions{
-			MaxComplexity:   100,
-			MaxDepth:        10,
+			MaxComplexity:   1000,
+			MaxDepth:        1000,
 			EnableDebugging: false,
 			StrictMode:      true,
 			Timeout:         5000,
