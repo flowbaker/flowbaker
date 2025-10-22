@@ -86,24 +86,35 @@ func (i *ConditionIntegration) Execute(ctx context.Context, params domain.Integr
 }
 
 func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.RoutableOutput, error) {
-	conditionParams := ConditionParams{}
-	err := i.binder.BindToStruct(ctx, item, &conditionParams, params.IntegrationParams.Settings)
+	p := ConditionParams{}
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
 	if err != nil {
 		return domain.RoutableOutput{}, err
 	}
 
-	result := conditionParams.ConditionRelation == ConditionRelationAnd
-	if conditionParams.ConditionRelation == ConditionRelationOr {
+	result := p.ConditionRelation == ConditionRelationAnd
+	if p.ConditionRelation == ConditionRelationOr {
 		result = false
 	}
 
-	conditionType := conditionParams.Conditions[0].ConditionType
+	if len(p.Conditions) == 0 {
+		return domain.RoutableOutput{}, fmt.Errorf("no conditions found")
+	}
+
+	conditionType := p.Conditions[0].ConditionType
+	if conditionType == "" {
+		return domain.RoutableOutput{}, fmt.Errorf("no condition type found")
+	}
+
 	parts := strings.SplitN(conditionType, ".", 2)
+	if len(parts) != 2 {
+		return domain.RoutableOutput{}, fmt.Errorf("invalid condition type: %s", conditionType)
+	}
 
 	valueType := parts[0]
 	comparisonType := parts[1]
 
-	for _, condition := range conditionParams.Conditions {
+	for _, condition := range p.Conditions {
 		conditionResult, err := EvaluateCondition(valueType, EvaluateConditionParams{
 			Value1:         condition.Value1,
 			Value2:         condition.Value2,
@@ -113,7 +124,7 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 			return domain.RoutableOutput{}, fmt.Errorf("failed to evaluate condition: %w", err)
 		}
 
-		if conditionParams.ConditionRelation == ConditionRelationAnd {
+		if p.ConditionRelation == ConditionRelationAnd {
 			result = result && conditionResult
 		} else {
 			result = result || conditionResult
@@ -125,8 +136,23 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		outputIndex = 0
 	}
 
+	enhancedItem := make(map[string]any)
+	for k, v := range item.(map[string]any) {
+		enhancedItem[k] = v
+	}
+
+	conditionResult := make(map[string]any)
+	conditionResult["output_index"] = outputIndex
+	conditionResult["value_type"] = valueType
+	conditionResult["value1"] = p.Conditions[0].Value1
+	conditionResult["value2"] = p.Conditions[0].Value2
+	conditionResult["comparison_type"] = comparisonType
+	conditionResult["result"] = result
+
+	enhancedItem["__condition_result__"] = conditionResult
+
 	return domain.RoutableOutput{
-		Item:        item,
+		Item:        enhancedItem,
 		OutputIndex: outputIndex,
 	}, nil
 }
@@ -268,6 +294,10 @@ func evaluateNumberCondition(params EvaluateConditionParams) (bool, error) {
 	}
 
 	switch ConditionTypeNumber(params.ComparisonType) {
+	case ConditionTypeNumber_Exists:
+		return value1num != 0, nil
+	case ConditionTypeNumber_DoesNotExist:
+		return value1num == 0, nil
 	case ConditionTypeNumber_IsEqual:
 		return value1num == value2num, nil
 	case ConditionTypeNumber_IsNotEqual:
