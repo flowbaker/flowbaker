@@ -42,7 +42,7 @@ func NewConditionIntegration(deps ConditionIntegrationDependencies) (*ConditionI
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
-		AddPerItemRoutable(IntegrationActionType_IfStreams, integration.ifStreams).
+		AddPerItemRoutable(IntegrationActionType_IfElse, integration.IfElse).
 		AddPerItemRoutable(IntegrationActionType_Switch, integration.Switch)
 
 	integration.actionManager = actionManager
@@ -103,7 +103,7 @@ func (i *ConditionIntegration) Execute(ctx context.Context, params domain.Integr
 	return i.actionManager.Run(ctx, params.ActionType, params)
 }
 
-func (i *ConditionIntegration) ifStreams(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.RoutableOutput, error) {
+func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.RoutableOutput, error) {
 	conditionParams := ConditionParams{}
 	err := i.binder.BindToStruct(ctx, item, &conditionParams, params.IntegrationParams.Settings)
 	if err != nil {

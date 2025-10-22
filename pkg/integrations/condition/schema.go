@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	IntegrationActionType_IfStreams domain.IntegrationActionType = "if_streams"
-	IntegrationActionType_Switch    domain.IntegrationActionType = "switch"
+	IntegrationActionType_IfElse domain.IntegrationActionType = "if_else"
+	IntegrationActionType_Switch domain.IntegrationActionType = "switch"
 )
 
 // String condition types
@@ -105,9 +105,9 @@ var (
 		Description: "Condition node to evaluate a condition and return a boolean result",
 		Actions: []domain.IntegrationAction{
 			{
-				ID:         "if_streams",
-				Name:       "If Streams",
-				ActionType: IntegrationActionType_IfStreams,
+				ID:         "if_else",
+				Name:       "If/Else",
+				ActionType: IntegrationActionType_IfElse,
 				SupportedContexts: []domain.ActionUsageContext{
 					domain.UsageContextWorkflow,
 				},
