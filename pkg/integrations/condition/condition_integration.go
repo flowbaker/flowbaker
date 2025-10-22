@@ -195,45 +195,38 @@ func (i *ConditionIntegration) Switch(ctx context.Context, params domain.Integra
 
 		if matches {
 			enhancedItem := make(map[string]any)
-
 			for k, v := range item.(map[string]any) {
 				enhancedItem[k] = v
 			}
 
-			enhancedItem["switch_result"] = map[string]any{
-				"matched_route_key":   route.Key,
-				"matched_route_index": routeIndex,
-				"comparison_type":     p.ValueType,
+			switchResult, ok := enhancedItem["__switch_result"].(map[string]any)
+			if !ok {
+				return domain.RoutableOutput{}, fmt.Errorf("switch_result is not a map")
 			}
+
+			switchResult["matched_route_key"] = route.Key
+			switchResult["matched_route_index"] = routeIndex
+			switchResult["comparison_type"] = p.ValueType
 
 			switch p.ValueType {
 			case "string":
-				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueString
+				switchResult["value"] = p.ValueString
+				switchResult["comparison_value"] = route.ValueString
 			case "number":
-				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueNumber
+				switchResult["value"] = p.ValueNumber
+				switchResult["comparison_value"] = route.ValueNumber
 			case "boolean":
-				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueBoolean
+				switchResult["value"] = p.ValueBoolean
+				switchResult["comparison_value"] = route.ValueBoolean
 			case "date":
-				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueDate
+				switchResult["value"] = p.ValueDate
+				switchResult["comparison_value"] = route.ValueDate
 			case "array":
-				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueArray
+				switchResult["value"] = p.ValueArray
+				switchResult["comparison_value"] = route.ValueArray
 			case "object":
-				enhancedItem["switch_result"].(map[string]any)["value"] = p.ValueObject
-			}
-
-			switch p.ValueType {
-			case "string":
-				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueString
-			case "number":
-				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueNumber
-			case "boolean":
-				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueBoolean
-			case "date":
-				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueDate
-			case "array":
-				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueArray
-			case "object":
-				enhancedItem["switch_result"].(map[string]any)["comparison_value"] = route.ValueObject
+				switchResult["value"] = p.ValueObject
+				switchResult["comparison_value"] = route.ValueObject
 			}
 
 			return domain.RoutableOutput{
