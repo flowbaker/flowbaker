@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -203,14 +204,14 @@ func EvaluateCondition(valueType string, params EvaluateConditionParams) (bool, 
 }
 
 func evaluateStringCondition(params EvaluateConditionParams) (bool, error) {
-	value1str, ok := params.Value1.(string)
-	if !ok {
-		return false, fmt.Errorf("value1 is not a string")
+	value1str, err := convertToString(params.Value1)
+	if err != nil {
+		return false, fmt.Errorf("value1 is not a string: %w", err)
 	}
 
-	value2str, ok := params.Value2.(string)
-	if !ok {
-		return false, fmt.Errorf("value2 is not a string")
+	value2str, err := convertToString(params.Value2)
+	if err != nil {
+		return false, fmt.Errorf("value2 is not a string: %w", err)
 	}
 
 	switch ConditionTypeString(params.ComparisonType) {
@@ -256,14 +257,14 @@ func evaluateStringCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func evaluateNumberCondition(params EvaluateConditionParams) (bool, error) {
-	value1num, ok := params.Value1.(float64)
-	if !ok {
-		return false, fmt.Errorf("value1 is not a number")
+	value1num, err := convertToFloat64(params.Value1)
+	if err != nil {
+		return false, fmt.Errorf("value1 is not a number: %w", err)
 	}
 
-	value2num, ok := params.Value2.(float64)
-	if !ok {
-		return false, fmt.Errorf("value2 is not a number")
+	value2num, err := convertToFloat64(params.Value2)
+	if err != nil {
+		return false, fmt.Errorf("value2 is not a number: %w", err)
 	}
 
 	switch ConditionTypeNumber(params.ComparisonType) {
@@ -285,14 +286,14 @@ func evaluateNumberCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func evaluateBooleanCondition(params EvaluateConditionParams) (bool, error) {
-	value1bool, ok := params.Value1.(bool)
-	if !ok {
-		return false, fmt.Errorf("value1 is not a boolean")
+	value1bool, err := convertToBool(params.Value1)
+	if err != nil {
+		return false, fmt.Errorf("value1 is not a boolean: %w", err)
 	}
 
-	value2bool, ok := params.Value2.(bool)
-	if !ok {
-		return false, fmt.Errorf("value2 is not a boolean")
+	value2bool, err := convertToBool(params.Value2)
+	if err != nil {
+		return false, fmt.Errorf("value2 is not a boolean: %w", err)
 	}
 
 	switch ConditionTypeBoolean(params.ComparisonType) {
@@ -310,14 +311,14 @@ func evaluateBooleanCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func evaluateDateCondition(params EvaluateConditionParams) (bool, error) {
-	value1date, ok := params.Value1.(time.Time)
-	if !ok {
-		return false, fmt.Errorf("value1 is not a date")
+	value1date, err := convertToTime(params.Value1)
+	if err != nil {
+		return false, fmt.Errorf("value1 is not a date: %w", err)
 	}
 
-	value2date, ok := params.Value2.(time.Time)
-	if !ok {
-		return false, fmt.Errorf("value2 is not a date")
+	value2date, err := convertToTime(params.Value2)
+	if err != nil {
+		return false, fmt.Errorf("value2 is not a date: %w", err)
 	}
 
 	switch ConditionTypeDate(params.ComparisonType) {
@@ -449,19 +450,8 @@ func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
 	}
 }
 
-// Helper function to parse string to float64
-func parseFloat64(s string) (float64, error) {
-	if s == "" {
-		return 0, fmt.Errorf("empty string")
-	}
-	var f float64
-	_, err := fmt.Sscanf(s, "%f", &f)
-	return f, err
-}
-
 func arrayContains(arr []interface{}, target string) bool {
 	for _, item := range arr {
-		// Convert item to string for comparison
 		var itemStr string
 		switch v := item.(type) {
 		case string:
@@ -478,4 +468,79 @@ func arrayContains(arr []interface{}, target string) bool {
 		}
 	}
 	return false
+}
+
+func convertToFloat64(value interface{}) (float64, error) {
+	switch v := value.(type) {
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int:
+		return float64(v), nil
+	case int32:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case string:
+		return strconv.ParseFloat(v, 64)
+	default:
+		return 0, fmt.Errorf("cannot convert %T to float64", value)
+	}
+}
+
+func convertToString(value interface{}) (string, error) {
+	switch v := value.(type) {
+	case string:
+		return v, nil
+	case int, int32, int64, float32, float64:
+		return fmt.Sprintf("%v", v), nil
+	case bool:
+		return strconv.FormatBool(v), nil
+	default:
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			return "", fmt.Errorf("cannot convert %T to string", value)
+		}
+		return string(bytes), nil
+	}
+}
+
+func convertToBool(value interface{}) (bool, error) {
+	switch v := value.(type) {
+	case bool:
+		return v, nil
+	case string:
+		return strconv.ParseBool(v)
+	case int, int32, int64:
+		return fmt.Sprintf("%v", v) != "0", nil
+	case float32, float64:
+		return fmt.Sprintf("%v", v) != "0", nil
+	default:
+		return false, fmt.Errorf("cannot convert %T to bool", value)
+	}
+}
+
+func convertToTime(value interface{}) (time.Time, error) {
+	switch v := value.(type) {
+	case time.Time:
+		return v, nil
+	case string:
+		formats := []string{
+			time.RFC3339,
+			time.RFC3339Nano,
+			"2006-01-02T15:04:05Z",
+			"2006-01-02 15:04:05",
+			"2006-01-02",
+			"15:04:05",
+		}
+		for _, format := range formats {
+			if t, err := time.Parse(format, v); err == nil {
+				return t, nil
+			}
+		}
+		return time.Time{}, fmt.Errorf("cannot parse time string: %s", v)
+	default:
+		return time.Time{}, fmt.Errorf("cannot convert %T to time.Time", value)
+	}
 }
