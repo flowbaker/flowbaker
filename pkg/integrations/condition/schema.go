@@ -147,6 +147,39 @@ var (
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
 								{
+									Key:         "value1",
+									Name:        "Value",
+									Description: "The first value to evaluate",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+								},
+								{
+									Key:         "value2",
+									Name:        "Value",
+									Description: "The second value to evaluate",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									HideIf: &domain.HideIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"string." + string(ConditionTypeString_Exists),
+											"string." + string(ConditionTypeString_DoesNotExist),
+											"string." + string(ConditionTypeString_IsEmpty),
+											"string." + string(ConditionTypeString_IsNotEmpty),
+											"number." + string(ConditionTypeNumber_Exists),
+											"number." + string(ConditionTypeNumber_DoesNotExist),
+											"boolean." + string(ConditionTypeBoolean_Exists),
+											"boolean." + string(ConditionTypeBoolean_DoesNotExist),
+											"date." + string(ConditionTypeDate_Exists),
+											"date." + string(ConditionTypeDate_DoesNotExist),
+											"array." + string(ConditionTypeArray_Exists),
+											"array." + string(ConditionTypeArray_DoesNotExist),
+											"object." + string(ConditionTypeObject_Exists),
+											"object." + string(ConditionTypeObject_DoesNotExist),
+										},
+									},
+								},
+								{
 									Key:         "condition_type",
 									Name:        "Condition Type",
 									Description: "The condition type to evaluate",
@@ -239,39 +272,6 @@ var (
 												{Label: "Key Equals", Value: string(ConditionTypeObject_KeyEquals)},
 												{Label: "Key Not Equals", Value: string(ConditionTypeObject_KeyNotEquals)},
 											},
-										},
-									},
-								},
-								{
-									Key:         "condition1",
-									Name:        "Condition 1",
-									Description: "The first condition to evaluate",
-									Required:    true,
-									Type:        domain.NodePropertyType_String,
-								},
-								{
-									Key:         "condition2",
-									Name:        "Condition 2",
-									Description: "The second condition to evaluate",
-									Required:    true,
-									Type:        domain.NodePropertyType_String,
-									HideIf: &domain.HideIf{
-										PropertyKey: "condition_type",
-										Values: []any{
-											"string." + string(ConditionTypeString_Exists),
-											"string." + string(ConditionTypeString_DoesNotExist),
-											"string." + string(ConditionTypeString_IsEmpty),
-											"string." + string(ConditionTypeString_IsNotEmpty),
-											"number." + string(ConditionTypeNumber_Exists),
-											"number." + string(ConditionTypeNumber_DoesNotExist),
-											"boolean." + string(ConditionTypeBoolean_Exists),
-											"boolean." + string(ConditionTypeBoolean_DoesNotExist),
-											"date." + string(ConditionTypeDate_Exists),
-											"date." + string(ConditionTypeDate_DoesNotExist),
-											"array." + string(ConditionTypeArray_Exists),
-											"array." + string(ConditionTypeArray_DoesNotExist),
-											"object." + string(ConditionTypeObject_Exists),
-											"object." + string(ConditionTypeObject_DoesNotExist),
 										},
 									},
 								},
@@ -421,7 +421,7 @@ var (
 								{
 									Key:         "value_string_comparison",
 									Name:        "Value Comparison",
-									Description: "The query type to use for the string value",
+									Description: "The comparison type to use for the string value",
 									Required:    true,
 									Type:        domain.NodePropertyType_String,
 									DependsOn: &domain.DependsOn{
@@ -438,7 +438,7 @@ var (
 								{
 									Key:         "value_number",
 									Name:        "Value",
-									Description: "The number value to match the route against",
+									Description: "The number value to match the condition against",
 									Type:        domain.NodePropertyType_Number,
 									Required:    true,
 									DependsOn: &domain.DependsOn{
@@ -449,7 +449,7 @@ var (
 								{
 									Key:         "value_number_comparison",
 									Name:        "Value Comparison",
-									Description: "The query type to use for the number value",
+									Description: "The comparison type to use for the number value",
 									Required:    true,
 									Type:        domain.NodePropertyType_String,
 									DependsOn: &domain.DependsOn{
@@ -466,7 +466,7 @@ var (
 								{
 									Key:         "value_boolean",
 									Name:        "Value",
-									Description: "The boolean value to match the route against",
+									Description: "The boolean value to match the condition against",
 									Type:        domain.NodePropertyType_Boolean,
 									Required:    true,
 									DependsOn: &domain.DependsOn{
@@ -477,7 +477,7 @@ var (
 								{
 									Key:         "value_date",
 									Name:        "Value",
-									Description: "The date value to match the route against",
+									Description: "The date value to match the condition against",
 									Type:        domain.NodePropertyType_Date,
 									Required:    true,
 									DependsOn: &domain.DependsOn{
@@ -488,7 +488,7 @@ var (
 								{
 									Key:         "value_array",
 									Name:        "Value",
-									Description: "The array value to match the route against",
+									Description: "The array value to match the condition against",
 									Type:        domain.NodePropertyType_CodeEditor,
 									Required:    true,
 									DependsOn: &domain.DependsOn{
@@ -499,7 +499,7 @@ var (
 								{
 									Key:         "value_object",
 									Name:        "Value",
-									Description: "The object value to match the route against",
+									Description: "The object value to match the condition against",
 									Type:        domain.NodePropertyType_CodeEditor,
 									Required:    true,
 									DependsOn: &domain.DependsOn{

@@ -52,8 +52,8 @@ func NewConditionIntegration(deps ConditionIntegrationDependencies) (*ConditionI
 
 // Internal format structures
 type Condition struct {
-	Condition1    string `json:"condition1"`
-	Condition2    string `json:"condition2"`
+	Value1        string `json:"value1"`
+	Value2        string `json:"value2"`
 	ConditionType string `json:"condition_type"`
 }
 
@@ -140,7 +140,7 @@ func (i *ConditionIntegration) ifStreams(ctx context.Context, params domain.Inte
 }
 
 func EvaluateCondition(conditions Condition) (bool, error) {
-	if conditions.Condition1 == "" && conditions.Condition2 == "" {
+	if conditions.Value1 == "" && conditions.Value2 == "" {
 		return false, nil
 	}
 
@@ -184,8 +184,6 @@ func (i *ConditionIntegration) Switch(ctx context.Context, params domain.Integra
 	if len(p.Routes) == 0 {
 		return domain.RoutableOutput{}, fmt.Errorf("no routes defined")
 	}
-
-	fmt.Println("Switch params: ", p)
 
 	for routeIndex, route := range p.Routes {
 		matches, err := i.evaluateValueComparison(p, route)
@@ -253,32 +251,32 @@ func (i *ConditionIntegration) evaluateValueComparison(params SwitchParams, rout
 			return false, fmt.Errorf("string comparison type is required")
 		}
 		return evaluateStringCondition(string(route.ValueStringComparison), Condition{
-			Condition1: route.ValueString.(string),
-			Condition2: params.ValueString,
+			Value1: route.ValueString.(string),
+			Value2: params.ValueString,
 		})
 	case "number":
 		if route.ValueNumberComparison == "" {
 			return false, fmt.Errorf("number comparison type is required")
 		}
 		return evaluateNumberCondition(string(route.ValueNumberComparison), Condition{
-			Condition1: fmt.Sprintf("%f", params.ValueNumber),
-			Condition2: fmt.Sprintf("%f", route.ValueNumber),
+			Value1: fmt.Sprintf("%f", params.ValueNumber),
+			Value2: fmt.Sprintf("%f", route.ValueNumber),
 		})
 	case "boolean":
 		if route.ValueBooleanComparison == "" {
 			return false, fmt.Errorf("boolean comparison type is required")
 		}
 		return evaluateBooleanCondition(string(route.ValueBooleanComparison), Condition{
-			Condition1: fmt.Sprintf("%t", params.ValueBoolean),
-			Condition2: fmt.Sprintf("%t", route.ValueBoolean),
+			Value1: fmt.Sprintf("%t", params.ValueBoolean),
+			Value2: fmt.Sprintf("%t", route.ValueBoolean),
 		})
 	case "date":
 		if route.ValueDateComparison == "" {
 			return false, fmt.Errorf("date comparison type is required")
 		}
 		return evaluateDateCondition(string(route.ValueDateComparison), Condition{
-			Condition1: params.ValueDate,
-			Condition2: route.ValueDate.(string),
+			Value1: params.ValueDate,
+			Value2: route.ValueDate.(string),
 		})
 	default:
 		return false, fmt.Errorf("no valid value found in route or unsupported type: %s", actualValueType)
@@ -319,37 +317,37 @@ func (i *ConditionIntegration) determineActualValueType(route SwitchValue) (stri
 func evaluateStringCondition(conditionType string, conditions Condition) (bool, error) {
 	switch ConditionTypeString(conditionType) {
 	case ConditionTypeString_Exists:
-		return conditions.Condition1 != "", nil
+		return conditions.Value1 != "", nil
 	case ConditionTypeString_DoesNotExist:
-		return conditions.Condition1 == "", nil
+		return conditions.Value1 == "", nil
 	case ConditionTypeString_IsEqual:
-		return conditions.Condition1 == conditions.Condition2, nil
+		return conditions.Value1 == conditions.Value2, nil
 	case ConditionTypeString_IsNotEqual:
-		return conditions.Condition1 != conditions.Condition2, nil
+		return conditions.Value1 != conditions.Value2, nil
 	case ConditionTypeString_Contains:
-		return strings.Contains(conditions.Condition1, conditions.Condition2), nil
+		return strings.Contains(conditions.Value1, conditions.Value2), nil
 	case ConditionTypeString_DoesNotContain:
-		return !strings.Contains(conditions.Condition1, conditions.Condition2), nil
+		return !strings.Contains(conditions.Value1, conditions.Value2), nil
 	case ConditionTypeString_StartsWith:
-		return strings.HasPrefix(conditions.Condition1, conditions.Condition2), nil
+		return strings.HasPrefix(conditions.Value1, conditions.Value2), nil
 	case ConditionTypeString_EndsWith:
-		return strings.HasSuffix(conditions.Condition1, conditions.Condition2), nil
+		return strings.HasSuffix(conditions.Value1, conditions.Value2), nil
 	case ConditionTypeString_DoesNotStartWith:
-		return !strings.HasPrefix(conditions.Condition1, conditions.Condition2), nil
+		return !strings.HasPrefix(conditions.Value1, conditions.Value2), nil
 	case ConditionTypeString_DoesNotEndWith:
-		return !strings.HasSuffix(conditions.Condition1, conditions.Condition2), nil
+		return !strings.HasSuffix(conditions.Value1, conditions.Value2), nil
 	case ConditionTypeString_IsEmpty:
-		return conditions.Condition1 == "", nil
+		return conditions.Value1 == "", nil
 	case ConditionTypeString_IsNotEmpty:
-		return conditions.Condition1 != "", nil
+		return conditions.Value1 != "", nil
 	case ConditionTypeString_MatchesRegex:
-		matched, err := regexp.MatchString(conditions.Condition2, conditions.Condition1)
+		matched, err := regexp.MatchString(conditions.Value2, conditions.Value1)
 		if err != nil {
 			return false, fmt.Errorf("regex parse error in matches_regex: %w", err)
 		}
 		return matched, nil
 	case ConditionTypeString_DoesNotMatchRegex:
-		matched, err := regexp.MatchString(conditions.Condition2, conditions.Condition1)
+		matched, err := regexp.MatchString(conditions.Value2, conditions.Value1)
 		if err != nil {
 			return false, fmt.Errorf("regex parse error in does_not_match_regex: %w", err)
 		}
@@ -362,21 +360,21 @@ func evaluateStringCondition(conditionType string, conditions Condition) (bool, 
 func evaluateNumberCondition(conditionType string, conditions Condition) (bool, error) {
 	switch ConditionTypeNumber(conditionType) {
 	case ConditionTypeNumber_Exists:
-		return conditions.Condition1 != "", nil
+		return conditions.Value1 != "", nil
 	case ConditionTypeNumber_DoesNotExist:
-		return conditions.Condition1 == "", nil
+		return conditions.Value1 == "", nil
 	}
 
 	// Parse string values to float64 for number comparison
-	num1, err1 := parseFloat64(conditions.Condition1)
-	num2, err2 := parseFloat64(conditions.Condition2)
+	num1, err1 := parseFloat64(conditions.Value1)
+	num2, err2 := parseFloat64(conditions.Value2)
 
 	// If parsing failed, return error
 	if err1 != nil {
-		return false, fmt.Errorf("failed to parse condition1 as number '%s': %w", conditions.Condition1, err1)
+		return false, fmt.Errorf("failed to parse condition1 as number '%s': %w", conditions.Value1, err1)
 	}
 	if err2 != nil {
-		return false, fmt.Errorf("failed to parse condition2 as number '%s': %w", conditions.Condition2, err2)
+		return false, fmt.Errorf("failed to parse condition2 as number '%s': %w", conditions.Value2, err2)
 	}
 
 	switch ConditionTypeNumber(conditionType) {
@@ -400,17 +398,17 @@ func evaluateNumberCondition(conditionType string, conditions Condition) (bool, 
 func evaluateBooleanCondition(conditionType string, conditions Condition) (bool, error) {
 	switch ConditionTypeBoolean(conditionType) {
 	case ConditionTypeBoolean_Exists:
-		return conditions.Condition1 != "", nil
+		return conditions.Value1 != "", nil
 	case ConditionTypeBoolean_DoesNotExist:
-		return conditions.Condition1 == "", nil
+		return conditions.Value1 == "", nil
 	case ConditionTypeBoolean_IsEqual:
-		return conditions.Condition1 == conditions.Condition2, nil
+		return conditions.Value1 == conditions.Value2, nil
 	case ConditionTypeBoolean_IsNotEqual:
-		return conditions.Condition1 != conditions.Condition2, nil
+		return conditions.Value1 != conditions.Value2, nil
 	case ConditionTypeBoolean_IsTrue:
-		return strings.ToLower(conditions.Condition1) == "true", nil
+		return strings.ToLower(conditions.Value1) == "true", nil
 	case ConditionTypeBoolean_IsFalse:
-		return strings.ToLower(conditions.Condition1) == "false", nil
+		return strings.ToLower(conditions.Value1) == "false", nil
 	default:
 		return false, fmt.Errorf("unknown boolean condition type: %s", conditionType)
 	}
@@ -419,19 +417,19 @@ func evaluateBooleanCondition(conditionType string, conditions Condition) (bool,
 func evaluateDateCondition(conditionType string, conditions Condition) (bool, error) {
 	switch ConditionTypeDate(conditionType) {
 	case ConditionTypeDate_Exists:
-		return conditions.Condition1 != "", nil
+		return conditions.Value1 != "", nil
 	case ConditionTypeDate_DoesNotExist:
-		return conditions.Condition1 == "", nil
+		return conditions.Value1 == "", nil
 	}
 
-	date1, err1 := time.Parse(time.RFC3339, conditions.Condition1)
-	date2, err2 := time.Parse(time.RFC3339, conditions.Condition2)
+	date1, err1 := time.Parse(time.RFC3339, conditions.Value1)
+	date2, err2 := time.Parse(time.RFC3339, conditions.Value2)
 
 	if err1 != nil {
-		return false, fmt.Errorf("failed to parse condition1 as date '%s': %w", conditions.Condition1, err1)
+		return false, fmt.Errorf("failed to parse condition1 as date '%s': %w", conditions.Value1, err1)
 	}
 	if err2 != nil {
-		return false, fmt.Errorf("failed to parse condition2 as date '%s': %w", conditions.Condition2, err2)
+		return false, fmt.Errorf("failed to parse condition2 as date '%s': %w", conditions.Value2, err2)
 	}
 
 	switch ConditionTypeDate(conditionType) {
@@ -456,14 +454,14 @@ func evaluateArrayCondition(conditionType string, conditions Condition) (bool, e
 	switch ConditionTypeArray(conditionType) {
 	case ConditionTypeArray_DoesNotExist:
 		var arr []interface{}
-		err := json.Unmarshal([]byte(conditions.Condition1), &arr)
+		err := json.Unmarshal([]byte(conditions.Value1), &arr)
 		return err != nil, nil
 	}
 
 	var arr []interface{}
-	err := json.Unmarshal([]byte(conditions.Condition1), &arr)
+	err := json.Unmarshal([]byte(conditions.Value1), &arr)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse condition1 as JSON array '%s': %w", conditions.Condition1, err)
+		return false, fmt.Errorf("failed to parse condition1 as JSON array '%s': %w", conditions.Value1, err)
 	}
 
 	switch ConditionTypeArray(conditionType) {
@@ -474,25 +472,25 @@ func evaluateArrayCondition(conditionType string, conditions Condition) (bool, e
 	case ConditionTypeArray_IsNotEmpty:
 		return len(arr) > 0, nil
 	case ConditionTypeArray_Contains:
-		return arrayContains(arr, conditions.Condition2), nil
+		return arrayContains(arr, conditions.Value2), nil
 	case ConditionTypeArray_DoesNotContain:
-		return !arrayContains(arr, conditions.Condition2), nil
+		return !arrayContains(arr, conditions.Value2), nil
 	case ConditionTypeArray_LengthEquals:
-		targetLen, err := parseFloat64(conditions.Condition2)
+		targetLen, err := parseFloat64(conditions.Value2)
 		if err != nil {
-			return false, fmt.Errorf("failed to parse length value '%s': %w", conditions.Condition2, err)
+			return false, fmt.Errorf("failed to parse length value '%s': %w", conditions.Value2, err)
 		}
 		return float64(len(arr)) == targetLen, nil
 	case ConditionTypeArray_LengthGreaterThan:
-		targetLen, err := parseFloat64(conditions.Condition2)
+		targetLen, err := parseFloat64(conditions.Value2)
 		if err != nil {
-			return false, fmt.Errorf("failed to parse length value '%s': %w", conditions.Condition2, err)
+			return false, fmt.Errorf("failed to parse length value '%s': %w", conditions.Value2, err)
 		}
 		return float64(len(arr)) > targetLen, nil
 	case ConditionTypeArray_LengthLessThan:
-		targetLen, err := parseFloat64(conditions.Condition2)
+		targetLen, err := parseFloat64(conditions.Value2)
 		if err != nil {
-			return false, fmt.Errorf("failed to parse length value '%s': %w", conditions.Condition2, err)
+			return false, fmt.Errorf("failed to parse length value '%s': %w", conditions.Value2, err)
 		}
 		return float64(len(arr)) < targetLen, nil
 	default:
@@ -504,30 +502,30 @@ func evaluateObjectCondition(conditionType string, condition Condition) (bool, e
 	switch ConditionTypeObject(conditionType) {
 	case ConditionTypeObject_DoesNotExist:
 		var obj map[string]interface{}
-		err := json.Unmarshal([]byte(condition.Condition1), &obj)
+		err := json.Unmarshal([]byte(condition.Value1), &obj)
 		return err != nil, nil
 	}
 
 	var obj map[string]interface{}
-	err := json.Unmarshal([]byte(condition.Condition1), &obj)
+	err := json.Unmarshal([]byte(condition.Value1), &obj)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse condition1 as JSON object '%s': %w", condition.Condition1, err)
+		return false, fmt.Errorf("failed to parse condition1 as JSON object '%s': %w", condition.Value1, err)
 	}
 
 	switch ConditionTypeObject(conditionType) {
 	case ConditionTypeObject_Exists:
 		return true, nil
 	case ConditionTypeObject_HasKey:
-		_, exists := obj[condition.Condition2]
+		_, exists := obj[condition.Value2]
 		return exists, nil
 	case ConditionTypeObject_DoesNotHaveKey:
-		_, exists := obj[condition.Condition2]
+		_, exists := obj[condition.Value2]
 		return !exists, nil
 	case ConditionTypeObject_KeyEquals:
 		// Condition2 should be in format "key:value"
-		parts := strings.SplitN(condition.Condition2, ":", 2)
+		parts := strings.SplitN(condition.Value2, ":", 2)
 		if len(parts) != 2 {
-			return false, fmt.Errorf("key_equals condition requires format 'key:value', got: %s", condition.Condition2)
+			return false, fmt.Errorf("key_equals condition requires format 'key:value', got: %s", condition.Value2)
 		}
 		val, exists := obj[parts[0]]
 		if !exists {
@@ -544,9 +542,9 @@ func evaluateObjectCondition(conditionType string, condition Condition) (bool, e
 		}
 		return valStr == parts[1], nil
 	case ConditionTypeObject_KeyNotEquals:
-		parts := strings.SplitN(condition.Condition2, ":", 2)
+		parts := strings.SplitN(condition.Value2, ":", 2)
 		if len(parts) != 2 {
-			return false, fmt.Errorf("key_not_equals condition requires format 'key:value', got: %s", condition.Condition2)
+			return false, fmt.Errorf("key_not_equals condition requires format 'key:value', got: %s", condition.Value2)
 		}
 		val, exists := obj[parts[0]]
 		if !exists {
