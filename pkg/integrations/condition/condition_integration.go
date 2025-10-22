@@ -226,6 +226,8 @@ func EvaluateCondition(valueType string, params EvaluateConditionParams) (bool, 
 		return evaluateArrayCondition(params)
 	case "object":
 		return evaluateObjectCondition(params)
+	case "tag":
+		return evaluateTagCondition(params)
 	default:
 		return false, fmt.Errorf("unknown condition data type: %s", params.ComparisonType)
 	}
@@ -408,6 +410,54 @@ func evaluateArrayCondition(params EvaluateConditionParams) (bool, error) {
 	}
 }
 
+func evaluateTagCondition(params EvaluateConditionParams) (bool, error) {
+	value1Array, err := convertToArray(params.Value1)
+	if err != nil {
+		return false, fmt.Errorf("value1 is not an array: %w", err)
+	}
+
+	value2Array, err := convertToArray(params.Value2)
+	if err != nil {
+		return false, fmt.Errorf("value2 is not an array: %w", err)
+	}
+
+	value1ArrayString := make([]string, len(value1Array))
+	for i, v := range value1Array {
+		if str, ok := v.(string); ok {
+			value1ArrayString[i] = str
+		} else {
+			value1ArrayString[i] = fmt.Sprintf("%v", v)
+		}
+	}
+
+	value2ArrayString := make([]string, len(value2Array))
+	for i, v := range value2Array {
+		if str, ok := v.(string); ok {
+			value2ArrayString[i] = str
+		} else {
+			value2ArrayString[i] = fmt.Sprintf("%v", v)
+		}
+	}
+
+	switch ConditionTypeTag(params.ComparisonType) {
+	case ConditionTypeTag_Exists:
+		return len(value1Array) > 0, nil
+	case ConditionTypeTag_DoesNotExist:
+		return len(value1Array) == 0, nil
+	case ConditionTypeTag_IsEqual:
+		return stringSlicesEqual(value1ArrayString, value2ArrayString), nil
+	case ConditionTypeTag_IsNotEqual:
+		return !stringSlicesEqual(value1ArrayString, value2ArrayString), nil
+	case ConditionTypeTag_Contains:
+		return stringSliceContainsAll(value1ArrayString, value2ArrayString), nil
+	case ConditionTypeTag_ContainsAny:
+		return stringSliceContainsAny(value1ArrayString, value2ArrayString), nil
+	case ConditionTypeTag_DoesNotContain:
+		return !stringSliceContainsAny(value1ArrayString, value2ArrayString), nil
+	}
+	return false, fmt.Errorf("unknown tag condition type: %s", params.ComparisonType)
+}
+
 func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
 	value1obj, ok := params.Value1.(map[string]interface{})
 	if !ok {
@@ -501,6 +551,45 @@ func arrayContains(arr []interface{}, target string) bool {
 	return false
 }
 
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func stringSliceContainsAll(haystack, needles []string) bool {
+	for _, needle := range needles {
+		found := false
+		for _, item := range haystack {
+			if item == needle {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func stringSliceContainsAny(haystack, needles []string) bool {
+	for _, needle := range needles {
+		for _, item := range haystack {
+			if item == needle {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func convertToFloat64(value interface{}) (float64, error) {
 	switch v := value.(type) {
 	case float64:
@@ -573,5 +662,29 @@ func convertToTime(value interface{}) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("cannot parse time string: %s", v)
 	default:
 		return time.Time{}, fmt.Errorf("cannot convert %T to time.Time", value)
+	}
+}
+
+func convertToArray(value interface{}) ([]any, error) {
+	switch v := value.(type) {
+	case []any:
+		return v, nil
+	case string:
+		if len(v) == 0 {
+			return []any{}, nil
+		}
+
+		var arr []any
+
+		err := json.Unmarshal([]byte(v), &arr)
+		if err != nil {
+			return nil, fmt.Errorf("cannot unmarshal string to []any: %w", err)
+		}
+
+		return arr, nil
+	case nil:
+		return []any{}, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to []any", value)
 	}
 }

@@ -96,6 +96,19 @@ const (
 	ConditionTypeObject_KeyNotEquals   ConditionTypeObject = "key_not_equals"
 )
 
+// Tag condition types
+type ConditionTypeTag string
+
+const (
+	ConditionTypeTag_Exists         ConditionTypeTag = "exists"
+	ConditionTypeTag_DoesNotExist   ConditionTypeTag = "does_not_exist"
+	ConditionTypeTag_IsEqual        ConditionTypeTag = "is_equal"
+	ConditionTypeTag_IsNotEqual     ConditionTypeTag = "is_not_equal"
+	ConditionTypeTag_Contains       ConditionTypeTag = "contains"
+	ConditionTypeTag_ContainsAny    ConditionTypeTag = "contains_any"
+	ConditionTypeTag_DoesNotContain ConditionTypeTag = "does_not_contain"
+)
+
 var (
 	Schema = schema
 
@@ -308,6 +321,7 @@ var (
 						Options: []domain.NodePropertyOption{
 							{Label: "String", Value: "string"},
 							{Label: "Number", Value: "number"},
+							{Label: "Tag", Value: "tag"},
 							// {Label: "Boolean", Value: "boolean"},
 							// {Label: "Date", Value: "date"},
 							// {Label: "Array", Value: "array"},
@@ -379,6 +393,17 @@ var (
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "value_type",
 							Value:       "object",
+						},
+					},
+					{
+						Key:         "value",
+						Name:        "Value",
+						Description: "The tag value to match the condition against",
+						Required:    true,
+						Type:        domain.NodePropertyType_TagInput,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "value_type",
+							Value:       "tag",
 						},
 					},
 					{
@@ -506,6 +531,37 @@ var (
 									DependsOn: &domain.DependsOn{
 										PropertyKey: "value_type",
 										Value:       "object",
+									},
+								},
+								{
+									Key:         "value",
+									Name:        "Value",
+									Description: "The tag value to match the condition against",
+									Type:        domain.NodePropertyType_TagInput,
+									Required:    true,
+									DependsOn: &domain.DependsOn{
+										PropertyKey: "value_type",
+										Value:       "tag",
+									},
+								},
+								{
+									Key:         "value_comparison",
+									Name:        "Value Comparison",
+									Description: "The comparison type to use for the tag value",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									DependsOn: &domain.DependsOn{
+										PropertyKey: "value_type",
+										Value:       "tag",
+									},
+									Options: []domain.NodePropertyOption{
+										{Label: "Equals", Value: string(ConditionTypeTag_IsEqual)},
+										{Label: "Not Equals", Value: string(ConditionTypeTag_IsNotEqual)},
+										{Label: "Contains All", Value: string(ConditionTypeTag_Contains)},
+										{Label: "Contains Any", Value: string(ConditionTypeTag_ContainsAny)},
+										{Label: "Does Not Contain", Value: string(ConditionTypeTag_DoesNotContain)},
+										{Label: "Exists", Value: string(ConditionTypeTag_Exists)},
+										{Label: "Does Not Exist", Value: string(ConditionTypeTag_DoesNotExist)},
 									},
 								},
 							},
