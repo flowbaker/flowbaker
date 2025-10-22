@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	IntegrationActionType_IfElse domain.IntegrationActionType = "if_else"
-	IntegrationActionType_Switch domain.IntegrationActionType = "switch"
+	IntegrationActionType_IfElse              domain.IntegrationActionType = "if_else"
+	IntegrationActionType_ConditionalDispatch domain.IntegrationActionType = "conditional_dispatch"
 )
 
 // String condition types
@@ -282,9 +282,9 @@ var (
 			},
 
 			{
-				ID:          "switch",
-				Name:        "Switch",
-				ActionType:  IntegrationActionType_Switch,
+				ID:          "conditional_dispatch",
+				Name:        "Conditional Dispatch",
+				ActionType:  IntegrationActionType_ConditionalDispatch,
 				Description: "Switch between different actions based on a condition", SupportedContexts: []domain.ActionUsageContext{
 					domain.UsageContextWorkflow,
 				},
@@ -390,7 +390,7 @@ var (
 						GeneratesHandles: true,
 						HandleGenerationOpts: &domain.HandleGenerationOptions{
 							HandleType:        "output",
-							NameFromProperty:  "Name",
+							NameFromProperty:  "key",
 							DefaultHandleType: domain.NodeHandleTypeDefault,
 							Position:          domain.NodeHandlePositionBottom,
 						},
@@ -400,13 +400,12 @@ var (
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
 								{
-									Key:         "Name",
+									Key:         "key",
 									Name:        "Key",
 									Description: "The name of the route",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
-
 								{
 									Key:         "value",
 									Name:        "Value",

@@ -44,7 +44,7 @@ func NewConditionIntegration(deps ConditionIntegrationDependencies) (*ConditionI
 
 	actionManager := domain.NewIntegrationActionManager().
 		AddPerItemRoutable(IntegrationActionType_IfElse, integration.IfElse).
-		AddPerItemRoutable(IntegrationActionType_Switch, integration.Switch)
+		AddPerItemRoutable(IntegrationActionType_ConditionalDispatch, integration.ConditionalDispatch)
 
 	integration.actionManager = actionManager
 
@@ -69,14 +69,14 @@ const (
 	ConditionRelationOr  ConditionRelation = "or"
 )
 
-type SwitchParams struct {
-	ValueType string        `json:"value_type"`
-	Value     any           `json:"value,omitempty"`
-	Routes    []SwitchValue `json:"routes,omitempty"`
+type ConditionalDispatchParams struct {
+	ValueType string                     `json:"value_type"`
+	Value     any                        `json:"value,omitempty"`
+	Routes    []ConditionalDispatchValue `json:"routes,omitempty"`
 }
 
-type SwitchValue struct {
-	Key             string `json:"Name"`
+type ConditionalDispatchValue struct {
+	Key             string `json:"key"`
 	Value           any    `json:"value,omitempty"`
 	ValueComparison string `json:"value_comparison,omitempty"`
 }
@@ -141,6 +141,7 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		enhancedItem[k] = v
 	}
 
+	// make it struct
 	conditionResult := make(map[string]any)
 	conditionResult["output_index"] = outputIndex
 	conditionResult["value_type"] = valueType
@@ -157,8 +158,8 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 	}, nil
 }
 
-func (i *ConditionIntegration) Switch(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.RoutableOutput, error) {
-	p := SwitchParams{}
+func (i *ConditionIntegration) ConditionalDispatch(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.RoutableOutput, error) {
+	p := ConditionalDispatchParams{}
 
 	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
 	if err != nil {
@@ -185,6 +186,7 @@ func (i *ConditionIntegration) Switch(ctx context.Context, params domain.Integra
 				enhancedItem[k] = v
 			}
 
+			// make it struct
 			switchResult := make(map[string]any)
 			switchResult["matched_route_key"] = route.Key
 			switchResult["matched_route_index"] = routeIndex
@@ -446,7 +448,6 @@ func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
 		if !exists {
 			return false, nil
 		}
-		// Convert value to string for comparison
 		valStr, ok := val.(string)
 		if !ok {
 			valBytes, err := json.Marshal(val)
@@ -465,7 +466,7 @@ func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
 		if !exists {
 			return true, nil
 		}
-		// Convert value to string for comparison
+
 		valStr, ok := val.(string)
 		if !ok {
 			valBytes, err := json.Marshal(val)
