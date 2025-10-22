@@ -148,14 +148,14 @@ var (
 							ItemProperties: []domain.NodeProperty{
 								{
 									Key:         "value1",
-									Name:        "Value",
+									Name:        "First Value",
 									Description: "The first value to evaluate",
 									Required:    true,
 									Type:        domain.NodePropertyType_String,
 								},
 								{
 									Key:         "value2",
-									Name:        "Value",
+									Name:        "Second Value",
 									Description: "The second value to evaluate",
 									Required:    true,
 									Type:        domain.NodePropertyType_String,
