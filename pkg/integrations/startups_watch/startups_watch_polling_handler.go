@@ -97,12 +97,6 @@ func (h *StartupsWatchPollingHandler) PollNewStartups(ctx context.Context, p dom
 		return domain.PollResult{}, fmt.Errorf("failed to fetch startups: %w", err)
 	}
 
-	// Unmarshal for full startup data (for task enqueue)
-	var startupsResp ListStartupsResponse
-	if err := json.Unmarshal(response, &startupsResp); err != nil {
-		return domain.PollResult{}, fmt.Errorf("failed to unmarshal startups response: %w", err)
-	}
-
 	// Unmarshal for ID extraction (for comparison)
 	var pollingStartupsResponse PollStartupsResponse
 	if err := json.Unmarshal(response, &pollingStartupsResponse); err != nil {
@@ -116,14 +110,22 @@ func (h *StartupsWatchPollingHandler) PollNewStartups(ctx context.Context, p dom
 		}, nil
 	}
 
-	// The API provides id as a string representing an integer, so we need to convert it to an int for accurate comparison.
-	lastModifiedDataInt, err := strconv.Atoi(lastModifiedData)
-	if err != nil {
-		return domain.PollResult{}, fmt.Errorf("unable to convert lastModifiedData to integer: %w", err)
+	var startupsResp ListStartupsResponse
+	for _, startup := range pollingStartupsResponse.Startups {
+		startupResponse, err := integration.makeRequest(ctx, "/startups/"+startup.ID, map[string]string{})
+		if err != nil {
+			return domain.PollResult{}, fmt.Errorf("failed to fetch startup: %w", err)
+		}
+		var startupResp any
+		if err := json.Unmarshal(startupResponse, &startupResp); err != nil {
+			return domain.PollResult{}, fmt.Errorf("failed to unmarshal startup response: %w", err)
+		}
+
+		startupsResp.Startups = append(startupsResp.Startups, startupResp)
+
 	}
 
-	newLastModifiedData := lastModifiedDataInt
-
+	// Handle first-time polling (empty lastModifiedData)
 	if lastModifiedData == "" {
 		startupID := pollingStartupsResponse.Startups[0].ID
 		startupIDInt, err := strconv.Atoi(startupID)
@@ -150,8 +152,19 @@ func (h *StartupsWatchPollingHandler) PollNewStartups(ctx context.Context, p dom
 			return domain.PollResult{}, fmt.Errorf("failed to enqueue task: %w", err)
 		}
 
-		newLastModifiedData = startupIDInt
-	} else {
+		return domain.PollResult{
+			LastModifiedData: strconv.Itoa(startupIDInt),
+		}, nil
+	}
+
+	// The API provides id as a string representing an integer, so we need to convert it to an int for accurate comparison.
+	lastModifiedDataInt, err := strconv.Atoi(lastModifiedData)
+	if err != nil {
+		return domain.PollResult{}, fmt.Errorf("unable to convert lastModifiedData to integer: %w", err)
+	}
+
+	newLastModifiedData := lastModifiedDataInt
+	{
 		for i, pollStartup := range pollingStartupsResponse.Startups {
 			startupID := pollStartup.ID
 			startupIDInt, err := strconv.Atoi(startupID)
@@ -189,7 +202,6 @@ func (h *StartupsWatchPollingHandler) PollNewStartups(ctx context.Context, p dom
 				log.Info().Str("startupID", startupID).Msg("New startup processed")
 			}
 		}
-
 	}
 
 	return domain.PollResult{
