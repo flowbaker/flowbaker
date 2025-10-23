@@ -16,7 +16,7 @@ import (
 	"github.com/dop251/goja/unistring"
 	"github.com/google/uuid"
 
-	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 )
 
 // DefaultFunctionRegistry provides a comprehensive set of secure functions

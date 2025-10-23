@@ -9,9 +9,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/flowbaker/flowbaker/internal/kangaroo/core"
-	"github.com/flowbaker/flowbaker/internal/kangaroo/functions"
-	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/core"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/functions"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 )
 
 // Kangaroo is the main expression evaluator class

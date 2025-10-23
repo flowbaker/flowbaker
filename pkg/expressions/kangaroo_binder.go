@@ -9,10 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 	"github.com/rs/zerolog"
-
-	"github.com/flowbaker/flowbaker/internal/kangaroo"
-	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
 )
 
 // KangarooBinder implements expression binding using local Kangaroo runtime

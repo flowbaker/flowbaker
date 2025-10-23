@@ -12,7 +12,7 @@ import (
 	"github.com/dop251/goja/ast"
 	"github.com/rs/zerolog/log"
 
-	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 )
 
 // ASTExecutor provides safe AST execution without eval()
