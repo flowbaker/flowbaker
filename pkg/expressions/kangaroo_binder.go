@@ -52,7 +52,7 @@ func NewKangarooBinder(opts KangarooBinderOptions) (*KangarooBinder, error) {
 
 	binder := &KangarooBinder{
 		evaluator:      evaluator,
-		exprRegex:      regexp.MustCompile(`\{\{(.*?)\}\}`),
+		exprRegex:      regexp.MustCompile(`\{\{([\s\S]*?)\}\}`), // Use [\s\S] to match any character including newlines
 		logger:         opts.Logger,
 		defaultTimeout: opts.DefaultTimeout,
 	}

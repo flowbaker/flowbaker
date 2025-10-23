@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 	"github.com/flowbaker/flowbaker/pkg/integrations/transform"
@@ -45,6 +47,7 @@ func NewManipulationIntegration(deps ManipulationIntegrationDependencies) (*Mani
 
 	actionManager := domain.NewIntegrationActionManager().
 		AddPerItem(IntegrationActionType_SetField, integration.SetField).
+		AddPerItem(IntegrationActionType_SetMultipleFields, integration.SetMultipleFields).
 		AddPerItem(IntegrationActionType_DeleteField, integration.DeleteField)
 
 	integration.actionManager = actionManager
@@ -59,6 +62,17 @@ func (i *ManipulationIntegration) Execute(ctx context.Context, params domain.Int
 type SetFieldParams struct {
 	FieldPath string `json:"field_path"`
 	Value     any    `json:"value"`
+	FieldType string `json:"field_type"`
+}
+
+type FieldUpdate struct {
+	FieldPath string `json:"field_path"`
+	Value     any    `json:"value"`
+	FieldType string `json:"field_type"`
+}
+
+type SetMultipleFieldsParams struct {
+	Fields []FieldUpdate `json:"fields"`
 }
 
 type DeleteFieldParams struct {
@@ -77,7 +91,6 @@ func (i *ManipulationIntegration) SetField(ctx context.Context, params domain.In
 		return nil, fmt.Errorf("field_path cannot be empty")
 	}
 
-	// Create a copy of the item
 	enhancedItem := make(map[string]any)
 	if itemMap, ok := item.(map[string]any); ok {
 		for k, v := range itemMap {
@@ -87,17 +100,19 @@ func (i *ManipulationIntegration) SetField(ctx context.Context, params domain.In
 		return nil, fmt.Errorf("item must be a map[string]any")
 	}
 
-	// Try to get the existing value to determine type conversion
-	// If the field doesn't exist or is nil, we'll skip type conversion and just set the value
-	value, err := i.fieldParser.GetValue(enhancedItem, p.FieldPath)
-	if err == nil && value != nil {
-		// Handle type conversions when set value is a JSON-encoded string
-		if err := i.convertValueType(value, &p.Value); err != nil {
-			return nil, fmt.Errorf("failed to convert value type: %w", err)
+	if p.FieldType != "" && p.FieldType != "auto" {
+		if err := i.convertValueToExplicitType(&p.Value, p.FieldType); err != nil {
+			return nil, fmt.Errorf("failed to convert value to type '%s': %w", p.FieldType, err)
+		}
+	} else {
+		value, err := i.fieldParser.GetValue(enhancedItem, p.FieldPath)
+		if err == nil && value != nil {
+			if err := i.convertValueType(value, &p.Value); err != nil {
+				return nil, fmt.Errorf("failed to convert value type: %w", err)
+			}
 		}
 	}
 
-	// Set the value using the field path parser
 	err = i.fieldParser.SetValue(enhancedItem, p.FieldPath, p.Value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set field '%s': %w", p.FieldPath, err)
@@ -106,7 +121,142 @@ func (i *ManipulationIntegration) SetField(ctx context.Context, params domain.In
 	return enhancedItem, nil
 }
 
-// convertValueType attempts to convert setValue to match the type of realValue
+func (i *ManipulationIntegration) SetMultipleFields(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	p := SetMultipleFieldsParams{}
+
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(p.Fields) == 0 {
+		return nil, fmt.Errorf("fields array cannot be empty")
+	}
+
+	enhancedItem := make(map[string]any)
+	if itemMap, ok := item.(map[string]any); ok {
+		for k, v := range itemMap {
+			enhancedItem[k] = v
+		}
+	} else {
+		return nil, fmt.Errorf("item must be a map[string]any")
+	}
+
+	for idx, field := range p.Fields {
+		if field.FieldPath == "" {
+			return nil, fmt.Errorf("field_path cannot be empty for field at index %d", idx)
+		}
+
+		if field.FieldType != "" && field.FieldType != "auto" {
+			if err := i.convertValueToExplicitType(&field.Value, field.FieldType); err != nil {
+				return nil, fmt.Errorf("failed to convert value for field '%s': %w", field.FieldPath, err)
+			}
+		} else {
+			value, err := i.fieldParser.GetValue(enhancedItem, field.FieldPath)
+			if err == nil && value != nil {
+				if err := i.convertValueType(value, &field.Value); err != nil {
+					return nil, fmt.Errorf("failed to convert value for field '%s': %w", field.FieldPath, err)
+				}
+			}
+		}
+
+		err = i.fieldParser.SetValue(enhancedItem, field.FieldPath, field.Value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set field '%s': %w", field.FieldPath, err)
+		}
+	}
+
+	return enhancedItem, nil
+}
+
+func (i *ManipulationIntegration) convertValueToExplicitType(setValue *any, targetType string) error {
+	if setValue == nil || *setValue == nil {
+		return nil
+	}
+
+	log.Debug().
+		Str("targetType", targetType).
+		Interface("value", *setValue).
+		Msg("converting value to explicit type")
+
+	setValueType := reflect.TypeOf(*setValue)
+	setValueKind := setValueType.Kind()
+
+	switch targetType {
+	case "string":
+		if setValueKind == reflect.String {
+			return nil
+		}
+		*setValue = fmt.Sprintf("%v", *setValue)
+		return nil
+
+	case "number":
+		if isNumericKind(setValueKind) {
+			return nil
+		}
+		if setValueKind == reflect.String {
+			setValueStr := (*setValue).(string)
+			setValueStr = strings.TrimSpace(setValueStr)
+			result, err := strconv.ParseFloat(setValueStr, 64)
+			if err != nil {
+				return fmt.Errorf("failed to parse string as number: %w", err)
+			}
+			*setValue = result
+			return nil
+		}
+		return fmt.Errorf("cannot convert type %s to number", setValueKind)
+
+	case "boolean":
+		if setValueKind == reflect.Bool {
+			return nil
+		}
+		if setValueKind == reflect.String {
+			setValueStr := (*setValue).(string)
+			setValueStr = strings.TrimSpace(strings.ToLower(setValueStr))
+			result, err := strconv.ParseBool(setValueStr)
+			if err != nil {
+				return fmt.Errorf("failed to parse string as boolean: %w", err)
+			}
+			*setValue = result
+			return nil
+		}
+		return fmt.Errorf("cannot convert type %s to boolean", setValueKind)
+
+	case "array":
+		if setValueKind == reflect.Slice || setValueKind == reflect.Array {
+			return nil
+		}
+		if setValueKind == reflect.String {
+			setValueStr := (*setValue).(string)
+			var result []any
+			if err := json.Unmarshal([]byte(setValueStr), &result); err != nil {
+				return fmt.Errorf("failed to parse string as array: %w", err)
+			}
+			*setValue = result
+			return nil
+		}
+		return fmt.Errorf("cannot convert type %s to array", setValueKind)
+
+	case "object":
+		if setValueKind == reflect.Map {
+			return nil
+		}
+		if setValueKind == reflect.String {
+			setValueStr := (*setValue).(string)
+			var result map[string]any
+			if err := json.Unmarshal([]byte(setValueStr), &result); err != nil {
+				return fmt.Errorf("failed to parse string as object: %w", err)
+			}
+			*setValue = result
+			return nil
+		}
+		return fmt.Errorf("cannot convert type %s to object", setValueKind)
+
+	default:
+		return fmt.Errorf("unknown target type: %s", targetType)
+	}
+}
+
 func (i *ManipulationIntegration) convertValueType(realValue any, setValue *any) error {
 	if setValue == nil || *setValue == nil {
 		return nil
@@ -120,12 +270,10 @@ func (i *ManipulationIntegration) convertValueType(realValue any, setValue *any)
 		Str("setValueType", setValueType.String()).
 		Msg("converting value types")
 
-	// If types already match, no conversion needed
 	if realValueType.Kind() == setValueType.Kind() {
 		return nil
 	}
 
-	// Handle conversion from JSON-encoded string to actual type
 	if setValueType.Kind() == reflect.String {
 		setValueStr, ok := (*setValue).(string)
 		if !ok {
@@ -134,7 +282,6 @@ func (i *ManipulationIntegration) convertValueType(realValue any, setValue *any)
 
 		switch realValueType.Kind() {
 		case reflect.Slice, reflect.Array:
-			// Try to unmarshal JSON string to slice
 			var result []any
 			if err := json.Unmarshal([]byte(setValueStr), &result); err != nil {
 				return fmt.Errorf("failed to unmarshal string to array/slice: %w", err)
@@ -144,7 +291,6 @@ func (i *ManipulationIntegration) convertValueType(realValue any, setValue *any)
 			return nil
 
 		case reflect.Map:
-			// Try to unmarshal JSON string to map
 			var result map[string]any
 			if err := json.Unmarshal([]byte(setValueStr), &result); err != nil {
 				return fmt.Errorf("failed to unmarshal string to map: %w", err)
@@ -154,7 +300,6 @@ func (i *ManipulationIntegration) convertValueType(realValue any, setValue *any)
 			return nil
 
 		case reflect.Bool:
-			// Try to unmarshal JSON string to bool
 			var result bool
 			if err := json.Unmarshal([]byte(setValueStr), &result); err != nil {
 				return fmt.Errorf("failed to unmarshal string to bool: %w", err)
@@ -164,7 +309,6 @@ func (i *ManipulationIntegration) convertValueType(realValue any, setValue *any)
 			return nil
 
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			// Try to unmarshal JSON string to number
 			var result int64
 			if err := json.Unmarshal([]byte(setValueStr), &result); err != nil {
 				return fmt.Errorf("failed to unmarshal string to int: %w", err)
@@ -174,7 +318,6 @@ func (i *ManipulationIntegration) convertValueType(realValue any, setValue *any)
 			return nil
 
 		case reflect.Float32, reflect.Float64:
-			// Try to unmarshal JSON string to float
 			var result float64
 			if err := json.Unmarshal([]byte(setValueStr), &result); err != nil {
 				return fmt.Errorf("failed to unmarshal string to float: %w", err)
@@ -184,21 +327,18 @@ func (i *ManipulationIntegration) convertValueType(realValue any, setValue *any)
 			return nil
 
 		case reflect.String:
-			// Both are strings, no conversion needed
 			return nil
 		}
 	}
 
-	// Handle numeric conversions
 	if isNumericKind(realValueType.Kind()) && isNumericKind(setValueType.Kind()) {
-		return nil // Let the field parser handle numeric conversions
+		return nil
 	}
 
 	log.Debug().Msg("no conversion performed, types may be incompatible")
 	return nil
 }
 
-// isNumericKind returns true if the kind is a numeric type
 func isNumericKind(k reflect.Kind) bool {
 	switch k {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -221,7 +361,6 @@ func (i *ManipulationIntegration) DeleteField(ctx context.Context, params domain
 		return nil, fmt.Errorf("field_path cannot be empty")
 	}
 
-	// Create a copy of the item
 	enhancedItem := make(map[string]any)
 	if itemMap, ok := item.(map[string]any); ok {
 		for k, v := range itemMap {
@@ -231,7 +370,6 @@ func (i *ManipulationIntegration) DeleteField(ctx context.Context, params domain
 		return nil, fmt.Errorf("item must be a map[string]any")
 	}
 
-	// Delete the value using the field path parser
 	err = i.fieldParser.DeleteValue(enhancedItem, p.FieldPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete field '%s': %w", p.FieldPath, err)
