@@ -62,6 +62,8 @@ const (
 	IntegrationType_StartupsWatch        IntegrationType = "startups_watch"
 	IntegrationType_Manipulation         IntegrationType = "manipulation"
 	IntegrationType_SplitArray           IntegrationType = "split_array"
+	IntegrationType_FileToItem           IntegrationType = "filetoitem"
+	IntegrationType_BrightData           IntegrationType = "brightdata"
 )
 
 type Integration struct {
