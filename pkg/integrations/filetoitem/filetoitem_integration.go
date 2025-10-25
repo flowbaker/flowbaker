@@ -10,12 +10,6 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
-var (
-	ndjsonContentTypes = []string{"ndjson", "x-ndjson"}
-	ndjsonExtensions   = []string{".ndjson", ".jsonl"}
-	ndjsonContentHints = []string{"\n{"}
-)
-
 type FileToItemIntegrationCreator struct {
 	binder                 domain.IntegrationParameterBinder
 	executorStorageManager domain.ExecutorStorageManager
@@ -41,6 +35,7 @@ type FileToItemIntegration struct {
 	executorStorageManager domain.ExecutorStorageManager
 	workspaceID            string
 	actionManager          *domain.IntegrationActionManager
+	fileParser             *FileParser
 }
 
 type FileToItemIntegrationDependencies struct {
@@ -54,6 +49,7 @@ func NewFileToItemIntegration(deps FileToItemIntegrationDependencies) (*FileToIt
 		binder:                 deps.ParameterBinder,
 		executorStorageManager: deps.ExecutorStorageManager,
 		workspaceID:            deps.WorkspaceID,
+		fileParser:             NewFileParser(),
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
@@ -70,73 +66,6 @@ func (i *FileToItemIntegration) Execute(ctx context.Context, params domain.Integ
 
 type ConvertFileToItemParams struct {
 	File domain.FileItem `json:"file"`
-}
-
-func isNDJSON(content []byte, contentType, fileName string) bool {
-	contentTypeLower := strings.ToLower(contentType)
-	fileNameLower := strings.ToLower(fileName)
-
-	for _, ct := range ndjsonContentTypes {
-		if strings.Contains(contentTypeLower, ct) {
-			return true
-		}
-	}
-
-	for _, ext := range ndjsonExtensions {
-		if strings.HasSuffix(fileNameLower, ext) {
-			return true
-		}
-	}
-
-	contentStr := string(content)
-	for _, hint := range ndjsonContentHints {
-		if strings.Contains(contentStr, hint) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func parseNDJSON(content []byte) ([]domain.Item, error) {
-	var items []domain.Item
-	lines := strings.Split(string(content), "\n")
-
-	for lineNum, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		var item interface{}
-		if err := json.Unmarshal([]byte(line), &item); err != nil {
-			return nil, fmt.Errorf("failed to parse NDJSON line %d: %w", lineNum+1, err)
-		}
-		items = append(items, item)
-	}
-
-	if len(items) == 0 {
-		return nil, fmt.Errorf("NDJSON file is empty")
-	}
-
-	return items, nil
-}
-
-func parseJSON(content []byte) ([]domain.Item, error) {
-	var result interface{}
-	if err := json.Unmarshal(content, &result); err != nil {
-		return nil, err
-	}
-
-	if arr, ok := result.([]interface{}); ok {
-		items := make([]domain.Item, len(arr))
-		for i, item := range arr {
-			items[i] = item
-		}
-		return items, nil
-	}
-
-	return []domain.Item{result}, nil
 }
 
 func (i *FileToItemIntegration) ConvertFileToItem(ctx context.Context, params domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
@@ -165,15 +94,96 @@ func (i *FileToItemIntegration) ConvertFileToItem(ctx context.Context, params do
 		return nil, fmt.Errorf("failed to read file content: %w", err)
 	}
 
-	if isNDJSON(fileContent, p.File.ContentType, p.File.Name) {
-		return parseNDJSON(fileContent)
+	if i.fileParser.IsNDJSON(fileContent, p.File.ContentType, p.File.Name) {
+		return i.fileParser.ParseNDJSON(fileContent)
 	}
 
-	items, err := parseJSON(fileContent)
+	items, err := i.fileParser.ParseJSON(fileContent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse file as JSON (content-type: %s, filename: %s): %w",
 			p.File.ContentType, p.File.Name, err)
 	}
 
 	return items, nil
+}
+
+type FileParser struct {
+	ndjsonContentTypes []string
+	ndjsonExtensions   []string
+	ndjsonContentHints []string
+}
+
+func NewFileParser() *FileParser {
+	return &FileParser{
+		ndjsonContentTypes: []string{"ndjson", "x-ndjson"},
+		ndjsonExtensions:   []string{".ndjson", ".jsonl"},
+		ndjsonContentHints: []string{"\n{"},
+	}
+}
+
+func (fp *FileParser) IsNDJSON(content []byte, contentType, fileName string) bool {
+	contentTypeLower := strings.ToLower(contentType)
+	fileNameLower := strings.ToLower(fileName)
+
+	for _, ct := range fp.ndjsonContentTypes {
+		if strings.Contains(contentTypeLower, ct) {
+			return true
+		}
+	}
+
+	for _, ext := range fp.ndjsonExtensions {
+		if strings.HasSuffix(fileNameLower, ext) {
+			return true
+		}
+	}
+
+	contentStr := string(content)
+	for _, hint := range fp.ndjsonContentHints {
+		if strings.Contains(contentStr, hint) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (fp *FileParser) ParseNDJSON(content []byte) ([]domain.Item, error) {
+	var items []domain.Item
+	lines := strings.Split(string(content), "\n")
+
+	for lineNum, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		var item interface{}
+		if err := json.Unmarshal([]byte(line), &item); err != nil {
+			return nil, fmt.Errorf("failed to parse NDJSON line %d: %w", lineNum+1, err)
+		}
+		items = append(items, item)
+	}
+
+	if len(items) == 0 {
+		return nil, fmt.Errorf("NDJSON file is empty")
+	}
+
+	return items, nil
+}
+
+func (fp *FileParser) ParseJSON(content []byte) ([]domain.Item, error) {
+	var result interface{}
+	if err := json.Unmarshal(content, &result); err != nil {
+		return nil, err
+	}
+
+	if arr, ok := result.([]interface{}); ok {
+		items := make([]domain.Item, len(arr))
+		for i, item := range arr {
+			items[i] = item
+		}
+		return items, nil
+	}
+
+	return []domain.Item{result}, nil
 }
