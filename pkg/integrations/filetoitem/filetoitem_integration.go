@@ -89,6 +89,10 @@ func (i *FileToItemIntegration) ConvertFileToItem(ctx context.Context, params do
 	}
 	defer executionFile.Reader.Close()
 
+	if executionFile.SizeInBytes > 100*1024*1024 {
+		return nil, fmt.Errorf("file is too large to parse (max 100MB)")
+	}
+
 	fileContent, err := io.ReadAll(executionFile.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file content: %w", err)
