@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	IntegrationActionType_ScrapData domain.IntegrationActionType = "scrap_data"
+	IntegrationActionType_Scrape domain.IntegrationActionType = "scrape"
 )
 
 var (
@@ -27,10 +27,10 @@ var (
 		},
 		Actions: []domain.IntegrationAction{
 			{
-				ID:          string(IntegrationActionType_ScrapData),
-				Name:        "Scrap Data",
-				ActionType:  IntegrationActionType_ScrapData,
-				Description: "Trigger an async scraping job and wait for results. Returns scraped data as a file.",
+				ID:          string(IntegrationActionType_Scrape),
+				Name:        "Scrape",
+				ActionType:  IntegrationActionType_Scrape,
+				Description: "Trigger an async scraping job and wait for results. Returns scraped data as a file item.",
 				SupportedContexts: []domain.ActionUsageContext{
 					domain.UsageContextWorkflow,
 				},

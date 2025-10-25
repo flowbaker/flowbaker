@@ -15,10 +15,9 @@ import (
 )
 
 const (
-	baseURL            = "https://api.brightdata.com/datasets/v3"
-	defaultTimeout     = 60 * time.Second
-	pollingInterval    = 5 * time.Second
-	maxPollingAttempts = 12 // 12 * 5 seconds = 60 seconds
+	baseURL         = "https://api.brightdata.com/datasets/v3"
+	defaultTimeout  = 60 * time.Second
+	pollingInterval = 5 * time.Second
 )
 
 type BrightDataCredential struct {
@@ -76,7 +75,7 @@ func NewBrightDataIntegration(deps BrightDataIntegrationDependencies) (*BrightDa
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
-		AddPerItem(IntegrationActionType_ScrapData, integration.ScrapData)
+		AddPerItem(IntegrationActionType_Scrape, integration.Scrape)
 
 	integration.actionManager = actionManager
 
@@ -87,12 +86,12 @@ func (i *BrightDataIntegration) Execute(ctx context.Context, params domain.Integ
 	return i.actionManager.Run(ctx, params.ActionType, params)
 }
 
-type ScrapDataParams struct {
-	DatasetID             string      `json:"dataset_id"`
-	BodyType              string      `json:"body_type"`
-	JSONBody              interface{} `json:"json_body"`
-	TextBody              string      `json:"text_body"`
-	PollingTimeoutSeconds *int        `json:"polling_timeout_seconds"`
+type ScrapeParams struct {
+	DatasetID             string `json:"dataset_id"`
+	BodyType              string `json:"body_type"`
+	JSONBody              string `json:"json_body"`
+	TextBody              string `json:"text_body"`
+	PollingTimeoutSeconds *int   `json:"polling_timeout_seconds"`
 }
 
 type TriggerResponse struct {
@@ -103,8 +102,8 @@ type ProgressResponse struct {
 	Status string `json:"status"`
 }
 
-func (i *BrightDataIntegration) ScrapData(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
-	p := ScrapDataParams{}
+func (i *BrightDataIntegration) Scrape(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	p := ScrapeParams{}
 
 	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
 	if err != nil {
@@ -152,30 +151,13 @@ func (i *BrightDataIntegration) ScrapData(ctx context.Context, params domain.Int
 	return response, nil
 }
 
-func (i *BrightDataIntegration) triggerScrapingJob(ctx context.Context, apiToken string, p ScrapDataParams) (string, error) {
+func (i *BrightDataIntegration) triggerScrapingJob(ctx context.Context, apiToken string, p ScrapeParams) (string, error) {
 	url := fmt.Sprintf("%s/trigger?dataset_id=%s", baseURL, p.DatasetID)
 
 	var bodyReader io.Reader
-	if p.BodyType == "json" && p.JSONBody != nil {
-		var data []byte
-		var err error
 
-		if strBody, ok := p.JSONBody.(string); ok {
-			var parsed interface{}
-			if err := json.Unmarshal([]byte(strBody), &parsed); err == nil {
-				data, _ = json.Marshal(parsed)
-			} else {
-				data, _ = json.Marshal(p.JSONBody)
-			}
-		} else {
-			data, err = json.Marshal(p.JSONBody)
-		}
-
-		if err != nil {
-			return "", fmt.Errorf("failed to marshal JSON body: %w", err)
-		}
-
-		bodyReader = bytes.NewReader(data)
+	if p.BodyType == "json" {
+		bodyReader = bytes.NewReader([]byte(p.JSONBody))
 	} else if p.BodyType == "text" && p.TextBody != "" {
 		bodyReader = strings.NewReader(p.TextBody)
 	}
@@ -186,11 +168,13 @@ func (i *BrightDataIntegration) triggerScrapingJob(ctx context.Context, apiToken
 	}
 
 	req.Header.Set("Authorization", "Bearer "+apiToken)
+
 	if bodyReader != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute request: %w", err)
@@ -207,6 +191,7 @@ func (i *BrightDataIntegration) triggerScrapingJob(ctx context.Context, apiToken
 	}
 
 	var triggerResp TriggerResponse
+
 	if err := json.Unmarshal(body, &triggerResp); err != nil {
 		return "", fmt.Errorf("failed to parse trigger response: %w", err)
 	}
@@ -300,7 +285,11 @@ func (i *BrightDataIntegration) downloadSnapshot(ctx context.Context, apiToken, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return domain.FileItem{}, fmt.Errorf("failed to read response body: %w", err)
+		}
+
 		return domain.FileItem{}, fmt.Errorf("snapshot request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
@@ -318,6 +307,7 @@ func (i *BrightDataIntegration) downloadSnapshot(ctx context.Context, apiToken, 
 	}
 
 	contentType := resp.Header.Get("Content-Type")
+
 	if contentType == "" {
 		contentType = "application/x-ndjson"
 	}
