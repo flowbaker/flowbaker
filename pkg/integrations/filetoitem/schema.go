@@ -13,7 +13,7 @@ var (
 
 	schema domain.Integration = domain.Integration{
 		ID:                   domain.IntegrationType_FileToItem,
-		Name:                 "FileToItem",
+		Name:                 "File To Item",
 		Description:          "Convert JSON and NDJSON files to items",
 		IsCredentialOptional: true,
 		Actions: []domain.IntegrationAction{
