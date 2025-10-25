@@ -389,10 +389,36 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 		return IntegrationOutput{}, err
 	}
 
-	itemsByInputOrder := make([][]Item, 0, len(itemsByInputID))
+	maxInputOrder := -1
 
-	for _, inputItems := range itemsByInputID {
-		itemsByInputOrder = append(itemsByInputOrder, inputItems)
+	for inputID := range itemsByInputID {
+		inputOrder, err := GetInputOrder(inputID)
+		if err != nil {
+			return IntegrationOutput{}, err
+		}
+
+		if inputOrder > maxInputOrder {
+			maxInputOrder = inputOrder
+		}
+	}
+
+	itemsByInputOrder := make([][]Item, maxInputOrder+1)
+
+	for inputID, inputItems := range itemsByInputID {
+		inputOrder, err := GetInputOrder(inputID)
+		if err != nil {
+			return IntegrationOutput{}, err
+		}
+
+		itemsForInput := itemsByInputOrder[inputOrder]
+
+		if len(itemsForInput) == 0 {
+			itemsForInput = make([]Item, 0)
+		}
+
+		itemsForInput = append(itemsForInput, inputItems...)
+
+		itemsByInputOrder[inputOrder] = itemsForInput
 	}
 
 	outputs, err := actionFuncMultiInput(ctx, params, itemsByInputOrder)
@@ -415,7 +441,6 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 		},
 	}, nil
 }
-
 func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actionType IntegrationActionType, params IntegrationInput) (IntegrationOutput, error) {
 	actionFuncPerItemRoutable, ok := m.GetPerItemRoutable(actionType)
 	if !ok {
