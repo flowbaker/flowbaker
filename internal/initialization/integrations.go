@@ -6,7 +6,9 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/integrations/ai_agent"
 	"github.com/flowbaker/flowbaker/pkg/integrations/base64"
+	"github.com/flowbaker/flowbaker/pkg/integrations/brightdata"
 	claudeintegration "github.com/flowbaker/flowbaker/pkg/integrations/claude"
+	"github.com/flowbaker/flowbaker/pkg/integrations/filetoitem"
 	"github.com/flowbaker/flowbaker/pkg/integrations/condition"
 	cronintegration "github.com/flowbaker/flowbaker/pkg/integrations/cron"
 	"github.com/flowbaker/flowbaker/pkg/integrations/discord"
@@ -176,6 +178,14 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_Base64,
 		NewCreator:      base64.NewBase64IntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_FileToItem,
+		NewCreator:      filetoitem.NewFileToItemIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_BrightData,
+		NewCreator:      brightdata.NewBrightDataIntegrationCreator,
 	},
 	{
 		IntegrationType: domain.IntegrationType_ContentClassifier,
