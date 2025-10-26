@@ -27,7 +27,7 @@ var (
 					{
 						Key:                 "field_path",
 						Name:                "Field Path",
-						Description:         "The path to the field to convert to a single item. If not provided, it gonna named as 'items' by default",
+						Description:         "The path to the field to convert to a single item. If not provided, it will be named as 'items' by default",
 						Required:            false,
 						Type:                domain.NodePropertyType_String,
 						DragAndDropBehavior: domain.DragAndDropBehavior_BasicPath,
