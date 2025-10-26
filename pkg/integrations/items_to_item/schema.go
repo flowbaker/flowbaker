@@ -25,12 +25,11 @@ var (
 				},
 				Properties: []domain.NodeProperty{
 					{
-						Key:                 "field_path",
-						Name:                "Field Path",
-						Description:         "The path to the field to convert to a single item. If not provided, it will be named as 'items' by default",
-						Required:            false,
-						Type:                domain.NodePropertyType_String,
-						DragAndDropBehavior: domain.DragAndDropBehavior_BasicPath,
+						Key:         "field_name",
+						Name:        "Field Name",
+						Description: "The name of the field to convert to a single item. If not provided, it will be named as 'items' by default",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
 					},
 				},
 			},

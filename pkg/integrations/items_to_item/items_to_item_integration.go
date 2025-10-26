@@ -2,6 +2,7 @@ package items_to_item
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
@@ -37,7 +38,7 @@ func NewItemsToItemIntegration(deps ItemsToItemIntegrationDependencies) (*ItemsT
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
-		AddItemsToItem(IntegrationActionType_ItemsToItem, integration.ItemsToItem)
+		Add(IntegrationActionType_ItemsToItem, integration.ItemsToItem)
 
 	integration.actionManager = actionManager
 
@@ -49,23 +50,56 @@ func (i *ItemsToItemIntegration) Execute(ctx context.Context, params domain.Inte
 }
 
 type ItemsToItemParams struct {
-	FieldPath string `json:"field_path"`
+	FieldName string `json:"field_name"`
 }
 
-func (i *ItemsToItemIntegration) ItemsToItem(ctx context.Context, params domain.IntegrationInput, items []domain.Item) (domain.Item, error) {
+type itemWithFieldName struct {
+	Item      domain.Item
+	FieldName string
+}
+
+func (i *ItemsToItemIntegration) ItemsToItem(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	p := ItemsToItemParams{}
 
-	err := i.binder.BindToStruct(ctx, items[0], &p, params.IntegrationParams.Settings)
+	items, err := params.GetAllItems()
 	if err != nil {
-		return nil, err
+		return domain.IntegrationOutput{}, err
 	}
 
-	if p.FieldPath == "" {
-		p.FieldPath = "items"
+	itemWithFieldNames := make([]itemWithFieldName, 0)
+
+	for _, item := range items {
+		err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+		if err != nil {
+			return domain.IntegrationOutput{}, err
+		}
+
+		itemWithFieldName := itemWithFieldName{
+			Item:      item,
+			FieldName: p.FieldName,
+		}
+
+		itemWithFieldNames = append(itemWithFieldNames, itemWithFieldName)
 	}
 
-	return map[string]any{
-		p.FieldPath: items,
-		"count":     len(items),
+	outputItem := make(map[string][]domain.Item)
+
+	for _, itemWithFieldName := range itemWithFieldNames {
+		if itemWithFieldName.FieldName == "" {
+			itemWithFieldName.FieldName = "items"
+		}
+
+		outputItem[itemWithFieldName.FieldName] = append(outputItem[itemWithFieldName.FieldName], itemWithFieldName.Item)
+	}
+
+	resultJSON, err := json.Marshal(outputItem)
+	if err != nil {
+		return domain.IntegrationOutput{}, err
+	}
+
+	return domain.IntegrationOutput{
+		ResultJSONByOutputID: []domain.Payload{
+			resultJSON,
+		},
 	}, nil
 }

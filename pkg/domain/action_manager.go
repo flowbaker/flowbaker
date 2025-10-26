@@ -17,7 +17,6 @@ type ActionFuncPerItemMulti func(ctx context.Context, params IntegrationInput, i
 type ActionFuncPerItemWithFile func(ctx context.Context, params IntegrationInput, item Item) (ItemWithFile, error)
 type ActionFuncPerItemMultiWithFile func(ctx context.Context, params IntegrationInput, item Item) ([]ItemWithFile, error)
 type ActionFuncMultiInput func(ctx context.Context, params IntegrationInput, items [][]Item) ([]Item, error)
-type ActionFuncItemsToItem func(ctx context.Context, params IntegrationInput, items []Item) (Item, error)
 type ActionFuncPerItemRoutable func(ctx context.Context, params IntegrationInput, item Item) (RoutableOutput, error)
 type PeekFunc func(ctx context.Context, params PeekParams) (PeekResult, error)
 
@@ -34,7 +33,6 @@ type IntegrationActionManager struct {
 	actionFuncsPerItemWithFile map[IntegrationActionType]ActionFuncPerItemWithFile
 	actionFuncsMultiInput      map[IntegrationActionType]ActionFuncMultiInput
 	actionFuncsPerItemRoutable map[IntegrationActionType]ActionFuncPerItemRoutable
-	actionFuncsItemsToItem     map[IntegrationActionType]ActionFuncItemsToItem
 }
 
 func NewIntegrationActionManager() *IntegrationActionManager {
@@ -45,7 +43,6 @@ func NewIntegrationActionManager() *IntegrationActionManager {
 		actionFuncsPerItemWithFile: make(map[IntegrationActionType]ActionFuncPerItemWithFile),
 		actionFuncsMultiInput:      make(map[IntegrationActionType]ActionFuncMultiInput),
 		actionFuncsPerItemRoutable: make(map[IntegrationActionType]ActionFuncPerItemRoutable),
-		actionFuncsItemsToItem:     make(map[IntegrationActionType]ActionFuncItemsToItem),
 	}
 }
 
@@ -108,15 +105,6 @@ func (m *IntegrationActionManager) AddMultiInput(actionType IntegrationActionTyp
 	return m
 }
 
-func (m *IntegrationActionManager) AddItemsToItem(actionType IntegrationActionType, actionFunc ActionFuncItemsToItem) *IntegrationActionManager {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	m.actionFuncsItemsToItem[actionType] = actionFunc
-
-	return m
-}
-
 func (m *IntegrationActionManager) GetMultiInput(actionType IntegrationActionType) (ActionFuncMultiInput, bool) {
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
@@ -138,14 +126,6 @@ func (m *IntegrationActionManager) GetPerItemMulti(actionType IntegrationActionT
 	defer m.mtx.RUnlock()
 
 	actionFunc, ok := m.actionFuncsPerItemMulti[actionType]
-	return actionFunc, ok
-}
-
-func (m *IntegrationActionManager) GetItemsToItem(actionType IntegrationActionType) (ActionFuncItemsToItem, bool) {
-	m.mtx.RLock()
-	defer m.mtx.RUnlock()
-
-	actionFunc, ok := m.actionFuncsItemsToItem[actionType]
 	return actionFunc, ok
 }
 
@@ -174,10 +154,6 @@ func (m *IntegrationActionManager) Run(ctx context.Context, actionType Integrati
 
 	if _, ok := m.GetPerItemMulti(actionType); ok {
 		return m.RunPerItemMulti(ctx, actionType, params)
-	}
-
-	if _, ok := m.GetItemsToItem(actionType); ok {
-		return m.RunItemsToItem(ctx, actionType, params)
 	}
 
 	if _, ok := m.GetPerItemWithFile(actionType); ok {
@@ -544,39 +520,6 @@ func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actio
 	return IntegrationOutput{
 		ResultJSONByOutputID: resultJSONs,
 	}, nil
-}
-
-func (m *IntegrationActionManager) RunItemsToItem(ctx context.Context, actionType IntegrationActionType, params IntegrationInput) (IntegrationOutput, error) {
-	actionFuncItemsToItem, ok := m.GetItemsToItem(actionType)
-	if !ok {
-		return IntegrationOutput{}, fmt.Errorf("action not found")
-	}
-
-	itemsByInputID, err := params.GetItemsByInputID()
-	if err != nil {
-		return IntegrationOutput{}, err
-	}
-
-	items := make([]Item, 0)
-	for _, inputItems := range itemsByInputID {
-		items = append(items, inputItems...)
-	}
-
-	output, err := actionFuncItemsToItem(ctx, params, items)
-	if err != nil {
-		return IntegrationOutput{}, err
-	}
-
-	outputItems := []Item{output}
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return IntegrationOutput{}, err
-	}
-
-	return IntegrationOutput{
-		ResultJSONByOutputID: []Payload{
-			resultJSON,
-		}}, nil
 }
 
 func GetInputOrder(inputID string) (int, error) {
