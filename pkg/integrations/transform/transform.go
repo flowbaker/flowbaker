@@ -50,7 +50,8 @@ func NewTransformIntegration(deps TransformIntegrationDependencies) (*TransformI
 		AddMultiInput(IntegrationActionType_LeftJoin, integration.LeftJoin).
 		AddMultiInput(IntegrationActionType_RightJoin, integration.RightJoin).
 		AddMultiInput(IntegrationActionType_ExcludeMatching, integration.ReverseInnerJoin).
-		AddMultiInput(IntegrationActionType_Append, integration.AppendStreams)
+		AddMultiInput(IntegrationActionType_Append, integration.AppendStreams).
+		AddMultiInput(IntegrationActionType_MergeByOrder, integration.MergeByOrder)
 
 	actionFuncs := map[domain.IntegrationActionType]func(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error){}
 
@@ -612,6 +613,98 @@ func (i *TransformIntegration) ReverseInnerJoin(ctx context.Context, params doma
 	for index, item := range secondInputItems {
 		if !matchedRight[index] {
 			outputItems = append(outputItems, item)
+		}
+	}
+
+	return outputItems, nil
+}
+
+type MergeByOrderParams struct {
+	HandleCollisions bool   `json:"handle_collisions"`
+	UnmatchedItems   string `json:"unmatched_items"`
+}
+
+type itemWithMergeParams struct {
+	item             domain.Item
+	index            int
+	handleCollisions bool
+	unmatchedItems   string
+}
+
+func (i *TransformIntegration) MergeByOrder(ctx context.Context, params domain.IntegrationInput, itemsByInput [][]domain.Item) ([]domain.Item, error) {
+	if len(itemsByInput) != 2 {
+		return nil, fmt.Errorf("merge by order requires exactly 2 inputs, got %d", len(itemsByInput))
+	}
+
+	firstInputItems := itemsByInput[0]
+	secondInputItems := itemsByInput[1]
+
+	leftItemsWithParams := make([]itemWithMergeParams, 0, len(firstInputItems))
+
+	for index, item := range firstInputItems {
+		var mergeParams MergeByOrderParams
+
+		if err := i.binder.BindToStruct(ctx, item, &mergeParams, params.IntegrationParams.Settings); err != nil {
+			return nil, fmt.Errorf("left item at index %d failed to bind merge params: %w", index, err)
+		}
+
+		leftItemsWithParams = append(leftItemsWithParams, itemWithMergeParams{
+			item:             item,
+			index:            index,
+			handleCollisions: mergeParams.HandleCollisions,
+			unmatchedItems:   mergeParams.UnmatchedItems,
+		})
+	}
+
+	rightItemsWithParams := make([]itemWithMergeParams, 0, len(secondInputItems))
+
+	for index, item := range secondInputItems {
+		var mergeParams MergeByOrderParams
+
+		if err := i.binder.BindToStruct(ctx, item, &mergeParams, params.IntegrationParams.Settings); err != nil {
+			return nil, fmt.Errorf("right item at index %d failed to bind merge params: %w", index, err)
+		}
+
+		rightItemsWithParams = append(rightItemsWithParams, itemWithMergeParams{
+			item:             item,
+			index:            index,
+			handleCollisions: mergeParams.HandleCollisions,
+			unmatchedItems:   mergeParams.UnmatchedItems,
+		})
+	}
+
+	minLen := len(leftItemsWithParams)
+
+	if len(rightItemsWithParams) < minLen {
+		minLen = len(rightItemsWithParams)
+	}
+
+	var outputItems []domain.Item
+
+	for idx := 0; idx < minLen; idx++ {
+		merged := i.mergeItems(leftItemsWithParams[idx].item, rightItemsWithParams[idx].item, leftItemsWithParams[idx].handleCollisions)
+		outputItems = append(outputItems, merged)
+	}
+
+	for idx := minLen; idx < len(leftItemsWithParams); idx++ {
+		unmatchedItems := leftItemsWithParams[idx].unmatchedItems
+		if unmatchedItems == "" {
+			unmatchedItems = "truncate"
+		}
+
+		if unmatchedItems == "keep_all" {
+			outputItems = append(outputItems, leftItemsWithParams[idx].item)
+		}
+	}
+
+	for idx := minLen; idx < len(rightItemsWithParams); idx++ {
+		unmatchedItems := rightItemsWithParams[idx].unmatchedItems
+		if unmatchedItems == "" {
+			unmatchedItems = "truncate"
+		}
+
+		if unmatchedItems == "keep_all" {
+			outputItems = append(outputItems, rightItemsWithParams[idx].item)
 		}
 	}
 

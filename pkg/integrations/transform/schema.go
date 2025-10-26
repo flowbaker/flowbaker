@@ -11,6 +11,7 @@ const (
 	IntegrationActionType_LeftJoin        domain.IntegrationActionType = "left_join"
 	IntegrationActionType_RightJoin       domain.IntegrationActionType = "right_join"
 	IntegrationActionType_ExcludeMatching domain.IntegrationActionType = "exclude_matching"
+	IntegrationActionType_MergeByOrder    domain.IntegrationActionType = "merge_by_order"
 )
 
 var (
@@ -146,6 +147,44 @@ var (
 					},
 				},
 				Description: "Merges two input streams into a single output stream",
+			},
+			{
+				ID:         string(IntegrationActionType_MergeByOrder),
+				Name:       "Merge by Order",
+				ActionType: IntegrationActionType_MergeByOrder,
+				SupportedContexts: []domain.ActionUsageContext{
+					domain.UsageContextWorkflow,
+				},
+				Properties: []domain.NodeProperty{
+					{
+						Key:         "unmatched_items",
+						Name:        "Unmatched Items Behavior",
+						Description: "How to handle items when input lengths don't match",
+						Type:        domain.NodePropertyType_String,
+						Options: []domain.NodePropertyOption{
+							{Label: "Truncate", Value: "truncate", Description: "Stop at shorter length, ignore extra items"},
+							{Label: "Keep All", Value: "keep_all", Description: "Keep unmatched items from both inputs"},
+						},
+					},
+					{
+						Key:         "handle_collisions",
+						Name:        "Handle Collisions",
+						Description: "Whether to handle collisions",
+						Type:        domain.NodePropertyType_Boolean,
+					},
+				},
+				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
+					domain.UsageContextWorkflow: {
+						Input: []domain.NodeHandle{
+							{Type: domain.NodeHandleTypeDefault, Text: "Input 1"},
+							{Type: domain.NodeHandleTypeDefault, Text: "Input 2"},
+						},
+						Output: []domain.NodeHandle{
+							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
+						},
+					},
+				},
+				Description: "Merges items from two inputs by their order (index position)",
 			},
 		},
 	}
