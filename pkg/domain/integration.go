@@ -64,6 +64,7 @@ const (
 	IntegrationType_SplitArray           IntegrationType = "split_array"
 	IntegrationType_FileToItem           IntegrationType = "filetoitem"
 	IntegrationType_BrightData           IntegrationType = "brightdata"
+	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
 )
 
 type Integration struct {
