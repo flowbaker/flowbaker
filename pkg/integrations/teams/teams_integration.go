@@ -11,8 +11,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/flowbaker/flowbaker/internal/managers"
 	"github.com/flowbaker/flowbaker/pkg/domain"
-	auth "github.com/microsoft/kiota-authentication-azure-go"
 	absser "github.com/microsoft/kiota-abstractions-go/serialization"
+	auth "github.com/microsoft/kiota-authentication-azure-go"
 	jsonser "github.com/microsoft/kiota-serialization-json-go"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -141,7 +141,8 @@ func (i *TeamsIntegration) SendChannelMessage(ctx context.Context, input domain.
 		return nil, fmt.Errorf("message is required")
 	}
 
-	teamID, channelID, err := parseChannelID(params.ChannelID)
+	channelParser := &TeamsChannelIdParser{}
+	teamID, channelID, err := channelParser.ParseChannelID(params.ChannelID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse channel_id: %w", err)
 	}
@@ -159,11 +160,13 @@ func (i *TeamsIntegration) SendChannelMessage(ctx context.Context, input domain.
 
 	result, err := i.graphClient.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().Post(ctx, requestBody, nil)
 	if err != nil {
-		errorCode, errorMessage, _ := extractODataErrorDetails(err)
-		return nil, fmt.Errorf("failed to send message to Teams channel: [%s] %s", errorCode, errorMessage)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
+		return nil, fmt.Errorf("failed to send message to Teams channel: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
-	return convertToRawJSON(result)
+	jsonParser := &JsonParser{}
+	return jsonParser.ConvertToRawJSON(result)
 }
 
 func (i *TeamsIntegration) SendChatMessage(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -192,11 +195,13 @@ func (i *TeamsIntegration) SendChatMessage(ctx context.Context, input domain.Int
 
 	result, err := i.graphClient.Chats().ByChatId(params.ChatID).Messages().Post(ctx, requestBody, nil)
 	if err != nil {
-		errorCode, errorMessage, _ := extractODataErrorDetails(err)
-		return nil, fmt.Errorf("failed to send message to Teams chat: [%s] %s", errorCode, errorMessage)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
+		return nil, fmt.Errorf("failed to send message to Teams chat: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
-	return convertToRawJSON(result)
+	jsonParser := &JsonParser{}
+	return jsonParser.ConvertToRawJSON(result)
 }
 
 func (i *TeamsIntegration) CreateChannel(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -227,12 +232,14 @@ func (i *TeamsIntegration) CreateChannel(ctx context.Context, input domain.Integ
 
 	result, err := i.graphClient.Teams().ByTeamId(params.TeamID).Channels().Post(ctx, requestBody, nil)
 	if err != nil {
-		errorCode, errorMessage, _ := extractODataErrorDetails(err)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
 
-		return nil, fmt.Errorf("failed to create Teams channel: [%s] %s", errorCode, errorMessage)
+		return nil, fmt.Errorf("failed to create Teams channel: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
-	return convertToRawJSON(result)
+	jsonParser := &JsonParser{}
+	return jsonParser.ConvertToRawJSON(result)
 }
 
 func (i *TeamsIntegration) CreateTeam(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -269,9 +276,10 @@ func (i *TeamsIntegration) CreateTeam(ctx context.Context, input domain.Integrat
 
 	group, err := i.graphClient.Groups().Post(ctx, groupRequestBody, nil)
 	if err != nil {
-		errorCode, errorMessage, _ := extractODataErrorDetails(err)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
 
-		return nil, fmt.Errorf("failed to create Microsoft 365 Group: [%s] %s", errorCode, errorMessage)
+		return nil, fmt.Errorf("failed to create Microsoft 365 Group: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
 	if group.GetId() == nil {
@@ -296,12 +304,14 @@ func (i *TeamsIntegration) CreateTeam(ctx context.Context, input domain.Integrat
 
 	team, err := i.graphClient.Groups().ByGroupId(groupID).Team().Put(ctx, teamRequestBody, nil)
 	if err != nil {
-		errorCode, errorMessage, _ := extractODataErrorDetails(err)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
 
-		return nil, fmt.Errorf("failed to convert group to Team: [%s] %s", errorCode, errorMessage)
+		return nil, fmt.Errorf("failed to convert group to Team: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
-	return convertToRawJSON(team)
+	jsonParser := &JsonParser{}
+	return jsonParser.ConvertToRawJSON(team)
 }
 
 func (i *TeamsIntegration) DeleteChannel(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -314,25 +324,27 @@ func (i *TeamsIntegration) DeleteChannel(ctx context.Context, input domain.Integ
 		return nil, fmt.Errorf("channel_id is required")
 	}
 
-	teamID, channelID, err := parseChannelID(params.ChannelID)
+	channelParser := &TeamsChannelIdParser{}
+	teamID, channelID, err := channelParser.ParseChannelID(params.ChannelID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse channel_id: %w", err)
 	}
 
 	err = i.graphClient.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Delete(ctx, nil)
 	if err != nil {
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
 
 		log.Error().
 			Err(err).
 			Str("team_id", teamID).
 			Str("channel_id", channelID).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
+			Str("error_code", errDetails.Code).
+			Str("error_message", errDetails.Message).
+			Str("error_details", errDetails.Details).
 			Msg("Failed to delete Teams channel")
 
-		return nil, fmt.Errorf("failed to delete Teams channel: [%s] %s", errorCode, errorMessage)
+		return nil, fmt.Errorf("failed to delete Teams channel: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
 	return map[string]interface{}{
@@ -357,21 +369,23 @@ func (i *TeamsIntegration) GetChannel(ctx context.Context, input domain.Integrat
 
 	result, err := i.graphClient.Teams().ByTeamId(params.TeamID).Channels().ByChannelId(params.ChannelID).Get(ctx, nil)
 	if err != nil {
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
 
 		log.Error().
 			Err(err).
 			Str("team_id", params.TeamID).
 			Str("channel_id", params.ChannelID).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
+			Str("error_code", errDetails.Code).
+			Str("error_message", errDetails.Message).
+			Str("error_details", errDetails.Details).
 			Msg("Failed to get Teams channel")
 
-		return nil, fmt.Errorf("failed to get Teams channel: [%s] %s", errorCode, errorMessage)
+		return nil, fmt.Errorf("failed to get Teams channel: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
-	return convertToRawJSON(result)
+	jsonParser := &JsonParser{}
+	return jsonParser.ConvertToRawJSON(result)
 }
 
 func (i *TeamsIntegration) GetManyChannels(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
@@ -386,24 +400,26 @@ func (i *TeamsIntegration) GetManyChannels(ctx context.Context, input domain.Int
 
 	result, err := i.graphClient.Teams().ByTeamId(params.TeamID).Channels().Get(ctx, nil)
 	if err != nil {
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
 
 		log.Error().
 			Err(err).
 			Str("team_id", params.TeamID).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
+			Str("error_code", errDetails.Code).
+			Str("error_message", errDetails.Message).
+			Str("error_details", errDetails.Details).
 			Msg("Failed to get Teams channels")
 
-		return nil, fmt.Errorf("failed to get Teams channels: [%s] %s", errorCode, errorMessage)
+		return nil, fmt.Errorf("failed to get Teams channels: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
 	if result != nil && result.GetValue() != nil {
 		channels := result.GetValue()
 		items := make([]domain.Item, 0, len(channels))
+		jsonParser := &JsonParser{}
 		for _, channel := range channels {
-			channelMap, err := convertToRawJSON(channel)
+			channelMap, err := jsonParser.ConvertToRawJSON(channel)
 			if err != nil {
 				log.Warn().Err(err).Msg("Failed to convert channel to JSON")
 				continue
@@ -439,21 +455,23 @@ func (i *TeamsIntegration) UpdateChannel(ctx context.Context, input domain.Integ
 
 	result, err := i.graphClient.Teams().ByTeamId(params.TeamID).Channels().ByChannelId(params.ChannelID).Patch(ctx, requestBody, nil)
 	if err != nil {
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
 
 		log.Error().
 			Err(err).
 			Str("team_id", params.TeamID).
 			Str("channel_id", params.ChannelID).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
+			Str("error_code", errDetails.Code).
+			Str("error_message", errDetails.Message).
+			Str("error_details", errDetails.Details).
 			Msg("Failed to update Teams channel")
 
-		return nil, fmt.Errorf("failed to update Teams channel: [%s] %s", errorCode, errorMessage)
+		return nil, fmt.Errorf("failed to update Teams channel: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
-	return convertToRawJSON(result)
+	jsonParser := &JsonParser{}
+	return jsonParser.ConvertToRawJSON(result)
 }
 
 func (i *TeamsIntegration) GetChannelMessages(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
@@ -466,32 +484,35 @@ func (i *TeamsIntegration) GetChannelMessages(ctx context.Context, input domain.
 		return nil, fmt.Errorf("channel_id is required")
 	}
 
-	teamID, channelID, err := parseChannelID(params.ChannelID)
+	channelParser := &TeamsChannelIdParser{}
+	teamID, channelID, err := channelParser.ParseChannelID(params.ChannelID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse channel_id: %w", err)
 	}
 
 	result, err := i.graphClient.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().Get(ctx, nil)
 	if err != nil {
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
 
 		log.Error().
 			Err(err).
 			Str("team_id", teamID).
 			Str("channel_id", channelID).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
+			Str("error_code", errDetails.Code).
+			Str("error_message", errDetails.Message).
+			Str("error_details", errDetails.Details).
 			Msg("Failed to get channel messages")
 
-		return nil, fmt.Errorf("failed to get channel messages: [%s] %s", errorCode, errorMessage)
+		return nil, fmt.Errorf("failed to get channel messages: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
 	if result != nil && result.GetValue() != nil {
 		messages := result.GetValue()
 		items := make([]domain.Item, 0, len(messages))
+		jsonParser := &JsonParser{}
 		for _, message := range messages {
-			messageMap, err := convertToRawJSON(message)
+			messageMap, err := jsonParser.ConvertToRawJSON(message)
 			if err != nil {
 				log.Warn().Err(err).Msg("Failed to convert message to JSON")
 				continue
@@ -519,21 +540,23 @@ func (i *TeamsIntegration) GetChatMessage(ctx context.Context, input domain.Inte
 
 	result, err := i.graphClient.Chats().ByChatId(params.ChatID).Messages().ByChatMessageId(params.MessageID).Get(ctx, nil)
 	if err != nil {
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
 
 		log.Error().
 			Err(err).
 			Str("chat_id", params.ChatID).
 			Str("message_id", params.MessageID).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
+			Str("error_code", errDetails.Code).
+			Str("error_message", errDetails.Message).
+			Str("error_details", errDetails.Details).
 			Msg("Failed to get chat message")
 
-		return nil, fmt.Errorf("failed to get chat message: [%s] %s", errorCode, errorMessage)
+		return nil, fmt.Errorf("failed to get chat message: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
-	return convertToRawJSON(result)
+	jsonParser := &JsonParser{}
+	return jsonParser.ConvertToRawJSON(result)
 }
 
 func (i *TeamsIntegration) GetManyChatMessages(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
@@ -548,24 +571,26 @@ func (i *TeamsIntegration) GetManyChatMessages(ctx context.Context, input domain
 
 	result, err := i.graphClient.Chats().ByChatId(params.ChatID).Messages().Get(ctx, nil)
 	if err != nil {
-		errorCode, errorMessage, errorDetails := extractODataErrorDetails(err)
+		errorParser := &ODataErrorParser{}
+		errDetails := errorParser.ParseError(err)
 
 		log.Error().
 			Err(err).
 			Str("chat_id", params.ChatID).
-			Str("error_code", errorCode).
-			Str("error_message", errorMessage).
-			Str("error_details", errorDetails).
+			Str("error_code", errDetails.Code).
+			Str("error_message", errDetails.Message).
+			Str("error_details", errDetails.Details).
 			Msg("Failed to get chat messages")
 
-		return nil, fmt.Errorf("failed to get chat messages: [%s] %s", errorCode, errorMessage)
+		return nil, fmt.Errorf("failed to get chat messages: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
 	if result != nil && result.GetValue() != nil {
 		messages := result.GetValue()
 		items := make([]domain.Item, 0, len(messages))
+		jsonParser := &JsonParser{}
 		for _, message := range messages {
-			messageMap, err := convertToRawJSON(message)
+			messageMap, err := jsonParser.ConvertToRawJSON(message)
 			if err != nil {
 				log.Warn().Err(err).Msg("Failed to convert message to JSON")
 				continue
@@ -680,8 +705,13 @@ func (i *TeamsIntegration) PeekChats(ctx context.Context, params domain.PeekPara
 		}
 
 		chatID := *chat.GetId()
-		chatType := i.getChatType(chat)
-		chatName := i.buildChatName(ctx, chat, chatID, chatType)
+		chatBuilder := &ChatNameBuilder{graphClient: i.graphClient}
+		chatType := chatBuilder.GetChatType(chat)
+		chatName := chatBuilder.BuildChatName(ctx, BuildChatNameParams{
+			Chat:     chat,
+			ChatID:   chatID,
+			ChatType: chatType,
+		})
 
 		results = append(results, domain.PeekResultItem{
 			Key:     chatID,
@@ -693,134 +723,38 @@ func (i *TeamsIntegration) PeekChats(ctx context.Context, params domain.PeekPara
 	return domain.PeekResult{Result: results}, nil
 }
 
-func (i *TeamsIntegration) getChatType(chat models.Chatable) string {
-	if chat.GetChatType() == nil {
-		return "Chat"
-	}
-
-	switch *chat.GetChatType() {
-	case models.ONEONONE_CHATTYPE:
-		return "1:1"
-	case models.GROUP_CHATTYPE:
-		return "Group"
-	case models.MEETING_CHATTYPE:
-		return "Meeting"
-	default:
-		return "Chat"
-	}
+type ODataErrorDetails struct {
+	Code    string
+	Message string
+	Details string
 }
 
-func (i *TeamsIntegration) buildChatName(ctx context.Context, chat models.Chatable, chatID, chatType string) string {
-	if topic := chat.GetTopic(); topic != nil && *topic != "" {
-		return fmt.Sprintf("[%s] %s", chatType, *topic)
+type ODataErrorParser struct{}
+
+func (p *ODataErrorParser) ParseError(err error) ODataErrorDetails {
+	details := ODataErrorDetails{
+		Code:    "UnknownError",
+		Message: err.Error(),
+		Details: "",
 	}
 
-	memberNames := i.getChatMemberNames(ctx, chatID)
-	if len(memberNames) == 0 {
-		return fmt.Sprintf("[%s] Chat %s", chatType, chatID[:8])
-	}
-
-	if len(memberNames) > 3 {
-		return fmt.Sprintf("[%s] %s and %d others", chatType, strings.Join(memberNames[:3], ", "), len(memberNames)-3)
-	}
-
-	return fmt.Sprintf("[%s] %s", chatType, strings.Join(memberNames, ", "))
-}
-
-func (i *TeamsIntegration) getChatMemberNames(ctx context.Context, chatID string) []string {
-	members, err := i.graphClient.Chats().ByChatId(chatID).Members().Get(ctx, nil)
-	if err != nil || members == nil || members.GetValue() == nil {
-		return nil
-	}
-
-	var memberNames []string
-	for _, member := range members.GetValue() {
-		if aadMember, ok := member.(interface{ GetDisplayName() *string }); ok {
-			if displayName := aadMember.GetDisplayName(); displayName != nil && *displayName != "" {
-				memberNames = append(memberNames, *displayName)
-			}
-		}
-	}
-
-	return memberNames
-}
-
-func convertToRawJSON(result interface{}) (map[string]interface{}, error) {
-	if parsable, ok := result.(absser.Parsable); ok {
-		writer := jsonser.NewJsonSerializationWriter()
-		err := writer.WriteObjectValue("", parsable)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize with Kiota: %w", err)
-		}
-
-		jsonBytes, err := writer.GetSerializedContent()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get serialized content: %w", err)
-		}
-
-		var rawMap map[string]interface{}
-		if err := json.Unmarshal(jsonBytes, &rawMap); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
-		}
-
-		return rawMap, nil
-	}
-
-	jsonBytes, err := json.Marshal(result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal result to JSON: %w", err)
-	}
-
-	var rawMap map[string]interface{}
-	if err := json.Unmarshal(jsonBytes, &rawMap); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal to map: %w", err)
-	}
-
-	return rawMap, nil
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func extractODataErrorDetails(err error) (code string, message string, details string) {
 	if odataErr, ok := err.(*odataerrors.ODataError); ok {
 		mainErr := odataErr.GetErrorEscaped()
 		if mainErr != nil {
 			if mainErr.GetCode() != nil {
-				code = *mainErr.GetCode()
+				details.Code = *mainErr.GetCode()
 			}
 			if mainErr.GetMessage() != nil {
-				message = *mainErr.GetMessage()
+				details.Message = *mainErr.GetMessage()
 			}
 
 			if innerErr := mainErr.GetInnerError(); innerErr != nil {
-				details = fmt.Sprintf("InnerError: %+v", innerErr)
+				details.Details = fmt.Sprintf("InnerError: %+v", innerErr)
 			}
 		}
 	}
 
-	if code == "" {
-		code = "UnknownError"
-	}
-	if message == "" {
-		message = err.Error()
-	}
-
-	return code, message, details
-}
-
-func parseChannelID(channelID string) (teamID string, channelIDParsed string, err error) {
-	parts := strings.SplitN(channelID, ":", 2)
-
-	if len(parts) == 2 {
-		return parts[0], parts[1], nil
-	}
-
-	return "", "", fmt.Errorf("channel_id must be in format 'teamId:channelId'")
+	return details
 }
 
 type TeamsTokenCredential struct {
@@ -892,4 +826,114 @@ type GetChatMessageParams struct {
 type GetManyChatMessagesParams struct {
 	ChatID string `json:"chat_id"`
 	Top    *int   `json:"top,omitempty"`
+}
+
+type TeamsChannelIdParser struct{}
+
+func (p *TeamsChannelIdParser) ParseChannelID(channelID string) (teamID string, channelIDParsed string, err error) {
+	parts := strings.SplitN(channelID, ":", 2)
+
+	if len(parts) == 2 {
+		return parts[0], parts[1], nil
+	}
+
+	return "", "", fmt.Errorf("channel_id must be in format 'teamId:channelId'")
+}
+
+type JsonParser struct{}
+
+func (p *JsonParser) ConvertToRawJSON(result interface{}) (map[string]interface{}, error) {
+	if parsable, ok := result.(absser.Parsable); ok {
+		writer := jsonser.NewJsonSerializationWriter()
+		err := writer.WriteObjectValue("", parsable)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize with Kiota: %w", err)
+		}
+
+		jsonBytes, err := writer.GetSerializedContent()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get serialized content: %w", err)
+		}
+
+		var rawMap map[string]interface{}
+		if err := json.Unmarshal(jsonBytes, &rawMap); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
+		}
+
+		return rawMap, nil
+	}
+
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal result to JSON: %w", err)
+	}
+
+	var rawMap map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &rawMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal to map: %w", err)
+	}
+
+	return rawMap, nil
+}
+
+type BuildChatNameParams struct {
+	Chat     models.Chatable
+	ChatID   string
+	ChatType string
+}
+
+type ChatNameBuilder struct {
+	graphClient *msgraphsdk.GraphServiceClient
+}
+
+func (b *ChatNameBuilder) GetChatType(chat models.Chatable) string {
+	if chat.GetChatType() == nil {
+		return "Chat"
+	}
+
+	switch *chat.GetChatType() {
+	case models.ONEONONE_CHATTYPE:
+		return "1:1"
+	case models.GROUP_CHATTYPE:
+		return "Group"
+	case models.MEETING_CHATTYPE:
+		return "Meeting"
+	default:
+		return "Chat"
+	}
+}
+
+func (b *ChatNameBuilder) BuildChatName(ctx context.Context, params BuildChatNameParams) string {
+	if topic := params.Chat.GetTopic(); topic != nil && *topic != "" {
+		return fmt.Sprintf("[%s] %s", params.ChatType, *topic)
+	}
+
+	memberNames := b.getChatMemberNames(ctx, params.ChatID)
+	if len(memberNames) == 0 {
+		return fmt.Sprintf("[%s] Chat %s", params.ChatType, params.ChatID[:8])
+	}
+
+	if len(memberNames) > 3 {
+		return fmt.Sprintf("[%s] %s and %d others", params.ChatType, strings.Join(memberNames[:3], ", "), len(memberNames)-3)
+	}
+
+	return fmt.Sprintf("[%s] %s", params.ChatType, strings.Join(memberNames, ", "))
+}
+
+func (b *ChatNameBuilder) getChatMemberNames(ctx context.Context, chatID string) []string {
+	members, err := b.graphClient.Chats().ByChatId(chatID).Members().Get(ctx, nil)
+	if err != nil || members == nil || members.GetValue() == nil {
+		return nil
+	}
+
+	var memberNames []string
+	for _, member := range members.GetValue() {
+		if aadMember, ok := member.(interface{ GetDisplayName() *string }); ok {
+			if displayName := aadMember.GetDisplayName(); displayName != nil && *displayName != "" {
+				memberNames = append(memberNames, *displayName)
+			}
+		}
+	}
+
+	return memberNames
 }
