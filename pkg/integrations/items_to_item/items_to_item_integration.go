@@ -48,14 +48,24 @@ func (i *ItemsToItemIntegration) Execute(ctx context.Context, params domain.Inte
 	return i.actionManager.Run(ctx, params.ActionType, params)
 }
 
-type ItemsToItemResponse struct {
-	Items []domain.Item `json:"items"`
-	Count int           `json:"count"`
+type ItemsToItemParams struct {
+	FieldPath string `json:"field_path"`
 }
 
 func (i *ItemsToItemIntegration) ItemsToItem(ctx context.Context, params domain.IntegrationInput, items []domain.Item) (domain.Item, error) {
-	return ItemsToItemResponse{
-		Items: items,
-		Count: len(items),
+	p := ItemsToItemParams{}
+
+	err := i.binder.BindToStruct(ctx, items[0], &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return nil, err
+	}
+
+	if p.FieldPath == "" {
+		p.FieldPath = "items"
+	}
+
+	return map[string]any{
+		p.FieldPath: items,
+		"count":     len(items),
 	}, nil
 }
