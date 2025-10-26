@@ -82,7 +82,7 @@ func (i *ItemsToItemIntegration) ItemsToItem(ctx context.Context, params domain.
 		itemWithFieldNames = append(itemWithFieldNames, itemWithFieldName)
 	}
 
-	outputItem := make(map[string][]domain.Item)
+	outputItem := make(map[string][]any)
 
 	for _, itemWithFieldName := range itemWithFieldNames {
 		if itemWithFieldName.FieldName == "" {
@@ -92,7 +92,11 @@ func (i *ItemsToItemIntegration) ItemsToItem(ctx context.Context, params domain.
 		outputItem[itemWithFieldName.FieldName] = append(outputItem[itemWithFieldName.FieldName], itemWithFieldName.Item)
 	}
 
-	resultJSON, err := json.Marshal(outputItem)
+	outputItems := []domain.Item{
+		outputItem,
+	}
+
+	resultJSON, err := json.Marshal(outputItems)
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
