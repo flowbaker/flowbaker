@@ -146,6 +146,7 @@ func (m *IntegrationActionManager) GetPerItemRoutable(actionType IntegrationActi
 }
 
 func (m *IntegrationActionManager) Run(ctx context.Context, actionType IntegrationActionType, params IntegrationInput) (IntegrationOutput, error) {
+
 	_, ok := m.GetPerItem(actionType)
 	if ok {
 		return m.RunPerItem(ctx, actionType, params)

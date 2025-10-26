@@ -2,17 +2,18 @@ package initialization
 
 import (
 	router "github.com/flowbaker/flowbaker/pkg/integrations/content_classifier"
+	"github.com/flowbaker/flowbaker/pkg/integrations/items_to_item"
 	"github.com/flowbaker/flowbaker/pkg/integrations/transform"
 
 	"github.com/flowbaker/flowbaker/pkg/integrations/ai_agent"
 	"github.com/flowbaker/flowbaker/pkg/integrations/base64"
 	"github.com/flowbaker/flowbaker/pkg/integrations/brightdata"
 	claudeintegration "github.com/flowbaker/flowbaker/pkg/integrations/claude"
-	"github.com/flowbaker/flowbaker/pkg/integrations/filetoitem"
 	"github.com/flowbaker/flowbaker/pkg/integrations/condition"
 	cronintegration "github.com/flowbaker/flowbaker/pkg/integrations/cron"
 	"github.com/flowbaker/flowbaker/pkg/integrations/discord"
 	"github.com/flowbaker/flowbaker/pkg/integrations/dropbox"
+	"github.com/flowbaker/flowbaker/pkg/integrations/filetoitem"
 	"github.com/flowbaker/flowbaker/pkg/integrations/flowbaker_agent_memory"
 	githubintegration "github.com/flowbaker/flowbaker/pkg/integrations/github"
 	"github.com/flowbaker/flowbaker/pkg/integrations/google/gmail"
@@ -207,6 +208,10 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_Pipedrive,
 		NewCreator:      pipedriveintegration.NewPipedriveIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_ItemsToItem,
+		NewCreator:      items_to_item.NewItemsToItemIntegrationCreator,
 	},
 }
 
