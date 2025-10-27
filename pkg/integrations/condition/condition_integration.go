@@ -92,10 +92,6 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		return domain.RoutableOutput{}, err
 	}
 
-	settingsJSON, _ := json.Marshal(params.IntegrationParams.Settings)
-	fmt.Printf("DEBUG: Settings: %s\n", string(settingsJSON))
-	fmt.Printf("DEBUG: Conditions count: %d\n", len(p.Conditions))
-
 	result := p.ConditionRelation == ConditionRelationAnd
 	if p.ConditionRelation == ConditionRelationOr {
 		result = false
