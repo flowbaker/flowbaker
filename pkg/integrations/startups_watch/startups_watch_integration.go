@@ -55,6 +55,10 @@ type ListStartupsResponse struct {
 	Startups []any `json:"startups"`
 }
 
+type ListPeopleResponse struct {
+	People []any `json:"people"`
+}
+
 func NewStartupsWatchIntegration(ctx context.Context, deps StartupsWatchIntegrationDependencies) (*StartupsWatchIntegration, error) {
 	integration := &StartupsWatchIntegration{
 		httpClient: &http.Client{
@@ -74,17 +78,16 @@ func NewStartupsWatchIntegration(ctx context.Context, deps StartupsWatchIntegrat
 
 	actionManager := domain.NewIntegrationActionManager().
 		AddPerItem(StartupsWatchActionType_GetStartup, integration.GetStartup).
-		AddPerItemMulti(StartupsWatchActionType_ListStartups, integration.ListStartups)
-		// AddPerItemMulti(StartupsWatchActionType_SearchStartups, integration.SearchStartups).
-		// AddPerItem(StartupsWatchActionType_GetPerson, integration.GetPerson).
-		// AddPerItemMulti(StartupsWatchActionType_ListPeople, integration.ListPeople).
-		// AddPerItemMulti(StartupsWatchActionType_SearchPeople, integration.SearchPeople).
-		// AddPerItem(StartupsWatchActionType_GetInvestor, integration.GetInvestor).
-		// AddPerItemMulti(StartupsWatchActionType_ListInvestors, integration.ListInvestors).
-		// AddPerItemMulti(StartupsWatchActionType_SearchInvestors, integration.SearchInvestors).
-		// AddPerItemMulti(StartupsWatchActionType_ListInvestments, integration.ListInvestments).
-		// AddPerItemMulti(StartupsWatchActionType_ListAcquisitions, integration.ListAcquisitions).
-		// AddPerItemMulti(StartupsWatchActionType_ListEvents, integration.ListEvents)
+		AddPerItemMulti(StartupsWatchActionType_ListStartups, integration.ListStartups).
+		AddPerItem(StartupsWatchActionType_GetPerson, integration.GetPerson).
+		AddPerItemMulti(StartupsWatchActionType_ListPeople, integration.ListPeople)
+	// AddPerItemMulti(StartupsWatchActionType_SearchPeople, integration.SearchPeople).
+	// AddPerItem(StartupsWatchActionType_GetInvestor, integration.GetInvestor).
+	// AddPerItemMulti(StartupsWatchActionType_ListInvestors, integration.ListInvestors).
+	// AddPerItemMulti(StartupsWatchActionType_SearchInvestors, integration.SearchInvestors).
+	// AddPerItemMulti(StartupsWatchActionType_ListInvestments, integration.ListInvestments).
+	// AddPerItemMulti(StartupsWatchActionType_ListAcquisitions, integration.ListAcquisitions).
+	// AddPerItemMulti(StartupsWatchActionType_ListEvents, integration.ListEvents)
 
 	integration.actionManager = actionManager
 
@@ -162,8 +165,9 @@ type GetPersonParams struct {
 }
 
 type ListPeopleParams struct {
-	Page  int `json:"page,omitempty"`
-	Limit int `json:"limit,omitempty"`
+	Page    int    `json:"page,omitempty"`
+	PerPage int    `json:"per_page,omitempty"`
+	SortBy  string `json:"sort_by,omitempty"`
 }
 
 type SearchPeopleParams struct {
@@ -303,7 +307,13 @@ func (i *StartupsWatchIntegration) GetPerson(ctx context.Context, input domain.I
 		return nil, err
 	}
 
-	return response, nil
+	var person any
+	if err := json.Unmarshal(response, &person); err != nil {
+		log.Infof("DEBUG: API Response that failed to unmarshal: %s", string(response))
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return domain.Item(person), nil
 }
 
 func (i *StartupsWatchIntegration) ListPeople(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
@@ -316,8 +326,11 @@ func (i *StartupsWatchIntegration) ListPeople(ctx context.Context, input domain.
 	if params.Page > 0 {
 		queryParams["page"] = strconv.Itoa(params.Page)
 	}
-	if params.Limit > 0 {
-		queryParams["limit"] = strconv.Itoa(params.Limit)
+	if params.PerPage > 0 {
+		queryParams["per_page"] = strconv.Itoa(params.PerPage)
+	}
+	if params.SortBy != "" {
+		queryParams["sort_by"] = params.SortBy
 	}
 
 	response, err := i.makeRequest(ctx, "/people", queryParams)
@@ -325,7 +338,18 @@ func (i *StartupsWatchIntegration) ListPeople(ctx context.Context, input domain.
 		return nil, err
 	}
 
-	return []domain.Item{response}, nil
+	var peopleResp ListPeopleResponse
+	if err := json.Unmarshal(response, &peopleResp); err != nil {
+		fmt.Printf("DEBUG: API Response that failed to unmarshal: %s\n", string(response))
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	items := make([]domain.Item, len(peopleResp.People))
+	for i, person := range peopleResp.People {
+		items[i] = domain.Item(person)
+	}
+
+	return items, nil
 }
 
 func (i *StartupsWatchIntegration) SearchPeople(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
