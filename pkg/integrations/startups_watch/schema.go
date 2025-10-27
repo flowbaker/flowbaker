@@ -8,8 +8,8 @@ var (
 	StartupsWatchActionType_GetStartup   domain.IntegrationActionType = "get_startup"
 	StartupsWatchActionType_ListStartups domain.IntegrationActionType = "list_startups"
 	// StartupsWatchActionType_SearchStartups   domain.IntegrationActionType = "search_startups"
-	// StartupsWatchActionType_GetPerson        domain.IntegrationActionType = "get_person"
-	// StartupsWatchActionType_ListPeople       domain.IntegrationActionType = "list_people"
+	StartupsWatchActionType_GetPerson  domain.IntegrationActionType = "get_person"
+	StartupsWatchActionType_ListPeople domain.IntegrationActionType = "list_people"
 	// StartupsWatchActionType_SearchPeople     domain.IntegrationActionType = "search_people"
 	// StartupsWatchActionType_GetInvestor      domain.IntegrationActionType = "get_investor"
 	// StartupsWatchActionType_ListInvestors    domain.IntegrationActionType = "list_investors"
@@ -89,102 +89,61 @@ var (
 				},
 				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow, domain.UsageContextTool},
 			},
-			// // 3. Search Startups
-			// {
-			// 	ID:          "search_startups",
-			// 	Name:        "Search Startups",
-			// 	Description: "Search for startups by name, description, or keywords",
-			// 	ActionType:  StartupsWatchActionType_SearchStartups,
-			// 	Properties: []domain.NodeProperty{
-			// 		{
-			// 			Key:         "query",
-			// 			Name:        "Search Query",
-			// 			Description: "Search terms to find startups",
-			// 			Required:    true,
-			// 			Type:        domain.NodePropertyType_String,
-			// 		},
-			// 		{
-			// 			Key:         "page",
-			// 			Name:        "Page",
-			// 			Description: "Page number (default: 1)",
-			// 			Required:    false,
-			// 			Type:        domain.NodePropertyType_Integer,
-			// 		},
-			// 		{
-			// 			Key:         "limit",
-			// 			Name:        "Limit",
-			// 			Description: "Number of results per page (max: 100, default: 20)",
-			// 			Required:    false,
-			// 			Type:        domain.NodePropertyType_Integer,
-			// 		},
-			// 	},
-			// 	SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow, domain.UsageContextTool},
-			// 	HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-			// 		domain.UsageContextWorkflow: {
-			// 			Output: []domain.NodeHandle{{Type: domain.NodeHandleTypeDefault}},
-			// 		},
-			// 		domain.UsageContextTool: {
-			// 			Output: []domain.NodeHandle{{Type: domain.NodeHandleTypeDefault}},
-			// 		},
-			// 	},
-			// },
-			// // 4. Get Person
-			// {
-			// 	ID:          "get_person",
-			// 	Name:        "Get Person",
-			// 	Description: "Get detailed information about a specific person",
-			// 	ActionType:  StartupsWatchActionType_GetPerson,
-			// 	Properties: []domain.NodeProperty{
-			// 		{
-			// 			Key:         "person_id",
-			// 			Name:        "Person ID",
-			// 			Description: "The unique identifier for the person",
-			// 			Required:    true,
-			// 			Type:        domain.NodePropertyType_String,
-			// 		},
-			// 	},
-			// 	SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow, domain.UsageContextTool},
-			// 	HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-			// 		domain.UsageContextWorkflow: {
-			// 			Output: []domain.NodeHandle{{Type: domain.NodeHandleTypeDefault}},
-			// 		},
-			// 		domain.UsageContextTool: {
-			// 			Output: []domain.NodeHandle{{Type: domain.NodeHandleTypeDefault}},
-			// 		},
-			// 	},
-			// },
-			// // 5. List People
-			// {
-			// 	ID:          "list_people",
-			// 	Name:        "List People",
-			// 	Description: "Get a paginated list of people in the ecosystem",
-			// 	ActionType:  StartupsWatchActionType_ListPeople,
-			// 	Properties: []domain.NodeProperty{
-			// 		{
-			// 			Key:         "page",
-			// 			Name:        "Page",
-			// 			Description: "Page number (default: 1)",
-			// 			Required:    false,
-			// 			Type:        domain.NodePropertyType_Integer,
-			// 		},
-			// 		{
-			// 			Key:         "limit",
-			// 			Name:        "Limit",
-			// 			Description: "Number of results per page (max: 100, default: 20)",
-			// 			Required:    false,
-			// 			Type:        domain.NodePropertyType_Integer,
-			// 		},
-			// 	},
-			// 	SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow, domain.UsageContextTool},
-			// 	HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-			// 		domain.UsageContextWorkflow: {
-			// 			Output: []domain.NodeHandle{{Type: domain.NodeHandleTypeDefault}},
-			// 		},
-			// 		domain.UsageContextTool: {
-			// 			Output: []domain.NodeHandle{{Type: domain.NodeHandleTypeDefault}},
-			// 		},
-			// 	},
-			// },
+			{
+				ID:          "get_person",
+				Name:        "Get Person",
+				Description: "Get detailed information about a specific person",
+				ActionType:  StartupsWatchActionType_GetPerson,
+				Properties: []domain.NodeProperty{
+					{
+						Key:         "person_id",
+						Name:        "Person ID",
+						Description: "The unique identifier for the person",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+					},
+				},
+				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow, domain.UsageContextTool},
+			},
+			{
+				ID:          "list_people",
+				Name:        "List People",
+				Description: "Get a paginated list of people in the ecosystem",
+				ActionType:  StartupsWatchActionType_ListPeople,
+				Properties: []domain.NodeProperty{
+					{
+						Key:         "page",
+						Name:        "Page",
+						Description: "Page number (default: 1)",
+						Required:    false,
+						Type:        domain.NodePropertyType_Integer,
+					},
+					{
+						Key:         "per_page",
+						Name:        "Per Page",
+						Description: "Number of results per page (default: 25)",
+						Required:    false,
+						Type:        domain.NodePropertyType_Integer,
+					},
+					{
+						Key:         "sort_by",
+						Name:        "Sort By",
+						Description: "The field to sort by",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
+						Options: []domain.NodePropertyOption{
+							{Label: "Name", Value: "name"},
+							{Label: "Title", Value: "title"},
+							{Label: "Gender", Value: "gender"},
+							{Label: "Investments Count", Value: "investments_count"},
+							{Label: "Investments Out Count", Value: "investments_out_count"},
+							{Label: "Acquisitions Out Count", Value: "acquisitions_out_count"},
+							{Label: "Last Funding Date", Value: "last_funding_date"},
+						},
+					},
+				},
+				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow, domain.UsageContextTool},
+			},
 			// // 6. Search People
 			// {
 			// 	ID:          "search_people",
