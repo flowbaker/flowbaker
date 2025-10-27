@@ -92,6 +92,10 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		return domain.RoutableOutput{}, err
 	}
 
+	settingsJSON, _ := json.Marshal(params.IntegrationParams.Settings)
+	fmt.Printf("DEBUG: Settings: %s\n", string(settingsJSON))
+	fmt.Printf("DEBUG: Conditions count: %d\n", len(p.Conditions))
+
 	result := p.ConditionRelation == ConditionRelationAnd
 	if p.ConditionRelation == ConditionRelationOr {
 		result = false
@@ -378,33 +382,35 @@ func evaluateDateCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func evaluateArrayCondition(params EvaluateConditionParams) (bool, error) {
-	value1arr, ok := params.Value1.([]interface{})
-	if !ok {
-		return false, fmt.Errorf("value1 is not an array")
+	value1arr, err := convertToArray(params.Value1)
+	if err != nil {
+		return false, fmt.Errorf("value1 is not an array: %w", err)
 	}
 
-	value2arr, ok := params.Value2.([]interface{})
-	if !ok {
-		return false, fmt.Errorf("value2 is not an array")
-	}
+	// value2arr, ok := params.Value2.([]interface{})
+	// if !ok {
+	// 	return false, fmt.Errorf("value2 is not an array")
+	// }
 
 	switch ConditionTypeArray(params.ComparisonType) {
 	case ConditionTypeArray_Exists:
 		return true, nil
+	case ConditionTypeArray_DoesNotExist:
+		return false, nil
 	case ConditionTypeArray_IsEmpty:
 		return len(value1arr) == 0, nil
 	case ConditionTypeArray_IsNotEmpty:
 		return len(value1arr) > 0, nil
-	case ConditionTypeArray_Contains:
-		value2arrstr, ok := params.Value2.(string)
-		if !ok {
-			return false, fmt.Errorf("value2 is not a string")
-		}
-		return arrayContains(value1arr, value2arrstr), nil
-	case ConditionTypeArray_LengthGreaterThan:
-		return len(value1arr) > len(value2arr), nil
-	case ConditionTypeArray_LengthLessThan:
-		return len(value1arr) < len(value2arr), nil
+	// case ConditionTypeArray_Contains:
+	// 	value2arrstr, ok := params.Value2.(string)
+	// 	if !ok {
+	// 		return false, fmt.Errorf("value2 is not a string")
+	// 	}
+	// 	return arrayContains(value1arr, value2arrstr), nil
+	// case ConditionTypeArray_LengthGreaterThan:
+	// 	return len(value1arr) > len(value2arr), nil
+	// case ConditionTypeArray_LengthLessThan:
+	// 	return len(value1arr) < len(value2arr), nil
 	default:
 		return false, fmt.Errorf("unknown array condition type: %s", params.ComparisonType)
 	}
@@ -466,17 +472,22 @@ func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
 
 	value1objstr, ok := params.Value1.(string)
 	if !ok {
-		return false, fmt.Errorf("value2 is not a string")
+		// Try to convert to string
+		v1str, err := convertToString(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not a string")
+		}
+		value1objstr = v1str
 	}
-
-	// value2obj, ok := params.Value2.(map[string]interface{})
-	// if !ok {
-	// 	return false, fmt.Errorf("value2 is not an object")
-	// }
 
 	value2objstr, ok := params.Value2.(string)
 	if !ok {
-		return false, fmt.Errorf("value2 is not a string")
+		// Try to convert to string
+		v2str, err := convertToString(params.Value2)
+		if err != nil {
+			return false, fmt.Errorf("value2 is not a string")
+		}
+		value2objstr = v2str
 	}
 
 	switch ConditionTypeObject(params.ComparisonType) {

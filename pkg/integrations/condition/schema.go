@@ -73,15 +73,15 @@ const (
 type ConditionTypeArray string
 
 const (
-	ConditionTypeArray_Exists            ConditionTypeArray = "exists"
-	ConditionTypeArray_DoesNotExist      ConditionTypeArray = "does_not_exist"
-	ConditionTypeArray_IsEmpty           ConditionTypeArray = "is_empty"
-	ConditionTypeArray_IsNotEmpty        ConditionTypeArray = "is_not_empty"
-	ConditionTypeArray_Contains          ConditionTypeArray = "contains"
-	ConditionTypeArray_DoesNotContain    ConditionTypeArray = "does_not_contain"
-	ConditionTypeArray_LengthEquals      ConditionTypeArray = "length_equals"
-	ConditionTypeArray_LengthGreaterThan ConditionTypeArray = "length_greater_than"
-	ConditionTypeArray_LengthLessThan    ConditionTypeArray = "length_less_than"
+	ConditionTypeArray_Exists       ConditionTypeArray = "exists"
+	ConditionTypeArray_DoesNotExist ConditionTypeArray = "does_not_exist"
+	ConditionTypeArray_IsEmpty      ConditionTypeArray = "is_empty"
+	ConditionTypeArray_IsNotEmpty   ConditionTypeArray = "is_not_empty"
+	// ConditionTypeArray_Contains          ConditionTypeArray = "contains"
+	// ConditionTypeArray_DoesNotContain    ConditionTypeArray = "does_not_contain"
+	// ConditionTypeArray_LengthEquals      ConditionTypeArray = "length_equals"
+	// ConditionTypeArray_LengthGreaterThan ConditionTypeArray = "length_greater_than"
+	// ConditionTypeArray_LengthLessThan    ConditionTypeArray = "length_less_than"
 )
 
 // Object condition types
@@ -141,7 +141,7 @@ var (
 						Key:         "relation_type",
 						Name:        "Relation Type",
 						Description: "The relation type to evaluate the condition",
-						Required:    true,
+						Required:    false,
 						Type:        domain.NodePropertyType_String,
 						Options: []domain.NodePropertyOption{
 							{Label: "And", Value: "and"},
@@ -187,6 +187,8 @@ var (
 											"date." + string(ConditionTypeDate_DoesNotExist),
 											"array." + string(ConditionTypeArray_Exists),
 											"array." + string(ConditionTypeArray_DoesNotExist),
+											"array." + string(ConditionTypeArray_IsEmpty),
+											"array." + string(ConditionTypeArray_IsNotEmpty),
 											"object." + string(ConditionTypeObject_Exists),
 											"object." + string(ConditionTypeObject_DoesNotExist),
 										},
@@ -267,11 +269,11 @@ var (
 												{Label: "Does Not Exist", Value: string(ConditionTypeArray_DoesNotExist)},
 												{Label: "Is Empty", Value: string(ConditionTypeArray_IsEmpty)},
 												{Label: "Is Not Empty", Value: string(ConditionTypeArray_IsNotEmpty)},
-												{Label: "Contains", Value: string(ConditionTypeArray_Contains)},
-												{Label: "Does Not Contain", Value: string(ConditionTypeArray_DoesNotContain)},
-												{Label: "Length Equals", Value: string(ConditionTypeArray_LengthEquals)},
-												{Label: "Length Greater Than", Value: string(ConditionTypeArray_LengthGreaterThan)},
-												{Label: "Length Less Than", Value: string(ConditionTypeArray_LengthLessThan)},
+												// {Label: "Contains", Value: string(ConditionTypeArray_Contains)},
+												// {Label: "Does Not Contain", Value: string(ConditionTypeArray_DoesNotContain)},
+												// {Label: "Length Equals", Value: string(ConditionTypeArray_LengthEquals)},
+												// {Label: "Length Greater Than", Value: string(ConditionTypeArray_LengthGreaterThan)},
+												// {Label: "Length Less Than", Value: string(ConditionTypeArray_LengthLessThan)},
 											},
 										},
 										{
