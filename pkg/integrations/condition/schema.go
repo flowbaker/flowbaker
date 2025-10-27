@@ -73,15 +73,15 @@ const (
 type ConditionTypeArray string
 
 const (
-	ConditionTypeArray_Exists       ConditionTypeArray = "exists"
-	ConditionTypeArray_DoesNotExist ConditionTypeArray = "does_not_exist"
-	ConditionTypeArray_IsEmpty      ConditionTypeArray = "is_empty"
-	ConditionTypeArray_IsNotEmpty   ConditionTypeArray = "is_not_empty"
-	// ConditionTypeArray_Contains          ConditionTypeArray = "contains"
-	// ConditionTypeArray_DoesNotContain    ConditionTypeArray = "does_not_contain"
-	// ConditionTypeArray_LengthEquals      ConditionTypeArray = "length_equals"
-	// ConditionTypeArray_LengthGreaterThan ConditionTypeArray = "length_greater_than"
-	// ConditionTypeArray_LengthLessThan    ConditionTypeArray = "length_less_than"
+	ConditionTypeArray_Exists            ConditionTypeArray = "exists"
+	ConditionTypeArray_DoesNotExist      ConditionTypeArray = "does_not_exist"
+	ConditionTypeArray_IsEmpty           ConditionTypeArray = "is_empty"
+	ConditionTypeArray_IsNotEmpty        ConditionTypeArray = "is_not_empty"
+	ConditionTypeArray_Contains          ConditionTypeArray = "contains"
+	ConditionTypeArray_DoesNotContains   ConditionTypeArray = "does_not_contains"
+	ConditionTypeArray_LengthEquals      ConditionTypeArray = "length_equals"
+	ConditionTypeArray_LengthGreaterThan ConditionTypeArray = "length_greater_than"
+	ConditionTypeArray_LengthLessThan    ConditionTypeArray = "length_less_than"
 )
 
 // Object condition types
@@ -269,25 +269,25 @@ var (
 												{Label: "Does Not Exist", Value: string(ConditionTypeArray_DoesNotExist)},
 												{Label: "Is Empty", Value: string(ConditionTypeArray_IsEmpty)},
 												{Label: "Is Not Empty", Value: string(ConditionTypeArray_IsNotEmpty)},
-												// {Label: "Contains", Value: string(ConditionTypeArray_Contains)},
-												// {Label: "Does Not Contain", Value: string(ConditionTypeArray_DoesNotContain)},
-												// {Label: "Length Equals", Value: string(ConditionTypeArray_LengthEquals)},
-												// {Label: "Length Greater Than", Value: string(ConditionTypeArray_LengthGreaterThan)},
-												// {Label: "Length Less Than", Value: string(ConditionTypeArray_LengthLessThan)},
+												{Label: "Contains", Value: string(ConditionTypeArray_Contains)},
+												{Label: "Does Not Contains", Value: string(ConditionTypeArray_DoesNotContains)},
+												{Label: "Length Equals", Value: string(ConditionTypeArray_LengthEquals)},
+												{Label: "Length Greater Than", Value: string(ConditionTypeArray_LengthGreaterThan)},
+												{Label: "Length Less Than", Value: string(ConditionTypeArray_LengthLessThan)},
 											},
 										},
-										{
-											Label: "Object",
-											Value: "object",
-											SubNodeProperties: []domain.NodePropertyOption{
-												{Label: "Exists", Value: string(ConditionTypeObject_Exists)},
-												{Label: "Does Not Exist", Value: string(ConditionTypeObject_DoesNotExist)},
-												{Label: "Has Key", Value: string(ConditionTypeObject_HasKey)},
-												{Label: "Does Not Have Key", Value: string(ConditionTypeObject_DoesNotHaveKey)},
-												{Label: "Key Equals", Value: string(ConditionTypeObject_KeyEquals)},
-												{Label: "Key Not Equals", Value: string(ConditionTypeObject_KeyNotEquals)},
-											},
-										},
+										// {
+										// 	Label: "Object",
+										// 	Value: "object",
+										// 	SubNodeProperties: []domain.NodePropertyOption{
+										// 		{Label: "Exists", Value: string(ConditionTypeObject_Exists)},
+										// 		{Label: "Does Not Exist", Value: string(ConditionTypeObject_DoesNotExist)},
+										// 		{Label: "Has Key", Value: string(ConditionTypeObject_HasKey)},
+										// 		{Label: "Does Not Have Key", Value: string(ConditionTypeObject_DoesNotHaveKey)},
+										// 		{Label: "Key Equals", Value: string(ConditionTypeObject_KeyEquals)},
+										// 		{Label: "Key Not Equals", Value: string(ConditionTypeObject_KeyNotEquals)},
+										// 	},
+										// },
 									},
 								},
 							},
