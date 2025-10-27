@@ -183,6 +183,8 @@ var (
 											"number." + string(ConditionTypeNumber_DoesNotExist),
 											"boolean." + string(ConditionTypeBoolean_Exists),
 											"boolean." + string(ConditionTypeBoolean_DoesNotExist),
+											"boolean." + string(ConditionTypeBoolean_IsTrue),
+											"boolean." + string(ConditionTypeBoolean_IsFalse),
 											"date." + string(ConditionTypeDate_Exists),
 											"date." + string(ConditionTypeDate_DoesNotExist),
 											"array." + string(ConditionTypeArray_Exists),
