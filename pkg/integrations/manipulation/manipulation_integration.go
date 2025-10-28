@@ -174,11 +174,6 @@ func (i *ManipulationIntegration) convertValueToExplicitType(setValue *any, targ
 		return nil
 	}
 
-	log.Debug().
-		Str("targetType", targetType).
-		Interface("value", *setValue).
-		Msg("converting value to explicit type")
-
 	setValueType := reflect.TypeOf(*setValue)
 	setValueKind := setValueType.Kind()
 

@@ -169,14 +169,14 @@ func (b *KangarooBinder) bindString(ctx context.Context, item any, str string) (
 
 	// Check if entire string is a single expression
 	if len(matches) == 1 && matches[0][0] == str {
-		// Single expression - evaluate and convert to string for JSON compatibility
+		// Single expression - return the actual value (will be marshaled later)
 		expression := strings.TrimSpace(matches[0][1])
 		value, err := b.evaluateExpression(ctx, item, expression)
 		if err != nil {
 			return nil, err
 		}
-		// Convert to string to ensure JSON unmarshaling compatibility
-		return b.valueToString(value), nil
+		// Return the actual value to avoid double JSON encoding
+		return value, nil
 	}
 
 	// Multiple expressions or mixed content - interpolate as string
