@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 
@@ -26,11 +27,52 @@ type WorkflowExecutorService interface {
 	RerunNode(ctx context.Context, params RerunNodeParams) (ExecutionResult, error)
 }
 
+type ActiveExecution struct {
+	ExecutionID string
+	CancelFunc  context.CancelFunc
+}
+
+type ExecutionRegistry struct {
+	executions map[string]ActiveExecution
+	mtx        *sync.RWMutex
+}
+
+func NewExecutionRegistry() ExecutionRegistry {
+	return ExecutionRegistry{
+		executions: make(map[string]ActiveExecution),
+		mtx:        &sync.RWMutex{},
+	}
+}
+
+func (r *ExecutionRegistry) RegisterExecution(activeExecution ActiveExecution) {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
+	r.executions[activeExecution.ExecutionID] = activeExecution
+}
+
+func (r *ExecutionRegistry) UnregisterExecution(executionID string) {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
+	delete(r.executions, executionID)
+}
+
+func (r *ExecutionRegistry) GetExecution(executionID string) (ActiveExecution, bool) {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	execution, ok := r.executions[executionID]
+	return execution, ok
+}
+
 type workflowExecutorService struct {
 	integrationSelector   domain.IntegrationSelector
 	flowbakerClient       flowbaker.ClientInterface
 	orderedEventPublisher domain.EventPublisher
 	credentialManager     domain.ExecutorCredentialManager
+
+	executionRegistry ExecutionRegistry
 }
 
 type WorkflowExecutorServiceDependencies struct {
@@ -41,11 +83,14 @@ type WorkflowExecutorServiceDependencies struct {
 }
 
 func NewWorkflowExecutorService(deps WorkflowExecutorServiceDependencies) WorkflowExecutorService {
+	executionRegistry := NewExecutionRegistry()
+
 	return &workflowExecutorService{
 		integrationSelector:   deps.IntegrationSelector,
 		orderedEventPublisher: deps.OrderedEventPublisher,
 		flowbakerClient:       deps.FlowbakerClient,
 		credentialManager:     deps.CredentialManager,
+		executionRegistry:     executionRegistry,
 	}
 }
 
@@ -79,7 +124,18 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 		return ExecutionResult{}, err
 	}
 
-	executionResult, err := workflowExecutor.Execute(ctx, params.EventName, []byte(payloadJSON))
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	activeExecution := ActiveExecution{
+		ExecutionID: params.ExecutionID,
+		CancelFunc:  cancel,
+	}
+
+	s.executionRegistry.RegisterExecution(activeExecution)
+	defer s.executionRegistry.UnregisterExecution(params.ExecutionID)
+
+	executionResult, err := workflowExecutor.Execute(cancelCtx, params.EventName, []byte(payloadJSON))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to execute workflow")
 
