@@ -81,6 +81,22 @@ type ConditionalDispatchValue struct {
 	ValueComparison string `json:"value_comparison,omitempty"`
 }
 
+type IfElseResult struct {
+	OutputIndex    int    `json:"output_index"`
+	ValueType      string `json:"value_type"`
+	Value1         any    `json:"value1"`
+	Value2         any    `json:"value2"`
+	ComparisonType string `json:"comparison_type"`
+}
+
+type ConditionalDispatchResult struct {
+	MatchedRouteKey   string `json:"matched_route_key"`
+	MatchedRouteIndex int    `json:"matched_route_index"`
+	ComparisonType    string `json:"comparison_type"`
+	Value             any    `json:"value"`
+	ComparisonValue   any    `json:"comparison_value"`
+}
+
 func (i *ConditionIntegration) Execute(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	return i.actionManager.Run(ctx, params.ActionType, params)
 }
@@ -92,9 +108,9 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		return domain.RoutableOutput{}, err
 	}
 
-	result := p.ConditionRelation == ConditionRelationAnd
-	if p.ConditionRelation == ConditionRelationOr {
-		result = false
+	result := false
+	if p.ConditionRelation == ConditionRelationAnd {
+		result = true
 	}
 
 	if len(p.Conditions) == 0 {
@@ -141,16 +157,15 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		enhancedItem[k] = v
 	}
 
-	// make it struct
-	conditionResult := make(map[string]any)
-	conditionResult["output_index"] = outputIndex
-	conditionResult["value_type"] = valueType
-	conditionResult["value1"] = p.Conditions[0].Value1
-	conditionResult["value2"] = p.Conditions[0].Value2
-	conditionResult["comparison_type"] = comparisonType
-	conditionResult["result"] = result
+	ifElseResult := IfElseResult{
+		OutputIndex:    outputIndex,
+		ValueType:      valueType,
+		Value1:         p.Conditions[0].Value1,
+		Value2:         p.Conditions[0].Value2,
+		ComparisonType: comparisonType,
+	}
 
-	enhancedItem["__condition_result__"] = conditionResult
+	enhancedItem["__if_else_result__"] = ifElseResult
 
 	return domain.RoutableOutput{
 		Item:        enhancedItem,
@@ -186,15 +201,15 @@ func (i *ConditionIntegration) ConditionalDispatch(ctx context.Context, params d
 				enhancedItem[k] = v
 			}
 
-			// make it struct
-			switchResult := make(map[string]any)
-			switchResult["matched_route_key"] = route.Key
-			switchResult["matched_route_index"] = routeIndex
-			switchResult["comparison_type"] = route.ValueComparison
-			switchResult["value"] = p.Value
-			switchResult["comparison_value"] = route.Value
+			conditionalDispatchResult := ConditionalDispatchResult{
+				MatchedRouteKey:   route.Key,
+				MatchedRouteIndex: routeIndex,
+				ComparisonType:    route.ValueComparison,
+				Value:             p.Value,
+				ComparisonValue:   route.Value,
+			}
 
-			enhancedItem["__switch_result__"] = switchResult
+			enhancedItem["__conditional_dispatch_result__"] = conditionalDispatchResult
 
 			return domain.RoutableOutput{
 				Item:        enhancedItem,
@@ -378,29 +393,36 @@ func evaluateDateCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func evaluateArrayCondition(params EvaluateConditionParams) (bool, error) {
-	value1arr, ok := params.Value1.([]interface{})
-	if !ok {
-		return false, fmt.Errorf("value1 is not an array")
+	value1arr, err := convertToArray(params.Value1)
+	if err != nil {
+		return false, fmt.Errorf("value1 is not an array: %w", err)
 	}
 
-	value2arr, ok := params.Value2.([]interface{})
-	if !ok {
-		return false, fmt.Errorf("value2 is not an array")
+	value2arr, err := convertToArray(params.Value2)
+	if err != nil {
+		return false, fmt.Errorf("cannot convert value2 to array: %w", err)
+	}
+
+	value2str, err := convertToString(params.Value2)
+	if err != nil {
+		return false, fmt.Errorf("cannot convert value2 to string: %w", err)
 	}
 
 	switch ConditionTypeArray(params.ComparisonType) {
 	case ConditionTypeArray_Exists:
 		return true, nil
+	case ConditionTypeArray_DoesNotExist:
+		return false, nil
 	case ConditionTypeArray_IsEmpty:
 		return len(value1arr) == 0, nil
 	case ConditionTypeArray_IsNotEmpty:
 		return len(value1arr) > 0, nil
 	case ConditionTypeArray_Contains:
-		value2arrstr, ok := params.Value2.(string)
-		if !ok {
-			return false, fmt.Errorf("value2 is not a string")
-		}
-		return arrayContains(value1arr, value2arrstr), nil
+		return arrayContains(value1arr, value2str), nil
+	case ConditionTypeArray_DoesNotContains:
+		return !arrayContains(value1arr, value2str), nil
+	case ConditionTypeArray_LengthEquals:
+		return len(value1arr) == len(value2arr), nil
 	case ConditionTypeArray_LengthGreaterThan:
 		return len(value1arr) > len(value2arr), nil
 	case ConditionTypeArray_LengthLessThan:
@@ -466,17 +488,22 @@ func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
 
 	value1objstr, ok := params.Value1.(string)
 	if !ok {
-		return false, fmt.Errorf("value2 is not a string")
+		// Try to convert to string
+		v1str, err := convertToString(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not a string")
+		}
+		value1objstr = v1str
 	}
-
-	// value2obj, ok := params.Value2.(map[string]interface{})
-	// if !ok {
-	// 	return false, fmt.Errorf("value2 is not an object")
-	// }
 
 	value2objstr, ok := params.Value2.(string)
 	if !ok {
-		return false, fmt.Errorf("value2 is not a string")
+		// Try to convert to string
+		v2str, err := convertToString(params.Value2)
+		if err != nil {
+			return false, fmt.Errorf("value2 is not a string")
+		}
+		value2objstr = v2str
 	}
 
 	switch ConditionTypeObject(params.ComparisonType) {
