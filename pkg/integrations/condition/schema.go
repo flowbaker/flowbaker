@@ -35,6 +35,8 @@ type ConditionTypeNumber string
 const (
 	ConditionTypeNumber_Exists               ConditionTypeNumber = "exists"
 	ConditionTypeNumber_DoesNotExist         ConditionTypeNumber = "does_not_exist"
+	ConditionTypeNumber_IsEmpty              ConditionTypeNumber = "is_empty"
+	ConditionTypeNumber_IsNotEmpty           ConditionTypeNumber = "is_not_empty"
 	ConditionTypeNumber_IsEqual              ConditionTypeNumber = "is_equal"
 	ConditionTypeNumber_IsNotEqual           ConditionTypeNumber = "is_not_equal"
 	ConditionTypeNumber_IsGreaterThan        ConditionTypeNumber = "is_greater_than"
@@ -49,6 +51,8 @@ type ConditionTypeBoolean string
 const (
 	ConditionTypeBoolean_Exists       ConditionTypeBoolean = "exists"
 	ConditionTypeBoolean_DoesNotExist ConditionTypeBoolean = "does_not_exist"
+	ConditionTypeBoolean_IsEmpty      ConditionTypeBoolean = "is_empty"
+	ConditionTypeBoolean_IsNotEmpty   ConditionTypeBoolean = "is_not_empty"
 	ConditionTypeBoolean_IsEqual      ConditionTypeBoolean = "is_equal"
 	ConditionTypeBoolean_IsNotEqual   ConditionTypeBoolean = "is_not_equal"
 	ConditionTypeBoolean_IsTrue       ConditionTypeBoolean = "is_true"
@@ -61,6 +65,8 @@ type ConditionTypeDate string
 const (
 	ConditionTypeDate_Exists          ConditionTypeDate = "exists"
 	ConditionTypeDate_DoesNotExist    ConditionTypeDate = "does_not_exist"
+	ConditionTypeDate_IsEmpty         ConditionTypeDate = "is_empty"
+	ConditionTypeDate_IsNotEmpty      ConditionTypeDate = "is_not_empty"
 	ConditionTypeDate_IsEqual         ConditionTypeDate = "is_equal"
 	ConditionTypeDate_IsNotEqual      ConditionTypeDate = "is_not_equal"
 	ConditionTypeDate_IsAfter         ConditionTypeDate = "is_after"
@@ -90,6 +96,8 @@ type ConditionTypeObject string
 const (
 	ConditionTypeObject_Exists         ConditionTypeObject = "exists"
 	ConditionTypeObject_DoesNotExist   ConditionTypeObject = "does_not_exist"
+	ConditionTypeObject_IsEmpty        ConditionTypeObject = "is_empty"
+	ConditionTypeObject_IsNotEmpty     ConditionTypeObject = "is_not_empty"
 	ConditionTypeObject_HasKey         ConditionTypeObject = "has_key"
 	ConditionTypeObject_DoesNotHaveKey ConditionTypeObject = "does_not_have_key"
 	ConditionTypeObject_KeyEquals      ConditionTypeObject = "key_equals"
