@@ -298,22 +298,19 @@ func (i *StorageIntegration) PeekFiles(ctx context.Context, params domain.PeekPa
 		}
 	}
 
-	// Use workspace from peek params (now available directly)
 	workspaceID := params.WorkspaceID
 	if workspaceID == "" {
-		workspaceID = i.workspaceID // Fallback to integration workspace
+		workspaceID = i.workspaceID
 	}
 
-	// Set default limit
 	if peekParams.Limit == 0 {
-		peekParams.Limit = 50
+		peekParams.Limit = 20
 	}
 
-	// List files in the specified folder or root
 	result, err := i.executorStorageManager.ListWorkspaceFiles(ctx, domain.ListWorkspaceFilesParams{
 		WorkspaceID: workspaceID,
 		FolderID:    peekParams.FolderID,
-		Cursor:      params.Cursor,
+		Cursor:      params.GetCursor(),
 		Limit:       peekParams.Limit,
 	})
 	if err != nil {
@@ -330,11 +327,17 @@ func (i *StorageIntegration) PeekFiles(ctx context.Context, params domain.PeekPa
 		})
 	}
 
-	return domain.PeekResult{
-		Result:  items,
-		Cursor:  result.NextCursor,
-		HasMore: result.NextCursor != "",
-	}, nil
+	peekResult := domain.PeekResult{
+		Result: items,
+		Pagination: domain.PaginationMetadata{
+			Cursor:  result.NextCursor,
+			HasMore: result.NextCursor != "",
+		},
+	}
+	peekResult.SetCursor(result.NextCursor)
+	peekResult.SetHasMore(result.NextCursor != "")
+
+	return peekResult, nil
 }
 
 // PeekFolders - Browse folders in workspace
@@ -351,13 +354,11 @@ func (i *StorageIntegration) PeekFolders(ctx context.Context, params domain.Peek
 		}
 	}
 
-	// Use workspace from peek params (now available directly)
 	workspaceID := params.WorkspaceID
 	if workspaceID == "" {
-		workspaceID = i.workspaceID // Fallback to integration workspace
+		workspaceID = i.workspaceID
 	}
 
-	// List folders in the specified parent folder or root
 	result, err := i.executorStorageManager.ListFolders(ctx, domain.ListFoldersParams{
 		WorkspaceID:    workspaceID,
 		ParentFolderID: peekParams.ParentFolderID,
@@ -378,10 +379,15 @@ func (i *StorageIntegration) PeekFolders(ctx context.Context, params domain.Peek
 		})
 	}
 
-	return domain.PeekResult{
-		Result:  items,
-		HasMore: false, // Folders don't typically use pagination
-	}, nil
+	peekResult := domain.PeekResult{
+		Result: items,
+		Pagination: domain.PaginationMetadata{
+			HasMore: false,
+		},
+	}
+	peekResult.SetHasMore(false)
+
+	return peekResult, nil
 }
 
 // Helper function to format file sizes in human-readable format

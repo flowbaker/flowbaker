@@ -1359,15 +1359,26 @@ func (i *GithubIntegration) LockIssue(ctx context.Context, input domain.Integrat
 
 // --- Placeholder Peek Implementations ---
 func (i *GithubIntegration) PeekRepositories(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	// List repositories for the authenticated user
-	repos, _, err := i.githubClient.Repositories.ListByAuthenticatedUser(ctx, nil)
+	limit := params.GetLimitWithMax(20, 100)
+	offset := params.GetOffset()
+
+	page := (offset / limit) + 1
+
+	opts := &github.RepositoryListByAuthenticatedUserOptions{
+		ListOptions: github.ListOptions{
+			Page:    page,
+			PerPage: limit,
+		},
+	}
+
+	repos, resp, err := i.githubClient.Repositories.ListByAuthenticatedUser(ctx, opts)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to list repositories: %w", err)
 	}
 
 	var results []domain.PeekResultItem
 	for _, repo := range repos {
-		if repo.FullName == nil || repo.Name == nil { // Check for nil pointers
+		if repo.FullName == nil || repo.Name == nil {
 			continue
 		}
 		results = append(results, domain.PeekResultItem{
@@ -1377,47 +1388,65 @@ func (i *GithubIntegration) PeekRepositories(ctx context.Context, params domain.
 		})
 	}
 
-	return domain.PeekResult{Result: results}, nil
+	hasMore := resp.NextPage > 0
+	nextOffset := offset + len(results)
+
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			Offset:  nextOffset,
+			HasMore: hasMore,
+		},
+	}
+
+	result.SetOffset(nextOffset)
+	result.SetHasMore(hasMore)
+
+	return result, nil
 }
 
 func (i *GithubIntegration) PeekUsers(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	// Return common user filter values and actual GitHub users
+	limit := params.GetLimitWithMax(20, 100)
+	offset := params.GetOffset()
+
 	var results []domain.PeekResultItem
 
-	// Add special filter values first
-	results = append(results, domain.PeekResultItem{
-		Key:     "*",
-		Value:   "*",
-		Content: "Any user",
-	})
-	results = append(results, domain.PeekResultItem{
-		Key:     "none",
-		Value:   "none",
-		Content: "No assignee/creator",
-	})
-
-	// Get authenticated user
-	user, _, err := i.githubClient.Users.Get(ctx, "")
-	if err == nil && user.Login != nil {
+	if offset == 0 {
 		results = append(results, domain.PeekResultItem{
-			Key:     *user.Login,
-			Value:   *user.Login,
-			Content: *user.Login + " (you)",
+			Key:     "*",
+			Value:   "*",
+			Content: "Any user",
 		})
+		results = append(results, domain.PeekResultItem{
+			Key:     "none",
+			Value:   "none",
+			Content: "No assignee/creator",
+		})
+
+		user, _, err := i.githubClient.Users.Get(ctx, "")
+		if err == nil && user.Login != nil {
+			results = append(results, domain.PeekResultItem{
+				Key:     *user.Login,
+				Value:   *user.Login,
+				Content: *user.Login + " (you)",
+			})
+		}
 	}
 
-	// Try to get some common GitHub users from the authenticated user's organizations
 	orgs, _, err := i.githubClient.Organizations.List(ctx, "", nil)
 	if err == nil && len(orgs) > 0 {
-		// Get members from the first organization (limit to avoid too many API calls)
 		if len(orgs) > 0 && orgs[0].Login != nil {
-			members, _, err := i.githubClient.Organizations.ListMembers(ctx, *orgs[0].Login, &github.ListMembersOptions{
-				ListOptions: github.ListOptions{PerPage: 10}, // Limit to 10 members
+			page := (offset / limit) + 1
+
+			members, resp, err := i.githubClient.Organizations.ListMembers(ctx, *orgs[0].Login, &github.ListMembersOptions{
+				ListOptions: github.ListOptions{
+					Page:    page,
+					PerPage: limit,
+				},
 			})
 			if err == nil {
 				for _, member := range members {
 					if member.Login != nil {
-						// Check if already added (avoid duplicates)
 						found := false
 						for _, existing := range results {
 							if existing.Key == *member.Login {
@@ -1434,6 +1463,22 @@ func (i *GithubIntegration) PeekUsers(ctx context.Context, params domain.PeekPar
 						}
 					}
 				}
+
+				hasMore := resp.NextPage > 0
+				nextOffset := offset + len(members)
+
+				result := domain.PeekResult{
+					Result: results,
+					Pagination: domain.PaginationMetadata{
+						Offset:  nextOffset,
+						HasMore: hasMore,
+					},
+				}
+
+				result.SetOffset(nextOffset)
+				result.SetHasMore(hasMore)
+
+				return result, nil
 			}
 		}
 	}

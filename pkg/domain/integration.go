@@ -20,6 +20,15 @@ type IntegrationPeekableType string
 type IntegrationPeekablePaginationType string
 
 const (
+	PeekablePaginationType_None          IntegrationPeekablePaginationType = "none"
+	PeekablePaginationType_Cursor        IntegrationPeekablePaginationType = "cursor"
+	PeekablePaginationType_PageToken     IntegrationPeekablePaginationType = "page_token"
+	PeekablePaginationType_IDBasedBefore IntegrationPeekablePaginationType = "id_based_before"
+	PeekablePaginationType_IDBasedAfter  IntegrationPeekablePaginationType = "id_based_after"
+	PeekablePaginationType_Offset        IntegrationPeekablePaginationType = "offset"
+)
+
+const (
 	IntegrationType_Empty                IntegrationType = "empty"
 	IntegrationType_Discord              IntegrationType = "discord"
 	IntegrationType_Switch               IntegrationType = "switch"

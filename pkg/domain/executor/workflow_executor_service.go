@@ -172,6 +172,7 @@ type PeekDataParams struct {
 	UserID          string
 	PeekableType    string
 	Cursor          string
+	Pagination      domain.PaginationParams
 	PayloadJSON     []byte
 }
 
@@ -206,13 +207,15 @@ func (s *workflowExecutorService) PeekData(ctx context.Context, params PeekDataP
 		return domain.PeekResult{}, errors.New("integration is not peekable")
 	}
 
-	result, err := integrationPeeker.Peek(ctx, domain.PeekParams{
+	peekParams := domain.PeekParams{
 		PeekableType: domain.IntegrationPeekableType(params.PeekableType),
 		PayloadJSON:  params.PayloadJSON,
-		Cursor:       params.Cursor,
+		Pagination:   params.Pagination,
 		UserID:       params.UserID,
 		WorkspaceID:  params.WorkspaceID,
-	})
+	}
+
+	result, err := integrationPeeker.Peek(ctx, peekParams)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to peek data")
 		return domain.PeekResult{}, err

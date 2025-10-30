@@ -1227,7 +1227,12 @@ func (i *JiraIntegration) Peek(ctx context.Context, params domain.PeekParams) (d
 
 // PeekProjects fetches available projects from Jira
 func (i *JiraIntegration) PeekProjects(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
-	req, err := i.createAuthenticatedRequest(ctx, i.credentialID, "GET", "/rest/api/3/project", nil)
+	limit := p.GetLimitWithMax(20, 50)
+	offset := p.GetOffset()
+
+	apiURL := fmt.Sprintf("/rest/api/3/project/search?startAt=%d&maxResults=%d", offset, limit)
+
+	req, err := i.createAuthenticatedRequest(ctx, i.credentialID, "GET", apiURL, nil)
 	if err != nil {
 		return domain.PeekResult{}, err
 	}
@@ -1243,13 +1248,24 @@ func (i *JiraIntegration) PeekProjects(ctx context.Context, p domain.PeekParams)
 		return domain.PeekResult{}, fmt.Errorf("failed to get projects: %s - %s", resp.Status, string(bodyBytes))
 	}
 
-	var projects []map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&projects); err != nil {
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return domain.PeekResult{}, err
+	}
+
+	var response struct {
+		Values     []map[string]interface{} `json:"values"`
+		Total      int                      `json:"total"`
+		StartAt    int                      `json:"startAt"`
+		MaxResults int                      `json:"maxResults"`
+		IsLast     bool                     `json:"isLast"`
+	}
+	if err := json.Unmarshal(bodyBytes, &response); err != nil {
 		return domain.PeekResult{}, err
 	}
 
 	var results []domain.PeekResultItem
-	for _, project := range projects {
+	for _, project := range response.Values {
 		key, keyOk := project["key"].(string)
 		name, nameOk := project["name"].(string)
 
@@ -1262,9 +1278,13 @@ func (i *JiraIntegration) PeekProjects(ctx context.Context, p domain.PeekParams)
 		}
 	}
 
-	return domain.PeekResult{
-		Result: results,
-	}, nil
+	result := domain.PeekResult{Result: results}
+	if !response.IsLast {
+		result.SetNextOffset(response.StartAt + len(response.Values))
+	}
+	result.SetHasMore(!response.IsLast)
+
+	return result, nil
 }
 
 type PeekIssueTypesParams struct {
@@ -1581,13 +1601,15 @@ func (i *JiraIntegration) PeekAssignees(ctx context.Context, p domain.PeekParams
 		}
 	}
 
+	limit := p.GetLimitWithMax(20, 50)
+	offset := p.GetOffset()
+
 	var apiURL string
 	if projectKey != "" {
-		// Get assignable users for the specific project
-		apiURL = fmt.Sprintf("/rest/api/3/user/assignable/search?project=%s&maxResults=50", url.QueryEscape(projectKey))
+		apiURL = fmt.Sprintf("/rest/api/3/user/assignable/search?project=%s&startAt=%d&maxResults=%d",
+			url.QueryEscape(projectKey), offset, limit)
 	} else {
-		// Fallback: use email domain search to get real users (most emails have @)
-		apiURL = "/rest/api/3/user/search?query=@&maxResults=50"
+		apiURL = fmt.Sprintf("/rest/api/3/user/search?query=@&startAt=%d&maxResults=%d", offset, limit)
 	}
 
 	req, err := i.createAuthenticatedRequest(ctx, i.credentialID, "GET", apiURL, nil)
@@ -1616,7 +1638,6 @@ func (i *JiraIntegration) PeekAssignees(ctx context.Context, p domain.PeekParams
 		emailAddress, emailOk := user["emailAddress"].(string)
 		displayName, displayNameOk := user["displayName"].(string)
 
-		// Filter out apps/bots - they typically don't have email addresses or have different patterns
 		if emailOk && displayNameOk && emailAddress != "" && strings.Contains(emailAddress, "@") {
 			results = append(results, domain.PeekResultItem{
 				Key:     emailAddress,
@@ -1626,7 +1647,6 @@ func (i *JiraIntegration) PeekAssignees(ctx context.Context, p domain.PeekParams
 		}
 	}
 
-	// If no users found but we have items, show a helpful message
 	if len(results) == 0 && len(users) > 0 {
 		results = append(results, domain.PeekResultItem{
 			Key:     "_no_assignable_users_",
@@ -1635,9 +1655,14 @@ func (i *JiraIntegration) PeekAssignees(ctx context.Context, p domain.PeekParams
 		})
 	}
 
-	return domain.PeekResult{
-		Result: results,
-	}, nil
+	result := domain.PeekResult{Result: results}
+	hasMore := len(users) == limit
+	if hasMore {
+		result.SetNextOffset(offset + len(results))
+	}
+	result.SetHasMore(hasMore)
+
+	return result, nil
 }
 
 type PeekStatusesParams struct {
@@ -1806,12 +1831,15 @@ func (i *JiraIntegration) PeekIssues(ctx context.Context, p domain.PeekParams) (
 		return domain.PeekResult{}, fmt.Errorf("project key is required to fetch issues")
 	}
 
-	// Use JQL to fetch issues from the project, excluding subtasks
-	// Note: We exclude subtasks by checking if parent field is empty
+	limit := p.GetLimitWithMax(20, 100)
+	offset := p.GetOffset()
+
 	jql := fmt.Sprintf("project = %s AND parent is EMPTY ORDER BY created DESC", params.ProjectKey)
 
-	req, err := i.createAuthenticatedRequest(ctx, i.credentialID, "GET",
-		fmt.Sprintf("/rest/api/3/search?jql=%s&maxResults=50&fields=key,summary,issuetype", url.QueryEscape(jql)), nil)
+	apiURL := fmt.Sprintf("/rest/api/3/search?jql=%s&startAt=%d&maxResults=%d&fields=key,summary,issuetype",
+		url.QueryEscape(jql), offset, limit)
+
+	req, err := i.createAuthenticatedRequest(ctx, i.credentialID, "GET", apiURL, nil)
 	if err != nil {
 		return domain.PeekResult{}, err
 	}
@@ -1842,9 +1870,21 @@ func (i *JiraIntegration) PeekIssues(ctx context.Context, p domain.PeekParams) (
 		})
 	}
 
-	return domain.PeekResult{
-		Result: results,
-	}, nil
+	result := domain.PeekResult{Result: results}
+
+	total, totalOk := searchResult["total"].(float64)
+	startAt, startAtOk := searchResult["startAt"].(float64)
+	maxResults, maxResultsOk := searchResult["maxResults"].(float64)
+
+	if totalOk && startAtOk && maxResultsOk {
+		hasMore := (int(startAt) + int(maxResults)) < int(total)
+		if hasMore {
+			result.SetNextOffset(int(startAt) + len(results))
+		}
+		result.SetHasMore(hasMore)
+	}
+
+	return result, nil
 }
 
 // getUserAccountIds converts email addresses to Jira user account IDs using the go-jira library.

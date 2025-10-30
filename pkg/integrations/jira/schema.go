@@ -86,6 +86,11 @@ var (
 						Type:             domain.NodePropertyType_String,
 						Peekable:         true,
 						PeekableType:     JiraIntegrationPeekable_Projects,
+					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+					PeekablePaginationConfig: &domain.PeekablePaginationConfig{
+						DefaultLimit: 20,
+						MaxLimit:     50,
+					},
 						ExpressionChoice: true,
 					},
 					{
@@ -113,6 +118,11 @@ var (
 						Type:         domain.NodePropertyType_String,
 						Peekable:     true,
 						PeekableType: JiraIntegrationPeekable_Issues,
+					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+					PeekablePaginationConfig: &domain.PeekablePaginationConfig{
+						DefaultLimit: 20,
+						MaxLimit:     100,
+					},
 						Dependent:    []string{"project_key", "issue_type"},
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -164,6 +174,11 @@ var (
 						Type:         domain.NodePropertyType_String,
 						Peekable:     true,
 						PeekableType: JiraIntegrationPeekable_Assignees,
+					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+					PeekablePaginationConfig: &domain.PeekablePaginationConfig{
+						DefaultLimit: 20,
+						MaxLimit:     50,
+					},
 						Dependent:    []string{"project_key"},
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -218,6 +233,11 @@ var (
 						Type:         domain.NodePropertyType_String,
 						Peekable:     true,
 						PeekableType: JiraIntegrationPeekable_Assignees,
+					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+					PeekablePaginationConfig: &domain.PeekablePaginationConfig{
+						DefaultLimit: 20,
+						MaxLimit:     50,
+					},
 						Dependent:    []string{"issue_key"},
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -489,6 +509,11 @@ var (
 						Type:             domain.NodePropertyType_String,
 						Peekable:         true,
 						PeekableType:     JiraIntegrationPeekable_Projects,
+					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+					PeekablePaginationConfig: &domain.PeekablePaginationConfig{
+						DefaultLimit: 20,
+						MaxLimit:     50,
+					},
 						ExpressionChoice: true,
 					},
 					{

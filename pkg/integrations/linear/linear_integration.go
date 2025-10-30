@@ -166,43 +166,59 @@ const (
 	}`
 
 	teamsQuery = `
-	query Teams {
-		teams {
+	query Teams($first: Int!, $after: String) {
+		teams(first: $first, after: $after) {
 			nodes {
 				id
 				name
+			}
+			pageInfo {
+				hasNextPage
+				endCursor
 			}
 		}
 	}`
 
 	usersQuery = `
-	query Users {
-		users {
+	query Users($first: Int!, $after: String) {
+		users(first: $first, after: $after) {
 			nodes {
 				id
 				name
 				email
 			}
+			pageInfo {
+				hasNextPage
+				endCursor
+			}
 		}
 	}`
 
 	issueLabelsQuery = `
-	query IssueLabels {
-		issueLabels {
+	query IssueLabels($first: Int!, $after: String) {
+		issueLabels(first: $first, after: $after) {
 			nodes {
 				id
 				name
+			}
+			pageInfo {
+				hasNextPage
+				endCursor
 			}
 		}
 	}`
 
 	workflowStatesQuery = `
-	query WorkflowStates($teamId: String!) {
-		workflowStates(filter: { team: { id: { eq: $teamId } } }) {
+	query WorkflowStates($teamId: String!, $first: Int!, $after: String) {
+		workflowStates(filter: { team: { id: { eq: $teamId } } }, first: $first, after: $after) {
 			nodes {
 				id
 				name
 				type
+			}
+			pageInfo {
+				hasNextPage
+				endCursor
 			}
 		}
 	}`
@@ -652,16 +668,30 @@ func (i *LinearIntegration) Peek(ctx context.Context, params domain.PeekParams) 
 }
 
 func (i *LinearIntegration) PeekTeams(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
+	limit := p.GetLimitWithMax(20, 100)
+	cursor := p.GetCursor()
+
 	var queryResponse struct {
 		Teams struct {
 			Nodes []struct {
 				ID   string
 				Name string
 			} `json:"nodes"`
+			PageInfo struct {
+				HasNextPage bool   `json:"hasNextPage"`
+				EndCursor   string `json:"endCursor"`
+			} `json:"pageInfo"`
 		} `json:"teams"`
 	}
 
-	err := i.graphqlClient.Exec(ctx, teamsQuery, &queryResponse, nil)
+	variables := map[string]interface{}{
+		"first": limit,
+	}
+	if cursor != "" {
+		variables["after"] = cursor
+	}
+
+	err := i.graphqlClient.Exec(ctx, teamsQuery, &queryResponse, variables)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to fetch Linear teams via GraphQL: %w", err)
 	}
@@ -675,7 +705,21 @@ func (i *LinearIntegration) PeekTeams(ctx context.Context, p domain.PeekParams) 
 		})
 	}
 
-	return domain.PeekResult{Result: results}, nil
+	hasMore := queryResponse.Teams.PageInfo.HasNextPage
+	nextCursor := queryResponse.Teams.PageInfo.EndCursor
+
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			Cursor:  nextCursor,
+			HasMore: hasMore,
+		},
+	}
+
+	result.SetCursor(nextCursor)
+	result.SetHasMore(hasMore)
+
+	return result, nil
 }
 
 func (i *LinearIntegration) PeekPriorities(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
@@ -703,6 +747,10 @@ func (i *LinearIntegration) PeekPriorities(ctx context.Context, p domain.PeekPar
 }
 
 func (i *LinearIntegration) PeekUsers(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
+
+	limit := p.GetLimitWithMax(20, 100)
+	cursor := p.GetCursor()
+
 	var queryResponse struct {
 		Users struct {
 			Nodes []struct {
@@ -710,10 +758,21 @@ func (i *LinearIntegration) PeekUsers(ctx context.Context, p domain.PeekParams) 
 				Name  string
 				Email string
 			} `json:"nodes"`
+			PageInfo struct {
+				HasNextPage bool   `json:"hasNextPage"`
+				EndCursor   string `json:"endCursor"`
+			} `json:"pageInfo"`
 		} `json:"users"`
 	}
 
-	err := i.graphqlClient.Exec(ctx, usersQuery, &queryResponse, nil)
+	variables := map[string]interface{}{
+		"first": limit,
+	}
+	if cursor != "" {
+		variables["after"] = cursor
+	}
+
+	err := i.graphqlClient.Exec(ctx, usersQuery, &queryResponse, variables)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to fetch Linear users: %w", err)
 	}
@@ -731,20 +790,49 @@ func (i *LinearIntegration) PeekUsers(ctx context.Context, p domain.PeekParams) 
 		})
 	}
 
-	return domain.PeekResult{Result: results}, nil
+	hasMore := queryResponse.Users.PageInfo.HasNextPage
+	nextCursor := queryResponse.Users.PageInfo.EndCursor
+
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			Cursor:  nextCursor,
+			HasMore: hasMore,
+		},
+	}
+
+	result.SetCursor(nextCursor)
+	result.SetHasMore(hasMore)
+
+	return result, nil
 }
 
 func (i *LinearIntegration) PeekLabels(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
+
+	limit := p.GetLimitWithMax(20, 100)
+	cursor := p.GetCursor()
+
 	var queryResponse struct {
 		IssueLabels struct {
 			Nodes []struct {
 				ID   string
 				Name string
 			} `json:"nodes"`
+			PageInfo struct {
+				HasNextPage bool   `json:"hasNextPage"`
+				EndCursor   string `json:"endCursor"`
+			} `json:"pageInfo"`
 		} `json:"issueLabels"`
 	}
 
-	err := i.graphqlClient.Exec(ctx, issueLabelsQuery, &queryResponse, nil)
+	variables := map[string]interface{}{
+		"first": limit,
+	}
+	if cursor != "" {
+		variables["after"] = cursor
+	}
+
+	err := i.graphqlClient.Exec(ctx, issueLabelsQuery, &queryResponse, variables)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to fetch Linear labels via GraphQL: %w", err)
 	}
@@ -758,7 +846,21 @@ func (i *LinearIntegration) PeekLabels(ctx context.Context, p domain.PeekParams)
 		})
 	}
 
-	return domain.PeekResult{Result: results}, nil
+	hasMore := queryResponse.IssueLabels.PageInfo.HasNextPage
+	nextCursor := queryResponse.IssueLabels.PageInfo.EndCursor
+
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			Cursor:  nextCursor,
+			HasMore: hasMore,
+		},
+	}
+
+	result.SetCursor(nextCursor)
+	result.SetHasMore(hasMore)
+
+	return result, nil
 }
 
 type PeekWorkflowStatesParams struct {
@@ -766,6 +868,9 @@ type PeekWorkflowStatesParams struct {
 }
 
 func (i *LinearIntegration) PeekWorkflowStates(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
+	limit := p.GetLimitWithMax(20, 100)
+	cursor := p.GetCursor()
+
 	params := PeekWorkflowStatesParams{}
 	if len(p.PayloadJSON) > 0 {
 		err := json.Unmarshal(p.PayloadJSON, &params)
@@ -785,11 +890,19 @@ func (i *LinearIntegration) PeekWorkflowStates(ctx context.Context, p domain.Pee
 				Name string `json:"name"`
 				Type string `json:"type"`
 			} `json:"nodes"`
+			PageInfo struct {
+				HasNextPage bool   `json:"hasNextPage"`
+				EndCursor   string `json:"endCursor"`
+			} `json:"pageInfo"`
 		} `json:"workflowStates"`
 	}
 
 	vars := map[string]interface{}{
 		"teamId": params.TeamID,
+		"first":  limit,
+	}
+	if cursor != "" {
+		vars["after"] = cursor
 	}
 
 	err := i.graphqlClient.Exec(ctx, workflowStatesQuery, &queryResponse, vars)
@@ -806,7 +919,21 @@ func (i *LinearIntegration) PeekWorkflowStates(ctx context.Context, p domain.Pee
 		})
 	}
 
-	return domain.PeekResult{Result: results}, nil
+	hasMore := queryResponse.WorkflowStates.PageInfo.HasNextPage
+	nextCursor := queryResponse.WorkflowStates.PageInfo.EndCursor
+
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			Cursor:  nextCursor,
+			HasMore: hasMore,
+		},
+	}
+
+	result.SetCursor(nextCursor)
+	result.SetHasMore(hasMore)
+
+	return result, nil
 }
 
 func (i *LinearIntegration) PeekResourceTypes(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {

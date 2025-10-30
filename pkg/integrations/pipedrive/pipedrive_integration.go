@@ -1702,20 +1702,35 @@ func (i *PipedriveIntegration) Peek(ctx context.Context, params domain.PeekParam
 	return peekFunc(ctx, params)
 }
 
+type PeekPipelinesResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"data"`
+	AdditionalData struct {
+		NextCursor string `json:"next_cursor"`
+	} `json:"additional_data"`
+}
+
 func (i *PipedriveIntegration) PeekPipelines(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV2(ctx, "GET", "/pipelines", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	cursor := params.GetCursor()
+
+	endpoint := "/pipelines"
+	queryParams := url.Values{}
+	queryParams.Add("limit", strconv.Itoa(limit))
+	if cursor != "" {
+		queryParams.Add("cursor", cursor)
+	}
+	endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams.Encode())
+
+	respBody, err := i.makeRequestV2(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get pipelines: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID   int    `json:"id"`
-			Name string `json:"name"`
-		} `json:"data"`
-	}
-
+	var response PeekPipelinesResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -1729,25 +1744,44 @@ func (i *PipedriveIntegration) PeekPipelines(ctx context.Context, params domain.
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	result.SetCursor(response.AdditionalData.NextCursor)
+	result.SetHasMore(response.AdditionalData.NextCursor != "")
+
+	return result, nil
+}
+
+type PeekStagesResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"data"`
+	AdditionalData struct {
+		NextCursor string `json:"next_cursor"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekStages(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV2(ctx, "GET", "/stages", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	cursor := params.GetCursor()
+
+	endpoint := "/stages"
+	queryParams := url.Values{}
+	queryParams.Add("limit", strconv.Itoa(limit))
+	if cursor != "" {
+		queryParams.Add("cursor", cursor)
+	}
+	endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams.Encode())
+
+	respBody, err := i.makeRequestV2(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get stages: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID   int    `json:"id"`
-			Name string `json:"name"`
-		} `json:"data"`
-	}
-
+	var response PeekStagesResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -1761,26 +1795,40 @@ func (i *PipedriveIntegration) PeekStages(ctx context.Context, params domain.Pee
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	result.SetCursor(response.AdditionalData.NextCursor)
+	result.SetHasMore(response.AdditionalData.NextCursor != "")
+
+	return result, nil
+}
+
+type PeekUsersResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID    int    `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	} `json:"data"`
+	AdditionalData struct {
+		MoreItemsInCollection bool `json:"more_items_in_collection"`
+		NextStart             int  `json:"next_start"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekUsers(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV1(ctx, "GET", "/users", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	offset := params.GetOffset()
+
+	endpoint := fmt.Sprintf("/users?start=%d&limit=%d", offset, limit)
+
+	respBody, err := i.makeRequestV1(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get users: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID    int    `json:"id"`
-			Name  string `json:"name"`
-			Email string `json:"email"`
-		} `json:"data"`
-	}
-
+	var response PeekUsersResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -1794,28 +1842,49 @@ func (i *PipedriveIntegration) PeekUsers(ctx context.Context, params domain.Peek
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	if response.AdditionalData.MoreItemsInCollection {
+		result.SetNextOffset(response.AdditionalData.NextStart)
+	}
+	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+
+	return result, nil
+}
+
+type PeekPersonsResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID    int    `json:"id"`
+		Name  string `json:"name"`
+		Email []struct {
+			Value string `json:"value"`
+		} `json:"email"`
+	} `json:"data"`
+	AdditionalData struct {
+		NextCursor string `json:"next_cursor"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekPersons(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV2(ctx, "GET", "/persons", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	cursor := params.GetCursor()
+
+	endpoint := "/persons"
+	queryParams := url.Values{}
+	queryParams.Add("limit", strconv.Itoa(limit))
+	if cursor != "" {
+		queryParams.Add("cursor", cursor)
+	}
+	endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams.Encode())
+
+	respBody, err := i.makeRequestV2(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get persons: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID    int    `json:"id"`
-			Name  string `json:"name"`
-			Email []struct {
-				Value string `json:"value"`
-			} `json:"email"`
-		} `json:"data"`
-	}
-
+	var response PeekPersonsResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -1833,25 +1902,44 @@ func (i *PipedriveIntegration) PeekPersons(ctx context.Context, params domain.Pe
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	result.SetCursor(response.AdditionalData.NextCursor)
+	result.SetHasMore(response.AdditionalData.NextCursor != "")
+
+	return result, nil
+}
+
+type PeekOrganizationsResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"data"`
+	AdditionalData struct {
+		NextCursor string `json:"next_cursor"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekOrganizations(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV2(ctx, "GET", "/organizations", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	cursor := params.GetCursor()
+
+	endpoint := "/organizations"
+	queryParams := url.Values{}
+	queryParams.Add("limit", strconv.Itoa(limit))
+	if cursor != "" {
+		queryParams.Add("cursor", cursor)
+	}
+	endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams.Encode())
+
+	respBody, err := i.makeRequestV2(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get organizations: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID   int    `json:"id"`
-			Name string `json:"name"`
-		} `json:"data"`
-	}
-
+	var response PeekOrganizationsResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -1865,26 +1953,40 @@ func (i *PipedriveIntegration) PeekOrganizations(ctx context.Context, params dom
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	result.SetCursor(response.AdditionalData.NextCursor)
+	result.SetHasMore(response.AdditionalData.NextCursor != "")
+
+	return result, nil
+}
+
+type PeekCurrenciesResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		Code   string `json:"code"`
+		Name   string `json:"name"`
+		Symbol string `json:"symbol"`
+	} `json:"data"`
+	AdditionalData struct {
+		MoreItemsInCollection bool `json:"more_items_in_collection"`
+		NextStart             int  `json:"next_start"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekCurrencies(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV1(ctx, "GET", "/currencies", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	offset := params.GetOffset()
+
+	endpoint := fmt.Sprintf("/currencies?start=%d&limit=%d", offset, limit)
+
+	respBody, err := i.makeRequestV1(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get currencies: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			Code   string `json:"code"`
-			Name   string `json:"name"`
-			Symbol string `json:"symbol"`
-		} `json:"data"`
-	}
-
+	var response PeekCurrenciesResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -1902,25 +2004,46 @@ func (i *PipedriveIntegration) PeekCurrencies(ctx context.Context, params domain
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	if response.AdditionalData.MoreItemsInCollection {
+		result.SetNextOffset(response.AdditionalData.NextStart)
+	}
+	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+
+	return result, nil
+}
+
+type PeekDealsResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID    int    `json:"id"`
+		Title string `json:"title"`
+	} `json:"data"`
+	AdditionalData struct {
+		NextCursor string `json:"next_cursor"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekDeals(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV2(ctx, "GET", "/deals", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	cursor := params.GetCursor()
+
+	endpoint := "/deals"
+	queryParams := url.Values{}
+	queryParams.Add("limit", strconv.Itoa(limit))
+	if cursor != "" {
+		queryParams.Add("cursor", cursor)
+	}
+	endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams.Encode())
+
+	respBody, err := i.makeRequestV2(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get deals: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID    int    `json:"id"`
-			Title string `json:"title"`
-		} `json:"data"`
-	}
-
+	var response PeekDealsResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -1934,25 +2057,44 @@ func (i *PipedriveIntegration) PeekDeals(ctx context.Context, params domain.Peek
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	result.SetCursor(response.AdditionalData.NextCursor)
+	result.SetHasMore(response.AdditionalData.NextCursor != "")
+
+	return result, nil
+}
+
+type PeekActivitiesResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID      int    `json:"id"`
+		Subject string `json:"subject"`
+	} `json:"data"`
+	AdditionalData struct {
+		NextCursor string `json:"next_cursor"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekActivities(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV2(ctx, "GET", "/activities", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	cursor := params.GetCursor()
+
+	endpoint := "/activities"
+	queryParams := url.Values{}
+	queryParams.Add("limit", strconv.Itoa(limit))
+	if cursor != "" {
+		queryParams.Add("cursor", cursor)
+	}
+	endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams.Encode())
+
+	respBody, err := i.makeRequestV2(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get activities: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID      int    `json:"id"`
-			Subject string `json:"subject"`
-		} `json:"data"`
-	}
-
+	var response PeekActivitiesResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -1966,25 +2108,39 @@ func (i *PipedriveIntegration) PeekActivities(ctx context.Context, params domain
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	result.SetCursor(response.AdditionalData.NextCursor)
+	result.SetHasMore(response.AdditionalData.NextCursor != "")
+
+	return result, nil
+}
+
+type PeekActivityTypesResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		KeyString string `json:"key_string"`
+		Name      string `json:"name"`
+	} `json:"data"`
+	AdditionalData struct {
+		MoreItemsInCollection bool `json:"more_items_in_collection"`
+		NextStart             int  `json:"next_start"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekActivityTypes(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV1(ctx, "GET", "/activityTypes", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	offset := params.GetOffset()
+
+	endpoint := fmt.Sprintf("/activityTypes?start=%d&limit=%d", offset, limit)
+
+	respBody, err := i.makeRequestV1(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get activity types: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			KeyString string `json:"key_string"`
-			Name      string `json:"name"`
-		} `json:"data"`
-	}
-
+	var response PeekActivityTypesResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -1998,25 +2154,46 @@ func (i *PipedriveIntegration) PeekActivityTypes(ctx context.Context, params dom
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	if response.AdditionalData.MoreItemsInCollection {
+		result.SetNextOffset(response.AdditionalData.NextStart)
+	}
+	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+
+	return result, nil
+}
+
+type PeekProductsResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"data"`
+	AdditionalData struct {
+		NextCursor string `json:"next_cursor"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekProducts(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV2(ctx, "GET", "/products", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	cursor := params.GetCursor()
+
+	endpoint := "/products"
+	queryParams := url.Values{}
+	queryParams.Add("limit", strconv.Itoa(limit))
+	if cursor != "" {
+		queryParams.Add("cursor", cursor)
+	}
+	endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams.Encode())
+
+	respBody, err := i.makeRequestV2(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get products: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID   int    `json:"id"`
-			Name string `json:"name"`
-		} `json:"data"`
-	}
-
+	var response PeekProductsResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -2030,25 +2207,39 @@ func (i *PipedriveIntegration) PeekProducts(ctx context.Context, params domain.P
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	result.SetCursor(response.AdditionalData.NextCursor)
+	result.SetHasMore(response.AdditionalData.NextCursor != "")
+
+	return result, nil
+}
+
+type PeekProjectsResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID    int    `json:"id"`
+		Title string `json:"title"`
+	} `json:"data"`
+	AdditionalData struct {
+		MoreItemsInCollection bool `json:"more_items_in_collection"`
+		NextStart             int  `json:"next_start"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekProjects(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV1(ctx, "GET", "/projects", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	offset := params.GetOffset()
+
+	endpoint := fmt.Sprintf("/projects?start=%d&limit=%d", offset, limit)
+
+	respBody, err := i.makeRequestV1(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get projects: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID    int    `json:"id"`
-			Title string `json:"title"`
-		} `json:"data"`
-	}
-
+	var response PeekProjectsResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -2062,25 +2253,41 @@ func (i *PipedriveIntegration) PeekProjects(ctx context.Context, params domain.P
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	if response.AdditionalData.MoreItemsInCollection {
+		result.SetNextOffset(response.AdditionalData.NextStart)
+	}
+	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+
+	return result, nil
+}
+
+type PeekLeadsResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID    int    `json:"id"`
+		Title string `json:"title"`
+	} `json:"data"`
+	AdditionalData struct {
+		MoreItemsInCollection bool `json:"more_items_in_collection"`
+		NextStart             int  `json:"next_start"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekLeads(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV1(ctx, "GET", "/leads", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	offset := params.GetOffset()
+
+	endpoint := fmt.Sprintf("/leads?start=%d&limit=%d", offset, limit)
+
+	respBody, err := i.makeRequestV1(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get leads: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID    int    `json:"id"`
-			Title string `json:"title"`
-		} `json:"data"`
-	}
-
+	var response PeekLeadsResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -2094,25 +2301,41 @@ func (i *PipedriveIntegration) PeekLeads(ctx context.Context, params domain.Peek
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	if response.AdditionalData.MoreItemsInCollection {
+		result.SetNextOffset(response.AdditionalData.NextStart)
+	}
+	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+
+	return result, nil
+}
+
+type PeekLabelsResponse struct {
+	Success bool `json:"success"`
+	Data    []struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"data"`
+	AdditionalData struct {
+		MoreItemsInCollection bool `json:"more_items_in_collection"`
+		NextStart             int  `json:"next_start"`
+	} `json:"additional_data"`
 }
 
 func (i *PipedriveIntegration) PeekLabels(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	respBody, err := i.makeRequestV1(ctx, "GET", "/labels", nil)
+	limit := params.GetLimitWithMax(20, 500)
+	offset := params.GetOffset()
+
+	endpoint := fmt.Sprintf("/labels?start=%d&limit=%d", offset, limit)
+
+	respBody, err := i.makeRequestV1(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to get labels: %w", err)
 	}
 
-	var response struct {
-		Success bool `json:"success"`
-		Data    []struct {
-			ID   int    `json:"id"`
-			Name string `json:"name"`
-		} `json:"data"`
-	}
-
+	var response PeekLabelsResponse
 	if err := json.Unmarshal(respBody, &response); err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -2126,7 +2349,13 @@ func (i *PipedriveIntegration) PeekLabels(ctx context.Context, params domain.Pee
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+	}
+	if response.AdditionalData.MoreItemsInCollection {
+		result.SetNextOffset(response.AdditionalData.NextStart)
+	}
+	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+
+	return result, nil
 }

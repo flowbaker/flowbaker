@@ -1119,8 +1119,6 @@ func (i *DropboxIntegration) DeleteFolder(ctx context.Context, params domain.Int
 }
 
 func (i *DropboxIntegration) Peek(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
-	log.Info().Msgf("Peeking Dropbox")
-
 	peekFunc, ok := i.peekFuncs[p.PeekableType]
 	if !ok {
 		return domain.PeekResult{}, fmt.Errorf("peekable type not found")
@@ -1137,9 +1135,12 @@ const (
 )
 
 func (i *DropboxIntegration) PeekFolders(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
+	limit := p.GetLimitWithMax(20, 1000)
+	cursor := p.GetCursor()
+
 	folders, err := listDropboxItems(ctx, i.client, listDropboxItemsParams{
-		Limit:      100,
-		Cursor:     p.Cursor,
+		Limit:      limit,
+		Cursor:     cursor,
 		Path:       p.Path,
 		ReturnType: DropboxItemFolder,
 	})
@@ -1147,17 +1148,27 @@ func (i *DropboxIntegration) PeekFolders(ctx context.Context, p domain.PeekParam
 		return domain.PeekResult{}, err
 	}
 
-	return domain.PeekResult{
-		Result:  folders.Items,
-		Cursor:  folders.Cursor,
-		HasMore: folders.HasMore,
-	}, nil
+	result := domain.PeekResult{
+		Result: folders.Items,
+		Pagination: domain.PaginationMetadata{
+			Cursor:  folders.Cursor,
+			HasMore: folders.HasMore,
+		},
+	}
+
+	result.SetCursor(folders.Cursor)
+	result.SetHasMore(folders.HasMore)
+
+	return result, nil
 }
 
 func (i *DropboxIntegration) PeekFiles(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
+	limit := p.GetLimitWithMax(20, 1000)
+	cursor := p.GetCursor()
+
 	files, err := listDropboxItems(ctx, i.client, listDropboxItemsParams{
-		Limit:      50,
-		Cursor:     p.Cursor,
+		Limit:      limit,
+		Cursor:     cursor,
 		Path:       p.Path,
 		ReturnType: DropboxItemFile,
 	})
@@ -1165,12 +1176,18 @@ func (i *DropboxIntegration) PeekFiles(ctx context.Context, p domain.PeekParams)
 		return domain.PeekResult{}, err
 	}
 
-	return domain.PeekResult{
-		Result:  files.Items,
-		Cursor:  files.Cursor,
-		HasMore: files.HasMore,
-	}, nil
+	result := domain.PeekResult{
+		Result: files.Items,
+		Pagination: domain.PaginationMetadata{
+			Cursor:  files.Cursor,
+			HasMore: files.HasMore,
+		},
+	}
 
+	result.SetCursor(files.Cursor)
+	result.SetHasMore(files.HasMore)
+
+	return result, nil
 }
 
 type listDropboxItemsResult struct {
@@ -1194,11 +1211,7 @@ func listDropboxItems(ctx context.Context, client *DropboxClient, params listDro
 	var requestBody []byte
 	var err error
 
-	log.Info().Msgf("Cursor: %s", params.Cursor)
-
 	if params.Cursor == "" {
-		log.Info().Msgf("Listing folder: %s", params.Path)
-
 		url = fmt.Sprintf("%s/files/list_folder", client.baseURL)
 		requestBody, err = json.Marshal(map[string]interface{}{
 			"path":      params.Path,

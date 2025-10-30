@@ -162,15 +162,25 @@ func (g *GoogleSheetsIntegration) Peek(ctx context.Context, params domain.PeekPa
 }
 
 func (g *GoogleSheetsIntegration) PeekFiles(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
+	limit := p.GetLimitWithMax(20, 100)
+	pageToken := p.GetPageToken()
+
 	query := "mimeType='application/vnd.google-apps.spreadsheet'"
-	filesList, err := g.driveService.Files.List().
+	listCall := g.driveService.Files.List().
 		Q(query).
-		Fields("files(id, name)").
-		Context(ctx).
-		Do()
+		Fields("nextPageToken, files(id, name)").
+		PageSize(int64(limit)).
+		Context(ctx)
+
+	if pageToken != "" {
+		listCall = listCall.PageToken(pageToken)
+	}
+
+	filesList, err := listCall.Do()
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to list spreadsheets: %w", err)
 	}
+
 	var results []domain.PeekResultItem
 	for _, file := range filesList.Files {
 		results = append(results, domain.PeekResultItem{
@@ -180,9 +190,20 @@ func (g *GoogleSheetsIntegration) PeekFiles(ctx context.Context, p domain.PeekPa
 		})
 	}
 
-	return domain.PeekResult{
+	hasMore := filesList.NextPageToken != ""
+
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+		Pagination: domain.PaginationMetadata{
+			NextPageToken: filesList.NextPageToken,
+			HasMore:       hasMore,
+		},
+	}
+
+	result.SetPageToken(filesList.NextPageToken)
+	result.SetHasMore(hasMore)
+
+	return result, nil
 }
 
 func (g *GoogleSheetsIntegration) PeekSheets(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
@@ -221,10 +242,10 @@ func (g *GoogleSheetsIntegration) PeekSheets(ctx context.Context, p domain.PeekP
 		return domain.PeekResult{}, fmt.Errorf("failed to get spreadsheet: %w", err)
 	}
 
-	var spreadsheets []domain.PeekResultItem
+	var sheets []domain.PeekResultItem
 	for _, sheet := range spreadsheet.Sheets {
 		sheetID := strconv.Itoa(int(sheet.Properties.SheetId))
-		spreadsheets = append(spreadsheets, domain.PeekResultItem{
+		sheets = append(sheets, domain.PeekResultItem{
 			Key:     sheet.Properties.Title, // Use sheet title for display and dependencies
 			Value:   sheetID,                // Use sheet ID for backend processing
 			Content: sheet.Properties.Title, // Use sheet title for display
@@ -232,7 +253,7 @@ func (g *GoogleSheetsIntegration) PeekSheets(ctx context.Context, p domain.PeekP
 	}
 
 	return domain.PeekResult{
-		Result: spreadsheets,
+		Result: sheets,
 	}, nil
 }
 

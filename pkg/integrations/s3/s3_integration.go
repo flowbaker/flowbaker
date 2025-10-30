@@ -428,11 +428,21 @@ func (i *S3Integration) PeekObjects(ctx context.Context, params domain.PeekParam
 		return domain.PeekResult{}, err
 	}
 
-	result, err := i.s3Client.ListObjectsV2(&s3.ListObjectsV2Input{
+	limit := params.GetLimitWithMax(20, 1000)
+	pageToken := params.GetPageToken()
+
+	input := &s3.ListObjectsV2Input{
 		Bucket:    aws.String(p.Bucket),
 		Prefix:    aws.String(p.Prefix),
 		Delimiter: aws.String("/"),
-	})
+		MaxKeys:   aws.Int64(int64(limit)),
+	}
+
+	if pageToken != "" {
+		input.ContinuationToken = aws.String(pageToken)
+	}
+
+	result, err := i.s3Client.ListObjectsV2(input)
 	if err != nil {
 		return domain.PeekResult{}, err
 	}
@@ -446,9 +456,19 @@ func (i *S3Integration) PeekObjects(ctx context.Context, params domain.PeekParam
 		})
 	}
 
-	return domain.PeekResult{
+	peekResult := domain.PeekResult{
 		Result: items,
-	}, nil
+	}
+
+	if result.NextContinuationToken != nil {
+		peekResult.SetPageToken(*result.NextContinuationToken)
+	}
+
+	if result.IsTruncated != nil {
+		peekResult.SetHasMore(*result.IsTruncated)
+	}
+
+	return peekResult, nil
 }
 
 type PeekPrefixesParams struct {
@@ -461,10 +481,20 @@ func (i *S3Integration) PeekPrefixes(ctx context.Context, params domain.PeekPara
 		return domain.PeekResult{}, err
 	}
 
-	result, err := i.s3Client.ListObjectsV2(&s3.ListObjectsV2Input{
+	limit := params.GetLimitWithMax(20, 1000)
+	pageToken := params.GetPageToken()
+
+	input := &s3.ListObjectsV2Input{
 		Bucket:    aws.String(p.Bucket),
 		Delimiter: aws.String("/"),
-	})
+		MaxKeys:   aws.Int64(int64(limit)),
+	}
+
+	if pageToken != "" {
+		input.ContinuationToken = aws.String(pageToken)
+	}
+
+	result, err := i.s3Client.ListObjectsV2(input)
 	if err != nil {
 		return domain.PeekResult{}, err
 	}
@@ -478,9 +508,19 @@ func (i *S3Integration) PeekPrefixes(ctx context.Context, params domain.PeekPara
 		})
 	}
 
-	return domain.PeekResult{
+	peekResult := domain.PeekResult{
 		Result: items,
-	}, nil
+	}
+
+	if result.NextContinuationToken != nil {
+		peekResult.SetPageToken(*result.NextContinuationToken)
+	}
+
+	if result.IsTruncated != nil {
+		peekResult.SetHasMore(*result.IsTruncated)
+	}
+
+	return peekResult, nil
 }
 
 func (i *S3Integration) PeekRegions(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
