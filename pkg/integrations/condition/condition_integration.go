@@ -157,7 +157,7 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		enhancedItem[k] = v
 	}
 
-	// now returns only the first condition value1 and value2
+	// returns only the first condition's value1 and value2
 	ifElseResult := IfElseResult{
 		OutputIndex:    outputIndex,
 		ValueType:      valueType,
