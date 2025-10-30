@@ -157,6 +157,7 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		enhancedItem[k] = v
 	}
 
+	// now returns only the first condition value1 and value2
 	ifElseResult := IfElseResult{
 		OutputIndex:    outputIndex,
 		ValueType:      valueType,
@@ -281,9 +282,19 @@ func evaluateStringCondition(params EvaluateConditionParams) (bool, error) {
 	case ConditionTypeString_DoesNotEndWith:
 		return !strings.HasSuffix(value1str, value2str), nil
 	case ConditionTypeString_IsEmpty:
-		return value1str == "", nil
+		isEmpty := checkIsEmpty(value1str)
+		if isEmpty {
+			return true, nil
+		} else {
+			return value1str == "", nil
+		}
 	case ConditionTypeString_IsNotEmpty:
-		return value1str != "", nil
+		isEmpty := checkIsEmpty(value1str)
+		if isEmpty {
+			return false, nil
+		} else {
+			return value1str != "", nil
+		}
 	case ConditionTypeString_MatchesRegex:
 		matched, err := regexp.MatchString(value2str, value1str)
 		if err != nil {
@@ -414,9 +425,20 @@ func evaluateArrayCondition(params EvaluateConditionParams) (bool, error) {
 	case ConditionTypeArray_DoesNotExist:
 		return false, nil
 	case ConditionTypeArray_IsEmpty:
-		return len(value1arr) == 0, nil
+		isEmpty := checkIsEmpty(value1arr)
+		if isEmpty {
+			return true, nil
+		} else {
+			return len(value1arr) == 0, nil
+		}
+
 	case ConditionTypeArray_IsNotEmpty:
-		return len(value1arr) > 0, nil
+		isEmpty := checkIsEmpty(value1arr)
+		if isEmpty {
+			return false, nil
+		} else {
+			return len(value1arr) > 0, nil
+		}
 	case ConditionTypeArray_Contains:
 		return arrayContains(value1arr, value2str), nil
 	case ConditionTypeArray_DoesNotContains:
@@ -556,6 +578,22 @@ func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
 	default:
 		return false, fmt.Errorf("unknown object condition type: %s", params.ComparisonType)
 	}
+}
+
+func checkIsEmpty(value any) bool {
+	str, err := convertToString(value)
+	if err != nil {
+		return false
+	}
+	if str == "null" || str == "undefined" {
+		return true
+	}
+
+	if len(str) == 0 {
+		return true
+	}
+
+	return str == ""
 }
 
 func arrayContains(arr []interface{}, target string) bool {
