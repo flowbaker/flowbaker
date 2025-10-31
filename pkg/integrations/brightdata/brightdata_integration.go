@@ -168,6 +168,7 @@ func (i *BrightDataIntegration) triggerScrapingJob(ctx context.Context, apiToken
 	}
 
 	req.Header.Set("Authorization", "Bearer "+apiToken)
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
 	if bodyReader != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -242,6 +243,7 @@ func (i *BrightDataIntegration) checkProgress(ctx context.Context, apiToken, sna
 	}
 
 	req.Header.Set("Authorization", "Bearer "+apiToken)
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
@@ -276,6 +278,7 @@ func (i *BrightDataIntegration) downloadSnapshot(ctx context.Context, apiToken, 
 	}
 
 	req.Header.Set("Authorization", "Bearer "+apiToken)
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
 	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)
