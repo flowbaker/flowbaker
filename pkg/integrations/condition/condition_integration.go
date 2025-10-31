@@ -230,6 +230,8 @@ type EvaluateConditionParams struct {
 
 func EvaluateCondition(valueType string, params EvaluateConditionParams) (bool, error) {
 	switch valueType {
+	case "generic":
+		return evaluateGenericCondition(params)
 	case "string":
 		return evaluateStringCondition(params)
 	case "number":
@@ -249,40 +251,39 @@ func EvaluateCondition(valueType string, params EvaluateConditionParams) (bool, 
 	}
 }
 
+func evaluateGenericCondition(params EvaluateConditionParams) (bool, error) {
+	switch ConditionTypeGeneric(params.ComparisonType) {
+	case ConditionTypeGeneric_IsEmpty:
+		return checkIsEmpty(params.Value1), nil
+	case ConditionTypeGeneric_IsNotEmpty:
+		return !checkIsEmpty(params.Value1), nil
+	default:
+		return false, fmt.Errorf("unknown generic condition type: %s", params.ComparisonType)
+	}
+}
+
 func evaluateStringCondition(params EvaluateConditionParams) (bool, error) {
 	switch ConditionTypeString(params.ComparisonType) {
 	case ConditionTypeString_IsEmpty:
-		isEmpty := checkIsEmpty(params.Value1)
-		if isEmpty {
+		if checkIsEmpty(params.Value1) {
 			return true, nil
 		}
+
 		value1str, err := convertToString(params.Value1)
 		if err != nil {
 			return false, fmt.Errorf("value1 is not a string: %w", err)
 		}
 		return value1str == "", nil
 	case ConditionTypeString_IsNotEmpty:
-		isEmpty := checkIsEmpty(params.Value1)
-		if isEmpty {
+		if checkIsEmpty(params.Value1) {
 			return false, nil
 		}
+
 		value1str, err := convertToString(params.Value1)
 		if err != nil {
 			return false, fmt.Errorf("value1 is not a string: %w", err)
 		}
 		return value1str != "", nil
-	case ConditionTypeString_Exists:
-		value1str, err := convertToString(params.Value1)
-		if err != nil {
-			return false, fmt.Errorf("value1 is not a string: %w", err)
-		}
-		return value1str != "", nil
-	case ConditionTypeString_DoesNotExist:
-		value1str, err := convertToString(params.Value1)
-		if err != nil {
-			return false, fmt.Errorf("value1 is not a string: %w", err)
-		}
-		return value1str == "", nil
 	}
 
 	value1str, err := convertToString(params.Value1)
@@ -313,13 +314,13 @@ func evaluateStringCondition(params EvaluateConditionParams) (bool, error) {
 	case ConditionTypeString_DoesNotEndWith:
 		return !strings.HasSuffix(value1str, value2str), nil
 	case ConditionTypeString_MatchesRegex:
-		matched, err := regexp.MatchString(value2str, value1str)
+		matched, err := regexp.MatchString(value1str, value2str)
 		if err != nil {
 			return false, fmt.Errorf("regex parse error in matches_regex: %w", err)
 		}
 		return matched, nil
 	case ConditionTypeString_DoesNotMatchRegex:
-		matched, err := regexp.MatchString(value2str, value1str)
+		matched, err := regexp.MatchString(value1str, value2str)
 		if err != nil {
 			return false, fmt.Errorf("regex parse error in does_not_match_regex: %w", err)
 		}
@@ -330,6 +331,31 @@ func evaluateStringCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func evaluateNumberCondition(params EvaluateConditionParams) (bool, error) {
+	switch ConditionTypeNumber(params.ComparisonType) {
+	case ConditionTypeNumber_IsEmpty:
+		if checkIsEmpty(params.Value1) {
+			return true, nil
+		}
+
+		value1num, err := convertToFloat64(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not a number: %w", err)
+		}
+
+		return value1num == 0, nil
+	case ConditionTypeNumber_IsNotEmpty:
+		if checkIsEmpty(params.Value1) {
+			return false, nil
+		}
+
+		value1num, err := convertToFloat64(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not a number: %w", err)
+		}
+
+		return value1num != 0, nil
+	}
+
 	value1num, err := convertToFloat64(params.Value1)
 	if err != nil {
 		return false, fmt.Errorf("value1 is not a number: %w", err)
@@ -341,24 +367,6 @@ func evaluateNumberCondition(params EvaluateConditionParams) (bool, error) {
 	}
 
 	switch ConditionTypeNumber(params.ComparisonType) {
-	case ConditionTypeNumber_Exists:
-		return value1num != 0, nil
-	case ConditionTypeNumber_DoesNotExist:
-		return value1num == 0, nil
-	case ConditionTypeNumber_IsEmpty:
-		isEmpty := checkIsEmpty(value1num)
-		if isEmpty {
-			return true, nil
-		} else {
-			return value1num == 0, nil
-		}
-	case ConditionTypeNumber_IsNotEmpty:
-		isEmpty := checkIsEmpty(value1num)
-		if isEmpty {
-			return false, nil
-		} else {
-			return value1num != 0, nil
-		}
 	case ConditionTypeNumber_IsEqual:
 		return value1num == value2num, nil
 	case ConditionTypeNumber_IsNotEqual:
@@ -377,6 +385,40 @@ func evaluateNumberCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func evaluateBooleanCondition(params EvaluateConditionParams) (bool, error) {
+	switch ConditionTypeBoolean(params.ComparisonType) {
+	case ConditionTypeBoolean_IsEmpty:
+		if checkIsEmpty(params.Value1) {
+			return true, nil
+		}
+
+		value1bool, err := convertToBool(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not a boolean: %w", err)
+		}
+
+		return !value1bool, nil
+	case ConditionTypeBoolean_IsNotEmpty:
+		if checkIsEmpty(params.Value1) {
+			return false, nil
+		}
+
+		value1bool, err := convertToBool(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not a boolean: %w", err)
+		}
+
+		return value1bool, nil
+	case ConditionTypeBoolean_IsTrue, ConditionTypeBoolean_IsFalse:
+		value1bool, err := convertToBool(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not a boolean: %w", err)
+		}
+		if params.ComparisonType == string(ConditionTypeBoolean_IsTrue) {
+			return value1bool, nil
+		}
+		return !value1bool, nil
+	}
+
 	value1bool, err := convertToBool(params.Value1)
 	if err != nil {
 		return false, fmt.Errorf("value1 is not a boolean: %w", err)
@@ -388,38 +430,41 @@ func evaluateBooleanCondition(params EvaluateConditionParams) (bool, error) {
 	}
 
 	switch ConditionTypeBoolean(params.ComparisonType) {
-	case ConditionTypeBoolean_Exists:
-		return value1bool != false, nil
-	case ConditionTypeBoolean_DoesNotExist:
-		return value1bool == false, nil
-	case ConditionTypeBoolean_IsEmpty:
-		isEmpty := checkIsEmpty(value1bool)
-		if isEmpty {
-			return true, nil
-		} else {
-			return value1bool == false, nil
-		}
-	case ConditionTypeBoolean_IsNotEmpty:
-		isEmpty := checkIsEmpty(value1bool)
-		if isEmpty {
-			return false, nil
-		} else {
-			return value1bool != false, nil
-		}
 	case ConditionTypeBoolean_IsEqual:
 		return value1bool == value2bool, nil
 	case ConditionTypeBoolean_IsNotEqual:
 		return value1bool != value2bool, nil
-	case ConditionTypeBoolean_IsTrue:
-		return value1bool, nil
-	case ConditionTypeBoolean_IsFalse:
-		return !value1bool, nil
 	default:
 		return false, fmt.Errorf("unknown boolean condition type: %s", params.ComparisonType)
 	}
 }
 
 func evaluateDateCondition(params EvaluateConditionParams) (bool, error) {
+	switch ConditionTypeDate(params.ComparisonType) {
+	case ConditionTypeDate_IsEmpty:
+		if checkIsEmpty(params.Value1) {
+			return true, nil
+		}
+
+		value1date, err := convertToTime(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not a date: %w", err)
+		}
+
+		return value1date.Equal(time.Time{}), nil
+	case ConditionTypeDate_IsNotEmpty:
+		if checkIsEmpty(params.Value1) {
+			return false, nil
+		}
+
+		value1date, err := convertToTime(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not a date: %w", err)
+		}
+
+		return !value1date.Equal(time.Time{}), nil
+	}
+
 	value1date, err := convertToTime(params.Value1)
 	if err != nil {
 		return false, fmt.Errorf("value1 is not a date: %w", err)
@@ -431,24 +476,6 @@ func evaluateDateCondition(params EvaluateConditionParams) (bool, error) {
 	}
 
 	switch ConditionTypeDate(params.ComparisonType) {
-	case ConditionTypeDate_Exists:
-		return value1date != time.Time{}, nil
-	case ConditionTypeDate_DoesNotExist:
-		return value1date.Equal(time.Time{}), nil
-	case ConditionTypeDate_IsEmpty:
-		isEmpty := checkIsEmpty(value1date)
-		if isEmpty {
-			return true, nil
-		} else {
-			return value1date.Equal(time.Time{}), nil
-		}
-	case ConditionTypeDate_IsNotEmpty:
-		isEmpty := checkIsEmpty(value1date)
-		if isEmpty {
-			return false, nil
-		} else {
-			return !value1date.Equal(time.Time{}), nil
-		}
 	case ConditionTypeDate_IsEqual:
 		return value1date.Equal(value2date), nil
 	case ConditionTypeDate_IsNotEqual:
@@ -467,6 +494,31 @@ func evaluateDateCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func evaluateArrayCondition(params EvaluateConditionParams) (bool, error) {
+	switch ConditionTypeArray(params.ComparisonType) {
+	case ConditionTypeArray_IsEmpty:
+		if checkIsEmpty(params.Value1) {
+			return true, nil
+		}
+
+		value1arr, err := convertToArray(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not an array: %w", err)
+		}
+
+		return len(value1arr) == 0, nil
+	case ConditionTypeArray_IsNotEmpty:
+		if checkIsEmpty(params.Value1) {
+			return false, nil
+		}
+
+		value1arr, err := convertToArray(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not an array: %w", err)
+		}
+
+		return len(value1arr) > 0, nil
+	}
+
 	value1arr, err := convertToArray(params.Value1)
 	if err != nil {
 		return false, fmt.Errorf("value1 is not an array: %w", err)
@@ -483,25 +535,6 @@ func evaluateArrayCondition(params EvaluateConditionParams) (bool, error) {
 	}
 
 	switch ConditionTypeArray(params.ComparisonType) {
-	case ConditionTypeArray_Exists:
-		return true, nil
-	case ConditionTypeArray_DoesNotExist:
-		return false, nil
-	case ConditionTypeArray_IsEmpty:
-		isEmpty := checkIsEmpty(value1arr)
-		if isEmpty {
-			return true, nil
-		} else {
-			return len(value1arr) == 0, nil
-		}
-
-	case ConditionTypeArray_IsNotEmpty:
-		isEmpty := checkIsEmpty(value1arr)
-		if isEmpty {
-			return false, nil
-		} else {
-			return len(value1arr) > 0, nil
-		}
 	case ConditionTypeArray_Contains:
 		return arrayContains(value1arr, value2str), nil
 	case ConditionTypeArray_DoesNotContains:
@@ -547,10 +580,6 @@ func evaluateTagCondition(params EvaluateConditionParams) (bool, error) {
 	}
 
 	switch ConditionTypeTag(params.ComparisonType) {
-	case ConditionTypeTag_Exists:
-		return len(value1Array) > 0, nil
-	case ConditionTypeTag_DoesNotExist:
-		return len(value1Array) == 0, nil
 	case ConditionTypeTag_IsEqual:
 		return stringSlicesEqual(value1ArrayString, value2ArrayString), nil
 	case ConditionTypeTag_IsNotEqual:
@@ -592,24 +621,20 @@ func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
 	}
 
 	switch ConditionTypeObject(params.ComparisonType) {
-	case ConditionTypeObject_Exists:
-		return true, nil
-	case ConditionTypeObject_DoesNotExist:
-		return false, nil
 	case ConditionTypeObject_IsEmpty:
 		isEmpty := checkIsEmpty(value1obj)
 		if isEmpty {
 			return true, nil
-		} else {
-			return len(value1obj) == 0, nil
 		}
+
+		return len(value1obj) == 0, nil
 	case ConditionTypeObject_IsNotEmpty:
 		isEmpty := checkIsEmpty(value1obj)
 		if isEmpty {
 			return false, nil
-		} else {
-			return len(value1obj) > 0, nil
 		}
+
+		return len(value1obj) > 0, nil
 	case ConditionTypeObject_HasKey:
 		_, exists := value1obj[value1objstr]
 		return exists, nil
@@ -660,19 +685,11 @@ func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func checkIsEmpty(value any) bool {
-	str, err := convertToString(value)
-	if err != nil {
-		return false
-	}
-	if str == "null" || str == "undefined" {
+	if value == nil || value == "" {
 		return true
 	}
 
-	if len(str) == 0 {
-		return true
-	}
-
-	return str == ""
+	return false
 }
 
 func arrayContains(arr []interface{}, target string) bool {
@@ -757,16 +774,8 @@ func convertToString(value interface{}) (string, error) {
 	switch v := value.(type) {
 	case string:
 		return v, nil
-	case int, int32, int64, float32, float64:
-		return fmt.Sprintf("%v", v), nil
-	case bool:
-		return strconv.FormatBool(v), nil
 	default:
-		bytes, err := json.Marshal(v)
-		if err != nil {
-			return "", fmt.Errorf("cannot convert %T to string", value)
-		}
-		return string(bytes), nil
+		return "", fmt.Errorf("cannot convert %T to string", value)
 	}
 }
 
@@ -776,10 +785,6 @@ func convertToBool(value interface{}) (bool, error) {
 		return v, nil
 	case string:
 		return strconv.ParseBool(v)
-	case int, int32, int64:
-		return fmt.Sprintf("%v", v) != "0", nil
-	case float32, float64:
-		return fmt.Sprintf("%v", v) != "0", nil
 	default:
 		return false, fmt.Errorf("cannot convert %T to bool", value)
 	}
