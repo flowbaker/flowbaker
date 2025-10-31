@@ -32,13 +32,15 @@ var (
 				ActionType:  SlackIntegrationActionType_SendMessage,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "channel_id",
-						Name:         "Channel",
-						Description:  "The channel to send the message to",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: SlackIntegrationPeekable_Channels,
+						Key:                    "channel_id",
+						Name:                   "Channel",
+						Description:            "The channel to send the message to",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           SlackIntegrationPeekable_Channels,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "message",
@@ -56,13 +58,15 @@ var (
 				ActionType:  SlackIntegrationActionType_GetMessage,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "channel_id",
-						Name:         "Channel",
-						Description:  "The channel to get the message from",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: SlackIntegrationPeekable_Channels,
+						Key:                    "channel_id",
+						Name:                   "Channel",
+						Description:            "The channel to get the message from",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           SlackIntegrationPeekable_Channels,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "message_id",
@@ -82,13 +86,15 @@ var (
 				Description: "Triggered when a message is received in a Slack channel",
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "channel_id",
-						Name:         "Channel",
-						Description:  "The channel to listen for messages",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: SlackIntegrationPeekable_Channels,
+						Key:                    "channel_id",
+						Name:                   "Channel",
+						Description:            "The channel to listen for messages",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           SlackIntegrationPeekable_Channels,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
@@ -99,13 +105,15 @@ var (
 				Description: "Triggered when a reaction is added to a message in a Slack channel",
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "channel_id",
-						Name:         "Channel",
-						Description:  "The channel to listen for reactions",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: SlackIntegrationPeekable_Channels,
+						Key:                    "channel_id",
+						Name:                   "Channel",
+						Description:            "The channel to listen for reactions",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           SlackIntegrationPeekable_Channels,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},

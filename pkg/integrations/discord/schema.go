@@ -38,6 +38,8 @@ var (
 						Peekable:         true,
 						PeekableType:     DiscordIntegrationPeekable_Guilds,
 						ExpressionChoice: true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "channel_id",
@@ -75,6 +77,8 @@ var (
 						Peekable:         true,
 						PeekableType:     DiscordIntegrationPeekable_Guilds,
 						ExpressionChoice: true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "channel_id",
@@ -117,6 +121,8 @@ var (
 						Peekable:         true,
 						PeekableType:     DiscordIntegrationPeekable_Guilds,
 						ExpressionChoice: true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "channel_id",
@@ -173,6 +179,8 @@ var (
 						Peekable:         true,
 						PeekableType:     DiscordIntegrationPeekable_Guilds,
 						ExpressionChoice: true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "channel_id",
@@ -215,6 +223,8 @@ var (
 						Peekable:         true,
 						PeekableType:     DiscordIntegrationPeekable_Guilds,
 						ExpressionChoice: true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "channel_id",

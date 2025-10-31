@@ -43,6 +43,8 @@ var (
 						PeekableType:            StorageIntegrationPeekable_Folders,
 						IsNonCredentialPeekable: true,
 						ExpressionChoice:        true,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:                     "from_file_id",
@@ -54,6 +56,8 @@ var (
 						PeekableType:            StorageIntegrationPeekable_Files,
 						IsNonCredentialPeekable: true,
 						ExpressionChoice:        true,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
@@ -73,6 +77,8 @@ var (
 						PeekableType:            StorageIntegrationPeekable_Files,
 						IsNonCredentialPeekable: true,
 						ExpressionChoice:        true,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
@@ -92,6 +98,8 @@ var (
 						PeekableType:            StorageIntegrationPeekable_Files,
 						IsNonCredentialPeekable: true,
 						ExpressionChoice:        true,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},

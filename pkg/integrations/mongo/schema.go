@@ -32,10 +32,12 @@ var (
 						Name:             "Database",
 						Description:      "The database name",
 						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice: true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             MongoDBIntegrationPeekable_Databases,
+						ExpressionChoice:         true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "collection",
@@ -52,6 +54,8 @@ var (
 								ValueKey:    "database",
 							},
 						},
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 						ExpressionChoice: true,
 					},
 					{
@@ -78,10 +82,12 @@ var (
 						Name:             "Database",
 						Description:      "The database name",
 						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice: true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             MongoDBIntegrationPeekable_Databases,
+						ExpressionChoice:         true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "collection",
@@ -98,6 +104,8 @@ var (
 								ValueKey:    "database",
 							},
 						},
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 						ExpressionChoice: true,
 					},
 					{
@@ -137,10 +145,12 @@ var (
 						Name:             "Database",
 						Description:      "The database name",
 						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice: true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             MongoDBIntegrationPeekable_Databases,
+						ExpressionChoice:         true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "collection",
@@ -157,6 +167,8 @@ var (
 								ValueKey:    "database",
 							},
 						},
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 						ExpressionChoice: true,
 					},
 					{
@@ -182,10 +194,12 @@ var (
 						Name:             "Database",
 						Description:      "The database name",
 						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice: true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             MongoDBIntegrationPeekable_Databases,
+						ExpressionChoice:         true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "collection",
@@ -202,6 +216,8 @@ var (
 								ValueKey:    "database",
 							},
 						},
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 						ExpressionChoice: true,
 					},
 					{
@@ -241,10 +257,12 @@ var (
 						Name:             "Database",
 						Description:      "The database name",
 						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice: true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             MongoDBIntegrationPeekable_Databases,
+						ExpressionChoice:         true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "collection",
@@ -261,6 +279,8 @@ var (
 								ValueKey:    "database",
 							},
 						},
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 						ExpressionChoice: true,
 					},
 					{
@@ -296,10 +316,12 @@ var (
 						Name:             "Database",
 						Description:      "The database name",
 						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice: true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             MongoDBIntegrationPeekable_Databases,
+						ExpressionChoice:         true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "collection",
@@ -316,6 +338,8 @@ var (
 								ValueKey:    "database",
 							},
 						},
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 						ExpressionChoice: true,
 					},
 					{
@@ -351,10 +375,12 @@ var (
 						Name:             "Database",
 						Description:      "The database name",
 						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice: true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             MongoDBIntegrationPeekable_Databases,
+						ExpressionChoice:         true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "collection",
@@ -371,6 +397,8 @@ var (
 								ValueKey:    "database",
 							},
 						},
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 						ExpressionChoice: true,
 					},
 					{
@@ -396,10 +424,12 @@ var (
 						Name:             "Database",
 						Description:      "The database name",
 						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice: true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             MongoDBIntegrationPeekable_Databases,
+						ExpressionChoice:         true,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "collection",
@@ -416,6 +446,8 @@ var (
 								ValueKey:    "database",
 							},
 						},
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 						ExpressionChoice: true,
 					},
 					{

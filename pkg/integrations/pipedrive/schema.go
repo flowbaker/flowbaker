@@ -125,13 +125,15 @@ var (
 						Type:        domain.NodePropertyType_String,
 					},
 					{
-						Key:          "type",
-						Name:         "Type",
-						Description:  "The type of the activity",
-						Required:     false,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_ActivityTypes,
+						Key:                      "type",
+						Name:                     "Type",
+						Description:              "The type of the activity",
+						Required:                 false,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_ActivityTypes,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "owner_id",
@@ -139,8 +141,10 @@ var (
 						Description:  "The ID of the user who owns the activity",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Users,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Users,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "deal_id",
@@ -148,8 +152,10 @@ var (
 						Description:  "The ID of the deal this activity is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Deals,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Deals,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "org_id",
@@ -157,8 +163,10 @@ var (
 						Description:  "The ID of the organization this activity is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "project_id",
@@ -166,8 +174,10 @@ var (
 						Description:  "The ID of the project this activity is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Projects,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Projects,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "participant_id",
@@ -175,8 +185,10 @@ var (
 						Description:  "The ID of the participant of the activity",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Persons,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Persons,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "lead_id",
@@ -184,8 +196,10 @@ var (
 						Description:  "The ID of the lead this activity is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Leads,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Leads,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:         "due_date",
@@ -251,8 +265,10 @@ var (
 						Description:  "The ID of the activity to update",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Activities,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Activities,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "subject",
@@ -262,13 +278,15 @@ var (
 						Type:        domain.NodePropertyType_String,
 					},
 					{
-						Key:          "type",
-						Name:         "Type",
-						Description:  "The type of the activity",
-						Required:     false,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_ActivityTypes,
+						Key:                      "type",
+						Name:                     "Type",
+						Description:              "The type of the activity",
+						Required:                 false,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_ActivityTypes,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "owner_id",
@@ -276,8 +294,10 @@ var (
 						Description:  "The ID of the user who owns the activity",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Users,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Users,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "deal_id",
@@ -285,8 +305,10 @@ var (
 						Description:  "The ID of the deal this activity is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Deals,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Deals,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "lead_id",
@@ -294,8 +316,10 @@ var (
 						Description:  "The ID of the lead this activity is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Leads,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Leads,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "person_id",
@@ -303,8 +327,10 @@ var (
 						Description:  "The ID of the person this activity is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Persons,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Persons,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "org_id",
@@ -312,8 +338,10 @@ var (
 						Description:  "The ID of the organization this activity is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "project_id",
@@ -321,8 +349,10 @@ var (
 						Description:  "The ID of the project this activity is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Projects,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Projects,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "participant_id",
@@ -330,8 +360,10 @@ var (
 						Description:  "The ID of the participant of the activity",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Persons,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Persons,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "due_date",
@@ -396,8 +428,10 @@ var (
 						Description:  "The ID of the activity to retrieve",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Activities,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Activities,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
@@ -413,8 +447,10 @@ var (
 						Description:  "The ID of the activity to delete",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Activities,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Activities,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
@@ -444,8 +480,10 @@ var (
 						Description:  "If supplied, only activities owned by the specified user are returned",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Users,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Users,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "deal_id",
@@ -453,8 +491,10 @@ var (
 						Description:  "If supplied, only activities linked to the specified deal are returned",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Deals,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Deals,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "person_id",
@@ -462,8 +502,10 @@ var (
 						Description:  "If supplied, only activities whose primary participant is the given person are returned",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Persons,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Persons,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "org_id",
@@ -471,8 +513,10 @@ var (
 						Description:  "If supplied, only activities linked to the specified organization are returned",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "done",
@@ -562,8 +606,10 @@ var (
 						Description:  "The currency of the deal (e.g., USD, EUR)",
 						Required:     false,
 						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Currencies,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Currencies,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "user_id",
@@ -571,8 +617,10 @@ var (
 						Description:  "The ID of the user who will be marked as the owner of this deal",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Users,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Users,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "person_id",
@@ -580,8 +628,10 @@ var (
 						Description:  "The ID of the person this deal is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Persons,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Persons,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "org_id",
@@ -589,8 +639,10 @@ var (
 						Description:  "The ID of the organization this deal is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "pipeline_id",
@@ -598,8 +650,10 @@ var (
 						Description:  "The pipeline this deal belongs to",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Pipelines,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Pipelines,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "stage_id",
@@ -607,8 +661,10 @@ var (
 						Description:  "The stage of the pipeline",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Stages,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Stages,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "status",
@@ -637,8 +693,10 @@ var (
 						Description:  "The ID of the deal to update",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Deals,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Deals,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "title",
@@ -660,8 +718,10 @@ var (
 						Description:  "The currency of the deal (e.g., USD, EUR)",
 						Required:     false,
 						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Currencies,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Currencies,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "owner_id",
@@ -669,8 +729,10 @@ var (
 						Description:  "The ID of the user who will be marked as the owner of this deal",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Users,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Users,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "person_id",
@@ -678,8 +740,10 @@ var (
 						Description:  "The ID of the person this deal is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Persons,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Persons,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "org_id",
@@ -687,8 +751,10 @@ var (
 						Description:  "The ID of the organization this deal is associated with",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "pipeline_id",
@@ -696,8 +762,10 @@ var (
 						Description:  "The pipeline this deal belongs to",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Pipelines,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Pipelines,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "stage_id",
@@ -705,8 +773,10 @@ var (
 						Description:  "The stage of the pipeline",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Stages,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Stages,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "status",
@@ -766,8 +836,10 @@ var (
 						Description:  "The ID of the deal to retrieve",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Deals,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Deals,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
@@ -783,8 +855,10 @@ var (
 						Description:  "The ID of the deal to delete",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Deals,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Deals,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
@@ -800,8 +874,10 @@ var (
 						Description:  "Filter by deal owner ",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Users,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Users,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:          "person_id",
@@ -809,8 +885,10 @@ var (
 						Description:  "Filter by linked person ",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Persons,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Persons,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "org_id",
@@ -818,8 +896,10 @@ var (
 						Description:  "Filter by organization ",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "pipeline_id",
@@ -827,8 +907,10 @@ var (
 						Description:  "Filter by pipeline ",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Pipelines,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Pipelines,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:          "stage_id",
@@ -836,8 +918,10 @@ var (
 						Description:  "Filter by stage ",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Stages,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Stages,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "limit",
@@ -964,8 +1048,10 @@ var (
 						Description:  "The ID of the organization this person belongs to",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "visible_to",
@@ -984,8 +1070,10 @@ var (
 						Description:  "The ID of the user who owns the person",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Users,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Users,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 				},
 			},
@@ -1001,8 +1089,10 @@ var (
 						Description:  "The ID of the person to update",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Persons,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Persons,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "name",
@@ -1033,8 +1123,10 @@ var (
 						Description:  "The ID of the organization this person belongs to",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "visible_to",
@@ -1053,8 +1145,10 @@ var (
 						Description:  "The ID of the user who owns the person",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Users,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Users,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 				},
 			},
@@ -1070,8 +1164,10 @@ var (
 						Description:  "The ID of the person to retrieve",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Persons,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Persons,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
@@ -1087,8 +1183,10 @@ var (
 						Description:  "The ID of the person to delete",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Persons,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Persons,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
@@ -1202,8 +1300,10 @@ var (
 						Description:  "The ID of the user who owns the organization",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Users,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Users,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:         "visible_to",
@@ -1237,8 +1337,10 @@ var (
 						Description:  "The ID of the organization to update",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 					{
 						Key:         "name",
@@ -1253,8 +1355,10 @@ var (
 						Description:  "The ID of the user who owns the organization",
 						Required:     false,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Users,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Users,
+						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+
 					},
 					{
 						Key:         "visible_to",
@@ -1288,8 +1392,10 @@ var (
 						Description:  "The ID of the organization to retrieve",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
@@ -1305,8 +1411,10 @@ var (
 						Description:  "The ID of the organization to delete",
 						Required:     true,
 						Type:         domain.NodePropertyType_Number,
-						Peekable:     true,
-						PeekableType: PipedriveIntegrationPeekable_Organizations,
+						Peekable:                 true,
+						PeekableType:             PipedriveIntegrationPeekable_Organizations,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 					},
 				},
 			},
