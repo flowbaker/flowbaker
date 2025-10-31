@@ -462,6 +462,20 @@ var (
 									},
 								},
 								{
+									Key:         "value1",
+									Name:        "Object",
+									Description: "The object to check (left operand)",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"object." + string(ConditionTypeObject_IsEmpty),
+											"object." + string(ConditionTypeObject_IsNotEmpty),
+										},
+									},
+								},
+								{
 									Key:         "condition_type",
 									Name:        "Condition Type",
 									Description: "The condition type to evaluate",
@@ -541,16 +555,18 @@ var (
 												{Label: "Length Less Than", Value: string(ConditionTypeArray_LengthLessThan)},
 											},
 										},
-										// {
-										// 	Label: "Object",
-										// 	Value: "object",
-										// 	SubNodeProperties: []domain.NodePropertyOption{
-										// 		{Label: "Has Key", Value: string(ConditionTypeObject_HasKey)},
-										// 		{Label: "Does Not Have Key", Value: string(ConditionTypeObject_DoesNotHaveKey)},
-										// 		{Label: "Key Equals", Value: string(ConditionTypeObject_KeyEquals)},
-										// 		{Label: "Key Not Equals", Value: string(ConditionTypeObject_KeyNotEquals)},
-										// 	},
-										// },
+										{
+											Label: "Object",
+											Value: "object",
+											SubNodeProperties: []domain.NodePropertyOption{
+												{Label: "Is Empty", Value: string(ConditionTypeObject_IsEmpty)},
+												{Label: "Is Not Empty", Value: string(ConditionTypeObject_IsNotEmpty)},
+												// {Label: "Has Key", Value: string(ConditionTypeObject_HasKey)},
+												// {Label: "Does Not Have Key", Value: string(ConditionTypeObject_DoesNotHaveKey)},
+												// {Label: "Key Equals", Value: string(ConditionTypeObject_KeyEquals)},
+												// {Label: "Key Not Equals", Value: string(ConditionTypeObject_KeyNotEquals)},
+											},
+										},
 									},
 								},
 							},

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
+	"github.com/gofiber/fiber/v2/log"
 )
 
 type ConditionIntegrationCreator struct {
@@ -597,9 +598,35 @@ func evaluateTagCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
-	value1obj, ok := params.Value1.(map[string]any)
-	if !ok {
-		return false, fmt.Errorf("value1 is not an object")
+	switch ConditionTypeObject(params.ComparisonType) {
+	case ConditionTypeObject_IsEmpty:
+		isEmpty := checkIsEmpty(params.Value1)
+		if isEmpty {
+			return true, nil
+		}
+
+		value1obj, err := convertToObject(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not an object: %w", err)
+		}
+
+		return len(value1obj) == 0, nil
+	case ConditionTypeObject_IsNotEmpty:
+		if checkIsEmpty(params.Value1) {
+			return false, nil
+		}
+
+		value1obj, err := convertToObject(params.Value1)
+		if err != nil {
+			return false, fmt.Errorf("value1 is not an object: %w", err)
+		}
+
+		return len(value1obj) > 0, nil
+	}
+
+	value1obj, err := convertToObject(params.Value1)
+	if err != nil {
+		return false, fmt.Errorf("value1 is not an object: %w", err)
 	}
 
 	value1objstr, ok := params.Value1.(string)
@@ -623,20 +650,7 @@ func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
 	}
 
 	switch ConditionTypeObject(params.ComparisonType) {
-	case ConditionTypeObject_IsEmpty:
-		isEmpty := checkIsEmpty(value1obj)
-		if isEmpty {
-			return true, nil
-		}
 
-		return len(value1obj) == 0, nil
-	case ConditionTypeObject_IsNotEmpty:
-		isEmpty := checkIsEmpty(value1obj)
-		if isEmpty {
-			return false, nil
-		}
-
-		return len(value1obj) > 0, nil
 	case ConditionTypeObject_HasKey:
 		_, exists := value1obj[value1objstr]
 		return exists, nil
@@ -858,5 +872,27 @@ func convertToArray(value any) ([]any, error) {
 		return []any{}, nil
 	default:
 		return nil, fmt.Errorf("cannot convert %T to []any", value)
+	}
+}
+
+func convertToObject(value any) (map[string]any, error) {
+	log.Debugf("converting to object: %T", value)
+	switch v := value.(type) {
+	case map[string]any:
+		return v, nil
+	case string:
+		if len(v) == 0 {
+			return map[string]any{}, nil
+		}
+
+		var obj map[string]any
+		err := json.Unmarshal([]byte(v), &obj)
+		if err != nil {
+			return nil, fmt.Errorf("cannot unmarshal string to map[string]any: %w", err)
+		}
+
+		return obj, nil
+	default:
+		return nil, fmt.Errorf("cannot convert %T to map[string]any", value)
 	}
 }
