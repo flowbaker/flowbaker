@@ -362,10 +362,6 @@ var modelOptions = []domain.NodePropertyOption{
 
 	// O-series models
 	{Label: "O1 2024-12-17", Value: "o1-2024-12-17"},
-	{Label: "O1 Mini", Value: "o1-mini"},
-	{Label: "O1 Mini 2024-09-12", Value: "o1-mini-2024-09-12"},
-	{Label: "O1 Preview", Value: "o1-preview"},
-	{Label: "O1 Preview 2024-09-12", Value: "o1-preview-2024-09-12"},
 	{Label: "O3", Value: "o3"},
 	{Label: "O3 2025-04-16", Value: "o3-2025-04-16"},
 	{Label: "O3 Mini", Value: "o3-mini"},
