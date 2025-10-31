@@ -40,10 +40,7 @@ var (
 						Peekable:               true,
 						PeekableType:           SlackIntegrationPeekable_Channels,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     200,
-						},
+
 					},
 					{
 						Key:         "message",
@@ -69,10 +66,7 @@ var (
 						Peekable:               true,
 						PeekableType:           SlackIntegrationPeekable_Channels,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     200,
-						},
+
 					},
 					{
 						Key:         "message_id",
@@ -100,10 +94,7 @@ var (
 						Peekable:               true,
 						PeekableType:           SlackIntegrationPeekable_Channels,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     200,
-						},
+
 					},
 				},
 			},
@@ -122,10 +113,7 @@ var (
 						Peekable:               true,
 						PeekableType:           SlackIntegrationPeekable_Channels,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     200,
-						},
+
 					},
 				},
 			},

@@ -54,10 +54,7 @@ var (
 						PeekableType:             GoogleSheetsPeekable_Files,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -77,10 +74,7 @@ var (
 						PeekableType:             GoogleSheetsPeekable_Files,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "worksheet_id",
@@ -131,10 +125,7 @@ var (
 						PeekableType:             GoogleSheetsPeekable_Files,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "worksheet_id",
@@ -178,10 +169,7 @@ var (
 						PeekableType:             GoogleSheetsPeekable_Files,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "title",
@@ -208,10 +196,7 @@ var (
 						PeekableType:             GoogleSheetsPeekable_Files,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "title",
@@ -238,10 +223,7 @@ var (
 						PeekableType:             GoogleSheetsPeekable_Files,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "worksheet_id",
@@ -277,10 +259,7 @@ var (
 						PeekableType:             GoogleSheetsPeekable_Files,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -300,10 +279,7 @@ var (
 						PeekableType:             GoogleSheetsPeekable_Files,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "worksheet_id",
@@ -340,10 +316,7 @@ var (
 						PeekableType:             GoogleSheetsPeekable_Files,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "worksheet_id",

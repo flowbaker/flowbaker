@@ -75,10 +75,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 				},
@@ -98,10 +95,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 				},
@@ -121,10 +115,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "new_file_name",
@@ -142,10 +133,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -185,10 +173,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -207,10 +192,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -229,10 +211,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:                    "destination_folder_id",
@@ -243,10 +222,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -265,10 +241,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "role",
@@ -333,10 +306,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "new_file_name",
@@ -405,10 +375,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -427,10 +394,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -449,10 +413,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_ShareableFolders,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "role",
@@ -544,10 +505,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_SharedDrives,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -567,10 +525,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_SharedDrives,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -620,10 +575,7 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_SharedDrives,
 						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "name",

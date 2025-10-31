@@ -182,8 +182,8 @@ func (g *GoogleDriveIntegration) PeekFolders(ctx context.Context, p domain.PeekP
 		IncludeItemsFromAllDrives(true).
 		SupportsAllDrives(true)
 
-	if p.GetPageToken() != "" {
-		myDriveCall = myDriveCall.PageToken(p.GetPageToken())
+	if p.Pagination.PageToken != "" {
+		myDriveCall = myDriveCall.PageToken(p.Pagination.PageToken)
 	}
 
 	myDriveFolders, err := myDriveCall.Context(ctx).Do()
@@ -213,7 +213,7 @@ func (g *GoogleDriveIntegration) PeekFolders(ctx context.Context, p domain.PeekP
 		}
 	}
 
-	if p.GetPageToken() == "" {
+	if p.Pagination.PageToken == "" {
 		sharedDrives, err := g.driveService.Drives.List().
 			PageSize(int64(limit)).
 			Fields("nextPageToken, drives(id, name)").
@@ -273,8 +273,8 @@ func (g *GoogleDriveIntegration) PeekFolders(ctx context.Context, p domain.PeekP
 		},
 	}
 
-	result.SetPageToken(nextPageToken)
-	result.SetHasMore(hasMore)
+	result.Pagination.NextPageToken = nextPageToken
+	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }
@@ -287,7 +287,7 @@ func (g *GoogleDriveIntegration) PeekFoldersWithRoot(ctx context.Context, p doma
 
 	results := shareableResult.Result
 
-	if p.GetPageToken() == "" {
+	if p.Pagination.PageToken == "" {
 		results = append([]domain.PeekResultItem{
 			{
 				Key:     "My Drive",
@@ -305,8 +305,8 @@ func (g *GoogleDriveIntegration) PeekFoldersWithRoot(ctx context.Context, p doma
 		},
 	}
 
-	result.SetPageToken(shareableResult.Pagination.NextPageToken)
-	result.SetHasMore(shareableResult.Pagination.HasMore)
+	result.Pagination.NextPageToken = shareableResult.Pagination.NextPageToken
+	result.Pagination.HasMore = shareableResult.Pagination.HasMore
 
 	return result, nil
 }
@@ -401,7 +401,7 @@ func (g *GoogleDriveIntegration) formatFolderPath(folder *drive.File, driveId, d
 func (g *GoogleDriveIntegration) PeekFiles(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	var results []domain.PeekResultItem
 
-	incomingPageToken := p.GetPageToken()
+	incomingPageToken := p.Pagination.PageToken
 
 	limit := p.GetLimitWithMax(20, 100)
 
@@ -465,8 +465,8 @@ func (g *GoogleDriveIntegration) PeekFiles(ctx context.Context, p domain.PeekPar
 		},
 	}
 
-	result.SetPageToken(filesList.NextPageToken)
-	result.SetHasMore(filesList.NextPageToken != "")
+	result.Pagination.NextPageToken = filesList.NextPageToken
+	result.Pagination.HasMore = filesList.NextPageToken != ""
 
 	return result, nil
 }
@@ -478,8 +478,8 @@ func (g *GoogleDriveIntegration) PeekSharedDrives(ctx context.Context, p domain.
 		PageSize(int64(limit)).
 		Fields("nextPageToken, drives(id, name, capabilities)")
 
-	if p.GetPageToken() != "" {
-		listCall = listCall.PageToken(p.GetPageToken())
+	if p.Pagination.PageToken != "" {
+		listCall = listCall.PageToken(p.Pagination.PageToken)
 	}
 
 	driveList, err := listCall.Context(ctx).Do()
@@ -515,8 +515,8 @@ func (g *GoogleDriveIntegration) PeekSharedDrives(ctx context.Context, p domain.
 		},
 	}
 
-	result.SetPageToken(driveList.NextPageToken)
-	result.SetHasMore(driveList.NextPageToken != "")
+	result.Pagination.NextPageToken = driveList.NextPageToken
+	result.Pagination.HasMore = driveList.NextPageToken != ""
 
 	return result, nil
 }

@@ -36,10 +36,7 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 50,
-							MaxLimit:     1000,
-						},
+
 						ExpressionChoice: true,
 					},
 				},
@@ -59,10 +56,7 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 100,
-							MaxLimit:     1000,
-						},
+
 						ExpressionChoice: true,
 					},
 
@@ -90,10 +84,7 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 50,
-							MaxLimit:     1000,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -105,10 +96,7 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 100,
-							MaxLimit:     1000,
-						},
+
 						ExpressionChoice: true,
 					},
 				},
@@ -128,10 +116,7 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 50,
-							MaxLimit:     1000,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -160,10 +145,7 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 50,
-							MaxLimit:     1000,
-						},
+
 						ExpressionChoice: true,
 					},
 				},
@@ -198,10 +180,7 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 100,
-							MaxLimit:     1000,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -228,10 +207,7 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 100,
-							MaxLimit:     1000,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -258,10 +234,7 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 100,
-							MaxLimit:     1000,
-						},
+
 						ExpressionChoice: true,
 					},
 				},

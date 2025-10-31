@@ -85,10 +85,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "title",
@@ -113,10 +110,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "labels",
@@ -142,10 +136,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "issue_number",
@@ -171,10 +162,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "issue_number",
@@ -207,10 +195,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "issue_number",
@@ -249,10 +234,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "labels",
@@ -278,10 +260,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "issue_number",
@@ -321,10 +300,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "path",
@@ -356,10 +332,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Branches,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "repository_id",
@@ -384,10 +357,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "path",
@@ -419,10 +389,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Branches,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "repository_id",
@@ -447,10 +414,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "path",
@@ -489,10 +453,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Branches,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "repository_id",
@@ -517,10 +478,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "path",
@@ -553,10 +511,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "path",
@@ -659,10 +614,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "tag_name",
@@ -723,10 +675,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "release_id",
@@ -752,10 +701,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "release_id",
@@ -781,10 +727,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "limit",
@@ -817,10 +760,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "release_id",
@@ -889,10 +829,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -911,10 +848,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "milestone",
@@ -944,10 +878,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "creator",
@@ -958,10 +889,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "mentioned",
@@ -972,10 +900,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "labels",
@@ -1045,10 +970,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -1067,10 +989,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -1089,10 +1008,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "state",
@@ -1175,10 +1091,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -1197,10 +1110,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -1220,10 +1130,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "pull_number",
@@ -1275,10 +1182,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "pull_number",
@@ -1311,10 +1215,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "pull_number",
@@ -1354,10 +1255,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "pull_number",
@@ -1477,10 +1375,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "username",
@@ -1491,10 +1386,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "permission",
@@ -1529,10 +1421,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             GithubPeekable_Repositories,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "selected_events",

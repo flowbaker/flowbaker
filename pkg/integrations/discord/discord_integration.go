@@ -232,7 +232,7 @@ func (i *DiscordIntegration) Peek(ctx context.Context, params domain.PeekParams)
 
 func (i *DiscordIntegration) PeekGuilds(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 100)
-	cursor := p.GetCursor()
+	cursor := p.Pagination.Cursor
 
 	guilds, err := i.discordSession.UserGuilds(limit, "", cursor, false)
 	if err != nil {
@@ -264,8 +264,9 @@ func (i *DiscordIntegration) PeekGuilds(ctx context.Context, p domain.PeekParams
 		},
 	}
 
-	result.SetCursor(nextCursor)
-	result.SetHasMore(hasMore)
+	result.Pagination.Cursor = nextCursor
+	result.Pagination.NextCursor = nextCursor
+	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }

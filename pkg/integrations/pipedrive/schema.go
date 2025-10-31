@@ -133,10 +133,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_ActivityTypes,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "owner_id",
@@ -147,10 +144,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "deal_id",
@@ -161,10 +155,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Deals,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "org_id",
@@ -175,10 +166,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "project_id",
@@ -189,10 +177,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Projects,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "participant_id",
@@ -203,10 +188,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Persons,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "lead_id",
@@ -217,10 +199,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Leads,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "due_date",
@@ -289,10 +268,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Activities,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "subject",
@@ -310,10 +286,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_ActivityTypes,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "owner_id",
@@ -324,10 +297,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "deal_id",
@@ -338,10 +308,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Deals,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "lead_id",
@@ -352,10 +319,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Leads,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "person_id",
@@ -366,10 +330,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Persons,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "org_id",
@@ -380,10 +341,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "project_id",
@@ -394,10 +352,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Projects,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "participant_id",
@@ -408,10 +363,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Persons,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "due_date",
@@ -479,10 +431,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Activities,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 				},
 			},
@@ -501,10 +450,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Activities,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 				},
 			},
@@ -537,10 +483,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "deal_id",
@@ -551,10 +494,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Deals,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "person_id",
@@ -565,10 +505,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Persons,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "org_id",
@@ -579,10 +516,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "done",
@@ -675,10 +609,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Currencies,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "user_id",
@@ -689,10 +620,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "person_id",
@@ -703,10 +631,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Persons,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "org_id",
@@ -717,10 +642,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "pipeline_id",
@@ -731,10 +653,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Pipelines,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "stage_id",
@@ -745,10 +664,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Stages,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "status",
@@ -780,10 +696,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Deals,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "title",
@@ -808,10 +721,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Currencies,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "owner_id",
@@ -822,10 +732,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "person_id",
@@ -836,10 +743,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Persons,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "org_id",
@@ -850,10 +754,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "pipeline_id",
@@ -864,10 +765,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Pipelines,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "stage_id",
@@ -878,10 +776,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Stages,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "status",
@@ -944,10 +839,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Deals,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 				},
 			},
@@ -966,10 +858,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Deals,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 				},
 			},
@@ -988,10 +877,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "person_id",
@@ -1002,10 +888,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Persons,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "org_id",
@@ -1016,10 +899,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "pipeline_id",
@@ -1030,10 +910,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Pipelines,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:          "stage_id",
@@ -1044,10 +921,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Stages,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "limit",
@@ -1177,10 +1051,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "visible_to",
@@ -1202,10 +1073,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 				},
 			},
@@ -1224,10 +1092,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Persons,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "name",
@@ -1261,10 +1126,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "visible_to",
@@ -1286,10 +1148,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 				},
 			},
@@ -1308,10 +1167,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Persons,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 				},
 			},
@@ -1330,10 +1186,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Persons,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 				},
 			},
@@ -1450,10 +1303,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "visible_to",
@@ -1490,10 +1340,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "name",
@@ -1511,10 +1358,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Users,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 					{
 						Key:         "visible_to",
@@ -1551,10 +1395,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 				},
 			},
@@ -1573,10 +1414,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             PipedriveIntegrationPeekable_Organizations,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     500,
-						},
+
 					},
 				},
 			},

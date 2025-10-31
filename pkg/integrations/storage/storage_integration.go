@@ -310,7 +310,7 @@ func (i *StorageIntegration) PeekFiles(ctx context.Context, params domain.PeekPa
 	result, err := i.executorStorageManager.ListWorkspaceFiles(ctx, domain.ListWorkspaceFilesParams{
 		WorkspaceID: workspaceID,
 		FolderID:    peekParams.FolderID,
-		Cursor:      params.GetCursor(),
+		Cursor:      params.Pagination.Cursor,
 		Limit:       peekParams.Limit,
 	})
 	if err != nil {
@@ -334,8 +334,9 @@ func (i *StorageIntegration) PeekFiles(ctx context.Context, params domain.PeekPa
 			HasMore: result.NextCursor != "",
 		},
 	}
-	peekResult.SetCursor(result.NextCursor)
-	peekResult.SetHasMore(result.NextCursor != "")
+	peekResult.Pagination.Cursor = result.NextCursor
+	peekResult.Pagination.NextCursor = result.NextCursor
+	peekResult.Pagination.HasMore = result.NextCursor != ""
 
 	return peekResult, nil
 }
@@ -385,7 +386,7 @@ func (i *StorageIntegration) PeekFolders(ctx context.Context, params domain.Peek
 			HasMore: false,
 		},
 	}
-	peekResult.SetHasMore(false)
+	peekResult.Pagination.HasMore = false
 
 	return peekResult, nil
 }

@@ -128,10 +128,7 @@ var (
 						PeekableType:             S3IntegrationPeekable_Objects,
 						Dependent:                []string{"bucket"},
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     1000,
-						},
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "bucket",
@@ -166,10 +163,7 @@ var (
 						PeekableType:             S3IntegrationPeekable_Objects,
 						Dependent:                []string{"bucket"},
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     1000,
-						},
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "bucket",
@@ -204,10 +198,7 @@ var (
 						PeekableType:             S3IntegrationPeekable_Prefixes,
 						Dependent:                []string{"bucket"},
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     1000,
-						},
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "bucket",
@@ -249,10 +240,7 @@ var (
 						PeekableType:             S3IntegrationPeekable_Objects,
 						Dependent:                []string{"source_bucket"},
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     1000,
-						},
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "source_bucket",
@@ -303,10 +291,7 @@ var (
 						PeekableType:             S3IntegrationPeekable_Objects,
 						Dependent:                []string{"bucket"},
 						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     1000,
-						},
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "bucket",

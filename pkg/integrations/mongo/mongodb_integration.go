@@ -406,7 +406,7 @@ func (i *MongoDBIntegration) Peek(ctx context.Context, p domain.PeekParams) (dom
 
 func (i *MongoDBIntegration) PeekDatabases(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 100)
-	offset := p.GetOffset()
+	offset := p.Pagination.Offset
 
 	databases, err := i.client.ListDatabases(ctx, bson.D{})
 	if err != nil {
@@ -449,15 +449,15 @@ func (i *MongoDBIntegration) PeekDatabases(ctx context.Context, p domain.PeekPar
 		},
 	}
 
-	result.SetOffset(nextOffset)
-	result.SetHasMore(hasMore)
+	result.Pagination.Offset = nextOffset
+	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }
 
 func (i *MongoDBIntegration) PeekCollections(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 100)
-	offset := p.GetOffset()
+	offset := p.Pagination.Offset
 
 	var params struct {
 		Database string `json:"database"`
@@ -509,8 +509,8 @@ func (i *MongoDBIntegration) PeekCollections(ctx context.Context, p domain.PeekP
 		},
 	}
 
-	result.SetOffset(nextOffset)
-	result.SetHasMore(hasMore)
+	result.Pagination.Offset = nextOffset
+	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }

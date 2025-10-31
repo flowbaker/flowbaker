@@ -1136,7 +1136,7 @@ const (
 
 func (i *DropboxIntegration) PeekFolders(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 1000)
-	cursor := p.GetCursor()
+	cursor := p.Pagination.Cursor
 
 	folders, err := listDropboxItems(ctx, i.client, listDropboxItemsParams{
 		Limit:      limit,
@@ -1156,15 +1156,16 @@ func (i *DropboxIntegration) PeekFolders(ctx context.Context, p domain.PeekParam
 		},
 	}
 
-	result.SetCursor(folders.Cursor)
-	result.SetHasMore(folders.HasMore)
+	result.Pagination.Cursor = folders.Cursor
+	result.Pagination.NextCursor = folders.Cursor
+	result.Pagination.HasMore = folders.HasMore
 
 	return result, nil
 }
 
 func (i *DropboxIntegration) PeekFiles(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 1000)
-	cursor := p.GetCursor()
+	cursor := p.Pagination.Cursor
 
 	files, err := listDropboxItems(ctx, i.client, listDropboxItemsParams{
 		Limit:      limit,
@@ -1184,8 +1185,9 @@ func (i *DropboxIntegration) PeekFiles(ctx context.Context, p domain.PeekParams)
 		},
 	}
 
-	result.SetCursor(files.Cursor)
-	result.SetHasMore(files.HasMore)
+	result.Pagination.Cursor = files.Cursor
+	result.Pagination.NextCursor = files.Cursor
+	result.Pagination.HasMore = files.HasMore
 
 	return result, nil
 }

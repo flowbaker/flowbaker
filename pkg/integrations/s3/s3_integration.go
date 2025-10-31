@@ -429,7 +429,7 @@ func (i *S3Integration) PeekObjects(ctx context.Context, params domain.PeekParam
 	}
 
 	limit := params.GetLimitWithMax(20, 1000)
-	pageToken := params.GetPageToken()
+	pageToken := params.Pagination.PageToken
 
 	input := &s3.ListObjectsV2Input{
 		Bucket:    aws.String(p.Bucket),
@@ -461,11 +461,11 @@ func (i *S3Integration) PeekObjects(ctx context.Context, params domain.PeekParam
 	}
 
 	if result.NextContinuationToken != nil {
-		peekResult.SetPageToken(*result.NextContinuationToken)
+		peekResult.Pagination.NextPageToken = *result.NextContinuationToken
 	}
 
 	if result.IsTruncated != nil {
-		peekResult.SetHasMore(*result.IsTruncated)
+		peekResult.Pagination.HasMore = *result.IsTruncated
 	}
 
 	return peekResult, nil
@@ -482,7 +482,7 @@ func (i *S3Integration) PeekPrefixes(ctx context.Context, params domain.PeekPara
 	}
 
 	limit := params.GetLimitWithMax(20, 1000)
-	pageToken := params.GetPageToken()
+	pageToken := params.Pagination.PageToken
 
 	input := &s3.ListObjectsV2Input{
 		Bucket:    aws.String(p.Bucket),
@@ -513,11 +513,11 @@ func (i *S3Integration) PeekPrefixes(ctx context.Context, params domain.PeekPara
 	}
 
 	if result.NextContinuationToken != nil {
-		peekResult.SetPageToken(*result.NextContinuationToken)
+		peekResult.Pagination.NextPageToken = *result.NextContinuationToken
 	}
 
 	if result.IsTruncated != nil {
-		peekResult.SetHasMore(*result.IsTruncated)
+		peekResult.Pagination.HasMore = *result.IsTruncated
 	}
 
 	return peekResult, nil

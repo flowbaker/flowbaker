@@ -217,7 +217,7 @@ func (i *SlackIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 	channels, nextCursor, err := i.slackClient.GetConversationsContext(ctx, &slack.GetConversationsParameters{
 		Types:  []string{"public_channel"},
 		Limit:  limit,
-		Cursor: params.GetCursor(),
+		Cursor: params.Pagination.Cursor,
 	})
 	if err != nil {
 		return domain.PeekResult{}, err
@@ -241,8 +241,9 @@ func (i *SlackIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 		},
 	}
 
-	result.SetCursor(nextCursor)
-	result.SetHasMore(nextCursor != "")
+	result.Pagination.Cursor = nextCursor
+	result.Pagination.NextCursor = nextCursor
+	result.Pagination.HasMore = nextCursor != ""
 
 	return result, nil
 }

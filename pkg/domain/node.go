@@ -111,7 +111,6 @@ type NodeProperty struct {
 	Peekable                    bool                              `json:"peekable"`                                // Whether this field can load options dynamically
 	PeekableType                IntegrationPeekableType           `json:"peekable_type,omitempty"`                 // Type of peekable data
 	PeekablePaginationType      IntegrationPeekablePaginationType `json:"peekable_pagination_type,omitempty"`      // Type of pagination for peekable data
-	PeekablePaginationConfig    *PeekablePaginationConfig         `json:"peekable_pagination_config,omitempty"`    // Configuration for peekable pagination
 	PeekableDependentProperties []PeekableDependentProperty       `json:"peekable_dependent_properties,omitempty"` // Properties that this field depends on
 	IsNonCredentialPeekable     bool                              `json:"is_non_credential_peekable,omitempty"`    // Whether this field can be peeked without credentials
 
@@ -136,14 +135,6 @@ type SyntaxHighlightingOpts struct {
 type PeekableDependentProperty struct {
 	PropertyKey string `json:"property_key"`
 	ValueKey    string `json:"value_key"`
-}
-
-type PeekablePaginationConfig struct {
-	DefaultLimit            int      `json:"default_limit,omitempty"`
-	MaxLimit                int      `json:"max_limit,omitempty"`
-	SupportsOrderBy         bool     `json:"supports_order_by,omitempty"`
-	OrderByOptions          []string `json:"order_by_options,omitempty"`
-	SupportsIncludeArchived bool     `json:"supports_include_archived,omitempty"`
 }
 
 type NodePropertyOption struct {

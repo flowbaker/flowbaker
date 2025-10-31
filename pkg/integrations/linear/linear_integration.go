@@ -669,7 +669,7 @@ func (i *LinearIntegration) Peek(ctx context.Context, params domain.PeekParams) 
 
 func (i *LinearIntegration) PeekTeams(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 100)
-	cursor := p.GetCursor()
+	cursor := p.Pagination.Cursor
 
 	var queryResponse struct {
 		Teams struct {
@@ -716,8 +716,9 @@ func (i *LinearIntegration) PeekTeams(ctx context.Context, p domain.PeekParams) 
 		},
 	}
 
-	result.SetCursor(nextCursor)
-	result.SetHasMore(hasMore)
+	result.Pagination.Cursor = nextCursor
+	result.Pagination.NextCursor = nextCursor
+	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }
@@ -749,7 +750,7 @@ func (i *LinearIntegration) PeekPriorities(ctx context.Context, p domain.PeekPar
 func (i *LinearIntegration) PeekUsers(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 
 	limit := p.GetLimitWithMax(20, 100)
-	cursor := p.GetCursor()
+	cursor := p.Pagination.Cursor
 
 	var queryResponse struct {
 		Users struct {
@@ -801,8 +802,9 @@ func (i *LinearIntegration) PeekUsers(ctx context.Context, p domain.PeekParams) 
 		},
 	}
 
-	result.SetCursor(nextCursor)
-	result.SetHasMore(hasMore)
+	result.Pagination.Cursor = nextCursor
+	result.Pagination.NextCursor = nextCursor
+	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }
@@ -810,7 +812,7 @@ func (i *LinearIntegration) PeekUsers(ctx context.Context, p domain.PeekParams) 
 func (i *LinearIntegration) PeekLabels(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 
 	limit := p.GetLimitWithMax(20, 100)
-	cursor := p.GetCursor()
+	cursor := p.Pagination.Cursor
 
 	var queryResponse struct {
 		IssueLabels struct {
@@ -857,8 +859,9 @@ func (i *LinearIntegration) PeekLabels(ctx context.Context, p domain.PeekParams)
 		},
 	}
 
-	result.SetCursor(nextCursor)
-	result.SetHasMore(hasMore)
+	result.Pagination.Cursor = nextCursor
+	result.Pagination.NextCursor = nextCursor
+	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }
@@ -869,7 +872,7 @@ type PeekWorkflowStatesParams struct {
 
 func (i *LinearIntegration) PeekWorkflowStates(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 100)
-	cursor := p.GetCursor()
+	cursor := p.Pagination.Cursor
 
 	params := PeekWorkflowStatesParams{}
 	if len(p.PayloadJSON) > 0 {
@@ -930,8 +933,9 @@ func (i *LinearIntegration) PeekWorkflowStates(ctx context.Context, p domain.Pee
 		},
 	}
 
-	result.SetCursor(nextCursor)
-	result.SetHasMore(hasMore)
+	result.Pagination.Cursor = nextCursor
+	result.Pagination.NextCursor = nextCursor
+	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }

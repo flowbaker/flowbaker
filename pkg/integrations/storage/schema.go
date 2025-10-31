@@ -44,10 +44,7 @@ var (
 						IsNonCredentialPeekable: true,
 						ExpressionChoice:        true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:                     "from_file_id",
@@ -60,10 +57,7 @@ var (
 						IsNonCredentialPeekable: true,
 						ExpressionChoice:        true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -84,10 +78,7 @@ var (
 						IsNonCredentialPeekable: true,
 						ExpressionChoice:        true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -108,10 +99,7 @@ var (
 						IsNonCredentialPeekable: true,
 						ExpressionChoice:        true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},

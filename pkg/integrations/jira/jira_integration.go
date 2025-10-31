@@ -1228,7 +1228,7 @@ func (i *JiraIntegration) Peek(ctx context.Context, params domain.PeekParams) (d
 // PeekProjects fetches available projects from Jira
 func (i *JiraIntegration) PeekProjects(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 50)
-	offset := p.GetOffset()
+	offset := p.Pagination.Offset
 
 	apiURL := fmt.Sprintf("/rest/api/3/project/search?startAt=%d&maxResults=%d", offset, limit)
 
@@ -1280,9 +1280,9 @@ func (i *JiraIntegration) PeekProjects(ctx context.Context, p domain.PeekParams)
 
 	result := domain.PeekResult{Result: results}
 	if !response.IsLast {
-		result.SetNextOffset(response.StartAt + len(response.Values))
+		result.Pagination.NextOffset = response.StartAt + len(response.Values)
 	}
-	result.SetHasMore(!response.IsLast)
+	result.Pagination.HasMore = !response.IsLast
 
 	return result, nil
 }
@@ -1602,7 +1602,7 @@ func (i *JiraIntegration) PeekAssignees(ctx context.Context, p domain.PeekParams
 	}
 
 	limit := p.GetLimitWithMax(20, 50)
-	offset := p.GetOffset()
+	offset := p.Pagination.Offset
 
 	var apiURL string
 	if projectKey != "" {
@@ -1658,9 +1658,9 @@ func (i *JiraIntegration) PeekAssignees(ctx context.Context, p domain.PeekParams
 	result := domain.PeekResult{Result: results}
 	hasMore := len(users) == limit
 	if hasMore {
-		result.SetNextOffset(offset + len(results))
+		result.Pagination.NextOffset = offset + len(results)
 	}
-	result.SetHasMore(hasMore)
+	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }
@@ -1832,7 +1832,7 @@ func (i *JiraIntegration) PeekIssues(ctx context.Context, p domain.PeekParams) (
 	}
 
 	limit := p.GetLimitWithMax(20, 100)
-	offset := p.GetOffset()
+	offset := p.Pagination.Offset
 
 	jql := fmt.Sprintf("project = %s AND parent is EMPTY ORDER BY created DESC", params.ProjectKey)
 
@@ -1879,9 +1879,9 @@ func (i *JiraIntegration) PeekIssues(ctx context.Context, p domain.PeekParams) (
 	if totalOk && startAtOk && maxResultsOk {
 		hasMore := (int(startAt) + int(maxResults)) < int(total)
 		if hasMore {
-			result.SetNextOffset(int(startAt) + len(results))
+			result.Pagination.NextOffset = int(startAt) + len(results)
 		}
-		result.SetHasMore(hasMore)
+		result.Pagination.HasMore = hasMore
 	}
 
 	return result, nil

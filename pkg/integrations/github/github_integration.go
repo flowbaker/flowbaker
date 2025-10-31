@@ -1360,7 +1360,7 @@ func (i *GithubIntegration) LockIssue(ctx context.Context, input domain.Integrat
 // --- Placeholder Peek Implementations ---
 func (i *GithubIntegration) PeekRepositories(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 100)
-	offset := params.GetOffset()
+	offset := params.Pagination.Offset
 
 	page := (offset / limit) + 1
 
@@ -1399,15 +1399,15 @@ func (i *GithubIntegration) PeekRepositories(ctx context.Context, params domain.
 		},
 	}
 
-	result.SetOffset(nextOffset)
-	result.SetHasMore(hasMore)
+	result.Pagination.Offset = nextOffset
+	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }
 
 func (i *GithubIntegration) PeekUsers(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 100)
-	offset := params.GetOffset()
+	offset := params.Pagination.Offset
 
 	var results []domain.PeekResultItem
 
@@ -1475,8 +1475,8 @@ func (i *GithubIntegration) PeekUsers(ctx context.Context, params domain.PeekPar
 					},
 				}
 
-				result.SetOffset(nextOffset)
-				result.SetHasMore(hasMore)
+				result.Pagination.Offset = nextOffset
+				result.Pagination.HasMore = hasMore
 
 				return result, nil
 			}

@@ -251,8 +251,8 @@ func (c *ExecutorController) PeekData(ctx fiber.Ctx) error {
 		Success:    true,
 		ResultJSON: result.ResultJSON,
 		Result:     mappers.DomainPeekResultItemsToExecutor(result.Result),
-		Cursor:     result.GetCursor(),
-		HasMore:    result.GetHasMore(),
+		Cursor:     result.Pagination.Cursor,
+		HasMore:    result.Pagination.HasMore,
 		Pagination: result.Pagination,
 	})
 }

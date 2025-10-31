@@ -53,10 +53,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             LinearIntegrationPeekable_Teams,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:              "resource_types",
@@ -162,10 +159,7 @@ var (
 						PeekableType:             LinearIntegrationPeekable_Users,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:              "label_ids",
@@ -177,10 +171,7 @@ var (
 						PeekableType:             LinearIntegrationPeekable_Labels,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 				},
 			},
@@ -240,10 +231,7 @@ var (
 						PeekableType:             LinearIntegrationPeekable_Users,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:              "label_ids",
@@ -255,10 +243,7 @@ var (
 						PeekableType:             LinearIntegrationPeekable_Labels,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:         "query",
@@ -333,10 +318,7 @@ var (
 						PeekableType:             LinearIntegrationPeekable_Users,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:              "label_ids",
@@ -348,10 +330,7 @@ var (
 						PeekableType:             LinearIntegrationPeekable_Labels,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "state_id",
@@ -369,10 +348,7 @@ var (
 							},
 						},
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 				},

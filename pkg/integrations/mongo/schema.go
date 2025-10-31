@@ -37,10 +37,7 @@ var (
 						PeekableType:             MongoDBIntegrationPeekable_Databases,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "collection",
@@ -58,10 +55,7 @@ var (
 							},
 						},
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -93,10 +87,7 @@ var (
 						PeekableType:             MongoDBIntegrationPeekable_Databases,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "collection",
@@ -114,10 +105,7 @@ var (
 							},
 						},
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -162,10 +150,7 @@ var (
 						PeekableType:             MongoDBIntegrationPeekable_Databases,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "collection",
@@ -183,10 +168,7 @@ var (
 							},
 						},
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -217,10 +199,7 @@ var (
 						PeekableType:             MongoDBIntegrationPeekable_Databases,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "collection",
@@ -238,10 +217,7 @@ var (
 							},
 						},
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -286,10 +262,7 @@ var (
 						PeekableType:             MongoDBIntegrationPeekable_Databases,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "collection",
@@ -307,10 +280,7 @@ var (
 							},
 						},
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -351,10 +321,7 @@ var (
 						PeekableType:             MongoDBIntegrationPeekable_Databases,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "collection",
@@ -372,10 +339,7 @@ var (
 							},
 						},
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -416,10 +380,7 @@ var (
 						PeekableType:             MongoDBIntegrationPeekable_Databases,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "collection",
@@ -437,10 +398,7 @@ var (
 							},
 						},
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 					{
@@ -471,10 +429,7 @@ var (
 						PeekableType:             MongoDBIntegrationPeekable_Databases,
 						ExpressionChoice:         true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "collection",
@@ -492,10 +447,7 @@ var (
 							},
 						},
 						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 						ExpressionChoice: true,
 					},
 					{

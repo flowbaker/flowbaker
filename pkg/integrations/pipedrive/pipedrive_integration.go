@@ -1715,7 +1715,7 @@ type PeekPipelinesResponse struct {
 
 func (i *PipedriveIntegration) PeekPipelines(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	cursor := params.GetCursor()
+	cursor := params.Pagination.Cursor
 
 	endpoint := "/pipelines"
 	queryParams := url.Values{}
@@ -1747,8 +1747,9 @@ func (i *PipedriveIntegration) PeekPipelines(ctx context.Context, params domain.
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.SetCursor(response.AdditionalData.NextCursor)
-	result.SetHasMore(response.AdditionalData.NextCursor != "")
+	result.Pagination.Cursor = response.AdditionalData.NextCursor
+	result.Pagination.NextCursor = response.AdditionalData.NextCursor
+	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
 
 	return result, nil
 }
@@ -1766,7 +1767,7 @@ type PeekStagesResponse struct {
 
 func (i *PipedriveIntegration) PeekStages(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	cursor := params.GetCursor()
+	cursor := params.Pagination.Cursor
 
 	endpoint := "/stages"
 	queryParams := url.Values{}
@@ -1798,8 +1799,9 @@ func (i *PipedriveIntegration) PeekStages(ctx context.Context, params domain.Pee
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.SetCursor(response.AdditionalData.NextCursor)
-	result.SetHasMore(response.AdditionalData.NextCursor != "")
+	result.Pagination.Cursor = response.AdditionalData.NextCursor
+	result.Pagination.NextCursor = response.AdditionalData.NextCursor
+	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
 
 	return result, nil
 }
@@ -1819,7 +1821,7 @@ type PeekUsersResponse struct {
 
 func (i *PipedriveIntegration) PeekUsers(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	offset := params.GetOffset()
+	offset := params.Pagination.Offset
 
 	endpoint := fmt.Sprintf("/users?start=%d&limit=%d", offset, limit)
 
@@ -1846,9 +1848,9 @@ func (i *PipedriveIntegration) PeekUsers(ctx context.Context, params domain.Peek
 		Result: results,
 	}
 	if response.AdditionalData.MoreItemsInCollection {
-		result.SetNextOffset(response.AdditionalData.NextStart)
+		result.Pagination.NextOffset = response.AdditionalData.NextStart
 	}
-	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
 
 	return result, nil
 }
@@ -1869,7 +1871,7 @@ type PeekPersonsResponse struct {
 
 func (i *PipedriveIntegration) PeekPersons(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	cursor := params.GetCursor()
+	cursor := params.Pagination.Cursor
 
 	endpoint := "/persons"
 	queryParams := url.Values{}
@@ -1905,8 +1907,9 @@ func (i *PipedriveIntegration) PeekPersons(ctx context.Context, params domain.Pe
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.SetCursor(response.AdditionalData.NextCursor)
-	result.SetHasMore(response.AdditionalData.NextCursor != "")
+	result.Pagination.Cursor = response.AdditionalData.NextCursor
+	result.Pagination.NextCursor = response.AdditionalData.NextCursor
+	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
 
 	return result, nil
 }
@@ -1924,7 +1927,7 @@ type PeekOrganizationsResponse struct {
 
 func (i *PipedriveIntegration) PeekOrganizations(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	cursor := params.GetCursor()
+	cursor := params.Pagination.Cursor
 
 	endpoint := "/organizations"
 	queryParams := url.Values{}
@@ -1956,8 +1959,9 @@ func (i *PipedriveIntegration) PeekOrganizations(ctx context.Context, params dom
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.SetCursor(response.AdditionalData.NextCursor)
-	result.SetHasMore(response.AdditionalData.NextCursor != "")
+	result.Pagination.Cursor = response.AdditionalData.NextCursor
+	result.Pagination.NextCursor = response.AdditionalData.NextCursor
+	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
 
 	return result, nil
 }
@@ -1977,7 +1981,7 @@ type PeekCurrenciesResponse struct {
 
 func (i *PipedriveIntegration) PeekCurrencies(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	offset := params.GetOffset()
+	offset := params.Pagination.Offset
 
 	endpoint := fmt.Sprintf("/currencies?start=%d&limit=%d", offset, limit)
 
@@ -2008,9 +2012,9 @@ func (i *PipedriveIntegration) PeekCurrencies(ctx context.Context, params domain
 		Result: results,
 	}
 	if response.AdditionalData.MoreItemsInCollection {
-		result.SetNextOffset(response.AdditionalData.NextStart)
+		result.Pagination.NextOffset = response.AdditionalData.NextStart
 	}
-	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
 
 	return result, nil
 }
@@ -2028,7 +2032,7 @@ type PeekDealsResponse struct {
 
 func (i *PipedriveIntegration) PeekDeals(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	cursor := params.GetCursor()
+	cursor := params.Pagination.Cursor
 
 	endpoint := "/deals"
 	queryParams := url.Values{}
@@ -2060,8 +2064,9 @@ func (i *PipedriveIntegration) PeekDeals(ctx context.Context, params domain.Peek
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.SetCursor(response.AdditionalData.NextCursor)
-	result.SetHasMore(response.AdditionalData.NextCursor != "")
+	result.Pagination.Cursor = response.AdditionalData.NextCursor
+	result.Pagination.NextCursor = response.AdditionalData.NextCursor
+	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
 
 	return result, nil
 }
@@ -2079,7 +2084,7 @@ type PeekActivitiesResponse struct {
 
 func (i *PipedriveIntegration) PeekActivities(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	cursor := params.GetCursor()
+	cursor := params.Pagination.Cursor
 
 	endpoint := "/activities"
 	queryParams := url.Values{}
@@ -2111,8 +2116,9 @@ func (i *PipedriveIntegration) PeekActivities(ctx context.Context, params domain
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.SetCursor(response.AdditionalData.NextCursor)
-	result.SetHasMore(response.AdditionalData.NextCursor != "")
+	result.Pagination.Cursor = response.AdditionalData.NextCursor
+	result.Pagination.NextCursor = response.AdditionalData.NextCursor
+	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
 
 	return result, nil
 }
@@ -2131,7 +2137,7 @@ type PeekActivityTypesResponse struct {
 
 func (i *PipedriveIntegration) PeekActivityTypes(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	offset := params.GetOffset()
+	offset := params.Pagination.Offset
 
 	endpoint := fmt.Sprintf("/activityTypes?start=%d&limit=%d", offset, limit)
 
@@ -2158,9 +2164,9 @@ func (i *PipedriveIntegration) PeekActivityTypes(ctx context.Context, params dom
 		Result: results,
 	}
 	if response.AdditionalData.MoreItemsInCollection {
-		result.SetNextOffset(response.AdditionalData.NextStart)
+		result.Pagination.NextOffset = response.AdditionalData.NextStart
 	}
-	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
 
 	return result, nil
 }
@@ -2178,7 +2184,7 @@ type PeekProductsResponse struct {
 
 func (i *PipedriveIntegration) PeekProducts(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	cursor := params.GetCursor()
+	cursor := params.Pagination.Cursor
 
 	endpoint := "/products"
 	queryParams := url.Values{}
@@ -2210,8 +2216,9 @@ func (i *PipedriveIntegration) PeekProducts(ctx context.Context, params domain.P
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.SetCursor(response.AdditionalData.NextCursor)
-	result.SetHasMore(response.AdditionalData.NextCursor != "")
+	result.Pagination.Cursor = response.AdditionalData.NextCursor
+	result.Pagination.NextCursor = response.AdditionalData.NextCursor
+	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
 
 	return result, nil
 }
@@ -2230,7 +2237,7 @@ type PeekProjectsResponse struct {
 
 func (i *PipedriveIntegration) PeekProjects(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	offset := params.GetOffset()
+	offset := params.Pagination.Offset
 
 	endpoint := fmt.Sprintf("/projects?start=%d&limit=%d", offset, limit)
 
@@ -2257,9 +2264,9 @@ func (i *PipedriveIntegration) PeekProjects(ctx context.Context, params domain.P
 		Result: results,
 	}
 	if response.AdditionalData.MoreItemsInCollection {
-		result.SetNextOffset(response.AdditionalData.NextStart)
+		result.Pagination.NextOffset = response.AdditionalData.NextStart
 	}
-	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
 
 	return result, nil
 }
@@ -2278,7 +2285,7 @@ type PeekLeadsResponse struct {
 
 func (i *PipedriveIntegration) PeekLeads(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	offset := params.GetOffset()
+	offset := params.Pagination.Offset
 
 	endpoint := fmt.Sprintf("/leads?start=%d&limit=%d", offset, limit)
 
@@ -2305,9 +2312,9 @@ func (i *PipedriveIntegration) PeekLeads(ctx context.Context, params domain.Peek
 		Result: results,
 	}
 	if response.AdditionalData.MoreItemsInCollection {
-		result.SetNextOffset(response.AdditionalData.NextStart)
+		result.Pagination.NextOffset = response.AdditionalData.NextStart
 	}
-	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
 
 	return result, nil
 }
@@ -2326,7 +2333,7 @@ type PeekLabelsResponse struct {
 
 func (i *PipedriveIntegration) PeekLabels(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 500)
-	offset := params.GetOffset()
+	offset := params.Pagination.Offset
 
 	endpoint := fmt.Sprintf("/labels?start=%d&limit=%d", offset, limit)
 
@@ -2353,9 +2360,9 @@ func (i *PipedriveIntegration) PeekLabels(ctx context.Context, params domain.Pee
 		Result: results,
 	}
 	if response.AdditionalData.MoreItemsInCollection {
-		result.SetNextOffset(response.AdditionalData.NextStart)
+		result.Pagination.NextOffset = response.AdditionalData.NextStart
 	}
-	result.SetHasMore(response.AdditionalData.MoreItemsInCollection)
+	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
 
 	return result, nil
 }

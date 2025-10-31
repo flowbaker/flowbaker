@@ -39,10 +39,7 @@ var (
 						PeekableType:     DiscordIntegrationPeekable_Guilds,
 						ExpressionChoice: true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "channel_id",
@@ -81,10 +78,7 @@ var (
 						PeekableType:     DiscordIntegrationPeekable_Guilds,
 						ExpressionChoice: true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "channel_id",
@@ -128,10 +122,7 @@ var (
 						PeekableType:     DiscordIntegrationPeekable_Guilds,
 						ExpressionChoice: true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "channel_id",
@@ -189,10 +180,7 @@ var (
 						PeekableType:     DiscordIntegrationPeekable_Guilds,
 						ExpressionChoice: true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "channel_id",
@@ -236,10 +224,7 @@ var (
 						PeekableType:     DiscordIntegrationPeekable_Guilds,
 						ExpressionChoice: true,
 						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-						PeekablePaginationConfig: &domain.PeekablePaginationConfig{
-							DefaultLimit: 20,
-							MaxLimit:     100,
-						},
+
 					},
 					{
 						Key:          "channel_id",
