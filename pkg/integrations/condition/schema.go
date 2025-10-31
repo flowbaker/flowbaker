@@ -9,12 +9,18 @@ const (
 	IntegrationActionType_ConditionalDispatch domain.IntegrationActionType = "conditional_dispatch"
 )
 
+// Generic condition types
+type ConditionTypeGeneric string
+
+const (
+	ConditionTypeGeneric_IsEmpty    ConditionTypeGeneric = "is_empty"
+	ConditionTypeGeneric_IsNotEmpty ConditionTypeGeneric = "is_not_empty"
+)
+
 // String condition types
 type ConditionTypeString string
 
 const (
-	ConditionTypeString_Exists            ConditionTypeString = "exists"
-	ConditionTypeString_DoesNotExist      ConditionTypeString = "does_not_exist"
 	ConditionTypeString_IsEmpty           ConditionTypeString = "is_empty"
 	ConditionTypeString_IsNotEmpty        ConditionTypeString = "is_not_empty"
 	ConditionTypeString_IsEqual           ConditionTypeString = "is_equal"
@@ -33,8 +39,8 @@ const (
 type ConditionTypeNumber string
 
 const (
-	ConditionTypeNumber_Exists               ConditionTypeNumber = "exists"
-	ConditionTypeNumber_DoesNotExist         ConditionTypeNumber = "does_not_exist"
+	ConditionTypeNumber_IsEmpty              ConditionTypeNumber = "is_empty"
+	ConditionTypeNumber_IsNotEmpty           ConditionTypeNumber = "is_not_empty"
 	ConditionTypeNumber_IsEqual              ConditionTypeNumber = "is_equal"
 	ConditionTypeNumber_IsNotEqual           ConditionTypeNumber = "is_not_equal"
 	ConditionTypeNumber_IsGreaterThan        ConditionTypeNumber = "is_greater_than"
@@ -47,20 +53,20 @@ const (
 type ConditionTypeBoolean string
 
 const (
-	ConditionTypeBoolean_Exists       ConditionTypeBoolean = "exists"
-	ConditionTypeBoolean_DoesNotExist ConditionTypeBoolean = "does_not_exist"
-	ConditionTypeBoolean_IsEqual      ConditionTypeBoolean = "is_equal"
-	ConditionTypeBoolean_IsNotEqual   ConditionTypeBoolean = "is_not_equal"
-	ConditionTypeBoolean_IsTrue       ConditionTypeBoolean = "is_true"
-	ConditionTypeBoolean_IsFalse      ConditionTypeBoolean = "is_false"
+	ConditionTypeBoolean_IsEmpty    ConditionTypeBoolean = "is_empty"
+	ConditionTypeBoolean_IsNotEmpty ConditionTypeBoolean = "is_not_empty"
+	ConditionTypeBoolean_IsEqual    ConditionTypeBoolean = "is_equal"
+	ConditionTypeBoolean_IsNotEqual ConditionTypeBoolean = "is_not_equal"
+	ConditionTypeBoolean_IsTrue     ConditionTypeBoolean = "is_true"
+	ConditionTypeBoolean_IsFalse    ConditionTypeBoolean = "is_false"
 )
 
 // Date condition types
 type ConditionTypeDate string
 
 const (
-	ConditionTypeDate_Exists          ConditionTypeDate = "exists"
-	ConditionTypeDate_DoesNotExist    ConditionTypeDate = "does_not_exist"
+	ConditionTypeDate_IsEmpty         ConditionTypeDate = "is_empty"
+	ConditionTypeDate_IsNotEmpty      ConditionTypeDate = "is_not_empty"
 	ConditionTypeDate_IsEqual         ConditionTypeDate = "is_equal"
 	ConditionTypeDate_IsNotEqual      ConditionTypeDate = "is_not_equal"
 	ConditionTypeDate_IsAfter         ConditionTypeDate = "is_after"
@@ -73,8 +79,6 @@ const (
 type ConditionTypeArray string
 
 const (
-	ConditionTypeArray_Exists            ConditionTypeArray = "exists"
-	ConditionTypeArray_DoesNotExist      ConditionTypeArray = "does_not_exist"
 	ConditionTypeArray_IsEmpty           ConditionTypeArray = "is_empty"
 	ConditionTypeArray_IsNotEmpty        ConditionTypeArray = "is_not_empty"
 	ConditionTypeArray_Contains          ConditionTypeArray = "contains"
@@ -88,8 +92,8 @@ const (
 type ConditionTypeObject string
 
 const (
-	ConditionTypeObject_Exists         ConditionTypeObject = "exists"
-	ConditionTypeObject_DoesNotExist   ConditionTypeObject = "does_not_exist"
+	ConditionTypeObject_IsEmpty        ConditionTypeObject = "is_empty"
+	ConditionTypeObject_IsNotEmpty     ConditionTypeObject = "is_not_empty"
 	ConditionTypeObject_HasKey         ConditionTypeObject = "has_key"
 	ConditionTypeObject_DoesNotHaveKey ConditionTypeObject = "does_not_have_key"
 	ConditionTypeObject_KeyEquals      ConditionTypeObject = "key_equals"
@@ -100,8 +104,6 @@ const (
 type ConditionTypeTag string
 
 const (
-	ConditionTypeTag_Exists         ConditionTypeTag = "exists"
-	ConditionTypeTag_DoesNotExist   ConditionTypeTag = "does_not_exist"
 	ConditionTypeTag_IsEqual        ConditionTypeTag = "is_equal"
 	ConditionTypeTag_IsNotEqual     ConditionTypeTag = "is_not_equal"
 	ConditionTypeTag_Contains       ConditionTypeTag = "contains"
@@ -162,9 +164,32 @@ var (
 								{
 									Key:         "value1",
 									Name:        "First Value",
+									Description: "The first value to evaluate. ",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"generic." + string(ConditionTypeGeneric_IsEmpty),
+											"generic." + string(ConditionTypeGeneric_IsNotEmpty),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "First Value",
 									Description: "The first value to evaluate",
 									Required:    true,
 									Type:        domain.NodePropertyType_String,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"string." + string(ConditionTypeString_IsEmpty),
+											"string." + string(ConditionTypeString_IsNotEmpty),
+											"string." + string(ConditionTypeString_IsEqual),
+											"string." + string(ConditionTypeString_IsNotEqual),
+										},
+									},
 								},
 								{
 									Key:         "value2",
@@ -172,27 +197,281 @@ var (
 									Description: "The second value to evaluate",
 									Required:    true,
 									Type:        domain.NodePropertyType_String,
-									HideIf: &domain.HideIf{
+									ShowIf: &domain.ShowIf{
 										PropertyKey: "condition_type",
 										Values: []any{
-											"string." + string(ConditionTypeString_Exists),
-											"string." + string(ConditionTypeString_DoesNotExist),
-											"string." + string(ConditionTypeString_IsEmpty),
-											"string." + string(ConditionTypeString_IsNotEmpty),
-											"number." + string(ConditionTypeNumber_Exists),
-											"number." + string(ConditionTypeNumber_DoesNotExist),
-											"boolean." + string(ConditionTypeBoolean_Exists),
-											"boolean." + string(ConditionTypeBoolean_DoesNotExist),
+											"string." + string(ConditionTypeString_IsEqual),
+											"string." + string(ConditionTypeString_IsNotEqual),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "Value",
+									Description: "The string to evaluate (left operand)",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"string." + string(ConditionTypeString_Contains),
+											"string." + string(ConditionTypeString_DoesNotContain),
+											"string." + string(ConditionTypeString_StartsWith),
+											"string." + string(ConditionTypeString_EndsWith),
+											"string." + string(ConditionTypeString_DoesNotStartWith),
+											"string." + string(ConditionTypeString_DoesNotEndWith),
+											"string." + string(ConditionTypeString_MatchesRegex),
+											"string." + string(ConditionTypeString_DoesNotMatchRegex),
+										},
+									},
+								},
+								{
+									Key:         "value2",
+									Name:        "Comparison Value",
+									Description: "The string to compare against (right operand)",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"string." + string(ConditionTypeString_Contains),
+											"string." + string(ConditionTypeString_DoesNotContain),
+											"string." + string(ConditionTypeString_StartsWith),
+											"string." + string(ConditionTypeString_EndsWith),
+											"string." + string(ConditionTypeString_DoesNotStartWith),
+											"string." + string(ConditionTypeString_DoesNotEndWith),
+											"string." + string(ConditionTypeString_MatchesRegex),
+											"string." + string(ConditionTypeString_DoesNotMatchRegex),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "First Value",
+									Description: "The first value to evaluate",
+									Required:    true,
+									Type:        domain.NodePropertyType_Number,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"number." + string(ConditionTypeNumber_IsEmpty),
+											"number." + string(ConditionTypeNumber_IsNotEmpty),
+											"number." + string(ConditionTypeNumber_IsEqual),
+											"number." + string(ConditionTypeNumber_IsNotEqual),
+										},
+									},
+								},
+								{
+									Key:         "value2",
+									Name:        "Second Value",
+									Description: "The second value to evaluate",
+									Required:    true,
+									Type:        domain.NodePropertyType_Number,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"number." + string(ConditionTypeNumber_IsEqual),
+											"number." + string(ConditionTypeNumber_IsNotEqual),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "Value",
+									Description: "The number to compare (left operand)",
+									Required:    true,
+									Type:        domain.NodePropertyType_Number,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"number." + string(ConditionTypeNumber_IsGreaterThan),
+											"number." + string(ConditionTypeNumber_IsLessThan),
+											"number." + string(ConditionTypeNumber_IsGreaterThanOrEqual),
+											"number." + string(ConditionTypeNumber_IsLessThanOrEqual),
+										},
+									},
+								},
+								{
+									Key:         "value2",
+									Name:        "Comparison Value",
+									Description: "The number to compare against (right operand)",
+									Required:    true,
+									Type:        domain.NodePropertyType_Number,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"number." + string(ConditionTypeNumber_IsGreaterThan),
+											"number." + string(ConditionTypeNumber_IsLessThan),
+											"number." + string(ConditionTypeNumber_IsGreaterThanOrEqual),
+											"number." + string(ConditionTypeNumber_IsLessThanOrEqual),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "First Value",
+									Description: "The first value to evaluate",
+									Required:    true,
+									Type:        domain.NodePropertyType_Boolean,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"boolean." + string(ConditionTypeBoolean_IsEmpty),
+											"boolean." + string(ConditionTypeBoolean_IsNotEmpty),
+											"boolean." + string(ConditionTypeBoolean_IsEqual),
+											"boolean." + string(ConditionTypeBoolean_IsNotEqual),
 											"boolean." + string(ConditionTypeBoolean_IsTrue),
 											"boolean." + string(ConditionTypeBoolean_IsFalse),
-											"date." + string(ConditionTypeDate_Exists),
-											"date." + string(ConditionTypeDate_DoesNotExist),
-											"array." + string(ConditionTypeArray_Exists),
-											"array." + string(ConditionTypeArray_DoesNotExist),
+										},
+									},
+								},
+								{
+									Key:         "value2",
+									Name:        "Second Value",
+									Description: "The second value to evaluate",
+									Required:    true,
+									Type:        domain.NodePropertyType_Boolean,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"boolean." + string(ConditionTypeBoolean_IsEqual),
+											"boolean." + string(ConditionTypeBoolean_IsNotEqual),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "First Value",
+									Description: "The first value to evaluate",
+									Required:    true,
+									Type:        domain.NodePropertyType_Date,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"date." + string(ConditionTypeDate_IsEmpty),
+											"date." + string(ConditionTypeDate_IsNotEmpty),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "Date",
+									Description: "The date to compare (left operand)",
+									Required:    true,
+									Type:        domain.NodePropertyType_Date,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"date." + string(ConditionTypeDate_IsEqual),
+											"date." + string(ConditionTypeDate_IsNotEqual),
+											"date." + string(ConditionTypeDate_IsAfter),
+											"date." + string(ConditionTypeDate_IsBefore),
+											"date." + string(ConditionTypeDate_IsAfterOrEqual),
+											"date." + string(ConditionTypeDate_IsBeforeOrEqual),
+										},
+									},
+								},
+								{
+									Key:         "value2",
+									Name:        "Comparison Date",
+									Description: "The date to compare against (right operand)",
+									Required:    true,
+									Type:        domain.NodePropertyType_Date,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"date." + string(ConditionTypeDate_IsEqual),
+											"date." + string(ConditionTypeDate_IsNotEqual),
+											"date." + string(ConditionTypeDate_IsAfter),
+											"date." + string(ConditionTypeDate_IsBefore),
+											"date." + string(ConditionTypeDate_IsAfterOrEqual),
+											"date." + string(ConditionTypeDate_IsBeforeOrEqual),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "First Value",
+									Description: "The first value to evaluate",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
 											"array." + string(ConditionTypeArray_IsEmpty),
 											"array." + string(ConditionTypeArray_IsNotEmpty),
-											"object." + string(ConditionTypeObject_Exists),
-											"object." + string(ConditionTypeObject_DoesNotExist),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "Array",
+									Description: "The array to check (left operand)",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"array." + string(ConditionTypeArray_Contains),
+											"array." + string(ConditionTypeArray_DoesNotContains),
+										},
+									},
+								},
+								{
+									Key:         "value2",
+									Name:        "Search Value",
+									Description: "The value to search for in the array",
+									Required:    true,
+									Type:        domain.NodePropertyType_TagInput,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"array." + string(ConditionTypeArray_Contains),
+											"array." + string(ConditionTypeArray_DoesNotContains),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "Array",
+									Description: "The array whose length to check",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"array." + string(ConditionTypeArray_LengthEquals),
+											"array." + string(ConditionTypeArray_LengthGreaterThan),
+											"array." + string(ConditionTypeArray_LengthLessThan),
+										},
+									},
+								},
+								{
+									Key:         "value2",
+									Name:        "Comparison Length",
+									Description: "The length to compare against",
+									Required:    true,
+									Type:        domain.NodePropertyType_Number,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"array." + string(ConditionTypeArray_LengthEquals),
+											"array." + string(ConditionTypeArray_LengthGreaterThan),
+											"array." + string(ConditionTypeArray_LengthLessThan),
+										},
+									},
+								},
+								{
+									Key:         "value1",
+									Name:        "Object",
+									Description: "The object to check (left operand)",
+									Required:    true,
+									Type:        domain.NodePropertyType_String,
+									ShowIf: &domain.ShowIf{
+										PropertyKey: "condition_type",
+										Values: []any{
+											"object." + string(ConditionTypeObject_IsEmpty),
+											"object." + string(ConditionTypeObject_IsNotEmpty),
 										},
 									},
 								},
@@ -204,11 +483,17 @@ var (
 									Type:        domain.NodePropertyType_String,
 									MultipleOpts: []domain.MultipleNodePropertyOption{
 										{
+											Label: "Generic",
+											Value: "generic",
+											SubNodeProperties: []domain.NodePropertyOption{
+												{Label: "Is Empty", Value: string(ConditionTypeGeneric_IsEmpty)},
+												{Label: "Is Not Empty", Value: string(ConditionTypeGeneric_IsNotEmpty)},
+											},
+										},
+										{
 											Label: "String",
 											Value: "string",
 											SubNodeProperties: []domain.NodePropertyOption{
-												{Label: "Exists", Value: string(ConditionTypeString_Exists)},
-												{Label: "Does Not Exist", Value: string(ConditionTypeString_DoesNotExist)},
 												{Label: "Is Empty", Value: string(ConditionTypeString_IsEmpty)},
 												{Label: "Is Not Empty", Value: string(ConditionTypeString_IsNotEmpty)},
 												{Label: "Equals", Value: string(ConditionTypeString_IsEqual)},
@@ -227,8 +512,6 @@ var (
 											Label: "Number",
 											Value: "number",
 											SubNodeProperties: []domain.NodePropertyOption{
-												{Label: "Exists", Value: string(ConditionTypeNumber_Exists)},
-												{Label: "Does Not Exist", Value: string(ConditionTypeNumber_DoesNotExist)},
 												{Label: "Equals", Value: string(ConditionTypeNumber_IsEqual)},
 												{Label: "Not Equals", Value: string(ConditionTypeNumber_IsNotEqual)},
 												{Label: "Greater Than", Value: string(ConditionTypeNumber_IsGreaterThan)},
@@ -241,8 +524,6 @@ var (
 											Label: "Boolean",
 											Value: "boolean",
 											SubNodeProperties: []domain.NodePropertyOption{
-												{Label: "Exists", Value: string(ConditionTypeBoolean_Exists)},
-												{Label: "Does Not Exist", Value: string(ConditionTypeBoolean_DoesNotExist)},
 												{Label: "Equals", Value: string(ConditionTypeBoolean_IsEqual)},
 												{Label: "Not Equals", Value: string(ConditionTypeBoolean_IsNotEqual)},
 												{Label: "Is True", Value: string(ConditionTypeBoolean_IsTrue)},
@@ -253,8 +534,6 @@ var (
 											Label: "Date",
 											Value: "date",
 											SubNodeProperties: []domain.NodePropertyOption{
-												{Label: "Exists", Value: string(ConditionTypeDate_Exists)},
-												{Label: "Does Not Exist", Value: string(ConditionTypeDate_DoesNotExist)},
 												{Label: "Is Equal", Value: string(ConditionTypeDate_IsEqual)},
 												{Label: "Is Not Equal", Value: string(ConditionTypeDate_IsNotEqual)},
 												{Label: "Is After", Value: string(ConditionTypeDate_IsAfter)},
@@ -267,8 +546,6 @@ var (
 											Label: "Array",
 											Value: "array",
 											SubNodeProperties: []domain.NodePropertyOption{
-												{Label: "Exists", Value: string(ConditionTypeArray_Exists)},
-												{Label: "Does Not Exist", Value: string(ConditionTypeArray_DoesNotExist)},
 												{Label: "Is Empty", Value: string(ConditionTypeArray_IsEmpty)},
 												{Label: "Is Not Empty", Value: string(ConditionTypeArray_IsNotEmpty)},
 												{Label: "Contains", Value: string(ConditionTypeArray_Contains)},
@@ -278,18 +555,18 @@ var (
 												{Label: "Length Less Than", Value: string(ConditionTypeArray_LengthLessThan)},
 											},
 										},
-										// {
-										// 	Label: "Object",
-										// 	Value: "object",
-										// 	SubNodeProperties: []domain.NodePropertyOption{
-										// 		{Label: "Exists", Value: string(ConditionTypeObject_Exists)},
-										// 		{Label: "Does Not Exist", Value: string(ConditionTypeObject_DoesNotExist)},
-										// 		{Label: "Has Key", Value: string(ConditionTypeObject_HasKey)},
-										// 		{Label: "Does Not Have Key", Value: string(ConditionTypeObject_DoesNotHaveKey)},
-										// 		{Label: "Key Equals", Value: string(ConditionTypeObject_KeyEquals)},
-										// 		{Label: "Key Not Equals", Value: string(ConditionTypeObject_KeyNotEquals)},
-										// 	},
-										// },
+										{
+											Label: "Object",
+											Value: "object",
+											SubNodeProperties: []domain.NodePropertyOption{
+												{Label: "Is Empty", Value: string(ConditionTypeObject_IsEmpty)},
+												{Label: "Is Not Empty", Value: string(ConditionTypeObject_IsNotEmpty)},
+												// {Label: "Has Key", Value: string(ConditionTypeObject_HasKey)},
+												// {Label: "Does Not Have Key", Value: string(ConditionTypeObject_DoesNotHaveKey)},
+												// {Label: "Key Equals", Value: string(ConditionTypeObject_KeyEquals)},
+												// {Label: "Key Not Equals", Value: string(ConditionTypeObject_KeyNotEquals)},
+											},
+										},
 									},
 								},
 							},
@@ -564,8 +841,6 @@ var (
 										{Label: "Contains All", Value: string(ConditionTypeTag_Contains)},
 										{Label: "Contains Any", Value: string(ConditionTypeTag_ContainsAny)},
 										{Label: "Does Not Contain", Value: string(ConditionTypeTag_DoesNotContain)},
-										{Label: "Exists", Value: string(ConditionTypeTag_Exists)},
-										{Label: "Does Not Exist", Value: string(ConditionTypeTag_DoesNotExist)},
 									},
 								},
 							},
