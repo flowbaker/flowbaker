@@ -422,7 +422,7 @@ var (
 									Name:        "Search Value",
 									Description: "The value to search for in the array",
 									Required:    true,
-									Type:        domain.NodePropertyType_String,
+									Type:        domain.NodePropertyType_TagInput,
 									ShowIf: &domain.ShowIf{
 										PropertyKey: "condition_type",
 										Values: []any{
@@ -451,7 +451,7 @@ var (
 									Name:        "Comparison Length",
 									Description: "The length to compare against",
 									Required:    true,
-									Type:        domain.NodePropertyType_String,
+									Type:        domain.NodePropertyType_Number,
 									ShowIf: &domain.ShowIf{
 										PropertyKey: "condition_type",
 										Values: []any{

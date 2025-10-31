@@ -524,27 +524,29 @@ func evaluateArrayCondition(params EvaluateConditionParams) (bool, error) {
 		return false, fmt.Errorf("value1 is not an array: %w", err)
 	}
 
-	value2arr, err := convertToArray(params.Value2)
-	if err != nil {
-		return false, fmt.Errorf("cannot convert value2 to array: %w", err)
-	}
-
-	value2str, err := convertToString(params.Value2)
-	if err != nil {
-		return false, fmt.Errorf("cannot convert value2 to string: %w", err)
-	}
-
 	switch ConditionTypeArray(params.ComparisonType) {
-	case ConditionTypeArray_Contains:
-		return arrayContains(value1arr, value2str), nil
-	case ConditionTypeArray_DoesNotContains:
-		return !arrayContains(value1arr, value2str), nil
-	case ConditionTypeArray_LengthEquals:
-		return len(value1arr) == len(value2arr), nil
-	case ConditionTypeArray_LengthGreaterThan:
-		return len(value1arr) > len(value2arr), nil
-	case ConditionTypeArray_LengthLessThan:
-		return len(value1arr) < len(value2arr), nil
+	case ConditionTypeArray_Contains, ConditionTypeArray_DoesNotContains:
+		value2arr, err := convertToArray(params.Value2)
+		if err != nil {
+			return false, fmt.Errorf("cannot convert value2 to array: %w", err)
+		}
+		if params.ComparisonType == string(ConditionTypeArray_Contains) {
+			return arrayContainsAll(value1arr, value2arr), nil
+		}
+		return !arrayContainsAll(value1arr, value2arr), nil
+	case ConditionTypeArray_LengthEquals, ConditionTypeArray_LengthGreaterThan, ConditionTypeArray_LengthLessThan:
+		value2num, err := convertToFloat64(params.Value2)
+		if err != nil {
+			return false, fmt.Errorf("cannot convert value2 to number: %w", err)
+		}
+		value1Len := float64(len(value1arr))
+		if params.ComparisonType == string(ConditionTypeArray_LengthEquals) {
+			return value1Len == value2num, nil
+		} else if params.ComparisonType == string(ConditionTypeArray_LengthGreaterThan) {
+			return value1Len > value2num, nil
+		} else {
+			return value1Len < value2num, nil
+		}
 	default:
 		return false, fmt.Errorf("unknown array condition type: %s", params.ComparisonType)
 	}
@@ -595,7 +597,7 @@ func evaluateTagCondition(params EvaluateConditionParams) (bool, error) {
 }
 
 func evaluateObjectCondition(params EvaluateConditionParams) (bool, error) {
-	value1obj, ok := params.Value1.(map[string]interface{})
+	value1obj, ok := params.Value1.(map[string]any)
 	if !ok {
 		return false, fmt.Errorf("value1 is not an object")
 	}
@@ -692,24 +694,45 @@ func checkIsEmpty(value any) bool {
 	return false
 }
 
-func arrayContains(arr []interface{}, target string) bool {
-	for _, item := range arr {
-		var itemStr string
-		switch v := item.(type) {
+func arrayContainsAll(largeArr, smallArr []any) bool {
+	for _, smallItem := range smallArr {
+		var smallItemStr string
+		switch v := smallItem.(type) {
 		case string:
-			itemStr = v
+			smallItemStr = v
 		default:
-			itemBytes, err := json.Marshal(v)
+			smallItemBytes, err := json.Marshal(v)
 			if err != nil {
-				continue
+				return false
 			}
-			itemStr = string(itemBytes)
+			smallItemStr = string(smallItemBytes)
 		}
-		if itemStr == target {
-			return true
+
+		found := false
+		for _, largeItem := range largeArr {
+			var largeItemStr string
+			switch v := largeItem.(type) {
+			case string:
+				largeItemStr = v
+			default:
+				largeItemBytes, err := json.Marshal(v)
+				if err != nil {
+					continue
+				}
+				largeItemStr = string(largeItemBytes)
+			}
+
+			if smallItemStr == largeItemStr {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func stringSlicesEqual(a, b []string) bool {
@@ -751,7 +774,7 @@ func stringSliceContainsAny(haystack, needles []string) bool {
 	return false
 }
 
-func convertToFloat64(value interface{}) (float64, error) {
+func convertToFloat64(value any) (float64, error) {
 	switch v := value.(type) {
 	case float64:
 		return v, nil
@@ -770,7 +793,7 @@ func convertToFloat64(value interface{}) (float64, error) {
 	}
 }
 
-func convertToString(value interface{}) (string, error) {
+func convertToString(value any) (string, error) {
 	switch v := value.(type) {
 	case string:
 		return v, nil
@@ -779,7 +802,7 @@ func convertToString(value interface{}) (string, error) {
 	}
 }
 
-func convertToBool(value interface{}) (bool, error) {
+func convertToBool(value any) (bool, error) {
 	switch v := value.(type) {
 	case bool:
 		return v, nil
@@ -790,7 +813,7 @@ func convertToBool(value interface{}) (bool, error) {
 	}
 }
 
-func convertToTime(value interface{}) (time.Time, error) {
+func convertToTime(value any) (time.Time, error) {
 	switch v := value.(type) {
 	case time.Time:
 		return v, nil
@@ -814,7 +837,7 @@ func convertToTime(value interface{}) (time.Time, error) {
 	}
 }
 
-func convertToArray(value interface{}) ([]any, error) {
+func convertToArray(value any) ([]any, error) {
 	switch v := value.(type) {
 	case []any:
 		return v, nil
