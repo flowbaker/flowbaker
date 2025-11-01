@@ -369,7 +369,7 @@ func (c *Client) StopExecution(ctx context.Context, workspaceID string, req *Sto
 	}
 
 	path := fmt.Sprintf("/workspaces/%s/executions/%s/stop", workspaceID, req.ExecutionID)
-	resp, err := c.doRequest(ctx, "POST", path, req)
+	resp, err := c.doRequest(ctx, "DELETE", path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to stop execution: %w", err)
 	}
