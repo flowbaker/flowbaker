@@ -141,10 +141,12 @@ func (c *ExecutorController) StopExecution(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Execution ID is required")
 	}
 
+	// it should return success no matter what
 	err := c.executorService.Stop(ctx.RequestCtx(), executionID)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to stop execution")
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to stop execution")
+		return ctx.JSON(executortypes.StopExecutionResponse{
+			Success: true,
+		})
 	}
 
 	return ctx.JSON(executortypes.StopExecutionResponse{
