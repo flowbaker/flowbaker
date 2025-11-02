@@ -135,6 +135,25 @@ func (c *ExecutorController) RerunNode(ctx fiber.Ctx) error {
 	})
 }
 
+func (c *ExecutorController) StopExecution(ctx fiber.Ctx) error {
+	executionID := ctx.Params("executionID")
+	if executionID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Execution ID is required")
+	}
+
+	// it should return success no matter what
+	err := c.executorService.Stop(ctx.RequestCtx(), executionID)
+	if err != nil {
+		return ctx.JSON(executortypes.StopExecutionResponse{
+			Success: true,
+		})
+	}
+
+	return ctx.JSON(executortypes.StopExecutionResponse{
+		Success: true,
+	})
+}
+
 // HandlePollingEvent handles a polling event request from the API
 func (c *ExecutorController) HandlePollingEvent(ctx fiber.Ctx) error {
 	workspaceID := ctx.Params("workspaceID")

@@ -51,6 +51,14 @@ type StartExecutionRequest struct {
 	TestingWorkflow *TestingWorkflow `json:"testing_workflow,omitempty"`
 }
 
+type StopExecutionRequest struct {
+	ExecutionID string `json:"execution_id"`
+}
+
+type StopExecutionResponse struct {
+	Success bool `json:"success"`
+}
+
 // TestingWorkflow represents a testing workflow that references a parent workflow
 type TestingWorkflow struct {
 	ParentWorkflowID string    `json:"parent_workflow_id"`

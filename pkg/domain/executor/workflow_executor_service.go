@@ -21,6 +21,7 @@ type ExecutionResult struct {
 
 type WorkflowExecutorService interface {
 	Execute(ctx context.Context, params ExecuteParams) (ExecutionResult, error)
+	Stop(ctx context.Context, executionID string) error
 	HandlePollingEvent(ctx context.Context, event domain.PollingEvent) (domain.PollResult, error)
 	TestConnection(ctx context.Context, params TestConnectionParams) (bool, error)
 	PeekData(ctx context.Context, params PeekDataParams) (domain.PeekResult, error)
@@ -143,6 +144,17 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 	}
 
 	return executionResult, nil
+}
+
+func (s *workflowExecutorService) Stop(ctx context.Context, executionID string) error {
+	execution, ok := s.executionRegistry.GetExecution(executionID)
+	if !ok {
+		return errors.New("execution not found")
+	}
+
+	execution.CancelFunc()
+
+	return nil
 }
 
 func (s *workflowExecutorService) HandlePollingEvent(ctx context.Context, event domain.PollingEvent) (domain.PollResult, error) {

@@ -66,6 +66,7 @@ func NewHTTPServer(ctx context.Context, deps HTTPServerDependencies) *fiber.App 
 	}
 
 	specificWorkspace.Post("/executions", deps.ExecutorController.StartExecution)
+	specificWorkspace.Delete("/executions/:executionID", deps.ExecutorController.StopExecution)
 	specificWorkspace.Post("/executions/:executionID/nodes/:nodeID", deps.ExecutorController.RerunNode)
 	specificWorkspace.Post("/polling-events", deps.ExecutorController.HandlePollingEvent)
 	specificWorkspace.Post("/connection-test", deps.ExecutorController.TestConnection)
