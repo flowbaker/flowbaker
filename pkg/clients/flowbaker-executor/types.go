@@ -126,6 +126,7 @@ type WorkflowNode struct {
 	IntegrationType              IntegrationType       `json:"integration_type"`
 	IntegrationActionType        IntegrationActionType `json:"integration_action_type"`
 	IntegrationSettings          map[string]any        `json:"integration_settings"`
+	CommonSettings               CommonSettings        `json:"common_settings"`
 	ExpressionSelectedProperties []string              `json:"expression_selected_properties"`
 	ProvidedByAgent              []string              `json:"provided_by_agent"`
 	XPosition                    float64               `json:"x_position"`
@@ -149,8 +150,14 @@ type WorkflowTrigger struct {
 	Type                IntegrationType             `json:"integration_type"`
 	EventType           IntegrationTriggerEventType `json:"event_type"`
 	IntegrationSettings map[string]any              `json:"integration_settings"`
+	CommonSettings      CommonSettings              `json:"common_settings"`
 	XPosition           float64                     `json:"x_position"`
 	YPosition           float64                     `json:"y_position"`
+}
+
+type CommonSettings struct {
+	ReturnErrorAsItem    bool `json:"return_error_as_item"`
+	ContainPreviousItems bool `json:"contain_previous_items"`
 }
 
 // PollingEventRequest represents a request to handle a polling event

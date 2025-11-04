@@ -79,7 +79,6 @@ func DomainNodeExecutionEntriesToFlowbaker(entries []domain.NodeExecutionEntry) 
 	return result
 }
 
-
 // --- Reverse mappings: Flowbaker to Domain ---
 
 // FlowbakerNodeExecutionToDomain converts a flowbaker.NodeExecution to domain.NodeExecution
@@ -190,6 +189,10 @@ func ExecutorWorkflowTriggerToDomain(t executortypes.WorkflowTrigger) domain.Wor
 		Type:                domain.IntegrationType(t.Type),
 		EventType:           domain.IntegrationTriggerEventType(t.EventType),
 		IntegrationSettings: t.IntegrationSettings,
+		CommonSettings: domain.CommonSettings{
+			ReturnErrorAsItem:    t.CommonSettings.ReturnErrorAsItem,
+			ContainPreviousItems: t.CommonSettings.ContainPreviousItems,
+		},
 		Positions: domain.NodePositions{
 			XPosition: t.XPosition,
 			YPosition: t.YPosition,
@@ -208,20 +211,25 @@ func ExecutorWorkflowNodeToDomain(n executortypes.WorkflowNode) domain.WorkflowN
 	}
 
 	return domain.WorkflowNode{
-		ID:                           n.ID,
-		WorkflowID:                   n.WorkflowID,
-		Name:                         n.Name,
-		SubscribedEvents:             []string{}, // This might need to be mapped differently based on your domain structure
-		NodeType:                     domain.IntegrationType(n.IntegrationType),
-		ActionType:                   domain.IntegrationActionType(n.IntegrationActionType),
-		IntegrationSettings:          n.IntegrationSettings,
+		ID:                  n.ID,
+		WorkflowID:          n.WorkflowID,
+		Name:                n.Name,
+		SubscribedEvents:    []string{},
+		NodeType:            domain.IntegrationType(n.IntegrationType),
+		ActionType:          domain.IntegrationActionType(n.IntegrationActionType),
+		IntegrationSettings: n.IntegrationSettings,
+		CommonSettings: domain.CommonSettings{
+			ReturnErrorAsItem:    n.CommonSettings.ReturnErrorAsItem,
+			ContainPreviousItems: n.CommonSettings.ContainPreviousItems,
+		},
 		ExpressionSelectedProperties: n.ExpressionSelectedProperties,
 		ProvidedByAgent:              n.ProvidedByAgent,
 		Positions: domain.NodePositions{
 			XPosition: n.XPosition,
 			YPosition: n.YPosition,
 		},
-		Inputs: inputs,
+		Inputs:       inputs,
+		UsageContext: n.UsageContext,
 	}
 }
 
@@ -270,17 +278,22 @@ func DomainWorkflowNodesToExecutor(nodes []domain.WorkflowNode) []executortypes.
 			}
 		}
 		executorNodes[i] = executortypes.WorkflowNode{
-			ID:                           node.ID,
-			WorkflowID:                   node.WorkflowID,
-			Name:                         node.Name,
-			IntegrationType:              executortypes.IntegrationType(node.NodeType),
-			IntegrationActionType:        executortypes.IntegrationActionType(node.ActionType),
-			IntegrationSettings:          node.IntegrationSettings,
+			ID:                    node.ID,
+			WorkflowID:            node.WorkflowID,
+			Name:                  node.Name,
+			IntegrationType:       executortypes.IntegrationType(node.NodeType),
+			IntegrationActionType: executortypes.IntegrationActionType(node.ActionType),
+			IntegrationSettings:   node.IntegrationSettings,
+			CommonSettings: executortypes.CommonSettings{
+				ReturnErrorAsItem:    node.CommonSettings.ReturnErrorAsItem,
+				ContainPreviousItems: node.CommonSettings.ContainPreviousItems,
+			},
 			ExpressionSelectedProperties: node.ExpressionSelectedProperties,
 			ProvidedByAgent:              node.ProvidedByAgent,
 			XPosition:                    node.Positions.XPosition,
 			YPosition:                    node.Positions.YPosition,
 			Inputs:                       inputs,
+			UsageContext:                 node.UsageContext,
 		}
 	}
 	return executorNodes
@@ -298,8 +311,12 @@ func DomainWorkflowTriggersToExecutor(triggers []domain.WorkflowTrigger) []execu
 			Type:                executortypes.IntegrationType(trigger.Type),
 			EventType:           executortypes.IntegrationTriggerEventType(trigger.EventType),
 			IntegrationSettings: trigger.IntegrationSettings,
-			XPosition:           trigger.Positions.XPosition,
-			YPosition:           trigger.Positions.YPosition,
+			CommonSettings: executortypes.CommonSettings{
+				ReturnErrorAsItem:    trigger.CommonSettings.ReturnErrorAsItem,
+				ContainPreviousItems: trigger.CommonSettings.ContainPreviousItems,
+			},
+			XPosition: trigger.Positions.XPosition,
+			YPosition: trigger.Positions.YPosition,
 		}
 	}
 	return executorTriggers
@@ -315,8 +332,12 @@ func DomainWorkflowTriggerToExecutor(trigger domain.WorkflowTrigger) executortyp
 		Type:                executortypes.IntegrationType(trigger.Type),
 		EventType:           executortypes.IntegrationTriggerEventType(trigger.EventType),
 		IntegrationSettings: trigger.IntegrationSettings,
-		XPosition:           trigger.Positions.XPosition,
-		YPosition:           trigger.Positions.YPosition,
+		CommonSettings: executortypes.CommonSettings{
+			ReturnErrorAsItem:    trigger.CommonSettings.ReturnErrorAsItem,
+			ContainPreviousItems: trigger.CommonSettings.ContainPreviousItems,
+		},
+		XPosition: trigger.Positions.XPosition,
+		YPosition: trigger.Positions.YPosition,
 	}
 }
 

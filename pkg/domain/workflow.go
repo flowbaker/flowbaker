@@ -70,6 +70,7 @@ type WorkflowNode struct {
 	SubscribedEvents             []string
 	Positions                    NodePositions
 	IntegrationSettings          map[string]any
+	CommonSettings               CommonSettings
 	ExpressionSelectedProperties []string
 	ProvidedByAgent              []string
 	Inputs                       []NodeInput
@@ -91,6 +92,11 @@ type NodeInput struct {
 	SubscribedEvents []string
 }
 
+type CommonSettings struct {
+	ReturnErrorAsItem    bool
+	ContainPreviousItems bool
+}
+
 type NodePositions struct {
 	XPosition float64
 	YPosition float64
@@ -104,5 +110,6 @@ type WorkflowTrigger struct {
 	Type                IntegrationType
 	EventType           IntegrationTriggerEventType
 	IntegrationSettings map[string]any
+	CommonSettings      CommonSettings
 	Positions           NodePositions
 }

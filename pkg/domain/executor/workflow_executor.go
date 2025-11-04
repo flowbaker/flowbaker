@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -378,11 +379,15 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 }
 
 func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, trigger domain.WorkflowTrigger, execution NodeExecutionTask) (NodeExecutionResult, error) {
-	// Triggers just pass through the input payload as output
+
 	inputID := fmt.Sprintf(InputHandleFormat, trigger.ID, 0)
 	inputPayload, exists := execution.PayloadByInputID[inputID]
 	if !exists {
-		return NodeExecutionResult{}, fmt.Errorf("trigger input payload not found")
+		err := fmt.Errorf("trigger input payload not found")
+		if trigger.CommonSettings.ReturnErrorAsItem {
+			return w.createErrorAsItemResult(err, domain.IntegrationType(trigger.Type), domain.IntegrationActionType(trigger.EventType))
+		}
+		return NodeExecutionResult{}, err
 	}
 
 	return NodeExecutionResult{
@@ -408,10 +413,15 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		}, nil
 	}
 
+	log.Info().Interface("node", node).Msg("Executing action node")
+
 	integrationCreator, err := w.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
 		IntegrationType: node.NodeType,
 	})
 	if err != nil {
+		if node.CommonSettings.ReturnErrorAsItem {
+			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
+		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -422,7 +432,11 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 
 	credentialIDString, ok := credentialID.(string)
 	if !ok {
-		return NodeExecutionResult{}, fmt.Errorf("credential_id is not a string")
+		err := fmt.Errorf("credential_id is not a string")
+		if node.CommonSettings.ReturnErrorAsItem {
+			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
+		}
+		return NodeExecutionResult{}, err
 	}
 
 	integrationExecutor, err := integrationCreator.CreateIntegration(ctx, domain.CreateIntegrationParams{
@@ -430,6 +444,9 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		CredentialID: credentialIDString,
 	})
 	if err != nil {
+		if node.CommonSettings.ReturnErrorAsItem {
+			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
+		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -450,6 +467,9 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		ActionType: node.ActionType,
 	})
 	if err != nil {
+		if node.CommonSettings.ReturnErrorAsItem {
+			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
+		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -679,4 +699,28 @@ func ConvertPayloadsToItems(payloads []domain.Payload) []domain.Item {
 	}
 
 	return allItems
+}
+
+type ErrorItem struct {
+	ErrorMessage string `json:"error_message"`
+}
+
+func (w *WorkflowExecutor) createErrorAsItemResult(err error, integrationType domain.IntegrationType, actionType domain.IntegrationActionType) (NodeExecutionResult, error) {
+	errorItem := ErrorItem{
+		ErrorMessage: err.Error(),
+	}
+
+	errorItems := []ErrorItem{errorItem}
+	errorPayload, marshalErr := json.Marshal(errorItems)
+	if marshalErr != nil {
+		return NodeExecutionResult{}, fmt.Errorf("failed to marshal error as item: %w", marshalErr)
+	}
+
+	return NodeExecutionResult{
+		Output: domain.IntegrationOutput{
+			ResultJSONByOutputID: []domain.Payload{errorPayload},
+		},
+		IntegrationType:       integrationType,
+		IntegrationActionType: actionType,
+	}, nil
 }
