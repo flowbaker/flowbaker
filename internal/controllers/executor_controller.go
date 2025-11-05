@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"encoding/json"
+
 	executortypes "github.com/flowbaker/flowbaker/pkg/clients/flowbaker-executor"
 
 	"github.com/flowbaker/flowbaker/pkg/domain/executor"
@@ -132,6 +134,44 @@ func (c *ExecutorController) RerunNode(ctx fiber.Ctx) error {
 
 	return ctx.JSON(executortypes.RerunNodeResponse{
 		Payload: result.Payload,
+	})
+}
+
+func (c *ExecutorController) RunNode(ctx fiber.Ctx) error {
+	workspaceID := ctx.Params("workspaceID")
+	if workspaceID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Workspace ID is required")
+	}
+
+	var req executortypes.RunNodeRequest
+	if err := ctx.Bind().Body(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	result, err := c.executorService.RunNode(ctx.RequestCtx(), executor.RunNodeParams{
+		ExecutionID:  req.ExecutionID,
+		NodeID:       req.NodeID,
+		Workflow:     mappers.ExecutorWorkflowToDomain(&req.Workflow),
+		ItemsByInput: req.ItemsByInputID,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to run node")
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to run node")
+	}
+
+	itemsByOutputID := make(map[string][]byte)
+
+	for outputID, items := range result.ItemsByOutputID {
+		itemsJSON, err := json.Marshal(items.Items)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to marshal items")
+		}
+
+		itemsByOutputID[outputID] = itemsJSON
+	}
+
+	return ctx.JSON(executortypes.RunNodeResponse{
+		ItemsByOutputID: itemsByOutputID,
 	})
 }
 

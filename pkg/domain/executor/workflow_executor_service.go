@@ -26,6 +26,7 @@ type WorkflowExecutorService interface {
 	TestConnection(ctx context.Context, params TestConnectionParams) (bool, error)
 	PeekData(ctx context.Context, params PeekDataParams) (domain.PeekResult, error)
 	RerunNode(ctx context.Context, params RerunNodeParams) (ExecutionResult, error)
+	RunNode(ctx context.Context, params RunNodeParams) (RunNodeResult, error)
 }
 
 type ActiveExecution struct {
@@ -339,7 +340,7 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		PayloadByInputID: payloadByInputID,
 	}
 
-	err := workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{
+	_, err := workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{
 		Task:           task,
 		ExecutionOrder: int64(executionEntry.ExecutionOrder),
 		Propagate:      true,
@@ -349,4 +350,64 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 	}
 
 	return ExecutionResult{}, nil
+}
+
+type RunNodeParams struct {
+	NodeID       string
+	WorkspaceID  string
+	ExecutionID  string
+	Workflow     domain.Workflow
+	ItemsByInput map[string][]byte
+}
+
+type RunNodeResult struct {
+	ItemsByOutputID map[string]domain.NodeItems
+}
+
+func (s *workflowExecutorService) RunNode(ctx context.Context, params RunNodeParams) (RunNodeResult, error) {
+	workflowExecutor := NewWorkflowExecutor(WorkflowExecutorDeps{
+		ExecutionID:           params.ExecutionID,
+		Selector:              s.integrationSelector,
+		EnableEvents:          true,
+		Workflow:              params.Workflow,
+		IsTestingWorkflow:     true,
+		ExecutorClient:        s.flowbakerClient,
+		OrderedEventPublisher: s.orderedEventPublisher,
+	})
+
+	ctx = domain.NewContextWithEventOrder(ctx)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
+		WorkspaceID:         params.WorkspaceID,
+		WorkflowID:          params.Workflow.ID,
+		WorkflowExecutionID: params.ExecutionID,
+		EnableEvents:        true,
+		Observer:            workflowExecutor.observer,
+	})
+
+	payloadByInputID := make(SourceNodePayloadByInputID)
+
+	for inputID, payload := range params.ItemsByInput {
+		payloadByInputID[inputID] = SourceNodePayload{
+			SourceNodeID: params.NodeID,
+			Payload:      payload,
+		}
+	}
+
+	task := NodeExecutionTask{
+		NodeID:           params.NodeID,
+		PayloadByInputID: payloadByInputID,
+	}
+
+	result, err := workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{
+		Task:           task,
+		ExecutionOrder: 0,
+		Propagate:      true,
+	})
+	if err != nil {
+		return RunNodeResult{}, err
+	}
+
+	return RunNodeResult{
+		ItemsByOutputID: result.ItemsByOutputID,
+	}, nil
 }
