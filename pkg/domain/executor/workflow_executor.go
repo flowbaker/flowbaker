@@ -384,7 +384,7 @@ func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, trigger domai
 	inputPayload, exists := execution.PayloadByInputID[inputID]
 	if !exists {
 		err := fmt.Errorf("trigger input payload not found")
-		if trigger.CommonSettings.ReturnErrorAsItem {
+		if trigger.Settings.ReturnErrorAsItem {
 			return w.createErrorAsItemResult(err, domain.IntegrationType(trigger.Type), domain.IntegrationActionType(trigger.EventType))
 		}
 		return NodeExecutionResult{}, err
@@ -419,7 +419,7 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		IntegrationType: node.NodeType,
 	})
 	if err != nil {
-		if node.CommonSettings.ReturnErrorAsItem {
+		if node.Settings.ReturnErrorAsItem {
 			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
 		}
 		return NodeExecutionResult{}, err
@@ -433,7 +433,7 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 	credentialIDString, ok := credentialID.(string)
 	if !ok {
 		err := fmt.Errorf("credential_id is not a string")
-		if node.CommonSettings.ReturnErrorAsItem {
+		if node.Settings.ReturnErrorAsItem {
 			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
 		}
 		return NodeExecutionResult{}, err
@@ -444,7 +444,7 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		CredentialID: credentialIDString,
 	})
 	if err != nil {
-		if node.CommonSettings.ReturnErrorAsItem {
+		if node.Settings.ReturnErrorAsItem {
 			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
 		}
 		return NodeExecutionResult{}, err
@@ -467,7 +467,7 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		ActionType: node.ActionType,
 	})
 	if err != nil {
-		if node.CommonSettings.ReturnErrorAsItem {
+		if node.Settings.ReturnErrorAsItem {
 			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
 		}
 		return NodeExecutionResult{}, err
