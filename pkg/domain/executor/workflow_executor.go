@@ -413,8 +413,6 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		}, nil
 	}
 
-	log.Info().Interface("node", node).Msg("Executing action node")
-
 	integrationCreator, err := w.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
 		IntegrationType: node.NodeType,
 	})
