@@ -163,7 +163,7 @@ func (g *GoogleSheetsIntegration) Peek(ctx context.Context, params domain.PeekPa
 
 func (g *GoogleSheetsIntegration) PeekFiles(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 100)
-	pageToken := p.Pagination.PageToken
+	pageToken := p.Pagination.Cursor
 
 	query := "mimeType='application/vnd.google-apps.spreadsheet'"
 	listCall := g.driveService.Files.List().
@@ -195,12 +195,13 @@ func (g *GoogleSheetsIntegration) PeekFiles(ctx context.Context, p domain.PeekPa
 	result := domain.PeekResult{
 		Result: results,
 		Pagination: domain.PaginationMetadata{
-			NextPageToken: filesList.NextPageToken,
-			HasMore:       hasMore,
+			NextCursor: filesList.NextPageToken,
+			HasMore:    hasMore,
 		},
 	}
 
-	result.Pagination.NextPageToken = filesList.NextPageToken
+	result.Pagination.Cursor = filesList.NextPageToken
+	result.Pagination.NextCursor = filesList.NextPageToken
 	result.Pagination.HasMore = hasMore
 
 	return result, nil

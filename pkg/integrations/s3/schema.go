@@ -127,7 +127,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             S3IntegrationPeekable_Objects,
 						Dependent:                []string{"bucket"},
-						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
 
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -162,7 +162,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             S3IntegrationPeekable_Objects,
 						Dependent:                []string{"bucket"},
-						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
 
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -197,7 +197,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             S3IntegrationPeekable_Prefixes,
 						Dependent:                []string{"bucket"},
-						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
 
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -239,7 +239,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             S3IntegrationPeekable_Objects,
 						Dependent:                []string{"source_bucket"},
-						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
 
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -290,7 +290,7 @@ var (
 						Peekable:                 true,
 						PeekableType:             S3IntegrationPeekable_Objects,
 						Dependent:                []string{"bucket"},
-						PeekablePaginationType:   domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
 
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{

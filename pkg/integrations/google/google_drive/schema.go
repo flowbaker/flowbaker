@@ -74,7 +74,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 						ExpressionChoice: true,
 					},
@@ -94,7 +94,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 						ExpressionChoice: true,
 					},
@@ -114,7 +114,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 					{
@@ -132,7 +132,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 				},
@@ -172,7 +172,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 				},
@@ -191,7 +191,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 				},
@@ -210,7 +210,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 					{
@@ -221,7 +221,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 				},
@@ -240,7 +240,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 					{
@@ -305,7 +305,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 					{
@@ -374,7 +374,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 				},
@@ -393,7 +393,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 				},
@@ -412,7 +412,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_ShareableFolders,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 					{
@@ -504,7 +504,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_SharedDrives,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 				},
@@ -524,7 +524,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_SharedDrives,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 				},
@@ -574,7 +574,7 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_SharedDrives,
-						PeekablePaginationType: domain.PeekablePaginationType_PageToken,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 
 					},
 					{

@@ -20,10 +20,9 @@ type IntegrationPeekableType string
 type IntegrationPeekablePaginationType string
 
 const (
-	PeekablePaginationType_None      IntegrationPeekablePaginationType = "none"
-	PeekablePaginationType_Cursor    IntegrationPeekablePaginationType = "cursor"
-	PeekablePaginationType_PageToken IntegrationPeekablePaginationType = "page_token"
-	PeekablePaginationType_Offset    IntegrationPeekablePaginationType = "offset"
+	PeekablePaginationType_None   IntegrationPeekablePaginationType = "none"
+	PeekablePaginationType_Cursor IntegrationPeekablePaginationType = "cursor"
+	PeekablePaginationType_Offset IntegrationPeekablePaginationType = "offset"
 )
 
 const (
