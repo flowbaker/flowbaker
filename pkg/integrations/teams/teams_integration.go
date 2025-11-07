@@ -928,10 +928,10 @@ func (b *ChatNameBuilder) getChatMemberNames(ctx context.Context, chatID string)
 
 	var memberNames []string
 	for _, member := range members.GetValue() {
-		if aadMember, ok := member.(interface{ GetDisplayName() *string }); ok {
-			if displayName := aadMember.GetDisplayName(); displayName != nil && *displayName != "" {
-				memberNames = append(memberNames, *displayName)
-			}
+		displayName := member.GetDisplayName()
+
+		if displayName != nil && *displayName != "" {
+			memberNames = append(memberNames, *displayName)
 		}
 	}
 
