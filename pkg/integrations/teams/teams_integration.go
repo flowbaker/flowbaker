@@ -335,15 +335,6 @@ func (i *TeamsIntegration) DeleteChannel(ctx context.Context, input domain.Integ
 		errorParser := &ODataErrorParser{}
 		errDetails := errorParser.ParseError(err)
 
-		log.Error().
-			Err(err).
-			Str("team_id", teamID).
-			Str("channel_id", channelID).
-			Str("error_code", errDetails.Code).
-			Str("error_message", errDetails.Message).
-			Str("error_details", errDetails.Details).
-			Msg("Failed to delete Teams channel")
-
 		return nil, fmt.Errorf("failed to delete Teams channel: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
@@ -372,15 +363,6 @@ func (i *TeamsIntegration) GetChannel(ctx context.Context, input domain.Integrat
 		errorParser := &ODataErrorParser{}
 		errDetails := errorParser.ParseError(err)
 
-		log.Error().
-			Err(err).
-			Str("team_id", params.TeamID).
-			Str("channel_id", params.ChannelID).
-			Str("error_code", errDetails.Code).
-			Str("error_message", errDetails.Message).
-			Str("error_details", errDetails.Details).
-			Msg("Failed to get Teams channel")
-
 		return nil, fmt.Errorf("failed to get Teams channel: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
@@ -398,25 +380,19 @@ func (i *TeamsIntegration) GetManyChannels(ctx context.Context, input domain.Int
 		return nil, fmt.Errorf("team_id is required")
 	}
 
+	items := []domain.Item{}
+
 	result, err := i.graphClient.Teams().ByTeamId(params.TeamID).Channels().Get(ctx, nil)
 	if err != nil {
 		errorParser := &ODataErrorParser{}
 		errDetails := errorParser.ParseError(err)
-
-		log.Error().
-			Err(err).
-			Str("team_id", params.TeamID).
-			Str("error_code", errDetails.Code).
-			Str("error_message", errDetails.Message).
-			Str("error_details", errDetails.Details).
-			Msg("Failed to get Teams channels")
 
 		return nil, fmt.Errorf("failed to get Teams channels: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
 	if result != nil && result.GetValue() != nil {
 		channels := result.GetValue()
-		items := make([]domain.Item, 0, len(channels))
+		items = make([]domain.Item, 0, len(channels))
 		jsonParser := &JsonParser{}
 		for _, channel := range channels {
 			channelMap, err := jsonParser.ConvertToRawJSON(channel)
@@ -426,10 +402,9 @@ func (i *TeamsIntegration) GetManyChannels(ctx context.Context, input domain.Int
 			}
 			items = append(items, channelMap)
 		}
-		return items, nil
 	}
 
-	return []domain.Item{}, nil
+	return items, nil
 }
 
 func (i *TeamsIntegration) UpdateChannel(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -458,15 +433,6 @@ func (i *TeamsIntegration) UpdateChannel(ctx context.Context, input domain.Integ
 		errorParser := &ODataErrorParser{}
 		errDetails := errorParser.ParseError(err)
 
-		log.Error().
-			Err(err).
-			Str("team_id", params.TeamID).
-			Str("channel_id", params.ChannelID).
-			Str("error_code", errDetails.Code).
-			Str("error_message", errDetails.Message).
-			Str("error_details", errDetails.Details).
-			Msg("Failed to update Teams channel")
-
 		return nil, fmt.Errorf("failed to update Teams channel: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
@@ -490,26 +456,19 @@ func (i *TeamsIntegration) GetChannelMessages(ctx context.Context, input domain.
 		return nil, fmt.Errorf("failed to parse channel_id: %w", err)
 	}
 
+	items := []domain.Item{}
+
 	result, err := i.graphClient.Teams().ByTeamId(teamID).Channels().ByChannelId(channelID).Messages().Get(ctx, nil)
 	if err != nil {
 		errorParser := &ODataErrorParser{}
 		errDetails := errorParser.ParseError(err)
-
-		log.Error().
-			Err(err).
-			Str("team_id", teamID).
-			Str("channel_id", channelID).
-			Str("error_code", errDetails.Code).
-			Str("error_message", errDetails.Message).
-			Str("error_details", errDetails.Details).
-			Msg("Failed to get channel messages")
 
 		return nil, fmt.Errorf("failed to get channel messages: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
 	if result != nil && result.GetValue() != nil {
 		messages := result.GetValue()
-		items := make([]domain.Item, 0, len(messages))
+		items = make([]domain.Item, 0, len(messages))
 		jsonParser := &JsonParser{}
 		for _, message := range messages {
 			messageMap, err := jsonParser.ConvertToRawJSON(message)
@@ -519,10 +478,9 @@ func (i *TeamsIntegration) GetChannelMessages(ctx context.Context, input domain.
 			}
 			items = append(items, messageMap)
 		}
-		return items, nil
 	}
 
-	return []domain.Item{}, nil
+	return items, nil
 }
 
 func (i *TeamsIntegration) GetChatMessage(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -543,15 +501,6 @@ func (i *TeamsIntegration) GetChatMessage(ctx context.Context, input domain.Inte
 		errorParser := &ODataErrorParser{}
 		errDetails := errorParser.ParseError(err)
 
-		log.Error().
-			Err(err).
-			Str("chat_id", params.ChatID).
-			Str("message_id", params.MessageID).
-			Str("error_code", errDetails.Code).
-			Str("error_message", errDetails.Message).
-			Str("error_details", errDetails.Details).
-			Msg("Failed to get chat message")
-
 		return nil, fmt.Errorf("failed to get chat message: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
@@ -569,25 +518,19 @@ func (i *TeamsIntegration) GetManyChatMessages(ctx context.Context, input domain
 		return nil, fmt.Errorf("chat_id is required")
 	}
 
+	items := []domain.Item{}
+
 	result, err := i.graphClient.Chats().ByChatId(params.ChatID).Messages().Get(ctx, nil)
 	if err != nil {
 		errorParser := &ODataErrorParser{}
 		errDetails := errorParser.ParseError(err)
-
-		log.Error().
-			Err(err).
-			Str("chat_id", params.ChatID).
-			Str("error_code", errDetails.Code).
-			Str("error_message", errDetails.Message).
-			Str("error_details", errDetails.Details).
-			Msg("Failed to get chat messages")
 
 		return nil, fmt.Errorf("failed to get chat messages: [%s] %s", errDetails.Code, errDetails.Message)
 	}
 
 	if result != nil && result.GetValue() != nil {
 		messages := result.GetValue()
-		items := make([]domain.Item, 0, len(messages))
+		items = make([]domain.Item, 0, len(messages))
 		jsonParser := &JsonParser{}
 		for _, message := range messages {
 			messageMap, err := jsonParser.ConvertToRawJSON(message)
@@ -597,10 +540,9 @@ func (i *TeamsIntegration) GetManyChatMessages(ctx context.Context, input domain
 			}
 			items = append(items, messageMap)
 		}
-		return items, nil
 	}
 
-	return []domain.Item{}, nil
+	return items, nil
 }
 
 func (i *TeamsIntegration) PeekChannels(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
