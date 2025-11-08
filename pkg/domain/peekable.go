@@ -1,19 +1,14 @@
 package domain
 
 type PaginationParams struct {
-	Limit           int    `json:"limit,omitempty"`
-	Cursor          string `json:"cursor,omitempty"`
-	Offset          int    `json:"offset,omitempty"`
-	OrderBy         string `json:"order_by,omitempty"`
-	IncludeArchived bool   `json:"include_archived,omitempty"`
+	Limit  int    `json:"limit,omitempty"`
+	Cursor string `json:"cursor,omitempty"`
+	Offset int    `json:"offset,omitempty"`
 }
 
 type PaginationMetadata struct {
 	HasMore    bool   `json:"has_more"`
-	TotalCount *int   `json:"total_count,omitempty"`
-	Cursor     string `json:"cursor,omitempty"`
 	NextCursor string `json:"next_cursor,omitempty"`
-	Offset     int    `json:"offset,omitempty"`
 	NextOffset int    `json:"next_offset,omitempty"`
 }
 

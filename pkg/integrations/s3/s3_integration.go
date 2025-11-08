@@ -462,7 +462,6 @@ func (i *S3Integration) PeekObjects(ctx context.Context, params domain.PeekParam
 
 	if result.NextContinuationToken != nil {
 		peekResult.Pagination.NextCursor = *result.NextContinuationToken
-		peekResult.Pagination.Cursor = *result.NextContinuationToken
 	}
 
 	if result.IsTruncated != nil {
@@ -515,7 +514,6 @@ func (i *S3Integration) PeekPrefixes(ctx context.Context, params domain.PeekPara
 
 	if result.NextContinuationToken != nil {
 		peekResult.Pagination.NextCursor = *result.NextContinuationToken
-		peekResult.Pagination.Cursor = *result.NextContinuationToken
 	}
 
 	if result.IsTruncated != nil {

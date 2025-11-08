@@ -200,10 +200,6 @@ func (g *GoogleSheetsIntegration) PeekFiles(ctx context.Context, p domain.PeekPa
 		},
 	}
 
-	result.Pagination.Cursor = filesList.NextPageToken
-	result.Pagination.NextCursor = filesList.NextPageToken
-	result.Pagination.HasMore = hasMore
-
 	return result, nil
 }
 

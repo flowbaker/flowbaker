@@ -1747,10 +1747,6 @@ func (i *PipedriveIntegration) PeekPipelines(ctx context.Context, params domain.
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.Pagination.Cursor = response.AdditionalData.NextCursor
-	result.Pagination.NextCursor = response.AdditionalData.NextCursor
-	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
-
 	return result, nil
 }
 
@@ -1799,10 +1795,6 @@ func (i *PipedriveIntegration) PeekStages(ctx context.Context, params domain.Pee
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.Pagination.Cursor = response.AdditionalData.NextCursor
-	result.Pagination.NextCursor = response.AdditionalData.NextCursor
-	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
-
 	return result, nil
 }
 
@@ -1847,11 +1839,6 @@ func (i *PipedriveIntegration) PeekUsers(ctx context.Context, params domain.Peek
 	result := domain.PeekResult{
 		Result: results,
 	}
-	if response.AdditionalData.MoreItemsInCollection {
-		result.Pagination.NextOffset = response.AdditionalData.NextStart
-	}
-	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
-
 	return result, nil
 }
 
@@ -1907,10 +1894,6 @@ func (i *PipedriveIntegration) PeekPersons(ctx context.Context, params domain.Pe
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.Pagination.Cursor = response.AdditionalData.NextCursor
-	result.Pagination.NextCursor = response.AdditionalData.NextCursor
-	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
-
 	return result, nil
 }
 
@@ -1959,10 +1942,6 @@ func (i *PipedriveIntegration) PeekOrganizations(ctx context.Context, params dom
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.Pagination.Cursor = response.AdditionalData.NextCursor
-	result.Pagination.NextCursor = response.AdditionalData.NextCursor
-	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
-
 	return result, nil
 }
 
@@ -2011,11 +1990,6 @@ func (i *PipedriveIntegration) PeekCurrencies(ctx context.Context, params domain
 	result := domain.PeekResult{
 		Result: results,
 	}
-	if response.AdditionalData.MoreItemsInCollection {
-		result.Pagination.NextOffset = response.AdditionalData.NextStart
-	}
-	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
-
 	return result, nil
 }
 
@@ -2064,10 +2038,6 @@ func (i *PipedriveIntegration) PeekDeals(ctx context.Context, params domain.Peek
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.Pagination.Cursor = response.AdditionalData.NextCursor
-	result.Pagination.NextCursor = response.AdditionalData.NextCursor
-	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
-
 	return result, nil
 }
 
@@ -2116,10 +2086,6 @@ func (i *PipedriveIntegration) PeekActivities(ctx context.Context, params domain
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.Pagination.Cursor = response.AdditionalData.NextCursor
-	result.Pagination.NextCursor = response.AdditionalData.NextCursor
-	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
-
 	return result, nil
 }
 
@@ -2163,11 +2129,6 @@ func (i *PipedriveIntegration) PeekActivityTypes(ctx context.Context, params dom
 	result := domain.PeekResult{
 		Result: results,
 	}
-	if response.AdditionalData.MoreItemsInCollection {
-		result.Pagination.NextOffset = response.AdditionalData.NextStart
-	}
-	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
-
 	return result, nil
 }
 
@@ -2216,10 +2177,6 @@ func (i *PipedriveIntegration) PeekProducts(ctx context.Context, params domain.P
 	result := domain.PeekResult{
 		Result: results,
 	}
-	result.Pagination.Cursor = response.AdditionalData.NextCursor
-	result.Pagination.NextCursor = response.AdditionalData.NextCursor
-	result.Pagination.HasMore = response.AdditionalData.NextCursor != ""
-
 	return result, nil
 }
 
@@ -2263,11 +2220,6 @@ func (i *PipedriveIntegration) PeekProjects(ctx context.Context, params domain.P
 	result := domain.PeekResult{
 		Result: results,
 	}
-	if response.AdditionalData.MoreItemsInCollection {
-		result.Pagination.NextOffset = response.AdditionalData.NextStart
-	}
-	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
-
 	return result, nil
 }
 
@@ -2311,11 +2263,6 @@ func (i *PipedriveIntegration) PeekLeads(ctx context.Context, params domain.Peek
 	result := domain.PeekResult{
 		Result: results,
 	}
-	if response.AdditionalData.MoreItemsInCollection {
-		result.Pagination.NextOffset = response.AdditionalData.NextStart
-	}
-	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
-
 	return result, nil
 }
 
@@ -2359,10 +2306,5 @@ func (i *PipedriveIntegration) PeekLabels(ctx context.Context, params domain.Pee
 	result := domain.PeekResult{
 		Result: results,
 	}
-	if response.AdditionalData.MoreItemsInCollection {
-		result.Pagination.NextOffset = response.AdditionalData.NextStart
-	}
-	result.Pagination.HasMore = response.AdditionalData.MoreItemsInCollection
-
 	return result, nil
 }

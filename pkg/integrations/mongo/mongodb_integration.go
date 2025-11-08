@@ -444,13 +444,10 @@ func (i *MongoDBIntegration) PeekDatabases(ctx context.Context, p domain.PeekPar
 	result := domain.PeekResult{
 		Result: results,
 		Pagination: domain.PaginationMetadata{
-			Offset:  nextOffset,
-			HasMore: hasMore,
+			NextOffset: nextOffset,
+			HasMore:    hasMore,
 		},
 	}
-
-	result.Pagination.Offset = nextOffset
-	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }
@@ -504,13 +501,10 @@ func (i *MongoDBIntegration) PeekCollections(ctx context.Context, p domain.PeekP
 	result := domain.PeekResult{
 		Result: results,
 		Pagination: domain.PaginationMetadata{
-			Offset:  nextOffset,
-			HasMore: hasMore,
+			NextOffset: nextOffset,
+			HasMore:    hasMore,
 		},
 	}
-
-	result.Pagination.Offset = nextOffset
-	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }

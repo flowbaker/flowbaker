@@ -330,13 +330,10 @@ func (i *StorageIntegration) PeekFiles(ctx context.Context, params domain.PeekPa
 	peekResult := domain.PeekResult{
 		Result: items,
 		Pagination: domain.PaginationMetadata{
-			Cursor:  result.NextCursor,
-			HasMore: result.NextCursor != "",
+			NextCursor: result.NextCursor,
+			HasMore:    result.NextCursor != "",
 		},
 	}
-	peekResult.Pagination.Cursor = result.NextCursor
-	peekResult.Pagination.NextCursor = result.NextCursor
-	peekResult.Pagination.HasMore = result.NextCursor != ""
 
 	return peekResult, nil
 }

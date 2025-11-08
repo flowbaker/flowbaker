@@ -1151,14 +1151,10 @@ func (i *DropboxIntegration) PeekFolders(ctx context.Context, p domain.PeekParam
 	result := domain.PeekResult{
 		Result: folders.Items,
 		Pagination: domain.PaginationMetadata{
-			Cursor:  folders.Cursor,
-			HasMore: folders.HasMore,
+			NextCursor: folders.Cursor,
+			HasMore:    folders.HasMore,
 		},
 	}
-
-	result.Pagination.Cursor = folders.Cursor
-	result.Pagination.NextCursor = folders.Cursor
-	result.Pagination.HasMore = folders.HasMore
 
 	return result, nil
 }
@@ -1180,14 +1176,10 @@ func (i *DropboxIntegration) PeekFiles(ctx context.Context, p domain.PeekParams)
 	result := domain.PeekResult{
 		Result: files.Items,
 		Pagination: domain.PaginationMetadata{
-			Cursor:  files.Cursor,
-			HasMore: files.HasMore,
+			NextCursor: files.Cursor,
+			HasMore:    files.HasMore,
 		},
 	}
-
-	result.Pagination.Cursor = files.Cursor
-	result.Pagination.NextCursor = files.Cursor
-	result.Pagination.HasMore = files.HasMore
 
 	return result, nil
 }

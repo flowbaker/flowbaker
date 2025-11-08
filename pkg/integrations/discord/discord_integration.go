@@ -259,14 +259,10 @@ func (i *DiscordIntegration) PeekGuilds(ctx context.Context, p domain.PeekParams
 	result := domain.PeekResult{
 		Result: results,
 		Pagination: domain.PaginationMetadata{
-			Cursor:  nextCursor,
-			HasMore: hasMore,
+			NextCursor: nextCursor,
+			HasMore:    hasMore,
 		},
 	}
-
-	result.Pagination.Cursor = nextCursor
-	result.Pagination.NextCursor = nextCursor
-	result.Pagination.HasMore = hasMore
 
 	return result, nil
 }

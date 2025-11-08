@@ -1278,11 +1278,18 @@ func (i *JiraIntegration) PeekProjects(ctx context.Context, p domain.PeekParams)
 		}
 	}
 
-	result := domain.PeekResult{Result: results}
+	var nextOffset int
 	if !response.IsLast {
-		result.Pagination.NextOffset = response.StartAt + len(response.Values)
+		nextOffset = response.StartAt + len(response.Values)
 	}
-	result.Pagination.HasMore = !response.IsLast
+
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			NextOffset: nextOffset,
+			HasMore:    !response.IsLast,
+		},
+	}
 
 	return result, nil
 }
@@ -1655,12 +1662,19 @@ func (i *JiraIntegration) PeekAssignees(ctx context.Context, p domain.PeekParams
 		})
 	}
 
-	result := domain.PeekResult{Result: results}
 	hasMore := len(users) == limit
+	var nextOffset int
 	if hasMore {
-		result.Pagination.NextOffset = offset + len(results)
+		nextOffset = offset + len(results)
 	}
-	result.Pagination.HasMore = hasMore
+
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			NextOffset: nextOffset,
+			HasMore:    hasMore,
+		},
+	}
 
 	return result, nil
 }
@@ -1870,18 +1884,25 @@ func (i *JiraIntegration) PeekIssues(ctx context.Context, p domain.PeekParams) (
 		})
 	}
 
-	result := domain.PeekResult{Result: results}
-
 	total, totalOk := searchResult["total"].(float64)
 	startAt, startAtOk := searchResult["startAt"].(float64)
 	maxResults, maxResultsOk := searchResult["maxResults"].(float64)
 
+	var nextOffset int
+	var hasMore bool
 	if totalOk && startAtOk && maxResultsOk {
-		hasMore := (int(startAt) + int(maxResults)) < int(total)
+		hasMore = (int(startAt) + int(maxResults)) < int(total)
 		if hasMore {
-			result.Pagination.NextOffset = int(startAt) + len(results)
+			nextOffset = int(startAt) + len(results)
 		}
-		result.Pagination.HasMore = hasMore
+	}
+
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			NextOffset: nextOffset,
+			HasMore:    hasMore,
+		},
 	}
 
 	return result, nil

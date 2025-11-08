@@ -273,10 +273,6 @@ func (g *GoogleDriveIntegration) PeekFolders(ctx context.Context, p domain.PeekP
 		},
 	}
 
-	result.Pagination.Cursor = nextPageToken
-	result.Pagination.NextCursor = nextPageToken
-	result.Pagination.HasMore = hasMore
-
 	return result, nil
 }
 
@@ -305,10 +301,6 @@ func (g *GoogleDriveIntegration) PeekFoldersWithRoot(ctx context.Context, p doma
 			HasMore:    shareableResult.Pagination.HasMore,
 		},
 	}
-
-	result.Pagination.Cursor = shareableResult.Pagination.NextCursor
-	result.Pagination.NextCursor = shareableResult.Pagination.NextCursor
-	result.Pagination.HasMore = shareableResult.Pagination.HasMore
 
 	return result, nil
 }
@@ -467,10 +459,6 @@ func (g *GoogleDriveIntegration) PeekFiles(ctx context.Context, p domain.PeekPar
 		},
 	}
 
-	result.Pagination.Cursor = filesList.NextPageToken
-	result.Pagination.NextCursor = filesList.NextPageToken
-	result.Pagination.HasMore = filesList.NextPageToken != ""
-
 	return result, nil
 }
 
@@ -517,10 +505,6 @@ func (g *GoogleDriveIntegration) PeekSharedDrives(ctx context.Context, p domain.
 			HasMore:    driveList.NextPageToken != "",
 		},
 	}
-
-	result.Pagination.Cursor = driveList.NextPageToken
-	result.Pagination.NextCursor = driveList.NextPageToken
-	result.Pagination.HasMore = driveList.NextPageToken != ""
 
 	return result, nil
 }

@@ -241,9 +241,5 @@ func (i *SlackIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 		},
 	}
 
-	result.Pagination.Cursor = nextCursor
-	result.Pagination.NextCursor = nextCursor
-	result.Pagination.HasMore = nextCursor != ""
-
 	return result, nil
 }
