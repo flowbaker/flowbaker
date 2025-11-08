@@ -8,7 +8,6 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 	auth "github.com/microsoft/kiota-authentication-azure-go"
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
-	"github.com/rs/zerolog/log"
 )
 
 type TeamsConnectionTester struct {
@@ -44,13 +43,9 @@ func (c *TeamsConnectionTester) TestConnection(ctx context.Context, params domai
 
 	graphClient := msgraphsdk.NewGraphServiceClient(adapter)
 
-	user, err := graphClient.Me().Get(ctx, nil)
+	_, err = graphClient.Me().Get(ctx, nil)
 	if err != nil {
 		return false, fmt.Errorf("failed to authenticate with Microsoft Teams: %w", err)
-	}
-
-	if user.GetDisplayName() != nil {
-		log.Info().Str("user", *user.GetDisplayName()).Msg("Successfully connected to Microsoft Teams")
 	}
 
 	return true, nil

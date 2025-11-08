@@ -17,7 +17,6 @@ import (
 	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
-	"github.com/rs/zerolog/log"
 )
 
 type TeamsIntegrationCreator struct {
@@ -397,7 +396,6 @@ func (i *TeamsIntegration) GetManyChannels(ctx context.Context, input domain.Int
 		for _, channel := range channels {
 			channelMap, err := jsonParser.ConvertToRawJSON(channel)
 			if err != nil {
-				log.Warn().Err(err).Msg("Failed to convert channel to JSON")
 				continue
 			}
 			items = append(items, channelMap)
@@ -473,7 +471,6 @@ func (i *TeamsIntegration) GetChannelMessages(ctx context.Context, input domain.
 		for _, message := range messages {
 			messageMap, err := jsonParser.ConvertToRawJSON(message)
 			if err != nil {
-				log.Warn().Err(err).Msg("Failed to convert message to JSON")
 				continue
 			}
 			items = append(items, messageMap)
@@ -535,7 +532,6 @@ func (i *TeamsIntegration) GetManyChatMessages(ctx context.Context, input domain
 		for _, message := range messages {
 			messageMap, err := jsonParser.ConvertToRawJSON(message)
 			if err != nil {
-				log.Warn().Err(err).Msg("Failed to convert message to JSON")
 				continue
 			}
 			items = append(items, messageMap)
@@ -550,12 +546,10 @@ func (i *TeamsIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 
 	teamsResult, err := i.graphClient.Me().JoinedTeams().Get(ctx, nil)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get joined teams")
 		return domain.PeekResult{}, fmt.Errorf("failed to get joined teams: %w. Make sure the user has a Teams license and necessary permissions are granted", err)
 	}
 
 	if teamsResult == nil || teamsResult.GetValue() == nil {
-		log.Info().Msg("No teams found for user")
 		return domain.PeekResult{Result: results}, nil
 	}
 
@@ -569,7 +563,6 @@ func (i *TeamsIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 
 		channelsResult, err := i.graphClient.Teams().ByTeamId(teamID).Channels().Get(ctx, nil)
 		if err != nil {
-			log.Warn().Err(err).Str("team_id", teamID).Str("team_name", teamName).Msg("Failed to get channels for team")
 			continue
 		}
 
@@ -601,12 +594,10 @@ func (i *TeamsIntegration) PeekTeams(ctx context.Context, params domain.PeekPara
 
 	teamsResult, err := i.graphClient.Me().JoinedTeams().Get(ctx, nil)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get joined teams")
 		return domain.PeekResult{}, fmt.Errorf("failed to get joined teams: %w. Make sure the user has a Teams license and necessary permissions are granted", err)
 	}
 
 	if teamsResult == nil || teamsResult.GetValue() == nil {
-		log.Info().Msg("No teams found for user")
 		return domain.PeekResult{Result: results}, nil
 	}
 
@@ -633,7 +624,6 @@ func (i *TeamsIntegration) PeekChats(ctx context.Context, params domain.PeekPara
 
 	chatsResult, err := i.graphClient.Me().Chats().Get(ctx, nil)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get chats")
 		return domain.PeekResult{}, fmt.Errorf("failed to get chats: %w", err)
 	}
 
