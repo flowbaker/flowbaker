@@ -272,13 +272,17 @@ func (i *OpenAIIntegration) PeekModels(ctx context.Context) (domain.PeekResult, 
 		return domain.PeekResult{}, err
 	}
 
-	resultJSON, err := json.Marshal(models.Models)
-	if err != nil {
-		return domain.PeekResult{}, err
+	var results []domain.PeekResultItem
+	for _, model := range models.Models {
+		results = append(results, domain.PeekResultItem{
+			Key:     model.ID,
+			Value:   model.ID,
+			Content: model.ID,
+		})
 	}
 
 	return domain.PeekResult{
-		ResultJSON: resultJSON,
+		Result: results,
 	}, nil
 }
 

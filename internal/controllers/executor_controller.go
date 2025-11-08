@@ -249,10 +249,7 @@ func (c *ExecutorController) PeekData(ctx fiber.Ctx) error {
 
 	return ctx.JSON(executortypes.PeekDataResponse{
 		Success:    true,
-		ResultJSON: result.ResultJSON,
 		Result:     mappers.DomainPeekResultItemsToExecutor(result.Result),
-		Cursor:     result.Pagination.NextCursor,
-		HasMore:    result.Pagination.HasMore,
 		Pagination: result.Pagination,
 	})
 }

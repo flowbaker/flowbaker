@@ -188,10 +188,7 @@ type PeekDataRequest struct {
 type PeekDataResponse struct {
 	Success    bool                      `json:"success"`
 	Error      string                    `json:"error,omitempty"`
-	ResultJSON []byte                    `json:"result_json,omitempty"`
 	Result     []PeekResultItem          `json:"result,omitempty"`
-	Cursor     string                    `json:"cursor,omitempty"`
-	HasMore    bool                      `json:"has_more,omitempty"`
 	Pagination domain.PaginationMetadata `json:"pagination,omitempty"`
 }
 

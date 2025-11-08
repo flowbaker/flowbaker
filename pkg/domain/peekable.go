@@ -22,7 +22,6 @@ type PeekParams struct {
 }
 
 type PeekResult struct {
-	ResultJSON []byte             `json:"result_json,omitempty"`
 	Result     []PeekResultItem   `json:"result,omitempty"`
 	Pagination PaginationMetadata `json:"pagination,omitempty"`
 }
