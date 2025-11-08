@@ -212,10 +212,12 @@ func (i *SlackIntegration) Peek(ctx context.Context, params domain.PeekParams) (
 }
 
 func (i *SlackIntegration) PeekChannels(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	// FIXME: Need peekable pagination here.
-	channels, _, err := i.slackClient.GetConversationsContext(ctx, &slack.GetConversationsParameters{
-		Types: []string{"public_channel"},
-		Limit: 200,
+	limit := params.GetLimitWithMax(20, 200)
+
+	channels, nextCursor, err := i.slackClient.GetConversationsContext(ctx, &slack.GetConversationsParameters{
+		Types:  []string{"public_channel"},
+		Limit:  limit,
+		Cursor: params.Pagination.Cursor,
 	})
 	if err != nil {
 		return domain.PeekResult{}, err
@@ -231,7 +233,13 @@ func (i *SlackIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 		})
 	}
 
-	return domain.PeekResult{
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+		Pagination: domain.PaginationMetadata{
+			NextCursor: nextCursor,
+			HasMore:    nextCursor != "",
+		},
+	}
+
+	return result, nil
 }

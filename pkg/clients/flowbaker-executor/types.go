@@ -4,6 +4,7 @@ import (
 	"time"
 
 	api "github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 // HealthCheckResponse represents the response from a health check
@@ -182,22 +183,21 @@ type ConnectionTestResponse struct {
 
 // PeekDataRequest represents a request to peek data from an integration
 type PeekDataRequest struct {
-	IntegrationType IntegrationType `json:"integration_type"`
-	CredentialID    string          `json:"credential_id"`
-	UserID          string          `json:"user_id"`
-	PeekableType    string          `json:"peekable_type"`
-	Cursor          string          `json:"cursor,omitempty"`
-	PayloadJSON     []byte          `json:"payload_json,omitempty"`
+	IntegrationType IntegrationType           `json:"integration_type"`
+	CredentialID    string                    `json:"credential_id"`
+	UserID          string                    `json:"user_id"`
+	PeekableType    string                    `json:"peekable_type"`
+	Cursor          string                    `json:"cursor,omitempty"`
+	Pagination      *domain.PaginationParams  `json:"pagination,omitempty"`
+	PayloadJSON     []byte                    `json:"payload_json,omitempty"`
 }
 
 // PeekDataResponse represents the response from peeking data
 type PeekDataResponse struct {
-	Success    bool             `json:"success"`
-	Error      string           `json:"error,omitempty"`
-	ResultJSON []byte           `json:"result_json,omitempty"`
-	Result     []PeekResultItem `json:"result,omitempty"`
-	Cursor     string           `json:"cursor,omitempty"`
-	HasMore    bool             `json:"has_more,omitempty"`
+	Success    bool                      `json:"success"`
+	Error      string                    `json:"error,omitempty"`
+	Result     []PeekResultItem          `json:"result,omitempty"`
+	Pagination domain.PaginationMetadata `json:"pagination,omitempty"`
 }
 
 // PeekResultItem represents an item in the peek result
