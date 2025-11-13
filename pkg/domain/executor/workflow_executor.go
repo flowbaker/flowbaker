@@ -314,44 +314,34 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 
 	if action, exists := w.workflow.GetActionNodeByID(execution.NodeID); exists {
 		result, err = w.ExecuteActionNode(ctx, action, execution)
-		nodeID = action.ID
-
 		if err != nil {
-			if action.Settings.ReturnErrorAsItem {
-				log.Info().
-					Str("execution_id", w.executionID).
-					Str("node_id", action.ID).
-					Err(err).
-					Msg("Converting error to item (action node)")
-
-				result, err = w.createErrorAsItemResult(err, action.NodeType, action.ActionType)
-				if err != nil {
-					return err
-				}
-			} else {
+			result, err = w.HandleNodeExecutionError(HandleNodeExecutionErrorParams{
+				Err:             err,
+				IntegrationType: domain.IntegrationType(action.NodeType),
+				ActionType:      domain.IntegrationActionType(action.ActionType),
+				Settings:        action.Settings,
+			})
+			if err != nil {
 				return err
 			}
 		}
+
+		nodeID = action.ID
 	} else if trigger, exists := w.workflow.GetTriggerByID(execution.NodeID); exists {
 		result, err = w.ExecuteTriggerNode(ctx, trigger, execution)
-		nodeID = trigger.ID
-
 		if err != nil {
-			if trigger.Settings.ReturnErrorAsItem {
-				log.Info().
-					Str("execution_id", w.executionID).
-					Str("node_id", trigger.ID).
-					Err(err).
-					Msg("Converting error to item (trigger node)")
-
-				result, err = w.createErrorAsItemResult(err, domain.IntegrationType(trigger.Type), domain.IntegrationActionType(trigger.EventType))
-				if err != nil {
-					return err
-				}
-			} else {
+			result, err = w.HandleNodeExecutionError(HandleNodeExecutionErrorParams{
+				Err:             err,
+				IntegrationType: domain.IntegrationType(trigger.Type),
+				ActionType:      domain.IntegrationActionType(trigger.EventType),
+				Settings:        trigger.Settings,
+			})
+			if err != nil {
 				return err
 			}
 		}
+
+		nodeID = trigger.ID
 	} else {
 		return fmt.Errorf("node %s not found in workflow", execution.NodeID)
 	}
@@ -719,9 +709,20 @@ type ErrorItem struct {
 	ErrorMessage string `json:"error_message"`
 }
 
-func (w *WorkflowExecutor) createErrorAsItemResult(err error, integrationType domain.IntegrationType, actionType domain.IntegrationActionType) (NodeExecutionResult, error) {
+type HandleNodeExecutionErrorParams struct {
+	Err             error
+	IntegrationType domain.IntegrationType
+	ActionType      domain.IntegrationActionType
+	Settings        domain.Settings
+}
+
+func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorParams) (NodeExecutionResult, error) {
+	if !p.Settings.ReturnErrorAsItem {
+		return NodeExecutionResult{}, p.Err
+	}
+
 	errorItem := ErrorItem{
-		ErrorMessage: err.Error(),
+		ErrorMessage: p.Err.Error(),
 	}
 
 	errorItems := []ErrorItem{errorItem}
@@ -734,7 +735,7 @@ func (w *WorkflowExecutor) createErrorAsItemResult(err error, integrationType do
 		Output: domain.IntegrationOutput{
 			ResultJSONByOutputID: []domain.Payload{errorPayload},
 		},
-		IntegrationType:       integrationType,
-		IntegrationActionType: actionType,
+		IntegrationType:       p.IntegrationType,
+		IntegrationActionType: p.ActionType,
 	}, nil
 }
