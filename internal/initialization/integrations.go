@@ -27,6 +27,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/integrations/linear"
 	"github.com/flowbaker/flowbaker/pkg/integrations/manipulation"
 	mongodb "github.com/flowbaker/flowbaker/pkg/integrations/mongo"
+	notionintegration "github.com/flowbaker/flowbaker/pkg/integrations/notion"
 	"github.com/flowbaker/flowbaker/pkg/integrations/openai"
 	pipedriveintegration "github.com/flowbaker/flowbaker/pkg/integrations/pipedrive"
 	"github.com/flowbaker/flowbaker/pkg/integrations/postgresql"
@@ -212,6 +213,11 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_ItemsToItem,
 		NewCreator:      items_to_item.NewItemsToItemIntegrationCreator,
+	},
+	{
+		IntegrationType:     domain.IntegrationType_Notion,
+		NewCreator:          notionintegration.NewNotionIntegrationCreator,
+		NewConnectionTester: notionintegration.NewNotionConnectionTester,
 	},
 }
 
