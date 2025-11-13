@@ -153,6 +153,7 @@ func (c *ExecutorController) RunNode(ctx fiber.Ctx) error {
 		NodeID:       req.NodeID,
 		Workflow:     mappers.ExecutorWorkflowToDomain(&req.Workflow),
 		ItemsByInput: req.ItemsByInputID,
+		WorkspaceID:  workspaceID,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to run node")

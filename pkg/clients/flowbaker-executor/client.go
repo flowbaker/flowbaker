@@ -362,7 +362,15 @@ func (c *Client) RerunNode(ctx context.Context, workspaceID string, req *RerunNo
 }
 
 func (c *Client) RunNode(ctx context.Context, workspaceID string, req *RunNodeRequest) (*RunNodeResponse, error) {
-	path := fmt.Sprintf("/workspaces/%s/executions/%s/nodes/%s", workspaceID, req.ExecutionID, req.NodeID)
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID cannot be empty")
+	}
+
+	if req.NodeID == "" {
+		return nil, fmt.Errorf("node ID cannot be empty")
+	}
+
+	path := fmt.Sprintf("/workspaces/%s/executions/%s/nodes/%s/run", workspaceID, req.ExecutionID, req.NodeID)
 
 	resp, err := c.doRequest(ctx, "POST", path, req)
 	if err != nil {
