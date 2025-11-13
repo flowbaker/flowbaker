@@ -10,7 +10,7 @@ import (
 	"github.com/dop251/goja/ast"
 	"github.com/dop251/goja/parser"
 
-	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 )
 
 // ASTParser provides secure JavaScript expression parsing using Goja
@@ -74,13 +74,15 @@ func (p *ASTParser) ParseTemplate(template string) ([]*types.TemplateMatch, erro
 
 // HasTemplateExpressions checks if a string contains template expressions
 func (p *ASTParser) HasTemplateExpressions(text string) bool {
-	matched, _ := regexp.MatchString(`\{\{[^{}]*\}\}`, text)
+	// Use [\s\S] to explicitly match any character including newlines
+	matched, _ := regexp.MatchString(`\{\{[\s\S]*?\}\}`, text)
 	return matched
 }
 
 // ExtractTemplateExpressions extracts template expressions from a string
 func (p *ASTParser) ExtractTemplateExpressions(template string) []*types.TemplateMatch {
-	re := regexp.MustCompile(`\{\{([^{}]*)\}\}`)
+	// Use [\s\S] to match any character including newlines (non-greedy with *?)
+	re := regexp.MustCompile(`\{\{([\s\S]*?)\}\}`)
 	matches := re.FindAllStringSubmatchIndex(template, -1)
 
 	var expressions []*types.TemplateMatch

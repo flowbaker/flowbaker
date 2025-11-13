@@ -68,8 +68,8 @@ type EvaluatorOptions struct {
 // DefaultEvaluatorOptions returns default evaluator options
 func DefaultEvaluatorOptions() *EvaluatorOptions {
 	return &EvaluatorOptions{
-		MaxComplexity:   100,
-		MaxDepth:        10,
+		MaxComplexity:   1000,
+		MaxDepth:        1000,
 		EnableDebugging: false,
 		StrictMode:      true,
 		Timeout:         5000, // 5 seconds

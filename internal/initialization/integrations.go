@@ -2,15 +2,18 @@ package initialization
 
 import (
 	router "github.com/flowbaker/flowbaker/pkg/integrations/content_classifier"
+	"github.com/flowbaker/flowbaker/pkg/integrations/items_to_item"
 	"github.com/flowbaker/flowbaker/pkg/integrations/transform"
 
 	"github.com/flowbaker/flowbaker/pkg/integrations/ai_agent"
 	"github.com/flowbaker/flowbaker/pkg/integrations/base64"
+	"github.com/flowbaker/flowbaker/pkg/integrations/brightdata"
 	claudeintegration "github.com/flowbaker/flowbaker/pkg/integrations/claude"
 	"github.com/flowbaker/flowbaker/pkg/integrations/condition"
 	cronintegration "github.com/flowbaker/flowbaker/pkg/integrations/cron"
 	"github.com/flowbaker/flowbaker/pkg/integrations/discord"
 	"github.com/flowbaker/flowbaker/pkg/integrations/dropbox"
+	"github.com/flowbaker/flowbaker/pkg/integrations/filetoitem"
 	"github.com/flowbaker/flowbaker/pkg/integrations/flowbaker_agent_memory"
 	githubintegration "github.com/flowbaker/flowbaker/pkg/integrations/github"
 	"github.com/flowbaker/flowbaker/pkg/integrations/google/gmail"
@@ -22,14 +25,18 @@ import (
 	jwtintegration "github.com/flowbaker/flowbaker/pkg/integrations/jwt"
 	"github.com/flowbaker/flowbaker/pkg/integrations/knowledge"
 	"github.com/flowbaker/flowbaker/pkg/integrations/linear"
+	"github.com/flowbaker/flowbaker/pkg/integrations/manipulation"
 	mongodb "github.com/flowbaker/flowbaker/pkg/integrations/mongo"
 	"github.com/flowbaker/flowbaker/pkg/integrations/openai"
+	pipedriveintegration "github.com/flowbaker/flowbaker/pkg/integrations/pipedrive"
 	"github.com/flowbaker/flowbaker/pkg/integrations/postgresql"
 	"github.com/flowbaker/flowbaker/pkg/integrations/redis"
 	resendintegration "github.com/flowbaker/flowbaker/pkg/integrations/resend"
 	s3integration "github.com/flowbaker/flowbaker/pkg/integrations/s3"
 	sendresponse "github.com/flowbaker/flowbaker/pkg/integrations/send_response"
 	slackintegration "github.com/flowbaker/flowbaker/pkg/integrations/slack"
+	"github.com/flowbaker/flowbaker/pkg/integrations/split_array"
+	startupswatchintegration "github.com/flowbaker/flowbaker/pkg/integrations/startups_watch"
 	"github.com/flowbaker/flowbaker/pkg/integrations/storage"
 	"github.com/flowbaker/flowbaker/pkg/integrations/stripe"
 	"github.com/flowbaker/flowbaker/pkg/integrations/teams"
@@ -180,8 +187,37 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 		NewCreator:      base64.NewBase64IntegrationCreator,
 	},
 	{
+		IntegrationType: domain.IntegrationType_FileToItem,
+		NewCreator:      filetoitem.NewFileToItemIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_BrightData,
+		NewCreator:      brightdata.NewBrightDataIntegrationCreator,
+	},
+	{
 		IntegrationType: domain.IntegrationType_ContentClassifier,
 		NewCreator:      router.NewRouterIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_Manipulation,
+		NewCreator:      manipulation.NewManipulationIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_SplitArray,
+		NewCreator:      split_array.NewSplitArrayIntegrationCreator,
+	},
+	{
+		IntegrationType:        domain.IntegrationType_StartupsWatch,
+		NewCreator:             startupswatchintegration.NewStartupsWatchIntegrationCreator,
+		NewPollingEventHandler: startupswatchintegration.NewStartupsWatchPollingHandler,
+	},
+	{
+		IntegrationType: domain.IntegrationType_Pipedrive,
+		NewCreator:      pipedriveintegration.NewPipedriveIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_ItemsToItem,
+		NewCreator:      items_to_item.NewItemsToItemIntegrationCreator,
 	},
 }
 

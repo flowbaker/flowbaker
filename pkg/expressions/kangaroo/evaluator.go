@@ -9,9 +9,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/flowbaker/flowbaker/internal/kangaroo/core"
-	"github.com/flowbaker/flowbaker/internal/kangaroo/functions"
-	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/core"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/functions"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 )
 
 // Kangaroo is the main expression evaluator class
@@ -35,8 +35,8 @@ type Kangaroo struct {
 func NewKangaroo(options *types.EvaluatorOptions) *Kangaroo {
 	if options == nil {
 		options = &types.EvaluatorOptions{
-			MaxComplexity:   100,
-			MaxDepth:        10,
+			MaxComplexity:   1000,
+			MaxDepth:        1000,
 			EnableDebugging: false,
 			StrictMode:      true,
 			Timeout:         5000,

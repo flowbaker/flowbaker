@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/flowbaker/flowbaker/internal/controllers"
-	"github.com/flowbaker/flowbaker/internal/expressions"
 	"github.com/flowbaker/flowbaker/internal/managers"
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	"github.com/flowbaker/flowbaker/pkg/domain"
 	"github.com/flowbaker/flowbaker/pkg/domain/executor"
+	"github.com/flowbaker/flowbaker/pkg/expressions"
 
 	"github.com/rs/zerolog/log"
 )
@@ -111,7 +111,6 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		ExecutorCredentialManager:  executorCredentialManager,
 		ParameterBinder:            kangarooBinder,
 		AgentMemoryService:         executorAgentMemoryService,
-		ExecutorEventPublisher:     orderedEventPublisher,
 		ExecutorTaskPublisher:      executorTaskPublisher,
 		ExecutorIntegrationManager: executorIntegrationManager,
 		ExecutorScheduleManager:    executorScheduleManager,

@@ -2,6 +2,9 @@ package executor
 
 import (
 	"time"
+
+	api "github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 // HealthCheckResponse represents the response from a health check
@@ -47,6 +50,14 @@ type StartExecutionRequest struct {
 	Workspace       Workspace        `json:"workspace"`
 	Workflow        *Workflow        `json:"workflow,omitempty"`
 	TestingWorkflow *TestingWorkflow `json:"testing_workflow,omitempty"`
+}
+
+type StopExecutionRequest struct {
+	ExecutionID string `json:"execution_id"`
+}
+
+type StopExecutionResponse struct {
+	Success bool `json:"success"`
 }
 
 // TestingWorkflow represents a testing workflow that references a parent workflow
@@ -116,6 +127,7 @@ type WorkflowNode struct {
 	IntegrationType              IntegrationType       `json:"integration_type"`
 	IntegrationActionType        IntegrationActionType `json:"integration_action_type"`
 	IntegrationSettings          map[string]any        `json:"integration_settings"`
+	Settings                     Settings              `json:"common_settings"`
 	ExpressionSelectedProperties []string              `json:"expression_selected_properties"`
 	ProvidedByAgent              []string              `json:"provided_by_agent"`
 	XPosition                    float64               `json:"x_position"`
@@ -139,8 +151,14 @@ type WorkflowTrigger struct {
 	Type                IntegrationType             `json:"integration_type"`
 	EventType           IntegrationTriggerEventType `json:"event_type"`
 	IntegrationSettings map[string]any              `json:"integration_settings"`
+	Settings            Settings                    `json:"common_settings"`
 	XPosition           float64                     `json:"x_position"`
 	YPosition           float64                     `json:"y_position"`
+}
+
+type Settings struct {
+	ReturnErrorAsItem    bool `json:"return_error_as_item"`
+	ContainPreviousItems bool `json:"contain_previous_items"`
 }
 
 // PollingEventRequest represents a request to handle a polling event
@@ -172,22 +190,21 @@ type ConnectionTestResponse struct {
 
 // PeekDataRequest represents a request to peek data from an integration
 type PeekDataRequest struct {
-	IntegrationType IntegrationType `json:"integration_type"`
-	CredentialID    string          `json:"credential_id"`
-	UserID          string          `json:"user_id"`
-	PeekableType    string          `json:"peekable_type"`
-	Cursor          string          `json:"cursor,omitempty"`
-	PayloadJSON     []byte          `json:"payload_json,omitempty"`
+	IntegrationType IntegrationType           `json:"integration_type"`
+	CredentialID    string                    `json:"credential_id"`
+	UserID          string                    `json:"user_id"`
+	PeekableType    string                    `json:"peekable_type"`
+	Cursor          string                    `json:"cursor,omitempty"`
+	Pagination      *domain.PaginationParams  `json:"pagination,omitempty"`
+	PayloadJSON     []byte                    `json:"payload_json,omitempty"`
 }
 
 // PeekDataResponse represents the response from peeking data
 type PeekDataResponse struct {
-	Success    bool             `json:"success"`
-	Error      string           `json:"error,omitempty"`
-	ResultJSON []byte           `json:"result_json,omitempty"`
-	Result     []PeekResultItem `json:"result,omitempty"`
-	Cursor     string           `json:"cursor,omitempty"`
-	HasMore    bool             `json:"has_more,omitempty"`
+	Success    bool                      `json:"success"`
+	Error      string                    `json:"error,omitempty"`
+	Result     []PeekResultItem          `json:"result,omitempty"`
+	Pagination domain.PaginationMetadata `json:"pagination,omitempty"`
 }
 
 // PeekResultItem represents an item in the peek result
@@ -219,4 +236,15 @@ type WorkspaceAssignment struct {
 
 type UnregisterWorkspaceResponse struct {
 	Success bool `json:"success"`
+}
+
+type RerunNodeRequest struct {
+	ExecutionID        string                 `json:"execution_id"`
+	NodeID             string                 `json:"node_id"`
+	Workflow           Workflow               `json:"workflow"`
+	NodeExecutionEntry api.NodeExecutionEntry `json:"node_execution_entry"`
+}
+
+type RerunNodeResponse struct {
+	Payload []byte `json:"payload"`
 }

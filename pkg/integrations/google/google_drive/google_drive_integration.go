@@ -9,6 +9,7 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
+	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
@@ -170,19 +171,29 @@ func (g *GoogleDriveIntegration) Peek(ctx context.Context, params domain.PeekPar
 
 func (g *GoogleDriveIntegration) PeekFolders(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	var results []domain.PeekResultItem
+	limit := p.GetLimitWithMax(20, 100)
 
 	myDriveQuery := "mimeType='application/vnd.google-apps.folder' and trashed=false"
-	myDriveFolders, err := g.driveService.Files.List().
+	myDriveCall := g.driveService.Files.List().
 		Q(myDriveQuery).
-		Fields("files(id, name, parents, owners)").
+		Fields("nextPageToken, files(id, name, parents, owners)").
 		OrderBy("name").
-		PageSize(100).
+		PageSize(int64(limit)).
 		IncludeItemsFromAllDrives(true).
-		SupportsAllDrives(true).
-		Context(ctx).
-		Do()
+		SupportsAllDrives(true)
+
+	if p.Pagination.Cursor != "" {
+		myDriveCall = myDriveCall.PageToken(p.Pagination.Cursor)
+	}
+
+	myDriveFolders, err := myDriveCall.Context(ctx).Do()
+	nextPageToken := ""
+	hasMore := false
 
 	if err == nil {
+		nextPageToken = myDriveFolders.NextPageToken
+		hasMore = nextPageToken != ""
+
 		for _, folder := range myDriveFolders.Files {
 			isMyFolder := false
 			for _, owner := range folder.Owners {
@@ -202,45 +213,67 @@ func (g *GoogleDriveIntegration) PeekFolders(ctx context.Context, p domain.PeekP
 		}
 	}
 
-	sharedDrives, err := g.driveService.Drives.List().
-		PageSize(100).
-		Fields("drives(id, name)").
-		Context(ctx).
-		Do()
+	if p.Pagination.Cursor == "" {
+		sharedDrives, err := g.driveService.Drives.List().
+			PageSize(int64(limit)).
+			Fields("nextPageToken, drives(id, name)").
+			Context(ctx).
+			Do()
 
-	if err == nil {
-		for _, drive := range sharedDrives.Drives {
-			results = append(results, domain.PeekResultItem{
-				Key:     drive.Name,
-				Value:   drive.Id,
-				Content: fmt.Sprintf("%s (Shared Drive)", drive.Name),
-			})
-		}
-	}
+		if err == nil {
 
-	sharedQuery := "mimeType='application/vnd.google-apps.folder' and sharedWithMe and trashed=false"
-	sharedFolders, err := g.driveService.Files.List().
-		Q(sharedQuery).
-		Fields("files(id, name, owners)").
-		PageSize(50).
-		Context(ctx).
-		Do()
-
-	if err == nil {
-		for _, folder := range sharedFolders.Files {
-			ownerName := "Unknown"
-			if len(folder.Owners) > 0 {
-				ownerName = folder.Owners[0].DisplayName
+			for _, drive := range sharedDrives.Drives {
+				results = append(results, domain.PeekResultItem{
+					Key:     drive.Name,
+					Value:   drive.Id,
+					Content: fmt.Sprintf("%s (Shared Drive)", drive.Name),
+				})
 			}
-			results = append(results, domain.PeekResultItem{
-				Key:     folder.Name,
-				Value:   folder.Id,
-				Content: fmt.Sprintf("%s (Shared by %s)", folder.Name, ownerName),
-			})
+			if sharedDrives.NextPageToken != "" {
+				hasMore = true
+			}
+		} else {
+			log.Error().Err(err).Msg("[GOOGLE DRIVE PEEK] Shared Drives API error")
+		}
+
+		sharedQuery := "mimeType='application/vnd.google-apps.folder' and sharedWithMe and trashed=false"
+		sharedFolders, err := g.driveService.Files.List().
+			Q(sharedQuery).
+			Fields("nextPageToken, files(id, name, owners)").
+			PageSize(int64(limit)).
+			Context(ctx).
+			Do()
+
+		if err == nil {
+
+			for _, folder := range sharedFolders.Files {
+				ownerName := "Unknown"
+				if len(folder.Owners) > 0 {
+					ownerName = folder.Owners[0].DisplayName
+				}
+				results = append(results, domain.PeekResultItem{
+					Key:     folder.Name,
+					Value:   folder.Id,
+					Content: fmt.Sprintf("%s (Shared by %s)", folder.Name, ownerName),
+				})
+			}
+			if sharedFolders.NextPageToken != "" {
+				hasMore = true
+			}
+		} else {
+			log.Error().Err(err).Msg("[GOOGLE DRIVE PEEK] Shared with me API error")
 		}
 	}
 
-	return domain.PeekResult{Result: results}, nil
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			NextCursor: nextPageToken,
+			HasMore:    hasMore,
+		},
+	}
+
+	return result, nil
 }
 
 func (g *GoogleDriveIntegration) PeekFoldersWithRoot(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
@@ -249,23 +282,27 @@ func (g *GoogleDriveIntegration) PeekFoldersWithRoot(ctx context.Context, p doma
 		return domain.PeekResult{}, err
 	}
 
-	results := []domain.PeekResultItem{
-		{
-			Key:     "My Drive",
-			Value:   "root",
-			Content: "My Drive (Root)",
+	results := shareableResult.Result
+
+	if p.Pagination.Cursor == "" {
+		results = append([]domain.PeekResultItem{
+			{
+				Key:     "My Drive",
+				Value:   "root",
+				Content: "My Drive (Root)",
+			},
+		}, results...)
+	}
+
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			NextCursor: shareableResult.Pagination.NextCursor,
+			HasMore:    shareableResult.Pagination.HasMore,
 		},
 	}
 
-	results = append(results, shareableResult.Result...)
-
-	// Fetch folders from Shared Drives
-	sharedDriveFolders, err := g.fetchSharedDriveFolders(ctx)
-	if err == nil {
-		results = append(results, sharedDriveFolders...)
-	}
-
-	return domain.PeekResult{Result: results}, nil
+	return result, nil
 }
 
 // fetchSharedDriveFolders retrieves all folders from all shared drives
@@ -358,17 +395,24 @@ func (g *GoogleDriveIntegration) formatFolderPath(folder *drive.File, driveId, d
 func (g *GoogleDriveIntegration) PeekFiles(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	var results []domain.PeekResultItem
 
-	query := "trashed=false and mimeType!='application/vnd.google-apps.folder'"
-	filesList, err := g.driveService.Files.List().
-		Q(query).
-		Fields("files(id, name, mimeType, owners, driveId)").
-		OrderBy("modifiedTime desc").
-		PageSize(100).
-		IncludeItemsFromAllDrives(true).
-		SupportsAllDrives(true).
-		Context(ctx).
-		Do()
+	incomingPageToken := p.Pagination.Cursor
 
+	limit := p.GetLimitWithMax(20, 100)
+
+	query := "trashed=false and mimeType!='application/vnd.google-apps.folder'"
+	listCall := g.driveService.Files.List().
+		Q(query).
+		Fields("nextPageToken, files(id, name, mimeType, owners, driveId)").
+		OrderBy("modifiedTime desc").
+		PageSize(int64(limit)).
+		IncludeItemsFromAllDrives(true).
+		SupportsAllDrives(true)
+
+	if incomingPageToken != "" {
+		listCall = listCall.PageToken(incomingPageToken)
+	}
+
+	filesList, err := listCall.Context(ctx).Do()
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to list files: %w", err)
 	}
@@ -407,15 +451,29 @@ func (g *GoogleDriveIntegration) PeekFiles(ctx context.Context, p domain.PeekPar
 		})
 	}
 
-	return domain.PeekResult{Result: results}, nil
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			NextCursor: filesList.NextPageToken,
+			HasMore:    filesList.NextPageToken != "",
+		},
+	}
+
+	return result, nil
 }
 
 func (g *GoogleDriveIntegration) PeekSharedDrives(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
-	driveList, err := g.driveService.Drives.List().
-		PageSize(100).
-		Fields("drives(id, name, capabilities)").
-		Context(ctx).
-		Do()
+	limit := p.GetLimitWithMax(20, 100)
+
+	listCall := g.driveService.Drives.List().
+		PageSize(int64(limit)).
+		Fields("nextPageToken, drives(id, name, capabilities)")
+
+	if p.Pagination.Cursor != "" {
+		listCall = listCall.PageToken(p.Pagination.Cursor)
+	}
+
+	driveList, err := listCall.Context(ctx).Do()
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to list shared drives: %w", err)
 	}
@@ -439,7 +497,16 @@ func (g *GoogleDriveIntegration) PeekSharedDrives(ctx context.Context, p domain.
 			Content: fmt.Sprintf("%s (%s access)", driveItem.Name, accessLevel),
 		})
 	}
-	return domain.PeekResult{Result: results}, nil
+
+	result := domain.PeekResult{
+		Result: results,
+		Pagination: domain.PaginationMetadata{
+			NextCursor: driveList.NextPageToken,
+			HasMore:    driveList.NextPageToken != "",
+		},
+	}
+
+	return result, nil
 }
 
 type UploadFileParams struct {

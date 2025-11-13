@@ -96,6 +96,122 @@ func (p *FieldPathParser) GetValue(data any, fieldPath string) (any, error) {
 	return current, nil
 }
 
+func (p *FieldPathParser) SetValue(data any, fieldPath string, value any) error {
+	if fieldPath == "" {
+		return fmt.Errorf("empty field path")
+	}
+
+	m, ok := data.(map[string]any)
+	if !ok {
+		return fmt.Errorf("root data must be a map, got %T", data)
+	}
+
+	segments := p.parseSegments(fieldPath)
+	if len(segments) == 0 {
+		return fmt.Errorf("invalid field path")
+	}
+
+	// Navigate to the parent of the target field
+	current := m
+	for i := 0; i < len(segments)-1; i++ {
+		segment := segments[i]
+		if len(segment.Accesses) != 1 {
+			return fmt.Errorf("complex segments not supported for setting values")
+		}
+
+		fieldAccess, ok := segment.Accesses[0].(FieldAccess)
+		if !ok {
+			return fmt.Errorf("only field access supported for setting values, not array indices")
+		}
+
+		// Get or create the next level
+		next, exists := current[fieldAccess.Name]
+		if !exists {
+			// Create new map for nested field
+			next = make(map[string]any)
+			current[fieldAccess.Name] = next
+		}
+
+		nextMap, ok := next.(map[string]any)
+		if !ok {
+			return fmt.Errorf("cannot set nested field: '%s' is not a map", fieldAccess.Name)
+		}
+
+		current = nextMap
+	}
+
+	// Set the final field
+	lastSegment := segments[len(segments)-1]
+	if len(lastSegment.Accesses) != 1 {
+		return fmt.Errorf("complex segments not supported for setting values")
+	}
+
+	fieldAccess, ok := lastSegment.Accesses[0].(FieldAccess)
+	if !ok {
+		return fmt.Errorf("only field access supported for setting values")
+	}
+
+	current[fieldAccess.Name] = value
+	return nil
+}
+
+func (p *FieldPathParser) DeleteValue(data any, fieldPath string) error {
+	if fieldPath == "" {
+		return fmt.Errorf("empty field path")
+	}
+
+	m, ok := data.(map[string]any)
+	if !ok {
+		return fmt.Errorf("root data must be a map, got %T", data)
+	}
+
+	segments := p.parseSegments(fieldPath)
+	if len(segments) == 0 {
+		return fmt.Errorf("invalid field path")
+	}
+
+	// Navigate to the parent of the target field
+	current := m
+	for i := 0; i < len(segments)-1; i++ {
+		segment := segments[i]
+		if len(segment.Accesses) != 1 {
+			return fmt.Errorf("complex segments not supported for deleting values")
+		}
+
+		fieldAccess, ok := segment.Accesses[0].(FieldAccess)
+		if !ok {
+			return fmt.Errorf("only field access supported for deleting values")
+		}
+
+		next, exists := current[fieldAccess.Name]
+		if !exists {
+			// Field doesn't exist, nothing to delete
+			return nil
+		}
+
+		nextMap, ok := next.(map[string]any)
+		if !ok {
+			return fmt.Errorf("cannot delete nested field: '%s' is not a map", fieldAccess.Name)
+		}
+
+		current = nextMap
+	}
+
+	// Delete the final field
+	lastSegment := segments[len(segments)-1]
+	if len(lastSegment.Accesses) != 1 {
+		return fmt.Errorf("complex segments not supported for deleting values")
+	}
+
+	fieldAccess, ok := lastSegment.Accesses[0].(FieldAccess)
+	if !ok {
+		return fmt.Errorf("only field access supported for deleting values")
+	}
+
+	delete(current, fieldAccess.Name)
+	return nil
+}
+
 func (p *FieldPathParser) parseSegments(path string) []Segment {
 	parts := strings.Split(path, ".")
 	segments := make([]Segment, len(parts))

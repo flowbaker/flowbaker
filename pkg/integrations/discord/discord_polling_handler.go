@@ -67,9 +67,6 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 		return domain.PollResult{}, fmt.Errorf("integration settings are nil")
 	}
 
-	log.Info().Msgf("Polling channel messages for channel %v", p.Trigger.IntegrationSettings["channel_id"])
-
-	// Get and validate channel ID
 	channelIDVal, ok := p.Trigger.IntegrationSettings["channel_id"]
 	if !ok {
 		return domain.PollResult{}, fmt.Errorf("channel_id not found in integration settings")
@@ -109,7 +106,6 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 
 			if messageTimestamp.After(schedule.ScheduleCreatedAt) {
 				log.Info().Str("messageID", message.ID).Str("messageContent", message.Content).Msg("Enqueuing task")
-				lastSnowflake = message.ID
 			} else {
 				break
 			}
@@ -138,15 +134,11 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 			}
 		}
 
-		log.Info().Str("lastSnowflake", lastSnowflake).Msg("Last snowflake")
-
 		return domain.PollResult{
 			LastModifiedData: lastSnowflake,
 		}, nil
 
 	}
-
-	log.Info().Int("message_count", len(messages)).Msg("Fetched messages count")
 
 	newLastMessageID := lastModifiedData
 	for _, message := range messages {
@@ -160,6 +152,7 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 			}
 
 			err = i.taskPublisher.EnqueueTask(ctx, p.WorkspaceID, domain.ExecuteWorkflowTask{
+				WorkspaceID:  p.WorkspaceID,
 				WorkflowID:   p.Workflow.ID,
 				UserID:       p.UserID,
 				WorkflowType: p.WorkflowType,
@@ -172,8 +165,10 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 				continue
 			}
 
-			newLastMessageID = message.ID
-			log.Info().Str("newLastMessageID", newLastMessageID).Msg("New last message ID")
+			if message.ID > newLastMessageID {
+				newLastMessageID = message.ID
+				log.Info().Str("newLastMessageID", newLastMessageID).Msg("New last message ID")
+			}
 		}
 	}
 

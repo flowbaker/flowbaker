@@ -16,7 +16,7 @@ import (
 	"github.com/dop251/goja/unistring"
 	"github.com/google/uuid"
 
-	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 )
 
 // DefaultFunctionRegistry provides a comprehensive set of secure functions
@@ -175,6 +175,7 @@ func (r *DefaultFunctionRegistry) registerDefaultFunctions() {
 	r.registerArrayUtilityFunctions()
 	r.registerStringUtilityFunctions()
 	r.registerConditionalFunctions()
+	r.registerAggregateFunctions()
 }
 
 // registerStringFunctions registers string manipulation functions
@@ -545,6 +546,40 @@ func (r *DefaultFunctionRegistry) registerArrayFunctions() {
 			MaxArgs:     2,
 			Fn: func(args ...interface{}) (interface{}, error) {
 				return nil, fmt.Errorf("find requires an arrow function callback")
+			},
+		},
+		{
+			Name:        "intersect",
+			Description: "Returns intersection of two arrays",
+			Category:    types.CategoryArray,
+			MinArgs:     1,
+			MaxArgs:     2,
+			Fn: func(args ...interface{}) (interface{}, error) {
+				if len(args) < 2 {
+					return nil, fmt.Errorf("intersect requires 2 arguments")
+				}
+
+				sourceArray := r.converter.ToArray(args[0])
+				targetArray := r.converter.ToArray(args[1])
+
+				// Create lookup map from target array for O(n) lookup
+				targetMap := make(map[string]bool)
+				for _, item := range targetArray {
+					key := r.converter.ToString(item)
+					targetMap[key] = true
+				}
+
+				// Build result array with elements from source that exist in target
+				// Preserves order and duplicates from source array
+				var result []interface{}
+				for _, item := range sourceArray {
+					key := r.converter.ToString(item)
+					if targetMap[key] {
+						result = append(result, item)
+					}
+				}
+
+				return result, nil
 			},
 		},
 	}
@@ -1351,6 +1386,151 @@ func (r *DefaultFunctionRegistry) registerConditionalFunctions() {
 	}
 
 	for _, fn := range conditionalFunctions {
+		r.Register(fn)
+	}
+}
+
+// registerAggregateFunctions registers aggregate functions
+func (r *DefaultFunctionRegistry) registerAggregateFunctions() {
+	aggregateFunctions := []*types.SafeFunction{
+		{
+			Name:        "$sum",
+			Description: "Sum of numeric values (multiple args or array)",
+			Category:    types.CategoryUtility,
+			MinArgs:     1,
+			MaxArgs:     -1, // unlimited args
+			Fn: func(args ...interface{}) (interface{}, error) {
+				// Extract values: single array arg vs multiple args
+				var values []interface{}
+				if len(args) == 1 {
+					if arr, ok := args[0].([]interface{}); ok {
+						values = arr
+					} else {
+						values = args
+					}
+				} else {
+					values = args
+				}
+
+				sum := 0.0
+				for _, val := range values {
+					if num, err := r.converter.ToNumber(val); err == nil {
+						sum += num
+					}
+					// Skip non-numeric values
+				}
+
+				return sum, nil
+			},
+		},
+		{
+			Name:        "$avg",
+			Description: "Average of numeric values (multiple args or array)",
+			Category:    types.CategoryUtility,
+			MinArgs:     1,
+			MaxArgs:     -1,
+			Fn: func(args ...interface{}) (interface{}, error) {
+				// Extract values: single array arg vs multiple args
+				var values []interface{}
+				if len(args) == 1 {
+					if arr, ok := args[0].([]interface{}); ok {
+						values = arr
+					} else {
+						values = args
+					}
+				} else {
+					values = args
+				}
+
+				sum := 0.0
+				count := 0
+				for _, val := range values {
+					if num, err := r.converter.ToNumber(val); err == nil {
+						sum += num
+						count++
+					}
+				}
+
+				if count == 0 {
+					return 0.0, nil
+				}
+
+				return sum / float64(count), nil
+			},
+		},
+		{
+			Name:        "$min",
+			Description: "Minimum numeric value (multiple args or array)",
+			Category:    types.CategoryUtility,
+			MinArgs:     1,
+			MaxArgs:     -1,
+			Fn: func(args ...interface{}) (interface{}, error) {
+				// Extract values: single array arg vs multiple args
+				var values []interface{}
+				if len(args) == 1 {
+					if arr, ok := args[0].([]interface{}); ok {
+						values = arr
+					} else {
+						values = args
+					}
+				} else {
+					values = args
+				}
+
+				var min *float64
+				for _, val := range values {
+					if num, err := r.converter.ToNumber(val); err == nil {
+						if min == nil || num < *min {
+							min = &num
+						}
+					}
+				}
+
+				if min == nil {
+					return nil, nil
+				}
+
+				return *min, nil
+			},
+		},
+		{
+			Name:        "$max",
+			Description: "Maximum numeric value (multiple args or array)",
+			Category:    types.CategoryUtility,
+			MinArgs:     1,
+			MaxArgs:     -1,
+			Fn: func(args ...interface{}) (interface{}, error) {
+				// Extract values: single array arg vs multiple args
+				var values []interface{}
+				if len(args) == 1 {
+					if arr, ok := args[0].([]interface{}); ok {
+						values = arr
+					} else {
+						values = args
+					}
+				} else {
+					values = args
+				}
+
+				var max *float64
+				for _, val := range values {
+					if num, err := r.converter.ToNumber(val); err == nil {
+						if max == nil || num > *max {
+							max = &num
+						}
+					}
+				}
+
+				if max == nil {
+					return nil, nil
+				}
+
+				return *max, nil
+			},
+		},
+	}
+
+	for _, fn := range aggregateFunctions {
 		r.Register(fn)
 	}
 }

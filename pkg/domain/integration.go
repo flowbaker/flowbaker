@@ -3,8 +3,10 @@ package domain
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -18,8 +20,15 @@ type IntegrationPeekableType string
 type IntegrationPeekablePaginationType string
 
 const (
+	PeekablePaginationType_None   IntegrationPeekablePaginationType = "none"
+	PeekablePaginationType_Cursor IntegrationPeekablePaginationType = "cursor"
+	PeekablePaginationType_Offset IntegrationPeekablePaginationType = "offset"
+)
+
+const (
 	IntegrationType_Empty                IntegrationType = "empty"
 	IntegrationType_Discord              IntegrationType = "discord"
+	IntegrationType_Switch               IntegrationType = "switch"
 	IntegrationType_Slack                IntegrationType = "slack"
 	IntegrationType_Dropbox              IntegrationType = "dropbox"
 	IntegrationType_Email                IntegrationType = "email"
@@ -55,7 +64,15 @@ const (
 	IntegrationType_Knowledge            IntegrationType = "flowbaker_knowledge"
 	IntegrationType_Base64               IntegrationType = "base64"
 	IntegrationType_ContentClassifier    IntegrationType = "content_classifier"
+
 	IntegrationType_Teams                IntegrationType = "teams"
+	IntegrationType_Pipedrive            IntegrationType = "pipedrive"
+	IntegrationType_StartupsWatch        IntegrationType = "startups_watch"
+	IntegrationType_Manipulation         IntegrationType = "manipulation"
+	IntegrationType_SplitArray           IntegrationType = "split_array"
+	IntegrationType_FileToItem           IntegrationType = "filetoitem"
+	IntegrationType_BrightData           IntegrationType = "brightdata"
+	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
 )
 
 type Integration struct {
@@ -192,9 +209,29 @@ type IntegrationOutput struct {
 	ResultJSONByOutputID []Payload
 }
 
+func (o IntegrationOutput) ToItemsByOutputID(nodeID string) map[string]NodeItems {
+	itemsByOutputID := map[string]NodeItems{}
+
+	for outputIndex, payload := range o.ResultJSONByOutputID {
+		items, err := payload.ToItems()
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to convert payload to items for output %d", outputIndex)
+			continue
+		}
+
+		outputID := fmt.Sprintf("output-%s-%d", nodeID, outputIndex)
+
+		itemsByOutputID[outputID] = NodeItems{
+			FromNodeID: nodeID,
+			Items:      items,
+		}
+	}
+
+	return itemsByOutputID
+}
+
 type IntegrationDeps struct {
 	FlowbakerClient            flowbaker.ClientInterface
-	ExecutorEventPublisher     EventPublisher
 	ExecutorTaskPublisher      ExecutorTaskPublisher
 	TaskSchedulerService       TaskSchedulerService
 	ParameterBinder            IntegrationParameterBinder

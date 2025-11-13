@@ -14,7 +14,6 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
-	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -25,6 +24,12 @@ type SourceNodePayload struct {
 
 type SourceNodePayloadByInputID map[string]SourceNodePayload
 
+type NodeExecutionResult struct {
+	Output                domain.IntegrationOutput
+	IntegrationType       domain.IntegrationType
+	IntegrationActionType domain.IntegrationActionType
+}
+
 func (p SourceNodePayloadByInputID) ToPayloadByInputID() map[string]domain.Payload {
 	payloadByInputID := map[string]domain.Payload{}
 
@@ -33,6 +38,26 @@ func (p SourceNodePayloadByInputID) ToPayloadByInputID() map[string]domain.Paylo
 	}
 
 	return payloadByInputID
+}
+
+// ToItemsByInputID converts payloads to items by input ID
+func (p SourceNodePayloadByInputID) ToItemsByInputID() map[string]domain.NodeItems {
+	itemsByInputID := map[string]domain.NodeItems{}
+
+	for inputID, payload := range p {
+		items, err := payload.Payload.ToItems()
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to convert payload to items for input %s", inputID)
+			continue
+		}
+
+		itemsByInputID[inputID] = domain.NodeItems{
+			FromNodeID: payload.SourceNodeID,
+			Items:      items,
+		}
+	}
+
+	return itemsByInputID
 }
 
 type WorkflowExecutorI interface {
@@ -47,8 +72,6 @@ type WorkflowExecutor struct {
 	executionQueue        []NodeExecutionTask
 	executedNodes         map[string]struct{}
 
-	historyEntries []domain.NodeExecutionEntry
-
 	nodesByEventName       map[string][]domain.WorkflowNode
 	executionCountByNodeID map[string]int
 
@@ -59,14 +82,17 @@ type WorkflowExecutor struct {
 
 	IsTestingWorkflow bool
 
-	nodeExecutions             []domain.NodeExecution
 	WorkflowExecutionStartedAt time.Time
 
-	client                flowbaker.ClientInterface
-	orderedEventPublisher domain.EventPublisher
+	client   flowbaker.ClientInterface
+	observer domain.ExecutionObserver
+
+	historyRecorder *HistoryRecorder
+	usageCollector  *UsageCollector
 }
 
 type WorkflowExecutorDeps struct {
+	ExecutionID           string
 	Workflow              domain.Workflow
 	Selector              domain.IntegrationSelector
 	EventPublisher        domain.EventPublisher
@@ -94,10 +120,26 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) WorkflowExecutor {
 		}
 	}
 
-	executionID := xid.New().String()
+	// Initialize execution observer
+	observer := NewExecutionObserver()
+
+	// Create handlers
+	historyRecorder := NewHistoryRecorder()
+	usageCollector := NewUsageCollector()
+	eventBroadcaster := NewEventBroadcaster(
+		deps.OrderedEventPublisher,
+		deps.EnableEvents,
+		deps.Workflow.ID,
+		deps.ExecutionID,
+	)
+
+	// Subscribe handlers to observer
+	observer.Subscribe(historyRecorder)
+	observer.Subscribe(usageCollector)
+	observer.Subscribe(eventBroadcaster)
 
 	return WorkflowExecutor{
-		executionID:                executionID,
+		executionID:                deps.ExecutionID,
 		workflow:                   deps.Workflow,
 		waitingExecutionTasks:      []WaitingExecutionTask{},
 		executionQueue:             []NodeExecutionTask{},
@@ -106,11 +148,12 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) WorkflowExecutor {
 		integrationSelector:        deps.Selector,
 		executionCountByNodeID:     map[string]int{},
 		enableEvents:               deps.EnableEvents,
-		historyEntries:             []domain.NodeExecutionEntry{},
 		IsTestingWorkflow:          deps.IsTestingWorkflow,
 		WorkflowExecutionStartedAt: time.Now(),
 		client:                     deps.ExecutorClient,
-		orderedEventPublisher:      deps.OrderedEventPublisher,
+		observer:                   observer,
+		historyRecorder:            historyRecorder,
+		usageCollector:             usageCollector,
 	}
 }
 
@@ -125,103 +168,27 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	workspaceID := w.workflow.WorkspaceID
 
 	ctx = domain.NewContextWithEventOrder(ctx)
-	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, workspaceID, w.workflow.ID, w.executionID, w.enableEvents)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
+		WorkspaceID:         workspaceID,
+		WorkflowID:          w.workflow.ID,
+		WorkflowExecutionID: w.executionID,
+		EnableEvents:        w.enableEvents,
+		Observer:            w.observer,
+	})
 
-	log.Info().Msgf("Executing node %s", nodeID)
+	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
 
-	items, err := payload.ToItems()
-	if err != nil {
-		return ExecutionResult{}, err
-	}
-
+	// Queue trigger node as first execution task
 	inputID := fmt.Sprintf(InputHandleFormat, nodeID, 0)
-	outputID := fmt.Sprintf(OutputHandleFormat, nodeID, 0)
-
-	// this is trigger node spesific
-	if w.enableEvents {
-		err = w.PublishNodeExecutionStartedEvent(ctx, nodeID)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to publish node execution started event")
-		}
-
-		itemsByInputID := map[string]domain.NodeItems{
-			inputID: {
-				FromNodeID: nodeID,
-				Items:      items,
-			},
-		}
-
-		itemsByOutputID := map[string]domain.NodeItems{
-			outputID: {
-				FromNodeID: nodeID,
-				Items:      items,
-			},
-		}
-
-		err = w.PublishNodeExecutionCompletedEvent(ctx, nodeID, itemsByInputID, itemsByOutputID, 0)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to publish node execution completed event")
-		}
-	}
-
-	trigger, exists := w.workflow.GetTriggerByID(nodeID)
-	if !exists {
-		return ExecutionResult{}, fmt.Errorf("node %s not found in workflow", nodeID)
-	}
-
-	integrationType := domain.IntegrationType(trigger.Type)
-	integrationActionType := domain.IntegrationActionType(trigger.EventType)
-
-	// that will not see more than one output items
-	w.AddUsageEntry(AddUsageEntryParams{
-		SourceNodePayloadByInputID: SourceNodePayloadByInputID{
+	w.AddExecutionTask(NodeExecutionTask{
+		NodeID: nodeID,
+		PayloadByInputID: SourceNodePayloadByInputID{
 			inputID: {
 				SourceNodeID: nodeID,
 				Payload:      payload,
 			},
 		},
-		IntegrationOutput: domain.IntegrationOutput{
-			ResultJSONByOutputID: []domain.Payload{payload},
-		},
-		NodeID:                 nodeID,
-		NodeExecutionStartedAt: time.Now(),
-		NodeExecutionEndedAt:   time.Now(),
-		IntegrationType:        integrationType,
-		IntegrationActionType:  integrationActionType,
 	})
-
-	if !w.IsTestingWorkflow {
-		w.AddNodeExecutionEntry(domain.NodeExecutionEntry{
-			NodeID:    nodeID,
-			EventType: domain.NodeExecuted,
-			Timestamp: time.Now().UnixNano(),
-			ItemsByInputID: map[string]domain.NodeItems{
-				inputID: {
-					FromNodeID: nodeID,
-					Items:      items,
-				},
-			},
-			ItemsByOutputID: map[string]domain.NodeItems{
-				outputID: {
-					FromNodeID: nodeID,
-					Items:      items,
-				},
-			},
-		})
-	}
-
-	eventName := outputID
-
-	nodes := w.nodesByEventName[eventName]
-
-	for _, node := range nodes {
-		w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
-			FromNodeID: nodeID,
-			Node:       node,
-			OutputID:   eventName,
-			Payload:    payload,
-		})
-	}
 
 	executionCount := 0
 
@@ -237,18 +204,23 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 
 		executionCount++
 
-		err := w.ExecuteNode(ctx, execution, int64(executionCount))
+		err := w.ExecuteNode(ctx, ExecuteNodeParams{
+			Task:           execution,
+			ExecutionOrder: int64(executionCount),
+			Propagate:      true,
+		})
 		if err != nil {
 			log.Error().Err(err).Msg("Error executing node")
 
-			errPublish := w.PublishNodeFailedEvent(ctx, execution, err)
-			if errPublish != nil {
-				log.Error().Err(errPublish).Str("workflow_id", w.workflow.ID).Msg("executor: failed to publish node failed event")
-			}
-
-			err = w.AddFailedNodeExecutionEntry(execution, err)
-			if err != nil {
-				log.Error().Err(err).Str("workflow_id", w.workflow.ID).Msg("executor: failed to add failed node execution entry")
+			// Notify observers about node failure
+			errNotify := w.observer.Notify(ctx, NodeExecutionFailedEvent{
+				NodeID:         execution.NodeID,
+				ItemsByInputID: execution.PayloadByInputID.ToItemsByInputID(),
+				Error:          err,
+				Timestamp:      time.Now(),
+			})
+			if errNotify != nil {
+				log.Error().Err(errNotify).Str("workflow_id", w.workflow.ID).Msg("executor: failed to notify node failed event")
 			}
 		}
 
@@ -270,13 +242,8 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	}
 
 	// Convert domain types to flowbaker types using mappers
-	nodeExecutions := mappers.DomainNodeExecutionsToFlowbaker(w.nodeExecutions)
-	historyEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(w.historyEntries)
-
-	if executionContext, ok := domain.GetWorkflowExecutionContext(ctx); ok && executionContext != nil {
-		agentHistoryEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(executionContext.AgentNodeExecutions)
-		historyEntries = append(historyEntries, agentHistoryEntries...)
-	}
+	nodeExecutions := mappers.DomainNodeExecutionsToFlowbaker(w.usageCollector.GetNodeExecutions())
+	historyEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(w.historyRecorder.GetHistoryEntries())
 
 	completeParams := &flowbaker.CompleteExecutionRequest{
 		ExecutionID:       w.executionID,
@@ -290,14 +257,14 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		IsTestingWorkflow: w.IsTestingWorkflow,
 	}
 
-	err = w.client.CompleteWorkflowExecution(ctx, completeParams)
-	if err != nil {
+	if err := w.client.CompleteWorkflowExecution(ctx, completeParams); err != nil {
 		log.Error().Err(err).Msg("Failed to send complete workflow execution request")
 	}
 
-	err = w.PublishWorkflowExecutionCompletedEvent(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to publish workflow execution completed event")
+	if err := w.observer.Notify(ctx, WorkflowExecutionCompletedEvent{
+		Timestamp: time.Now(),
+	}); err != nil {
+		log.Error().Err(err).Msg("Failed to notify workflow execution completed")
 	}
 
 	log.Info().Msg("Execution stack is empty, workflow is finished")
@@ -314,36 +281,146 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	}, nil
 }
 
-func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, execution NodeExecutionTask, executionOrder int64) error {
-	log.Debug().Msgf("Executing node %s", execution.NodeID)
+type ExecutionNodeType string
+
+const (
+	ExecutionNodeTypeAction  ExecutionNodeType = "action"
+	ExecutionNodeTypeTrigger ExecutionNodeType = "trigger"
+)
+
+type ExecuteNodeParams struct {
+	Task           NodeExecutionTask
+	ExecutionOrder int64
+	Propagate      bool
+}
+
+func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams) error {
+	execution := p.Task
+	executionOrder := p.ExecutionOrder
+	propagate := p.Propagate
 
 	nodeExecutionStartedAt := time.Now()
 
-	if w.enableEvents {
-		err := w.PublishNodeExecutionStartedEvent(ctx, execution.NodeID)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to publish node execution started event")
-		}
+	err := w.observer.Notify(ctx, NodeExecutionStartedEvent{
+		NodeID:    execution.NodeID,
+		Timestamp: nodeExecutionStartedAt,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to notify node execution started")
 	}
 
-	node, exists := w.workflow.GetActionNodeByID(execution.NodeID)
-	if !exists {
+	var result NodeExecutionResult
+	var nodeID string
+
+	if action, exists := w.workflow.GetActionNodeByID(execution.NodeID); exists {
+		result, err = w.ExecuteActionNode(ctx, action, execution)
+		nodeID = action.ID
+	} else if trigger, exists := w.workflow.GetTriggerByID(execution.NodeID); exists {
+		result, err = w.ExecuteTriggerNode(ctx, trigger, execution)
+		nodeID = trigger.ID
+	} else {
 		return fmt.Errorf("node %s not found in workflow", execution.NodeID)
 	}
 
+	if err != nil {
+		return err
+	}
+
+	nodeExecutionEndedAt := time.Now()
+
+	if propagate {
+		for outputIndex, payload := range result.Output.ResultJSONByOutputID {
+			outputID := fmt.Sprintf(OutputHandleFormat, nodeID, outputIndex)
+
+			nodes, ok := w.nodesByEventName[outputID]
+			if !ok {
+				log.Info().Msgf("No nodes registered for event %d", outputIndex)
+				continue
+			}
+
+			if !payload.IsEmpty() {
+				for _, node := range nodes {
+					err := w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
+						FromNodeID: nodeID,
+						Node:       node,
+						OutputID:   outputID,
+						Payload:    payload,
+					})
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+
+	w.MarkNodeAsExecuted(nodeID)
+
+	itemsByOutputID := result.Output.ToItemsByOutputID(nodeID)
+	itemsByInputID := execution.PayloadByInputID.ToItemsByInputID()
+
+	err = w.observer.Notify(ctx, NodeExecutionCompletedEvent{
+		NodeID:                     nodeID,
+		SourceNodePayloadByInputID: execution.PayloadByInputID,
+		IntegrationOutput:          result.Output,
+		ItemsByInputID:             itemsByInputID,
+		ItemsByOutputID:            itemsByOutputID,
+		ExecutionOrder:             executionOrder,
+		IntegrationType:            result.IntegrationType,
+		IntegrationActionType:      result.IntegrationActionType,
+		StartedAt:                  nodeExecutionStartedAt,
+		EndedAt:                    nodeExecutionEndedAt,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to notify node execution completed")
+	}
+
+	return nil
+}
+
+func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, trigger domain.WorkflowTrigger, execution NodeExecutionTask) (NodeExecutionResult, error) {
+
+	inputID := fmt.Sprintf(InputHandleFormat, trigger.ID, 0)
+	inputPayload, exists := execution.PayloadByInputID[inputID]
+	if !exists {
+		err := fmt.Errorf("trigger input payload not found")
+		if trigger.Settings.ReturnErrorAsItem {
+			return w.createErrorAsItemResult(err, domain.IntegrationType(trigger.Type), domain.IntegrationActionType(trigger.EventType))
+		}
+		return NodeExecutionResult{}, err
+	}
+
+	return NodeExecutionResult{
+		Output: domain.IntegrationOutput{
+			ResultJSONByOutputID: []domain.Payload{inputPayload.Payload},
+		},
+		IntegrationType:       domain.IntegrationType(trigger.Type),
+		IntegrationActionType: domain.IntegrationActionType(trigger.EventType),
+	}, nil
+}
+
+func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.WorkflowNode, execution NodeExecutionTask) (NodeExecutionResult, error) {
 	// Skip non-executable nodes (like agent items)
 	// Agent items have UsageContext other than "workflow"
 	if node.UsageContext != "" && node.UsageContext != "workflow" {
 		log.Debug().Msgf("Skipping agent item node %s with usage context %s", execution.NodeID, node.UsageContext)
-		w.MarkNodeAsExecuted(node.ID)
-		return nil
+		return NodeExecutionResult{
+			Output: domain.IntegrationOutput{
+				ResultJSONByOutputID: []domain.Payload{},
+			},
+			IntegrationType:       domain.IntegrationType(node.NodeType),
+			IntegrationActionType: node.ActionType,
+		}, nil
 	}
 
 	integrationCreator, err := w.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
 		IntegrationType: node.NodeType,
 	})
 	if err != nil {
-		return err
+		if node.Settings.ReturnErrorAsItem {
+			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
+		}
+		return NodeExecutionResult{}, err
 	}
 
 	credentialID, exists := node.IntegrationSettings["credential_id"]
@@ -353,7 +430,11 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, execution NodeExecut
 
 	credentialIDString, ok := credentialID.(string)
 	if !ok {
-		return fmt.Errorf("credential_id is not a string")
+		err := fmt.Errorf("credential_id is not a string")
+		if node.Settings.ReturnErrorAsItem {
+			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
+		}
+		return NodeExecutionResult{}, err
 	}
 
 	integrationExecutor, err := integrationCreator.CreateIntegration(ctx, domain.CreateIntegrationParams{
@@ -361,7 +442,10 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, execution NodeExecut
 		CredentialID: credentialIDString,
 	})
 	if err != nil {
-		return err
+		if node.Settings.ReturnErrorAsItem {
+			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
+		}
+		return NodeExecutionResult{}, err
 	}
 
 	w.mutex.Lock()
@@ -381,100 +465,17 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, execution NodeExecut
 		ActionType: node.ActionType,
 	})
 	if err != nil {
-		return err
+		if node.Settings.ReturnErrorAsItem {
+			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
+		}
+		return NodeExecutionResult{}, err
 	}
 
-	nodeExecutionEndedAt := time.Now()
-
-	w.AddUsageEntry(AddUsageEntryParams{
-		SourceNodePayloadByInputID: execution.PayloadByInputID,
-		IntegrationOutput:          output,
-		NodeID:                     node.ID,
-		ExecutionOrder:             int64(executionOrder),
-		NodeExecutionStartedAt:     nodeExecutionStartedAt,
-		NodeExecutionEndedAt:       nodeExecutionEndedAt,
-		IntegrationType:            domain.IntegrationType(node.NodeType),
-		IntegrationActionType:      node.ActionType,
-	})
-
-	executedNode := node
-
-	for outputIndex, payload := range output.ResultJSONByOutputID {
-		outputID := fmt.Sprintf(OutputHandleFormat, executedNode.ID, outputIndex)
-
-		nodes, ok := w.nodesByEventName[outputID]
-		if !ok {
-			log.Info().Msgf("No nodes registered for event %d", outputIndex)
-
-			continue
-		}
-
-		if !payload.IsEmpty() {
-			for _, node := range nodes {
-				err := w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
-					FromNodeID: executedNode.ID,
-					Node:       node,
-					OutputID:   outputID,
-					Payload:    payload,
-				})
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	w.MarkNodeAsExecuted(node.ID)
-
-	itemsByOutputID := map[string]domain.NodeItems{}
-
-	for outputIndex, payload := range output.ResultJSONByOutputID {
-		items, err := payload.ToItems()
-		if err != nil {
-			return err
-		}
-
-		outputID := fmt.Sprintf(OutputHandleFormat, node.ID, outputIndex)
-
-		itemsByOutputID[outputID] = domain.NodeItems{
-			FromNodeID: node.ID,
-			Items:      items,
-		}
-	}
-
-	itemsByInputID := map[string]domain.NodeItems{}
-
-	for inputID, payload := range execution.PayloadByInputID {
-		items, err := payload.Payload.ToItems()
-		if err != nil {
-			return err
-		}
-
-		itemsByInputID[inputID] = domain.NodeItems{
-			FromNodeID: payload.SourceNodeID,
-			Items:      items,
-		}
-	}
-
-	if w.enableEvents {
-		err = w.PublishNodeExecutionCompletedEvent(ctx, executedNode.ID, itemsByInputID, itemsByOutputID, executionOrder)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to publish node execution completed event")
-		}
-	}
-
-	if !w.IsTestingWorkflow {
-		w.AddNodeExecutionEntry(domain.NodeExecutionEntry{
-			NodeID:          node.ID,
-			ItemsByInputID:  itemsByInputID,
-			ItemsByOutputID: itemsByOutputID,
-			EventType:       domain.NodeExecuted,
-			Timestamp:       time.Now().UnixNano(),
-			ExecutionOrder:  int(executionOrder),
-		})
-	}
-
-	return nil
+	return NodeExecutionResult{
+		Output:                output,
+		IntegrationType:       domain.IntegrationType(node.NodeType),
+		IntegrationActionType: node.ActionType,
+	}, nil
 }
 
 type AddTaskForDownstreamNodeParams struct {
@@ -683,187 +684,6 @@ func (w *WorkflowExecutor) AddWaitingExecutionTask(task WaitingExecutionTask) {
 	w.waitingExecutionTasks = append(w.waitingExecutionTasks, task)
 }
 
-func (w *WorkflowExecutor) PublishNodeFailedEvent(ctx context.Context, execution NodeExecutionTask, err error) error {
-	if !w.enableEvents {
-		return nil
-	}
-
-	itemsByInputID := map[string]domain.NodeItems{}
-
-	for inputID, payload := range execution.PayloadByInputID {
-		items, err := payload.Payload.ToItems()
-		if err != nil {
-			return err
-		}
-
-		itemsByInputID[inputID] = domain.NodeItems{
-			FromNodeID: payload.SourceNodeID,
-			Items:      items,
-		}
-	}
-
-	event := domain.NodeFailedEvent{
-		WorkflowID:          w.workflow.ID,
-		WorkflowExecutionID: w.executionID,
-		Timestamp:           time.Now().UnixNano(),
-		NodeID:              execution.NodeID,
-		Error:               err.Error(),
-		ItemsByInputID:      itemsByInputID,
-		ItemsByOutputID:     map[string]domain.NodeItems{},
-	}
-
-	err = w.orderedEventPublisher.PublishEvent(ctx, &event)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (w *WorkflowExecutor) AddNodeExecutionEntry(execution domain.NodeExecutionEntry) {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-
-	w.historyEntries = append(w.historyEntries, execution)
-}
-
-func (w *WorkflowExecutor) AddFailedNodeExecutionEntry(execution NodeExecutionTask, err error) error {
-	itemsByInputID := map[string]domain.NodeItems{}
-
-	for inputID, payload := range execution.PayloadByInputID {
-		items, err := payload.Payload.ToItems()
-		if err != nil {
-			return err
-		}
-
-		itemsByInputID[inputID] = domain.NodeItems{
-			FromNodeID: payload.SourceNodeID,
-			Items:      items,
-		}
-	}
-
-	if !w.IsTestingWorkflow {
-		w.AddNodeExecutionEntry(domain.NodeExecutionEntry{
-			NodeID:          execution.NodeID,
-			ItemsByInputID:  itemsByInputID,
-			ItemsByOutputID: map[string]domain.NodeItems{},
-			EventType:       domain.NodeFailed,
-			Error:           err.Error(),
-			Timestamp:       time.Now().UnixNano(),
-		})
-	}
-
-	return nil
-}
-
-func (w *WorkflowExecutor) PublishNodeExecutionStartedEvent(ctx context.Context, nodeID string) error {
-	event := &domain.NodeExecutionStartedEvent{
-		WorkflowID:          w.workflow.ID,
-		WorkflowExecutionID: w.executionID,
-		NodeID:              nodeID,
-		Timestamp:           time.Now().UnixNano(),
-	}
-
-	err := w.orderedEventPublisher.PublishEvent(ctx, event)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (w *WorkflowExecutor) PublishNodeExecutionCompletedEvent(ctx context.Context, nodeID string, itemsByInputID map[string]domain.NodeItems, itemsByOutputID map[string]domain.NodeItems, executionOrder int64) error {
-	event := &domain.NodeExecutedEvent{
-		WorkflowID:          w.workflow.ID,
-		WorkflowExecutionID: w.executionID,
-		NodeID:              nodeID,
-		Timestamp:           time.Now().UnixNano(),
-		ItemsByInputID:      itemsByInputID,
-		ItemsByOutputID:     itemsByOutputID,
-		ExecutionOrder:      int(executionOrder),
-	}
-
-	err := w.orderedEventPublisher.PublishEvent(ctx, event)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (w *WorkflowExecutor) PublishWorkflowExecutionCompletedEvent(ctx context.Context) error {
-	if !w.enableEvents {
-		return nil
-	}
-
-	event := &domain.WorkflowExecutionCompletedEvent{
-		WorkflowID:          w.workflow.ID,
-		WorkflowExecutionID: w.executionID,
-		Timestamp:           time.Now().UnixNano(),
-	}
-
-	return w.orderedEventPublisher.PublishEvent(ctx, event)
-}
-
-type AddUsageEntryParams struct {
-	SourceNodePayloadByInputID SourceNodePayloadByInputID
-	IntegrationOutput          domain.IntegrationOutput
-	NodeID                     string
-	ExecutionOrder             int64
-	NodeExecutionStartedAt     time.Time
-	NodeExecutionEndedAt       time.Time
-	IntegrationType            domain.IntegrationType
-	IntegrationActionType      domain.IntegrationActionType
-}
-
-func (w *WorkflowExecutor) AddUsageEntry(p AddUsageEntryParams) {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-
-	inputItemsCount := domain.InputItemsCount{}
-	inputItemsSizeInBytes := domain.InputItemsSizeInBytes{}
-
-	for inputID, payload := range p.SourceNodePayloadByInputID {
-		items, err := payload.Payload.ToItems()
-		if err != nil {
-			log.Error().Err(err).Msgf("Failed to parse JSON for input %s", inputID)
-			continue
-		}
-
-		inputItemsCount[inputID] = int64(len(items))
-		inputItemsSizeInBytes[inputID] = int64(len(payload.Payload))
-	}
-
-	outputItemsCount := domain.OutputItemsCount{}
-	outputItemsSizeInBytes := domain.OutputItemsSizeInBytes{}
-
-	for outputID, payload := range p.IntegrationOutput.ResultJSONByOutputID {
-		var items []domain.Item
-		err := json.Unmarshal(payload, &items)
-		if err != nil {
-			log.Error().Err(err).Msgf("Failed to parse JSON for output %d", outputID)
-			continue
-		}
-
-		outputItemsCount[int64(outputID)] = int64(len(items))
-		outputItemsSizeInBytes[int64(outputID)] = int64(len(payload))
-	}
-
-	w.nodeExecutions = append(w.nodeExecutions, domain.NodeExecution{
-		ID:                     xid.New().String(),
-		NodeID:                 p.NodeID,
-		IntegrationType:        domain.IntegrationType(p.IntegrationType),
-		IntegrationActionType:  domain.IntegrationActionType(p.IntegrationActionType),
-		StartedAt:              p.NodeExecutionStartedAt,
-		EndedAt:                p.NodeExecutionEndedAt,
-		ExecutionOrder:         int64(p.ExecutionOrder),
-		InputItemsCount:        inputItemsCount,
-		InputItemsSizeInBytes:  inputItemsSizeInBytes,
-		OutputItemsCount:       outputItemsCount,
-		OutputItemsSizeInBytes: outputItemsSizeInBytes,
-	})
-}
-
 func ConvertPayloadsToItems(payloads []domain.Payload) []domain.Item {
 	allItems := []domain.Item{}
 
@@ -877,4 +697,28 @@ func ConvertPayloadsToItems(payloads []domain.Payload) []domain.Item {
 	}
 
 	return allItems
+}
+
+type ErrorItem struct {
+	ErrorMessage string `json:"error_message"`
+}
+
+func (w *WorkflowExecutor) createErrorAsItemResult(err error, integrationType domain.IntegrationType, actionType domain.IntegrationActionType) (NodeExecutionResult, error) {
+	errorItem := ErrorItem{
+		ErrorMessage: err.Error(),
+	}
+
+	errorItems := []ErrorItem{errorItem}
+	errorPayload, marshalErr := json.Marshal(errorItems)
+	if marshalErr != nil {
+		return NodeExecutionResult{}, fmt.Errorf("failed to marshal error as item: %w", marshalErr)
+	}
+
+	return NodeExecutionResult{
+		Output: domain.IntegrationOutput{
+			ResultJSONByOutputID: []domain.Payload{errorPayload},
+		},
+		IntegrationType:       integrationType,
+		IntegrationActionType: actionType,
+	}, nil
 }

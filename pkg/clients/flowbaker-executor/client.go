@@ -22,6 +22,8 @@ type ClientInterface interface {
 	TestConnection(ctx context.Context, workspaceID string, req *ConnectionTestRequest) (*ConnectionTestResponse, error)
 	PeekData(ctx context.Context, workspaceID string, req *PeekDataRequest) (*PeekDataResponse, error)
 	HealthCheck(ctx context.Context) (*HealthCheckResponse, error)
+	RerunNode(ctx context.Context, workspaceID string, req *RerunNodeRequest) (*RerunNodeResponse, error)
+	StopExecution(ctx context.Context, workspaceID string, req *StopExecutionRequest) (*StopExecutionResponse, error)
 }
 
 // Client provides methods to interact with the executor service
@@ -339,4 +341,44 @@ func (c *Client) UnregisterWorkspace(ctx context.Context, workspaceID string) er
 	}
 
 	return nil
+}
+
+func (c *Client) RerunNode(ctx context.Context, workspaceID string, req *RerunNodeRequest) (*RerunNodeResponse, error) {
+	path := fmt.Sprintf("/workspaces/%s/executions/%s/nodes/%s", workspaceID, req.ExecutionID, req.NodeID)
+
+	resp, err := c.doRequest(ctx, "POST", path, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to rerun node: %w", err)
+	}
+
+	var rerunNodeResponse RerunNodeResponse
+
+	if err := c.handleResponse(resp, &rerunNodeResponse); err != nil {
+		return nil, fmt.Errorf("failed to process rerun node response: %w", err)
+	}
+
+	return &rerunNodeResponse, nil
+}
+
+func (c *Client) StopExecution(ctx context.Context, workspaceID string, req *StopExecutionRequest) (*StopExecutionResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("stop execution request cannot be nil")
+	}
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID cannot be empty")
+	}
+
+	path := fmt.Sprintf("/workspaces/%s/executions/%s", workspaceID, req.ExecutionID)
+	resp, err := c.doRequest(ctx, "DELETE", path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stop execution: %w", err)
+	}
+
+	var stopExecutionResponse StopExecutionResponse
+
+	if err := c.handleResponse(resp, &stopExecutionResponse); err != nil {
+		return nil, fmt.Errorf("failed to process stop execution response: %w", err)
+	}
+
+	return &stopExecutionResponse, nil
 }

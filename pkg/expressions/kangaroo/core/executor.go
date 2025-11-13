@@ -12,7 +12,7 @@ import (
 	"github.com/dop251/goja/ast"
 	"github.com/rs/zerolog/log"
 
-	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 )
 
 // ASTExecutor provides safe AST execution without eval()
@@ -211,7 +211,7 @@ func (e *ASTExecutor) executeNode(node ast.Node, context *types.ExpressionContex
 
 	switch n := node.(type) {
 	case *ast.StringLiteral:
-		return n.Value, nil
+		return e.converter.NormalizeValue(n.Value), nil
 	case *ast.NumberLiteral:
 		return n.Value, nil
 	case *ast.BooleanLiteral:

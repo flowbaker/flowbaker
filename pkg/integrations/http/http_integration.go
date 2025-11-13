@@ -687,9 +687,27 @@ func (i *HTTPIntegration) httpRequest(ctx context.Context, params HTTPRequestFun
 func (i *HTTPIntegration) setRequestBody(ctx context.Context, p setRequestBodyParams) (io.Reader, []Header, error) {
 	switch p.BodyType {
 	case HTTPBodyType_JSON:
-		data, err := json.Marshal(p.JSONBody)
-		if err != nil {
-			return nil, p.Headers, err
+		var data []byte
+		var err error
+
+		if strBody, ok := p.JSONBody.(string); ok {
+			var parsed interface{}
+			if err := json.Unmarshal([]byte(strBody), &parsed); err == nil {
+				data, err = json.Marshal(parsed)
+				if err != nil {
+					return nil, p.Headers, err
+				}
+			} else {
+				data, err = json.Marshal(p.JSONBody)
+				if err != nil {
+					return nil, p.Headers, err
+				}
+			}
+		} else {
+			data, err = json.Marshal(p.JSONBody)
+			if err != nil {
+				return nil, p.Headers, err
+			}
 		}
 
 		if string(data) == "null" || len(bytes.TrimSpace(data)) == 0 {

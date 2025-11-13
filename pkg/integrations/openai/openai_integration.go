@@ -272,13 +272,17 @@ func (i *OpenAIIntegration) PeekModels(ctx context.Context) (domain.PeekResult, 
 		return domain.PeekResult{}, err
 	}
 
-	resultJSON, err := json.Marshal(models.Models)
-	if err != nil {
-		return domain.PeekResult{}, err
+	var results []domain.PeekResultItem
+	for _, model := range models.Models {
+		results = append(results, domain.PeekResultItem{
+			Key:     model.ID,
+			Value:   model.ID,
+			Content: model.ID,
+		})
 	}
 
 	return domain.PeekResult{
-		ResultJSON: resultJSON,
+		Result: results,
 	}, nil
 }
 
@@ -476,12 +480,8 @@ type GenerateEmbeddingsParams struct {
 
 var maxCompletionTokensModels = map[string]bool{
 	// O1 models
-	"o1":                    true,
-	"o1-2024-12-17":         true,
-	"o1-mini":               true,
-	"o1-mini-2024-09-12":    true,
-	"o1-preview":            true,
-	"o1-preview-2024-09-12": true,
+	"o1":            true,
+	"o1-2024-12-17": true,
 	// O2 models
 	"o2":         true,
 	"o2-mini":    true,

@@ -9,10 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo"
+	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 	"github.com/rs/zerolog"
-
-	"github.com/flowbaker/flowbaker/internal/kangaroo"
-	"github.com/flowbaker/flowbaker/internal/kangaroo/types"
 )
 
 // KangarooBinder implements expression binding using local Kangaroo runtime
@@ -53,7 +52,7 @@ func NewKangarooBinder(opts KangarooBinderOptions) (*KangarooBinder, error) {
 
 	binder := &KangarooBinder{
 		evaluator:      evaluator,
-		exprRegex:      regexp.MustCompile(`\{\{(.*?)\}\}`),
+		exprRegex:      regexp.MustCompile(`\{\{([\s\S]*?)\}\}`), // Use [\s\S] to match any character including newlines
 		logger:         opts.Logger,
 		defaultTimeout: opts.DefaultTimeout,
 	}
@@ -170,14 +169,14 @@ func (b *KangarooBinder) bindString(ctx context.Context, item any, str string) (
 
 	// Check if entire string is a single expression
 	if len(matches) == 1 && matches[0][0] == str {
-		// Single expression - evaluate and convert to string for JSON compatibility
+		// Single expression - return the actual value (will be marshaled later)
 		expression := strings.TrimSpace(matches[0][1])
 		value, err := b.evaluateExpression(ctx, item, expression)
 		if err != nil {
 			return nil, err
 		}
-		// Convert to string to ensure JSON unmarshaling compatibility
-		return b.valueToString(value), nil
+		// Return the actual value to avoid double JSON encoding
+		return value, nil
 	}
 
 	// Multiple expressions or mixed content - interpolate as string

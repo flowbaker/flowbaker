@@ -24,7 +24,6 @@ type AIAgentCreator struct {
 	integrationSelector        domain.IntegrationSelector
 	parameterBinder            domain.IntegrationParameterBinder
 	executorIntegrationManager domain.ExecutorIntegrationManager
-	eventPublisher             domain.EventPublisher
 }
 
 func NewAIAgentCreator(deps domain.IntegrationDeps) domain.IntegrationCreator {
@@ -32,7 +31,6 @@ func NewAIAgentCreator(deps domain.IntegrationDeps) domain.IntegrationCreator {
 		integrationSelector:        deps.IntegrationSelector,
 		parameterBinder:            deps.ParameterBinder,
 		executorIntegrationManager: deps.ExecutorIntegrationManager,
-		eventPublisher:             deps.ExecutorEventPublisher,
 	}
 }
 
@@ -41,7 +39,6 @@ func (c *AIAgentCreator) CreateIntegration(ctx context.Context, params domain.Cr
 		IntegrationSelector:        c.integrationSelector,
 		ParameterBinder:            c.parameterBinder,
 		ExecutorIntegrationManager: c.executorIntegrationManager,
-		ExecutorEventPublisher:     c.eventPublisher,
 	}), nil
 }
 
@@ -49,7 +46,6 @@ type AIAgentExecutorV2 struct {
 	integrationSelector        domain.IntegrationSelector
 	parameterBinder            domain.IntegrationParameterBinder
 	executorIntegrationManager domain.ExecutorIntegrationManager
-	eventPublisher             domain.EventPublisher
 	actionManager              *domain.IntegrationActionManager
 }
 
@@ -58,7 +54,6 @@ func NewAIAgentExecutorV2(deps domain.IntegrationDeps) domain.IntegrationExecuto
 		integrationSelector:        deps.IntegrationSelector,
 		parameterBinder:            deps.ParameterBinder,
 		executorIntegrationManager: deps.ExecutorIntegrationManager,
-		eventPublisher:             deps.ExecutorEventPublisher,
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
@@ -219,11 +214,16 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 
 	stateManager := NewInMemoryFunctionCallingStateManager()
 
+	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("workflow execution context not found")
+	}
+
 	toolCallManager := NewDefaultToolCallManager(DefaultToolCallManagerDeps{
 		AgentNodeID:                params.NodeID,
 		ExecutorIntegrationManager: e.executorIntegrationManager,
 		ParameterBinder:            e.parameterBinder,
-		EventPublisher:             e.eventPublisher,
+		ExecutionObserver:          executionContext.ExecutionObserver,
 	})
 
 	memoryNodeParams := MemoryNodeParams{}
@@ -260,24 +260,24 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 	}
 
 	memoryManager := NewConversationMemoryManager(ConversationMemoryManagerDependencies{
-		Memory:         memory.Memory,
-		AgentNodeID:    params.NodeID,
-		Config:         memoryConfig,
-		EventPublisher: e.eventPublisher,
-		MemoryNodeID:   memoryNodeID,
+		Memory:            memory.Memory,
+		AgentNodeID:       params.NodeID,
+		Config:            memoryConfig,
+		ExecutionObserver: executionContext.ExecutionObserver,
+		MemoryNodeID:      memoryNodeID,
 	})
 
 	deps := FunctionCallingConversationManagerDeps{
-		AgentNodeID:     params.NodeID,
-		LLM:             llm.LLM,
-		Memory:          memory.Memory,
-		ToolExecutors:   tools,
-		ToolCallManager: toolCallManager,
-		StateManager:    stateManager,
-		EventPublisher:  e.eventPublisher,
-		ExecuteParams:   executeParams,
-		MemoryManager:   memoryManager,
-		LLMNodeParams:   llmNodeParams,
+		AgentNodeID:       params.NodeID,
+		LLM:               llm.LLM,
+		Memory:            memory.Memory,
+		ToolExecutors:     tools,
+		ToolCallManager:   toolCallManager,
+		StateManager:      stateManager,
+		ExecutionObserver: executionContext.ExecutionObserver,
+		ExecuteParams:     executeParams,
+		MemoryManager:     memoryManager,
+		LLMNodeParams:     llmNodeParams,
 	}
 
 	fcManager := NewFunctionCallingConversationManager(deps)

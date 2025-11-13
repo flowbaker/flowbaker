@@ -119,14 +119,16 @@ var (
 						PeekableType: S3IntegrationPeekable_Buckets,
 					},
 					{
-						Key:          "key",
-						Name:         "Object Key",
-						Description:  "The key (path) of the object to download",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: S3IntegrationPeekable_Objects,
-						Dependent:    []string{"bucket"},
+						Key:                      "key",
+						Name:                     "Object Key",
+						Description:              "The key (path) of the object to download",
+						Required:                 true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             S3IntegrationPeekable_Objects,
+						Dependent:                []string{"bucket"},
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "bucket",
@@ -152,14 +154,16 @@ var (
 						PeekableType: S3IntegrationPeekable_Buckets,
 					},
 					{
-						Key:          "key",
-						Name:         "Object Key",
-						Description:  "The key (path) of the object to delete",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: S3IntegrationPeekable_Objects,
-						Dependent:    []string{"bucket"},
+						Key:                      "key",
+						Name:                     "Object Key",
+						Description:              "The key (path) of the object to delete",
+						Required:                 true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             S3IntegrationPeekable_Objects,
+						Dependent:                []string{"bucket"},
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "bucket",
@@ -187,12 +191,14 @@ var (
 					{
 						Key:          "prefix",
 						Name:         "Prefix",
-						Description:  "Filter objects by prefix (folder path)",
-						Required:     false,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: S3IntegrationPeekable_Prefixes,
-						Dependent:    []string{"bucket"},
+						Description:              "Filter objects by prefix (folder path)",
+						Required:                 false,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             S3IntegrationPeekable_Prefixes,
+						Dependent:                []string{"bucket"},
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "bucket",
@@ -227,12 +233,14 @@ var (
 					{
 						Key:          "source_key",
 						Name:         "Source Object Key",
-						Description:  "The key (path) of the source object",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: S3IntegrationPeekable_Objects,
-						Dependent:    []string{"source_bucket"},
+						Description:              "The key (path) of the source object",
+						Required:                 true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             S3IntegrationPeekable_Objects,
+						Dependent:                []string{"source_bucket"},
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "source_bucket",
@@ -276,12 +284,14 @@ var (
 					{
 						Key:          "key",
 						Name:         "Object Key",
-						Description:  "The key (path) of the object",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: S3IntegrationPeekable_Objects,
-						Dependent:    []string{"bucket"},
+						Description:              "The key (path) of the object",
+						Required:                 true,
+						Type:                     domain.NodePropertyType_String,
+						Peekable:                 true,
+						PeekableType:             S3IntegrationPeekable_Objects,
+						Dependent:                []string{"bucket"},
+						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
+
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "bucket",
