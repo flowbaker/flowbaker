@@ -315,15 +315,45 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	if action, exists := w.workflow.GetActionNodeByID(execution.NodeID); exists {
 		result, err = w.ExecuteActionNode(ctx, action, execution)
 		nodeID = action.ID
+
+		if err != nil {
+			if action.Settings.ReturnErrorAsItem {
+				log.Info().
+					Str("execution_id", w.executionID).
+					Str("node_id", action.ID).
+					Err(err).
+					Msg("Converting error to item (action node)")
+
+				result, err = w.createErrorAsItemResult(err, action.NodeType, action.ActionType)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
 	} else if trigger, exists := w.workflow.GetTriggerByID(execution.NodeID); exists {
 		result, err = w.ExecuteTriggerNode(ctx, trigger, execution)
 		nodeID = trigger.ID
+
+		if err != nil {
+			if trigger.Settings.ReturnErrorAsItem {
+				log.Info().
+					Str("execution_id", w.executionID).
+					Str("node_id", trigger.ID).
+					Err(err).
+					Msg("Converting error to item (trigger node)")
+
+				result, err = w.createErrorAsItemResult(err, domain.IntegrationType(trigger.Type), domain.IntegrationActionType(trigger.EventType))
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
 	} else {
 		return fmt.Errorf("node %s not found in workflow", execution.NodeID)
-	}
-
-	if err != nil {
-		return err
 	}
 
 	nodeExecutionEndedAt := time.Now()
@@ -384,9 +414,6 @@ func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, trigger domai
 	inputPayload, exists := execution.PayloadByInputID[inputID]
 	if !exists {
 		err := fmt.Errorf("trigger input payload not found")
-		if trigger.Settings.ReturnErrorAsItem {
-			return w.createErrorAsItemResult(err, domain.IntegrationType(trigger.Type), domain.IntegrationActionType(trigger.EventType))
-		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -417,9 +444,6 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		IntegrationType: node.NodeType,
 	})
 	if err != nil {
-		if node.Settings.ReturnErrorAsItem {
-			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
-		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -431,9 +455,6 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 	credentialIDString, ok := credentialID.(string)
 	if !ok {
 		err := fmt.Errorf("credential_id is not a string")
-		if node.Settings.ReturnErrorAsItem {
-			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
-		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -442,9 +463,6 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		CredentialID: credentialIDString,
 	})
 	if err != nil {
-		if node.Settings.ReturnErrorAsItem {
-			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
-		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -465,9 +483,7 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		ActionType: node.ActionType,
 	})
 	if err != nil {
-		if node.Settings.ReturnErrorAsItem {
-			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
-		}
+
 		return NodeExecutionResult{}, err
 	}
 
