@@ -66,12 +66,12 @@ func (r *ExecutionRegistry) UnregisterExecution(executionID string) {
 	delete(r.executions, executionID)
 }
 
-func (r *ExecutionRegistry) GetExecution(executionID string) (*ActiveExecution, bool) {
+func (r *ExecutionRegistry) GetExecution(executionID string) (ActiveExecution, bool) {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
 	execution, ok := r.executions[executionID]
-	return &execution, ok
+	return execution, ok
 }
 
 type workflowExecutorService struct {
