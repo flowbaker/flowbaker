@@ -231,7 +231,10 @@ func (i *DiscordIntegration) Peek(ctx context.Context, params domain.PeekParams)
 }
 
 func (i *DiscordIntegration) PeekGuilds(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
-	guilds, err := i.discordSession.UserGuilds(100, "", "", false)
+	limit := p.GetLimitWithMax(20, 100)
+	cursor := p.Pagination.Cursor
+
+	guilds, err := i.discordSession.UserGuilds(limit, "", cursor, false)
 	if err != nil {
 		return domain.PeekResult{}, err
 	}
@@ -246,9 +249,22 @@ func (i *DiscordIntegration) PeekGuilds(ctx context.Context, p domain.PeekParams
 		})
 	}
 
-	return domain.PeekResult{
+	var nextCursor string
+	hasMore := len(guilds) >= limit
+
+	if len(results) > 0 {
+		nextCursor = results[len(results)-1].Value
+	}
+
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+		Pagination: domain.PaginationMetadata{
+			NextCursor: nextCursor,
+			HasMore:    hasMore,
+		},
+	}
+
+	return result, nil
 }
 
 type PeekChannelsParams struct {

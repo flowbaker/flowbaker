@@ -283,6 +283,11 @@ func (c *ExecutorController) PeekData(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 
+	var pagination domain.PaginationParams
+	if req.Pagination != nil {
+		pagination = *req.Pagination
+	}
+
 	result, err := c.executorService.PeekData(ctx.RequestCtx(), executor.PeekDataParams{
 		IntegrationType: domain.IntegrationType(req.IntegrationType),
 		CredentialID:    req.CredentialID,
@@ -290,6 +295,7 @@ func (c *ExecutorController) PeekData(ctx fiber.Ctx) error {
 		UserID:          req.UserID,
 		PeekableType:    req.PeekableType,
 		Cursor:          req.Cursor,
+		Pagination:      pagination,
 		PayloadJSON:     req.PayloadJSON,
 	})
 	if err != nil {
@@ -303,10 +309,8 @@ func (c *ExecutorController) PeekData(ctx fiber.Ctx) error {
 
 	return ctx.JSON(executortypes.PeekDataResponse{
 		Success:    true,
-		ResultJSON: result.ResultJSON,
 		Result:     mappers.DomainPeekResultItemsToExecutor(result.Result),
-		Cursor:     result.Cursor,
-		HasMore:    result.HasMore,
+		Pagination: result.Pagination,
 	})
 }
 

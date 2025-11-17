@@ -8,7 +8,6 @@ import (
 	"github.com/flowbaker/flowbaker/internal/managers"
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
-	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -406,27 +405,56 @@ func (i *MongoDBIntegration) Peek(ctx context.Context, p domain.PeekParams) (dom
 }
 
 func (i *MongoDBIntegration) PeekDatabases(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
+	limit := p.GetLimitWithMax(20, 100)
+	offset := p.Pagination.Offset
+
 	databases, err := i.client.ListDatabases(ctx, bson.D{})
 	if err != nil {
 		return domain.PeekResult{}, err
 	}
 
-	var results []domain.PeekResultItem
+	var allResults []domain.PeekResultItem
 	for _, db := range databases.Databases {
-		results = append(results, domain.PeekResultItem{
+		allResults = append(allResults, domain.PeekResultItem{
 			Key:     db.Name,
 			Value:   db.Name,
 			Content: db.Name,
 		})
 	}
 
-	return domain.PeekResult{
+	totalCount := len(allResults)
+	start := offset
+	end := offset + limit
+
+	if start > totalCount {
+		start = totalCount
+	}
+	if end > totalCount {
+		end = totalCount
+	}
+
+	var results []domain.PeekResultItem
+	if start < end {
+		results = allResults[start:end]
+	}
+
+	nextOffset := offset + len(results)
+	hasMore := nextOffset < totalCount
+
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+		Pagination: domain.PaginationMetadata{
+			NextOffset: nextOffset,
+			HasMore:    hasMore,
+		},
+	}
+
+	return result, nil
 }
 
 func (i *MongoDBIntegration) PeekCollections(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
-	log.Info().Msgf("Peeking collections")
+	limit := p.GetLimitWithMax(20, 100)
+	offset := p.Pagination.Offset
 
 	var params struct {
 		Database string `json:"database"`
@@ -442,16 +470,41 @@ func (i *MongoDBIntegration) PeekCollections(ctx context.Context, p domain.PeekP
 		return domain.PeekResult{}, err
 	}
 
-	var results []domain.PeekResultItem
+	var allResults []domain.PeekResultItem
 	for _, collection := range collections {
-		results = append(results, domain.PeekResultItem{
+		allResults = append(allResults, domain.PeekResultItem{
 			Key:     collection,
 			Value:   collection,
 			Content: collection,
 		})
 	}
 
-	return domain.PeekResult{
+	totalCount := len(allResults)
+	start := offset
+	end := offset + limit
+
+	if start > totalCount {
+		start = totalCount
+	}
+	if end > totalCount {
+		end = totalCount
+	}
+
+	var results []domain.PeekResultItem
+	if start < end {
+		results = allResults[start:end]
+	}
+
+	nextOffset := offset + len(results)
+	hasMore := nextOffset < totalCount
+
+	result := domain.PeekResult{
 		Result: results,
-	}, nil
+		Pagination: domain.PaginationMetadata{
+			NextOffset: nextOffset,
+			HasMore:    hasMore,
+		},
+	}
+
+	return result, nil
 }
