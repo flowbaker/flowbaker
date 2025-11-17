@@ -24,6 +24,7 @@ type ClientInterface interface {
 	HealthCheck(ctx context.Context) (*HealthCheckResponse, error)
 	RerunNode(ctx context.Context, workspaceID string, req *RerunNodeRequest) (*RerunNodeResponse, error)
 	StopExecution(ctx context.Context, workspaceID string, req *StopExecutionRequest) (*StopExecutionResponse, error)
+	RunNode(ctx context.Context, workspaceID string, req *RunNodeRequest) (*RunNodeResponse, error)
 }
 
 // Client provides methods to interact with the executor service
@@ -358,6 +359,31 @@ func (c *Client) RerunNode(ctx context.Context, workspaceID string, req *RerunNo
 	}
 
 	return &rerunNodeResponse, nil
+}
+
+func (c *Client) RunNode(ctx context.Context, workspaceID string, req *RunNodeRequest) (*RunNodeResponse, error) {
+	if workspaceID == "" {
+		return nil, fmt.Errorf("workspace ID cannot be empty")
+	}
+
+	if req.NodeID == "" {
+		return nil, fmt.Errorf("node ID cannot be empty")
+	}
+
+	path := fmt.Sprintf("/workspaces/%s/executions/%s/nodes/%s/run", workspaceID, req.ExecutionID, req.NodeID)
+
+	resp, err := c.doRequest(ctx, "POST", path, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run node: %w", err)
+	}
+
+	var runNodeResponse RunNodeResponse
+
+	if err := c.handleResponse(resp, &runNodeResponse); err != nil {
+		return nil, fmt.Errorf("failed to process run node response: %w", err)
+	}
+
+	return &runNodeResponse, nil
 }
 
 func (c *Client) StopExecution(ctx context.Context, workspaceID string, req *StopExecutionRequest) (*StopExecutionResponse, error) {

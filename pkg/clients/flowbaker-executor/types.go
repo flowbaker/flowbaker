@@ -248,3 +248,14 @@ type RerunNodeRequest struct {
 type RerunNodeResponse struct {
 	Payload []byte `json:"payload"`
 }
+
+type RunNodeRequest struct {
+	ExecutionID    string            `json:"execution_id"`
+	NodeID         string            `json:"node_id"`
+	Workflow       Workflow          `json:"workflow"`
+	ItemsByInputID map[string][]byte `json:"items_by_input"`
+}
+
+type RunNodeResponse struct {
+	ItemsByOutputID map[string][]byte `json:"items_by_output_id"`
+}

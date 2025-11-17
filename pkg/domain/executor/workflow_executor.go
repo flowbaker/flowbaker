@@ -204,7 +204,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 
 		executionCount++
 
-		err := w.ExecuteNode(ctx, ExecuteNodeParams{
+		_, err := w.ExecuteNode(ctx, ExecuteNodeParams{
 			Task:           execution,
 			ExecutionOrder: int64(executionCount),
 			Propagate:      true,
@@ -294,7 +294,11 @@ type ExecuteNodeParams struct {
 	Propagate      bool
 }
 
-func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams) error {
+type ExecuteNodeResult struct {
+	ItemsByOutputID map[string]domain.NodeItems
+}
+
+func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams) (ExecuteNodeResult, error) {
 	execution := p.Task
 	executionOrder := p.ExecutionOrder
 	propagate := p.Propagate
@@ -319,11 +323,11 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 		result, err = w.ExecuteTriggerNode(ctx, trigger, execution)
 		nodeID = trigger.ID
 	} else {
-		return fmt.Errorf("node %s not found in workflow", execution.NodeID)
+		return ExecuteNodeResult{}, fmt.Errorf("node %s not found in workflow", execution.NodeID)
 	}
 
 	if err != nil {
-		return err
+		return ExecuteNodeResult{}, err
 	}
 
 	nodeExecutionEndedAt := time.Now()
@@ -347,7 +351,7 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 						Payload:    payload,
 					})
 					if err != nil {
-						return err
+						return ExecuteNodeResult{}, err
 					}
 				}
 			}
@@ -375,7 +379,9 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 		log.Error().Err(err).Msg("Failed to notify node execution completed")
 	}
 
-	return nil
+	return ExecuteNodeResult{
+		ItemsByOutputID: itemsByOutputID,
+	}, nil
 }
 
 func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, trigger domain.WorkflowTrigger, execution NodeExecutionTask) (NodeExecutionResult, error) {
