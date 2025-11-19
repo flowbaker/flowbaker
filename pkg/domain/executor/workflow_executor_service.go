@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 
@@ -31,7 +32,13 @@ type WorkflowExecutorService interface {
 
 type ActiveExecution struct {
 	ExecutionID string
+	WorkflowID  string
+	WorkspaceID string
 	CancelFunc  context.CancelFunc
+}
+
+type StopExecutionParams struct {
+	ExecutionID string
 }
 
 type ExecutionRegistry struct {
@@ -131,6 +138,8 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 
 	activeExecution := ActiveExecution{
 		ExecutionID: params.ExecutionID,
+		WorkflowID:  params.Workflow.ID,
+		WorkspaceID: params.Workflow.WorkspaceID,
 		CancelFunc:  cancel,
 	}
 
@@ -151,6 +160,24 @@ func (s *workflowExecutorService) Stop(ctx context.Context, executionID string) 
 	execution, ok := s.executionRegistry.GetExecution(executionID)
 	if !ok {
 		return errors.New("execution not found")
+	}
+
+	eventCtx := domain.NewContextWithEventOrder(ctx)
+	eventCtx = domain.NewContextWithWorkflowExecutionContext(eventCtx, domain.NewContextWithWorkflowExecutionContextParams{
+		WorkspaceID:         execution.WorkspaceID,
+		WorkflowID:          execution.WorkflowID,
+		WorkflowExecutionID: executionID,
+		EnableEvents:        true,
+		Observer:            nil,
+	})
+
+	err := s.orderedEventPublisher.PublishEvent(eventCtx, &domain.WorkflowExecutionCompletedEvent{
+		WorkflowID:          execution.WorkflowID,
+		WorkflowExecutionID: executionID,
+		Timestamp:           time.Now().UnixNano(),
+	})
+	if err != nil {
+		return err
 	}
 
 	execution.CancelFunc()
