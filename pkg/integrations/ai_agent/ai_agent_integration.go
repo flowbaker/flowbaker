@@ -2,9 +2,20 @@ package ai_agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"time"
+
+	"github.com/flowbaker/flowbaker/internal/managers"
+	"github.com/flowbaker/flowbaker/pkg/ai-sdk/agent"
+	"github.com/flowbaker/flowbaker/pkg/ai-sdk/memory"
+	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider"
+	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider/openai"
+	"github.com/flowbaker/flowbaker/pkg/ai-sdk/tool"
+	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
+	"github.com/flowbaker/flowbaker/pkg/domain/executor"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
@@ -24,6 +35,7 @@ type AIAgentCreator struct {
 	integrationSelector        domain.IntegrationSelector
 	parameterBinder            domain.IntegrationParameterBinder
 	executorIntegrationManager domain.ExecutorIntegrationManager
+	executorCredentialManager  domain.ExecutorCredentialManager
 }
 
 func NewAIAgentCreator(deps domain.IntegrationDeps) domain.IntegrationCreator {
@@ -31,6 +43,7 @@ func NewAIAgentCreator(deps domain.IntegrationDeps) domain.IntegrationCreator {
 		integrationSelector:        deps.IntegrationSelector,
 		parameterBinder:            deps.ParameterBinder,
 		executorIntegrationManager: deps.ExecutorIntegrationManager,
+		executorCredentialManager:  deps.ExecutorCredentialManager,
 	}
 }
 
@@ -39,7 +52,12 @@ func (c *AIAgentCreator) CreateIntegration(ctx context.Context, params domain.Cr
 		IntegrationSelector:        c.integrationSelector,
 		ParameterBinder:            c.parameterBinder,
 		ExecutorIntegrationManager: c.executorIntegrationManager,
+		ExecutorCredentialManager:  c.executorCredentialManager,
 	}), nil
+}
+
+type OpenAICredential struct {
+	APIKey string `json:"api_key"`
 }
 
 type AIAgentExecutorV2 struct {
@@ -47,6 +65,7 @@ type AIAgentExecutorV2 struct {
 	parameterBinder            domain.IntegrationParameterBinder
 	executorIntegrationManager domain.ExecutorIntegrationManager
 	actionManager              *domain.IntegrationActionManager
+	credentialGetter           domain.CredentialGetter[OpenAICredential]
 }
 
 func NewAIAgentExecutorV2(deps domain.IntegrationDeps) domain.IntegrationExecutor {
@@ -54,6 +73,7 @@ func NewAIAgentExecutorV2(deps domain.IntegrationDeps) domain.IntegrationExecuto
 		integrationSelector:        deps.IntegrationSelector,
 		parameterBinder:            deps.ParameterBinder,
 		executorIntegrationManager: deps.ExecutorIntegrationManager,
+		credentialGetter:           managers.NewExecutorCredentialGetter[OpenAICredential](deps.ExecutorCredentialManager),
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
@@ -96,6 +116,8 @@ type LLMNodeParams struct {
 	SystemPrompt string  `json:"system_prompt"`
 }
 
+const HandleIDFormat = "input-%s-%d"
+
 func (e *AIAgentExecutorV2) Execute(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	return e.actionManager.Run(ctx, params.ActionType, params)
 }
@@ -123,11 +145,9 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 		return nil, fmt.Errorf("agent node %s has less than 4 input handles", params.NodeID)
 	}
 
-	handleIdFormat := "input-%s-%d"
-
-	llmHandleID := fmt.Sprintf(handleIdFormat, params.NodeID, 1)
-	memoryHandleID := fmt.Sprintf(handleIdFormat, params.NodeID, 2)
-	toolsHandleID := fmt.Sprintf(handleIdFormat, params.NodeID, 3)
+	llmHandleID := fmt.Sprintf(HandleIDFormat, params.NodeID, 1)
+	memoryHandleID := fmt.Sprintf(HandleIDFormat, params.NodeID, 2)
+	toolsHandleID := fmt.Sprintf(HandleIDFormat, params.NodeID, 3)
 
 	agentNode, exists := params.Workflow.GetActionNodeByID(params.NodeID)
 	if !exists {
@@ -174,8 +194,8 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 	executeParams.LLM = &NodeReference{NodeID: llmNodeID}
 
 	// Create item processor
-	itemProcessor := NewItemProcessor(e.parameterBinder)
-
+	/* 	itemProcessor := NewItemProcessor(e.parameterBinder)
+	 */
 	if executeParams.LLM == nil {
 		return nil, fmt.Errorf("LLM configuration is required")
 	}
@@ -195,36 +215,26 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 	}
 
 	// Process input items from upstream nodes
-	inputItems, err := itemProcessor.ProcessInputItems(ctx, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to process input items: %w", err)
-	}
-
+	/* 	inputItems, err := itemProcessor.ProcessInputItems(ctx, params)
+	   	if err != nil {
+	   		return nil, fmt.Errorf("failed to process input items: %w", err)
+	   	}
+	*/
 	// Add input context to prompt if available, FIXME: Enes: Do we need this really?
-	inputContext := itemProcessor.ExtractPromptContext(inputItems)
-	if inputContext != "" {
-		initialPrompt = fmt.Sprintf("%s\n\n%s", initialPrompt, inputContext)
-	}
+	/* 	inputContext := itemProcessor.ExtractPromptContext(inputItems)
+	   	if inputContext != "" {
+	   		initialPrompt = fmt.Sprintf("%s\n\n%s", initialPrompt, inputContext)
+	   	} */
 
-	workspaceID := params.Workflow.WorkspaceID
-
+	/* 	workspaceID := params.Workflow.WorkspaceID
+	 */
 	llm := agentSettings.LLM
 	memory := agentSettings.Memory
-	tools := agentSettings.Tools
-
-	stateManager := NewInMemoryFunctionCallingStateManager()
 
 	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("workflow execution context not found")
 	}
-
-	toolCallManager := NewDefaultToolCallManager(DefaultToolCallManagerDeps{
-		AgentNodeID:                params.NodeID,
-		ExecutorIntegrationManager: e.executorIntegrationManager,
-		ParameterBinder:            e.parameterBinder,
-		ExecutionObserver:          executionContext.ExecutionObserver,
-	})
 
 	memoryNodeParams := MemoryNodeParams{}
 
@@ -246,54 +256,75 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 
 	log.Debug().Interface("memory_node_params", memoryNodeParams).Msg("Memory node params")
 
-	// Initialize memory manager
-	memoryConfig := ConversationMemoryConfig{
-		Enabled:           memory.Memory != nil,
-		SessionID:         memoryNodeParams.SessionID,
-		ConversationCount: memoryNodeParams.ConversationCount,
-		IncludeToolUsage:  true,
-		MaxContextLength:  memoryNodeParams.MaxContextLength,
-	}
-
-	if memory.Memory != nil {
-		memoryNodeID = executeParams.Memory.NodeID
-	}
-
-	memoryManager := NewConversationMemoryManager(ConversationMemoryManagerDependencies{
-		Memory:            memory.Memory,
-		AgentNodeID:       params.NodeID,
-		Config:            memoryConfig,
-		ExecutionObserver: executionContext.ExecutionObserver,
-		MemoryNodeID:      memoryNodeID,
+	toolCreator := NewIntegrationToolCreator(IntegrationToolCreatorDeps{
+		IntegrationSelector:        e.integrationSelector,
+		ExecutorIntegrationManager: e.executorIntegrationManager,
+		ExecutionObserver:          executionContext.ExecutionObserver,
 	})
 
-	deps := FunctionCallingConversationManagerDeps{
-		AgentNodeID:       params.NodeID,
-		LLM:               llm.LLM,
-		Memory:            memory.Memory,
-		ToolExecutors:     tools,
-		ToolCallManager:   toolCallManager,
-		StateManager:      stateManager,
-		ExecutionObserver: executionContext.ExecutionObserver,
-		ExecuteParams:     executeParams,
-		MemoryManager:     memoryManager,
-		LLMNodeParams:     llmNodeParams,
-	}
-
-	fcManager := NewFunctionCallingConversationManager(deps)
-
-	conversationID := fmt.Sprintf("fc_session_%d", time.Now().UnixNano())
-
-	result, err := fcManager.ExecuteFunctionCallingConversation(ctx, conversationID, workspaceID, initialPrompt)
+	tools, err := toolCreator.CreateTools(ctx, executeParams.Tools, workflow)
 	if err != nil {
-		return nil, fmt.Errorf("function calling conversation failed: %w", err)
+		return nil, fmt.Errorf("failed to create tools: %w", err)
 	}
 
-	// Create output items from conversation result
-	outputItems, err := itemProcessor.CreateOutputItems(ctx, result, result.ToolExecutions)
+	a, err := agent.New(
+		agent.WithModel(llm.LLM),
+		agent.WithMaxTokens(4000),
+		agent.WithTemperature(1),
+		agent.WithSystemPrompt("You are a helpful assistant."),
+		agent.WithMemory(memory.Memory),
+		agent.WithTools(tools...),
+		agent.WithMaxIterations(10),
+		agent.WithCancelContext(ctx),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create output items: %w", err)
+		return nil, fmt.Errorf("failed to create agent: %w", err)
 	}
+
+	result, err := a.ChatSync(ctx, agent.ChatRequest{
+		Prompt:    initialPrompt,
+		SessionID: "",
+		UserID:    "",
+	})
+	if err != nil {
+		log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
+		return nil, fmt.Errorf("failed to chat with agent: %w", err)
+	}
+
+	maxStepNumber := math.MinInt
+	maxStep := &agent.Step{}
+
+	for _, step := range result.Steps {
+		log.Debug().Interface("step", step).Msg("Step")
+
+		if step.StepNumber > maxStepNumber {
+			maxStepNumber = step.StepNumber
+			maxStep = step
+		}
+	}
+
+	var outputItems []domain.Item
+
+	if maxStep == nil {
+		return nil, nil
+	}
+
+	if maxStep.Content == "" {
+		return nil, nil
+	}
+
+	resultItem := map[string]any{
+		"output": maxStep.Content,
+	}
+
+	outputItems = append(outputItems, resultItem)
+
+	/* 	// Create output items from conversation result
+	   	outputItems, err := itemProcessor.CreateOutputItems(ctx, result, result.ToolExecutions)
+	   	if err != nil {
+	   		return nil, fmt.Errorf("failed to create output items: %w", err)
+	   	}
+	*/
 
 	return outputItems, nil
 }
@@ -328,7 +359,7 @@ func (e *AIAgentExecutorV2) ResolveAgentSettings(ctx context.Context, executePar
 }
 
 type ResolveLLMResult struct {
-	LLM  domain.IntegrationLLM
+	LLM  provider.LanguageModel
 	Node domain.WorkflowNode
 }
 
@@ -342,13 +373,6 @@ func (e *AIAgentExecutorV2) ResolveLLM(ctx context.Context, llmRef *NodeReferenc
 		return ResolveLLMResult{}, fmt.Errorf("attached LLM node %s not found in workflow", llmRef.NodeID)
 	}
 
-	creator, err := e.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
-		IntegrationType: domain.IntegrationType(llmNode.NodeType),
-	})
-	if err != nil {
-		return ResolveLLMResult{}, fmt.Errorf("failed to resolve LLM: %w", err)
-	}
-
 	credentialID, exists := llmNode.IntegrationSettings["credential_id"]
 	if !exists {
 		return ResolveLLMResult{}, fmt.Errorf("credential_id is not found in LLM node %s", llmRef.NodeID)
@@ -359,27 +383,38 @@ func (e *AIAgentExecutorV2) ResolveLLM(ctx context.Context, llmRef *NodeReferenc
 		return ResolveLLMResult{}, fmt.Errorf("credential_id is not a string in LLM node %s", llmRef.NodeID)
 	}
 
-	executor, err := creator.CreateIntegration(ctx, domain.CreateIntegrationParams{
-		WorkspaceID:  workflow.WorkspaceID,
-		CredentialID: credentialIDString,
-	})
-	if err != nil {
-		return ResolveLLMResult{}, fmt.Errorf("failed to create LLM: %w", err)
+	model, exists := llmNode.IntegrationSettings["model"]
+	if !exists {
+		return ResolveLLMResult{}, fmt.Errorf("model is not found in LLM node %s", llmRef.NodeID)
 	}
 
-	llm, ok := executor.(domain.IntegrationLLM)
+	modelString, ok := model.(string)
 	if !ok {
-		return ResolveLLMResult{}, fmt.Errorf("LLM is not a domain.IntegrationLLM")
+		return ResolveLLMResult{}, fmt.Errorf("model is not a string in LLM node %s", llmRef.NodeID)
+	}
+
+	var languageModel provider.LanguageModel
+
+	switch llmNode.NodeType {
+	case "openai":
+		credential, err := e.credentialGetter.GetDecryptedCredential(ctx, credentialIDString)
+		if err != nil {
+			return ResolveLLMResult{}, fmt.Errorf("failed to get credential: %w", err)
+		}
+
+		languageModel = openai.New(credential.APIKey, modelString)
+	default:
+		return ResolveLLMResult{}, fmt.Errorf("unsupported LLM node type: %s", llmNode.NodeType)
 	}
 
 	return ResolveLLMResult{
-		LLM:  llm,
+		LLM:  languageModel,
 		Node: llmNode,
 	}, nil
 }
 
 type ResolveMemoryResult struct {
-	Memory domain.IntegrationMemory
+	Memory memory.Store
 	Node   domain.WorkflowNode
 }
 
@@ -420,14 +455,14 @@ func (e *AIAgentExecutorV2) ResolveMemory(ctx context.Context, memoryRef *NodeRe
 		return ResolveMemoryResult{}, fmt.Errorf("failed to create memory: %w", err)
 	}
 
-	memoryExecutor, ok := memory.(domain.IntegrationMemory)
+	_, ok := memory.(domain.IntegrationMemory)
 	if !ok {
 		return ResolveMemoryResult{}, fmt.Errorf("memory is not a domain.IntegrationMemory")
 	}
 
 	return ResolveMemoryResult{
-		Memory: memoryExecutor,
-		Node:   memoryNode,
+		/* 		Memory: memoryExecutor, */
+		Node: memoryNode,
 	}, nil
 }
 
@@ -515,4 +550,303 @@ func (e *AIAgentExecutorV2) GetNodeIDFromOutputID(outputID string) string {
 	}
 
 	return ""
+}
+
+type IntegrationToolCreator struct {
+	integrationSelector        domain.IntegrationSelector
+	executorIntegrationManager domain.ExecutorIntegrationManager
+	observer                   domain.ExecutionObserver
+}
+
+type IntegrationToolCreatorDeps struct {
+	IntegrationSelector        domain.IntegrationSelector
+	ExecutorIntegrationManager domain.ExecutorIntegrationManager
+	ExecutionObserver          domain.ExecutionObserver
+}
+
+func NewIntegrationToolCreator(deps IntegrationToolCreatorDeps) *IntegrationToolCreator {
+	return &IntegrationToolCreator{
+		integrationSelector:        deps.IntegrationSelector,
+		executorIntegrationManager: deps.ExecutorIntegrationManager,
+		observer:                   deps.ExecutionObserver,
+	}
+}
+
+func (c *IntegrationToolCreator) CreateTools(ctx context.Context, nodeReferences []NodeReference, workflow domain.Workflow) ([]tool.Tool, error) {
+	tools := make([]tool.Tool, 0, len(nodeReferences))
+
+	for _, nodeReference := range nodeReferences {
+		toolNode, exists := workflow.GetActionNodeByID(nodeReference.NodeID)
+		if !exists {
+			return nil, fmt.Errorf("attached tool node %s not found in workflow", nodeReference.NodeID)
+		}
+
+		creator, err := c.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
+			IntegrationType: domain.IntegrationType(toolNode.NodeType),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve tool %s: %w", toolNode.Name, err)
+		}
+
+		credentialID, exists := toolNode.IntegrationSettings["credential_id"]
+		if !exists {
+			return nil, fmt.Errorf("credential_id is not found in tool node %s", nodeReference.NodeID)
+		}
+
+		credentialIDString, ok := credentialID.(string)
+		if !ok {
+			return nil, fmt.Errorf("credential_id is not a string in tool node %s", nodeReference.NodeID)
+		}
+
+		integrationExecutor, err := creator.CreateIntegration(ctx, domain.CreateIntegrationParams{
+			WorkspaceID:  workflow.WorkspaceID,
+			CredentialID: credentialIDString,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create tool %s: %w", toolNode.Name, err)
+		}
+
+		actionTool, err := c.GetActionTool(ctx, toolNode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get action tool %s: %w", toolNode.Name, err)
+		}
+
+		log.Debug().Interface("action_tool", actionTool).Msg("Action tool")
+
+		toolInputHandleID := fmt.Sprintf(HandleIDFormat, toolNode.ID, 0)
+
+		executeFunc := func(args string) (string, error) {
+			err = c.observer.Notify(ctx, executor.NodeExecutionStartedEvent{
+				NodeID:    toolNode.ID,
+				Timestamp: time.Now(),
+			})
+			if err != nil {
+				return "", fmt.Errorf("ai agent integration failed to notify observer about tool execution started: %w", err)
+			}
+
+			var inputItem domain.Item
+
+			log.Debug().Interface("args", args).Msg("Args")
+
+			err := json.Unmarshal([]byte(args), &inputItem)
+			if err != nil {
+				return "", fmt.Errorf("failed to unmarshal tool input: %w", err)
+			}
+
+			log.Debug().Interface("input_item", inputItem).Msg("Input item")
+
+			inputItems := []domain.Item{inputItem}
+
+			inputPayload, err := json.Marshal(inputItems)
+			if err != nil {
+				return "", fmt.Errorf("failed to marshal tool input: %w", err)
+			}
+
+			log.Debug().Interface("input_payload", string(inputPayload)).Msg("Input payload")
+
+			p := domain.IntegrationInput{
+				NodeID:     toolNode.ID,
+				ActionType: toolNode.ActionType,
+				IntegrationParams: domain.IntegrationParams{
+					Settings: toolNode.IntegrationSettings,
+				},
+				PayloadByInputID: map[string]domain.Payload{
+					toolInputHandleID: domain.Payload(inputPayload),
+				},
+				Workflow: &workflow,
+			}
+
+			itemsByInputID := map[string]domain.NodeItems{
+				toolInputHandleID: {
+					FromNodeID: toolNode.ID,
+					Items:      []domain.Item{inputItem},
+				},
+			}
+
+			startTime := time.Now()
+
+			output, err := integrationExecutor.Execute(ctx, p)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to execute tool")
+				err = c.observer.Notify(ctx, executor.NodeExecutionFailedEvent{
+					NodeID:         toolNode.ID,
+					ItemsByInputID: itemsByInputID,
+					Error:          err,
+					Timestamp:      time.Now(),
+				})
+				if err != nil {
+					return "", fmt.Errorf("ai agent integration failed to notify observer about tool execution failed: %w", err)
+				}
+
+				return "", fmt.Errorf("failed to execute tool %s: %w", toolNode.Name, err)
+			}
+
+			err = c.observer.Notify(ctx, executor.NodeExecutionCompletedEvent{
+				NodeID:                toolNode.ID,
+				ItemsByInputID:        itemsByInputID,
+				ItemsByOutputID:       output.ToItemsByOutputID(toolNode.ID),
+				StartedAt:             startTime,
+				EndedAt:               time.Now(),
+				IntegrationType:       toolNode.NodeType,
+				IntegrationActionType: toolNode.ActionType,
+			})
+			if err != nil {
+				return "", fmt.Errorf("ai agent integration failed to notify observer about tool execution completed: %w", err)
+			}
+
+			payloads := output.ResultJSONByOutputID
+
+			lastPayload := payloads[len(payloads)-1]
+
+			return string(lastPayload), nil
+		}
+
+		funcTool := tool.Define(actionTool.Name, actionTool.Description, actionTool.Parameters, executeFunc)
+
+		tools = append(tools, funcTool)
+	}
+
+	return tools, nil
+}
+
+func (c *IntegrationToolCreator) GetActionTool(ctx context.Context, toolNode domain.WorkflowNode) (types.Tool, error) {
+	integration, err := c.executorIntegrationManager.GetIntegration(ctx, domain.IntegrationType(toolNode.NodeType))
+	if err != nil {
+		return types.Tool{}, fmt.Errorf("failed to get integration for type %s: %w", toolNode.NodeType, err)
+	}
+
+	var action domain.IntegrationAction
+	found := false
+	for _, a := range integration.Actions {
+		if a.ActionType == toolNode.ActionType {
+			action = a
+			found = true
+			break
+		}
+	}
+	if !found {
+		return types.Tool{}, fmt.Errorf("action not found for type %s in integration %s", toolNode.ActionType, toolNode.NodeType)
+	}
+
+	properties := make(map[string]any)
+	required := []string{}
+
+	for _, prop := range action.Properties {
+		propSchema := c.convertPropertyToJSONSchema(prop)
+		properties[prop.Key] = propSchema
+
+		if prop.Required {
+			required = append(required, prop.Key)
+		}
+	}
+
+	parameters := map[string]any{
+		"type":       "object",
+		"properties": properties,
+	}
+	if len(required) > 0 {
+		parameters["required"] = required
+	}
+
+	// Create the tool name in format: {integration_type}_{action_type}
+	toolName := fmt.Sprintf("%s_%s", strings.ToLower(string(toolNode.NodeType)), strings.ToLower(string(action.ActionType)))
+
+	return types.Tool{
+		Name:        toolName,
+		Description: fmt.Sprintf("%s: %s", action.Name, action.Description),
+		Parameters:  parameters,
+	}, nil
+}
+
+// convertPropertyToJSONSchema converts a domain.NodeProperty to a JSON Schema object
+func (c *IntegrationToolCreator) convertPropertyToJSONSchema(prop domain.NodeProperty) map[string]any {
+	schema := map[string]any{
+		"type": c.mapPropertyTypeToJSONType(prop.Type),
+	}
+
+	// Add description
+	if prop.Description != "" {
+		schema["description"] = prop.Description
+	}
+
+	// Handle array types
+	if prop.Type == domain.NodePropertyType_Array || prop.Type == domain.NodePropertyType_TagInput {
+		if prop.ArrayOpts != nil {
+			itemsSchema := map[string]any{
+				"type": c.mapPropertyTypeToJSONType(prop.ArrayOpts.ItemType),
+			}
+
+			// Handle nested properties for array items (e.g., array of objects)
+			if len(prop.ArrayOpts.ItemProperties) > 0 {
+				itemsProperties := make(map[string]any)
+				itemsRequired := []string{}
+
+				for _, itemProp := range prop.ArrayOpts.ItemProperties {
+					itemsProperties[itemProp.Key] = c.convertPropertyToJSONSchema(itemProp)
+					if itemProp.Required {
+						itemsRequired = append(itemsRequired, itemProp.Key)
+					}
+				}
+
+				itemsSchema["properties"] = itemsProperties
+				if len(itemsRequired) > 0 {
+					itemsSchema["required"] = itemsRequired
+				}
+			}
+
+			schema["items"] = itemsSchema
+
+			// Add array constraints
+			if prop.ArrayOpts.MinItems > 0 {
+				schema["minItems"] = prop.ArrayOpts.MinItems
+			}
+			if prop.ArrayOpts.MaxItems > 0 {
+				schema["maxItems"] = prop.ArrayOpts.MaxItems
+			}
+		}
+	}
+
+	// Handle enum options
+	if len(prop.Options) > 0 {
+		enumValues := make([]any, 0, len(prop.Options))
+		for _, option := range prop.Options {
+			enumValues = append(enumValues, option.Value)
+		}
+		schema["enum"] = enumValues
+	}
+
+	// Add string validation constraints
+	if prop.MinLength > 0 {
+		schema["minLength"] = prop.MinLength
+	}
+	if prop.MaxLength > 0 {
+		schema["maxLength"] = prop.MaxLength
+	}
+	if prop.Pattern != "" {
+		schema["pattern"] = prop.Pattern
+	}
+
+	return schema
+}
+
+// mapPropertyTypeToJSONType maps domain.NodePropertyType to JSON Schema type strings
+func (c *IntegrationToolCreator) mapPropertyTypeToJSONType(propType domain.NodePropertyType) string {
+	switch propType {
+	case domain.NodePropertyType_String, domain.NodePropertyType_Text, domain.NodePropertyType_CodeEditor:
+		return "string"
+	case domain.NodePropertyType_Integer:
+		return "integer"
+	case domain.NodePropertyType_Number, domain.NodePropertyType_Float:
+		return "number"
+	case domain.NodePropertyType_Boolean:
+		return "boolean"
+	case domain.NodePropertyType_Array, domain.NodePropertyType_TagInput:
+		return "array"
+	case domain.NodePropertyType_Map:
+		return "object"
+	case domain.NodePropertyType_Date:
+		return "string"
+	default:
+		return "string"
+	}
 }
