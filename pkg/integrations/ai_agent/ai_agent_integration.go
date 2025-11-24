@@ -624,16 +624,12 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, nodeReferences
 				return "", fmt.Errorf("ai agent integration failed to notify observer about tool execution started: %w", err)
 			}
 
-			var inputItem domain.Item
-
-			log.Debug().Interface("args", args).Msg("Args")
+			var inputItem map[string]any
 
 			err := json.Unmarshal([]byte(args), &inputItem)
 			if err != nil {
 				return "", fmt.Errorf("failed to unmarshal tool input: %w", err)
 			}
-
-			log.Debug().Interface("input_item", inputItem).Msg("Input item")
 
 			inputItems := []domain.Item{inputItem}
 
@@ -642,13 +638,11 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, nodeReferences
 				return "", fmt.Errorf("failed to marshal tool input: %w", err)
 			}
 
-			log.Debug().Interface("input_payload", string(inputPayload)).Msg("Input payload")
-
 			p := domain.IntegrationInput{
 				NodeID:     toolNode.ID,
 				ActionType: toolNode.ActionType,
 				IntegrationParams: domain.IntegrationParams{
-					Settings: toolNode.IntegrationSettings,
+					Settings: inputItem,
 				},
 				PayloadByInputID: map[string]domain.Payload{
 					toolInputHandleID: domain.Payload(inputPayload),
@@ -849,4 +843,123 @@ func (c *IntegrationToolCreator) mapPropertyTypeToJSONType(propType domain.NodeP
 	default:
 		return "string"
 	}
+}
+
+type PropertySentinelSearcher struct {
+	sentinel string
+}
+
+func NewPropertySentinelSearcher(sentinel string) *PropertySentinelSearcher {
+	return &PropertySentinelSearcher{sentinel: sentinel}
+}
+
+func (s *PropertySentinelSearcher) Search(ctx context.Context, value any, property domain.NodeProperty) (JSONSchemaProperty, bool) {
+	stringSearcher := StringSentinelSearcher{sentinel: s.sentinel}
+	arraySearcher := ArraySentinelSearcher{sentinelSearcher: PropertySentinelSearcher{
+		sentinel: s.sentinel,
+	}}
+
+	switch property.Type {
+	case domain.NodePropertyType_String:
+		return stringSearcher.Search(ctx, value, property)
+	case domain.NodePropertyType_Array:
+		return arraySearcher.Search(ctx, value, property)
+	}
+
+	return JSONSchemaProperty{}, false
+}
+
+type StringSentinelSearcher struct {
+	sentinel string
+}
+
+func (s *StringSentinelSearcher) Search(ctx context.Context, value any, property domain.NodeProperty) (JSONSchemaProperty, bool) {
+	p := JSONSchemaProperty{
+		Type:        "string",
+		Description: property.Description,
+		Properties:  make(map[string]JSONSchemaProperty),
+		Required:    []string{},
+		MinLength:   property.MinLength,
+		MaxLength:   property.MaxLength,
+		Pattern:     property.Pattern,
+	}
+
+	valueString, ok := value.(string)
+	if !ok {
+		return p, false
+	}
+
+	if valueString == s.sentinel {
+		return p, true
+	}
+
+	return p, false
+}
+
+type ArraySentinelSearcher struct {
+	sentinelSearcher PropertySentinelSearcher
+}
+
+func (s *ArraySentinelSearcher) Search(ctx context.Context, value any, property domain.NodeProperty) (JSONSchemaProperty, bool) {
+	p := JSONSchemaProperty{
+		Type:        "array",
+		Description: property.Description,
+		Properties:  make(map[string]JSONSchemaProperty),
+		Required:    []string{},
+		Items: &JSONSchemaProperty{
+			Type:       "object",
+			Properties: make(map[string]JSONSchemaProperty),
+			Required:   []string{},
+		},
+		MinItems: property.ArrayOpts.MinItems,
+		MaxItems: property.ArrayOpts.MaxItems,
+	}
+
+	valueArray, ok := value.([]any)
+	if !ok {
+		return JSONSchemaProperty{}, false
+	}
+
+	for _, value := range valueArray {
+		for _, itemProperty := range property.ArrayOpts.ItemProperties {
+			log.Debug().Interface("value", value).Msg("Value")
+
+			valueMap, ok := value.(map[string]any)
+			if !ok {
+				continue
+			}
+
+			subPropertyValue, exists := valueMap[itemProperty.Key]
+			if !exists {
+				continue
+			}
+
+			subProperty, ok := s.sentinelSearcher.Search(ctx, subPropertyValue, itemProperty)
+			if !ok {
+				continue
+			}
+
+			p.Items.Properties[itemProperty.Key] = subProperty
+		}
+	}
+
+	if len(p.Items.Properties) == 0 {
+		return JSONSchemaProperty{}, false
+	}
+
+	return p, true
+}
+
+type JSONSchemaProperty struct {
+	Type        string                        `json:"type"`
+	Description string                        `json:"description,omitempty"`
+	Properties  map[string]JSONSchemaProperty `json:"properties,omitempty"`
+	Required    []string                      `json:"required,omitempty"`
+	Items       *JSONSchemaProperty           `json:"items,omitempty"`
+	MinItems    int                           `json:"minItems,omitempty"`
+	MaxItems    int                           `json:"maxItems,omitempty"`
+	Enum        []string                      `json:"enum,omitempty"`
+	MinLength   int                           `json:"minLength,omitempty"`
+	MaxLength   int                           `json:"maxLength,omitempty"`
+	Pattern     string                        `json:"pattern,omitempty"`
 }
