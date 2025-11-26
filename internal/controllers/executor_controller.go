@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"encoding/json"
-
 	executortypes "github.com/flowbaker/flowbaker/pkg/clients/flowbaker-executor"
 
 	"github.com/flowbaker/flowbaker/pkg/domain/executor"
@@ -160,19 +158,8 @@ func (c *ExecutorController) RunNode(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to run node")
 	}
 
-	itemsByOutputID := make(map[string][]byte)
-
-	for outputID, items := range result.ItemsByOutputID {
-		itemsJSON, err := json.Marshal(items.Items)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to marshal items")
-		}
-
-		itemsByOutputID[outputID] = itemsJSON
-	}
-
 	return ctx.JSON(executortypes.RunNodeResponse{
-		ItemsByOutputID: itemsByOutputID,
+		Results: result.Results,
 	})
 }
 

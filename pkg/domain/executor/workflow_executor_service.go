@@ -18,6 +18,8 @@ type ExecutionResult struct {
 	Payload    []byte
 	Headers    map[string][]string
 	StatusCode int
+
+	NodeExecutionResults []domain.NodeExecutionEntry
 }
 
 type WorkflowExecutorService interface {
@@ -391,7 +393,7 @@ type RunNodeParams struct {
 }
 
 type RunNodeResult struct {
-	ItemsByOutputID map[string]domain.NodeItems
+	Results []domain.NodeExecutionEntry `json:"results"`
 }
 
 func (s *workflowExecutorService) RunNode(ctx context.Context, params RunNodeParams) (RunNodeResult, error) {
@@ -414,30 +416,20 @@ func (s *workflowExecutorService) RunNode(ctx context.Context, params RunNodePar
 		Observer:            workflowExecutor.observer,
 	})
 
-	payloadByInputID := make(SourceNodePayloadByInputID)
+	payload := domain.Payload{}
 
-	for inputID, payload := range params.ItemsByInput {
-		payloadByInputID[inputID] = SourceNodePayload{
-			SourceNodeID: params.NodeID,
-			Payload:      payload,
-		}
+	for _, p := range params.ItemsByInput {
+		payload = p
+
+		break
 	}
 
-	task := NodeExecutionTask{
-		NodeID:           params.NodeID,
-		PayloadByInputID: payloadByInputID,
-	}
-
-	result, err := workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{
-		Task:           task,
-		ExecutionOrder: 0,
-		Propagate:      true,
-	})
+	result, err := workflowExecutor.Execute(ctx, params.NodeID, payload)
 	if err != nil {
 		return RunNodeResult{}, err
 	}
 
 	return RunNodeResult{
-		ItemsByOutputID: result.ItemsByOutputID,
+		Results: result.NodeExecutionResults,
 	}, nil
 }
