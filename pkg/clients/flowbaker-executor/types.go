@@ -190,13 +190,13 @@ type ConnectionTestResponse struct {
 
 // PeekDataRequest represents a request to peek data from an integration
 type PeekDataRequest struct {
-	IntegrationType IntegrationType           `json:"integration_type"`
-	CredentialID    string                    `json:"credential_id"`
-	UserID          string                    `json:"user_id"`
-	PeekableType    string                    `json:"peekable_type"`
-	Cursor          string                    `json:"cursor,omitempty"`
-	Pagination      *domain.PaginationParams  `json:"pagination,omitempty"`
-	PayloadJSON     []byte                    `json:"payload_json,omitempty"`
+	IntegrationType IntegrationType          `json:"integration_type"`
+	CredentialID    string                   `json:"credential_id"`
+	UserID          string                   `json:"user_id"`
+	PeekableType    string                   `json:"peekable_type"`
+	Cursor          string                   `json:"cursor,omitempty"`
+	Pagination      *domain.PaginationParams `json:"pagination,omitempty"`
+	PayloadJSON     []byte                   `json:"payload_json,omitempty"`
 }
 
 // PeekDataResponse represents the response from peeking data
@@ -257,5 +257,5 @@ type RunNodeRequest struct {
 }
 
 type RunNodeResponse struct {
-	ItemsByOutputID map[string][]byte `json:"items_by_output_id"`
+	Results []domain.NodeExecutionEntry `json:"results"`
 }

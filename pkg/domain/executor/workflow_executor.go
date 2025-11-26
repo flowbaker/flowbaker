@@ -241,9 +241,11 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		}
 	}
 
+	executionResults := w.historyRecorder.GetHistoryEntries()
+
 	// Convert domain types to flowbaker types using mappers
 	nodeExecutions := mappers.DomainNodeExecutionsToFlowbaker(w.usageCollector.GetNodeExecutions())
-	historyEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(w.historyRecorder.GetHistoryEntries())
+	historyEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(executionResults)
 
 	completeParams := &flowbaker.CompleteExecutionRequest{
 		ExecutionID:       w.executionID,
@@ -275,9 +277,10 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	}
 
 	return ExecutionResult{
-		Payload:    executionContext.ResponsePayload,
-		Headers:    executionContext.ResponseHeaders,
-		StatusCode: executionContext.ResponseStatusCode,
+		Payload:              executionContext.ResponsePayload,
+		Headers:              executionContext.ResponseHeaders,
+		StatusCode:           executionContext.ResponseStatusCode,
+		NodeExecutionResults: executionResults,
 	}, nil
 }
 
