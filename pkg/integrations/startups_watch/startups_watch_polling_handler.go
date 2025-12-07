@@ -43,12 +43,12 @@ func (h *StartupsWatchPollingHandler) HandlePollingEvent(ctx context.Context, p 
 		return domain.PollResult{}, fmt.Errorf("failed to get credential: %w", err)
 	}
 
-	switch p.Trigger.EventType {
+	switch p.Trigger.TriggerNodeOpts.EventType {
 	case IntegrationTriggerType_OnNewStartups:
 		return h.PollNewStartups(ctx, p, credential)
 	}
 
-	return domain.PollResult{}, fmt.Errorf("poll function not found for event type: %s", p.Trigger.EventType)
+	return domain.PollResult{}, fmt.Errorf("poll function not found for event type: %s", p.Trigger.TriggerNodeOpts.EventType)
 }
 
 type PollStartupsResponse struct {

@@ -155,14 +155,9 @@ func FlowbakerNodeExecutionEntriesToDomain(entries []flowbaker.NodeExecutionEntr
 
 // ExecutorWorkflowToDomain converts an executor Workflow to domain.Workflow
 func ExecutorWorkflowToDomain(w *executortypes.Workflow) domain.Workflow {
-	triggers := make([]domain.WorkflowTrigger, len(w.Triggers))
-	for i, trigger := range w.Triggers {
-		triggers[i] = ExecutorWorkflowTriggerToDomain(trigger)
-	}
-
-	actions := make([]domain.WorkflowNode, len(w.Nodes))
+	nodes := make([]domain.WorkflowNode, len(w.Nodes))
 	for i, node := range w.Nodes {
-		actions[i] = ExecutorWorkflowNodeToDomain(node)
+		nodes[i] = ExecutorWorkflowNodeToDomain(node)
 	}
 
 	return domain.Workflow{
@@ -172,31 +167,9 @@ func ExecutorWorkflowToDomain(w *executortypes.Workflow) domain.Workflow {
 		Slug:             w.Slug,
 		WorkspaceID:      w.WorkspaceID,
 		AuthorUserID:     w.AuthorUserID,
-		Triggers:         triggers,
-		Actions:          actions,
+		Nodes:            nodes,
 		LastUpdatedAt:    time.Unix(w.LastUpdatedAt, 0),
 		ActivationStatus: domain.WorkflowActivationStatus(w.ActivationStatus),
-	}
-}
-
-// ExecutorWorkflowTriggerToDomain converts an executor WorkflowTrigger to domain.WorkflowTrigger
-func ExecutorWorkflowTriggerToDomain(t executortypes.WorkflowTrigger) domain.WorkflowTrigger {
-	return domain.WorkflowTrigger{
-		ID:                  t.ID,
-		WorkflowID:          t.WorkflowID,
-		Name:                t.Name,
-		Description:         t.Description,
-		Type:                domain.IntegrationType(t.Type),
-		EventType:           domain.IntegrationTriggerEventType(t.EventType),
-		IntegrationSettings: t.IntegrationSettings,
-		Settings: domain.Settings{
-			ReturnErrorAsItem:    t.Settings.ReturnErrorAsItem,
-			ContainPreviousItems: t.Settings.ContainPreviousItems,
-		},
-		Positions: domain.NodePositions{
-			XPosition: t.XPosition,
-			YPosition: t.YPosition,
-		},
 	}
 }
 
@@ -215,8 +188,8 @@ func ExecutorWorkflowNodeToDomain(n executortypes.WorkflowNode) domain.WorkflowN
 		WorkflowID:          n.WorkflowID,
 		Name:                n.Name,
 		SubscribedEvents:    []string{},
-		NodeType:            domain.IntegrationType(n.IntegrationType),
-		ActionType:          domain.IntegrationActionType(n.IntegrationActionType),
+		Type:                domain.NodeType(n.Type),
+		IntegrationType:     domain.IntegrationType(n.IntegrationType),
 		IntegrationSettings: n.IntegrationSettings,
 		Settings: domain.Settings{
 			ReturnErrorAsItem:    n.Settings.ReturnErrorAsItem,
@@ -230,12 +203,14 @@ func ExecutorWorkflowNodeToDomain(n executortypes.WorkflowNode) domain.WorkflowN
 		},
 		Inputs:       inputs,
 		UsageContext: n.UsageContext,
+		ParentID:     n.ParentID,
+		ActionNodeOpts: domain.ActionNodeOpts{
+			ActionType: domain.IntegrationActionType(n.ActionNodeOpts.ActionType),
+		},
+		TriggerNodeOpts: domain.TriggerNodeOpts{
+			EventType: domain.IntegrationTriggerEventType(n.TriggerNodeOpts.EventType),
+		},
 	}
-}
-
-// ExecutorTriggerToDomain converts an executor WorkflowTrigger pointer to domain.WorkflowTrigger
-func ExecutorTriggerToDomain(t *executortypes.WorkflowTrigger) domain.WorkflowTrigger {
-	return ExecutorWorkflowTriggerToDomain(*t)
 }
 
 // ExecutorWorkflowTypeToDomain converts an executor WorkflowType to domain.WorkflowType
@@ -261,8 +236,7 @@ func DomainWorkflowToExecutor(w domain.Workflow) executortypes.Workflow {
 		Slug:             w.Slug,
 		LastUpdatedAt:    w.LastUpdatedAt.Unix(),
 		ActivationStatus: executortypes.WorkflowActivationStatus(w.ActivationStatus),
-		Nodes:            DomainWorkflowNodesToExecutor(w.Actions),
-		Triggers:         DomainWorkflowTriggersToExecutor(w.Triggers),
+		Nodes:            DomainWorkflowNodesToExecutor(w.Nodes),
 	}
 }
 
@@ -278,12 +252,12 @@ func DomainWorkflowNodesToExecutor(nodes []domain.WorkflowNode) []executortypes.
 			}
 		}
 		executorNodes[i] = executortypes.WorkflowNode{
-			ID:                    node.ID,
-			WorkflowID:            node.WorkflowID,
-			Name:                  node.Name,
-			IntegrationType:       executortypes.IntegrationType(node.NodeType),
-			IntegrationActionType: executortypes.IntegrationActionType(node.ActionType),
-			IntegrationSettings:   node.IntegrationSettings,
+			ID:                  node.ID,
+			WorkflowID:          node.WorkflowID,
+			Name:                node.Name,
+			Type:                executortypes.NodeType(node.Type),
+			IntegrationType:     executortypes.IntegrationType(node.IntegrationType),
+			IntegrationSettings: node.IntegrationSettings,
 			Settings: executortypes.Settings{
 				ReturnErrorAsItem:    node.Settings.ReturnErrorAsItem,
 				ContainPreviousItems: node.Settings.ContainPreviousItems,
@@ -294,51 +268,16 @@ func DomainWorkflowNodesToExecutor(nodes []domain.WorkflowNode) []executortypes.
 			YPosition:                    node.Positions.YPosition,
 			Inputs:                       inputs,
 			UsageContext:                 node.UsageContext,
+			ParentID:                     node.ParentID,
+			ActionNodeOpts: executortypes.ActionNodeOpts{
+				ActionType: executortypes.IntegrationActionType(node.ActionNodeOpts.ActionType),
+			},
+			TriggerNodeOpts: executortypes.TriggerNodeOpts{
+				EventType: executortypes.IntegrationTriggerEventType(node.TriggerNodeOpts.EventType),
+			},
 		}
 	}
 	return executorNodes
-}
-
-// DomainWorkflowTriggersToExecutor converts domain workflow triggers to executor triggers
-func DomainWorkflowTriggersToExecutor(triggers []domain.WorkflowTrigger) []executortypes.WorkflowTrigger {
-	executorTriggers := make([]executortypes.WorkflowTrigger, len(triggers))
-	for i, trigger := range triggers {
-		executorTriggers[i] = executortypes.WorkflowTrigger{
-			ID:                  trigger.ID,
-			WorkflowID:          trigger.WorkflowID,
-			Name:                trigger.Name,
-			Description:         trigger.Description,
-			Type:                executortypes.IntegrationType(trigger.Type),
-			EventType:           executortypes.IntegrationTriggerEventType(trigger.EventType),
-			IntegrationSettings: trigger.IntegrationSettings,
-			Settings: executortypes.Settings{
-				ReturnErrorAsItem:    trigger.Settings.ReturnErrorAsItem,
-				ContainPreviousItems: trigger.Settings.ContainPreviousItems,
-			},
-			XPosition: trigger.Positions.XPosition,
-			YPosition: trigger.Positions.YPosition,
-		}
-	}
-	return executorTriggers
-}
-
-// DomainWorkflowTriggerToExecutor converts a single domain.WorkflowTrigger to executortypes.WorkflowTrigger
-func DomainWorkflowTriggerToExecutor(trigger domain.WorkflowTrigger) executortypes.WorkflowTrigger {
-	return executortypes.WorkflowTrigger{
-		ID:                  trigger.ID,
-		WorkflowID:          trigger.WorkflowID,
-		Name:                trigger.Name,
-		Description:         trigger.Description,
-		Type:                executortypes.IntegrationType(trigger.Type),
-		EventType:           executortypes.IntegrationTriggerEventType(trigger.EventType),
-		IntegrationSettings: trigger.IntegrationSettings,
-		Settings: executortypes.Settings{
-			ReturnErrorAsItem:    trigger.Settings.ReturnErrorAsItem,
-			ContainPreviousItems: trigger.Settings.ContainPreviousItems,
-		},
-		XPosition: trigger.Positions.XPosition,
-		YPosition: trigger.Positions.YPosition,
-	}
 }
 
 // DomainWorkflowTypeToExecutor converts a domain.WorkflowType to executortypes.WorkflowType

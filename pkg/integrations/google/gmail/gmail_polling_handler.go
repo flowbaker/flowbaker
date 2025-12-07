@@ -65,7 +65,7 @@ func (h *GmailPollingHandler) HandlePollingEvent(ctx context.Context, p domain.P
 
 	integration.service = service
 
-	switch p.Trigger.EventType {
+	switch p.Trigger.TriggerNodeOpts.EventType {
 	case IntegrationTriggerType_OnMessageReceived:
 		return h.OnMessageReceived(ctx, p, integration)
 	}

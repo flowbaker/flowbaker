@@ -149,7 +149,7 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 	memoryHandleID := fmt.Sprintf(HandleIDFormat, params.NodeID, 2)
 	toolsHandleID := fmt.Sprintf(HandleIDFormat, params.NodeID, 3)
 
-	agentNode, exists := params.Workflow.GetActionNodeByID(params.NodeID)
+	agentNode, exists := params.Workflow.GetNodeByID(params.NodeID)
 	if !exists {
 		return nil, fmt.Errorf("agent node %s not found in workflow", params.NodeID)
 	}
@@ -262,10 +262,12 @@ func (e *AIAgentExecutorV2) ProcessFunctionCalling(ctx context.Context, params d
 		ExecutionObserver:          executionContext.ExecutionObserver,
 	})
 
-	tools, err := toolCreator.CreateTools(ctx, executeParams.Tools, workflow)
+	tools, err := toolCreator.CreateTools(ctx, workflow, executeParams.Tools...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tools: %w", err)
 	}
+
+	log.Debug().Interface("tools", tools).Msg("Tools")
 
 	a, err := agent.New(
 		agent.WithModel(llm.LLM),
@@ -346,15 +348,15 @@ func (e *AIAgentExecutorV2) ResolveAgentSettings(ctx context.Context, executePar
 		return AgentSettings{}, fmt.Errorf("failed to resolve memory: %w", err)
 	}
 
-	tools, err := e.ResolveTools(ctx, executeParams.Tools, workflow)
-	if err != nil {
-		return AgentSettings{}, fmt.Errorf("failed to resolve tools: %w", err)
-	}
+	/* 	tools, err := e.ResolveTools(ctx, executeParams.Tools, workflow)
+	   	if err != nil {
+	   		return AgentSettings{}, fmt.Errorf("failed to resolve tools: %w", err)
+	   	} */
 
 	return AgentSettings{
 		LLM:    llm,
 		Memory: memory,
-		Tools:  tools,
+		/* 	Tools:  tools, */
 	}, nil
 }
 
@@ -368,7 +370,7 @@ func (e *AIAgentExecutorV2) ResolveLLM(ctx context.Context, llmRef *NodeReferenc
 		return ResolveLLMResult{}, fmt.Errorf("LLM reference is required")
 	}
 
-	llmNode, exists := workflow.GetActionNodeByID(llmRef.NodeID)
+	llmNode, exists := workflow.GetNodeByID(llmRef.NodeID)
 	if !exists {
 		return ResolveLLMResult{}, fmt.Errorf("attached LLM node %s not found in workflow", llmRef.NodeID)
 	}
@@ -395,7 +397,7 @@ func (e *AIAgentExecutorV2) ResolveLLM(ctx context.Context, llmRef *NodeReferenc
 
 	var languageModel provider.LanguageModel
 
-	switch llmNode.NodeType {
+	switch llmNode.IntegrationType {
 	case "openai":
 		credential, err := e.credentialGetter.GetDecryptedCredential(ctx, credentialIDString)
 		if err != nil {
@@ -404,7 +406,7 @@ func (e *AIAgentExecutorV2) ResolveLLM(ctx context.Context, llmRef *NodeReferenc
 
 		languageModel = openai.New(credential.APIKey, modelString)
 	default:
-		return ResolveLLMResult{}, fmt.Errorf("unsupported LLM node type: %s", llmNode.NodeType)
+		return ResolveLLMResult{}, fmt.Errorf("unsupported LLM node type: %s", llmNode.IntegrationType)
 	}
 
 	return ResolveLLMResult{
@@ -423,13 +425,13 @@ func (e *AIAgentExecutorV2) ResolveMemory(ctx context.Context, memoryRef *NodeRe
 		return ResolveMemoryResult{}, nil
 	}
 
-	memoryNode, exists := workflow.GetActionNodeByID(memoryRef.NodeID)
+	memoryNode, exists := workflow.GetNodeByID(memoryRef.NodeID)
 	if !exists {
 		return ResolveMemoryResult{}, fmt.Errorf("attached memory node %s not found in workflow", memoryRef.NodeID)
 	}
 
 	creator, err := e.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
-		IntegrationType: domain.IntegrationType(memoryNode.NodeType),
+		IntegrationType: domain.IntegrationType(memoryNode.IntegrationType),
 	})
 	if err != nil {
 		return ResolveMemoryResult{}, fmt.Errorf("failed to resolve memory: %w", err)
@@ -466,21 +468,24 @@ func (e *AIAgentExecutorV2) ResolveMemory(ctx context.Context, memoryRef *NodeRe
 	}, nil
 }
 
-func (e *AIAgentExecutorV2) ResolveTools(ctx context.Context, toolRefs []NodeReference, workflow domain.Workflow) ([]ToolExecutor, error) {
+/* func (e *AIAgentExecutorV2) ResolveTools(ctx context.Context, toolRefs []NodeReference, workflow domain.Workflow) ([]ToolExecutor, error) {
 	var tools []ToolExecutor
 
-	for _, toolRef := range toolRefs {
-		toolNode, exists := workflow.GetActionNodeByID(toolRef.NodeID)
-		if !exists {
-			return nil, fmt.Errorf("attached tool node %s not found in workflow", toolRef.NodeID)
-		}
+	toolNodes := make([]domain.WorkflowNode, 0)
 
+	for _, toolRef := range toolRefs {
+		toolNodes = append(toolNodes, workflow.GetSubNodes(toolRef.NodeID)...)
+	}
+
+	log.Debug().Interface("tool_nodes", toolNodes).Msg("Tool nodes")
+
+	for _, toolNode := range toolNodes {
 		log.Debug().
 			Interface("tool_node", toolNode).
 			Msg("Resolving tool")
 
 		creator, err := e.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
-			IntegrationType: domain.IntegrationType(toolNode.NodeType),
+			IntegrationType: domain.IntegrationType(toolNode.IntegrationType),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve tool %s: %w", toolNode.Name, err)
@@ -488,13 +493,13 @@ func (e *AIAgentExecutorV2) ResolveTools(ctx context.Context, toolRefs []NodeRef
 
 		credentialID, exists := toolNode.IntegrationSettings["credential_id"]
 		if !exists {
-			log.Error().Msgf("credential_id is not found in tool node %s", toolRef.NodeID)
+			log.Error().Msgf("credential_id is not found in tool node %s", toolNode.ID)
 			credentialID = ""
 		}
 
 		credentialIDString, ok := credentialID.(string)
 		if !ok {
-			log.Error().Msgf("credential_id is not a string in tool node %s", toolRef.NodeID)
+			log.Error().Msgf("credential_id is not a string in tool node %s", toolNode.ID)
 			continue
 		}
 
@@ -509,13 +514,13 @@ func (e *AIAgentExecutorV2) ResolveTools(ctx context.Context, toolRefs []NodeRef
 		// Create ToolExecutor with metadata, restricting to only this node's action
 		toolExecutor := ToolExecutor{
 			Executor:        executor,
-			IntegrationType: domain.IntegrationType(toolNode.NodeType),
-			NodeID:          toolRef.NodeID,
+			IntegrationType: domain.IntegrationType(toolNode.IntegrationType),
+			NodeID:          toolNode.ID,
 			NodeName:        toolNode.Name,
 			CredentialID:    credentialIDString,
 			WorkspaceID:     workflow.WorkspaceID,
 			// Only allow the specific action type for this workflow node
-			AllowedActions: []domain.IntegrationActionType{toolNode.ActionType},
+			AllowedActions: []domain.IntegrationActionType{toolNode.ActionNodeOpts.ActionType},
 			// Include the full workflow node for parameter resolution
 			WorkflowNode: &toolNode,
 		}
@@ -524,7 +529,7 @@ func (e *AIAgentExecutorV2) ResolveTools(ctx context.Context, toolRefs []NodeRef
 	}
 
 	return tools, nil
-}
+} */
 
 func (e *AIAgentExecutorV2) GetNodeIDsFromOutputIDs(outputIDs []string) []string {
 	nodeIDs := make([]string, 0, len(outputIDs))
@@ -572,17 +577,20 @@ func NewIntegrationToolCreator(deps IntegrationToolCreatorDeps) *IntegrationTool
 	}
 }
 
-func (c *IntegrationToolCreator) CreateTools(ctx context.Context, nodeReferences []NodeReference, workflow domain.Workflow) ([]tool.Tool, error) {
-	tools := make([]tool.Tool, 0, len(nodeReferences))
+func (c *IntegrationToolCreator) CreateTools(ctx context.Context, workflow domain.Workflow, nodeReferences ...NodeReference) ([]tool.Tool, error) {
+	toolNodes := make([]domain.WorkflowNode, 0)
 
 	for _, nodeReference := range nodeReferences {
-		toolNode, exists := workflow.GetActionNodeByID(nodeReference.NodeID)
-		if !exists {
-			return nil, fmt.Errorf("attached tool node %s not found in workflow", nodeReference.NodeID)
-		}
+		toolNodes = append(toolNodes, workflow.GetSubNodes(nodeReference.NodeID)...)
+	}
 
+	log.Debug().Interface("tool_nodes", toolNodes).Msg("Tool nodes")
+
+	tools := make([]tool.Tool, 0, len(toolNodes))
+
+	for _, toolNode := range toolNodes {
 		creator, err := c.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
-			IntegrationType: domain.IntegrationType(toolNode.NodeType),
+			IntegrationType: domain.IntegrationType(toolNode.IntegrationType),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve tool %s: %w", toolNode.Name, err)
@@ -590,12 +598,12 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, nodeReferences
 
 		credentialID, exists := toolNode.IntegrationSettings["credential_id"]
 		if !exists {
-			return nil, fmt.Errorf("credential_id is not found in tool node %s", nodeReference.NodeID)
+			return nil, fmt.Errorf("credential_id is not found in tool node %s", toolNode.ID)
 		}
 
 		credentialIDString, ok := credentialID.(string)
 		if !ok {
-			return nil, fmt.Errorf("credential_id is not a string in tool node %s", nodeReference.NodeID)
+			return nil, fmt.Errorf("credential_id is not a string in tool node %s", toolNode.ID)
 		}
 
 		integrationExecutor, err := creator.CreateIntegration(ctx, domain.CreateIntegrationParams{
@@ -640,7 +648,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, nodeReferences
 
 			p := domain.IntegrationInput{
 				NodeID:     toolNode.ID,
-				ActionType: toolNode.ActionType,
+				ActionType: toolNode.ActionNodeOpts.ActionType,
 				IntegrationParams: domain.IntegrationParams{
 					Settings: inputItem,
 				},
@@ -681,8 +689,8 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, nodeReferences
 				ItemsByOutputID:       output.ToItemsByOutputID(toolNode.ID),
 				StartedAt:             startTime,
 				EndedAt:               time.Now(),
-				IntegrationType:       toolNode.NodeType,
-				IntegrationActionType: toolNode.ActionType,
+				IntegrationType:       toolNode.IntegrationType,
+				IntegrationActionType: toolNode.ActionNodeOpts.ActionType,
 			})
 			if err != nil {
 				return "", fmt.Errorf("ai agent integration failed to notify observer about tool execution completed: %w", err)
@@ -704,22 +712,22 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, nodeReferences
 }
 
 func (c *IntegrationToolCreator) GetActionTool(ctx context.Context, toolNode domain.WorkflowNode) (types.Tool, error) {
-	integration, err := c.executorIntegrationManager.GetIntegration(ctx, domain.IntegrationType(toolNode.NodeType))
+	integration, err := c.executorIntegrationManager.GetIntegration(ctx, domain.IntegrationType(toolNode.IntegrationType))
 	if err != nil {
-		return types.Tool{}, fmt.Errorf("failed to get integration for type %s: %w", toolNode.NodeType, err)
+		return types.Tool{}, fmt.Errorf("failed to get integration for type %s: %w", toolNode.IntegrationType, err)
 	}
 
 	var action domain.IntegrationAction
 	found := false
 	for _, a := range integration.Actions {
-		if a.ActionType == toolNode.ActionType {
+		if a.ActionType == toolNode.ActionNodeOpts.ActionType {
 			action = a
 			found = true
 			break
 		}
 	}
 	if !found {
-		return types.Tool{}, fmt.Errorf("action not found for type %s in integration %s", toolNode.ActionType, toolNode.NodeType)
+		return types.Tool{}, fmt.Errorf("action not found for type %s in integration %s", toolNode.ActionNodeOpts.ActionType, toolNode.IntegrationType)
 	}
 
 	properties := make(map[string]any)
@@ -743,7 +751,7 @@ func (c *IntegrationToolCreator) GetActionTool(ctx context.Context, toolNode dom
 	}
 
 	// Create the tool name in format: {integration_type}_{action_type}
-	toolName := fmt.Sprintf("%s_%s", strings.ToLower(string(toolNode.NodeType)), strings.ToLower(string(action.ActionType)))
+	toolName := fmt.Sprintf("%s_%s", strings.ToLower(string(toolNode.IntegrationType)), strings.ToLower(string(action.ActionType)))
 
 	return types.Tool{
 		Name:        toolName,

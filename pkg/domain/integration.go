@@ -71,6 +71,7 @@ const (
 	IntegrationType_FileToItem           IntegrationType = "filetoitem"
 	IntegrationType_BrightData           IntegrationType = "brightdata"
 	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
+	IntegrationType_Toolset              IntegrationType = "toolset"
 )
 
 type Integration struct {
@@ -82,6 +83,8 @@ type Integration struct {
 	Actions              []IntegrationAction         `json:"actions" bson:"actions"`
 	Triggers             []IntegrationTrigger        `json:"triggers" bson:"triggers"`
 	EmbeddingModels      []IntegrationEmbeddingModel `json:"embedding_models,omitempty" bson:"embedding_models,omitempty"`
+
+	IsGroup bool `json:"is_group" bson:"is_group"`
 
 	CanTestConnection    bool `json:"can_test_connection" bson:"can_test_connection"`
 	IsCredentialOptional bool `json:"is_credential_optional" bson:"is_credential_optional"`

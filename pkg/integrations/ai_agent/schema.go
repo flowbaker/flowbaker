@@ -36,13 +36,13 @@ var (
 				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
 					domain.UsageContextWorkflow: {
 						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input"},
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "LLM"},
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "Memory"},
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionRight, Text: "Tools"},
+							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input", UsageContext: domain.UsageContextWorkflow},
+							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "LLM", UsageContext: domain.UsageContextLLMProvider},
+							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "Memory", UsageContext: domain.UsageContextMemoryProvider},
+							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionRight, Text: "Tools", UsageContext: domain.UsageContextTool},
 						},
 						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Output"},
+							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Output", UsageContext: domain.UsageContextWorkflow},
 						},
 					},
 				},
