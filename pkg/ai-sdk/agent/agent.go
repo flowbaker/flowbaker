@@ -172,6 +172,10 @@ loop:
 	for {
 		select {
 		case err := <-a.errChan:
+			if err == nil {
+				continue
+			}
+
 			return ChatSyncResult{}, err
 		case <-ctx.Done():
 			return ChatSyncResult{}, ctx.Err()
