@@ -75,3 +75,9 @@ func WithConversationHistoryLimit(count int) Option {
 		a.ConversationHistory = count
 	}
 }
+
+func WithHooks(hooks Hooks) Option {
+	return func(a *Agent) {
+		a.hooks = hooks
+	}
+}

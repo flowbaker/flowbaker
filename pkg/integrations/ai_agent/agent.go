@@ -107,7 +107,8 @@ type LLMNodeParams struct {
 	SystemPrompt string  `json:"system_prompt"`
 }
 
-const HandleIDFormat = "input-%s-%d"
+const InputHandleIDFormat = "input-%s-%d"
+const OutputHandleIDFormat = "output-%s-%d"
 
 func (e *AIAgentExecutor) Execute(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	return e.actionManager.Run(ctx, params.ActionType, params)
@@ -149,6 +150,7 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 	}
 
 	agentSettings, err := e.ResolveAgentSettings(ctx, ResolveAgentSettingsParams{
+		InputItem:         item,
 		AgentNode:         agentNode,
 		Workflow:          workflow,
 		ExecutionObserver: executionContext.ExecutionObserver,
@@ -185,6 +187,8 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 		}
 	}
 
+	executionObserver := executionContext.ExecutionObserver
+
 	a, err := agent.New(
 		agent.WithModel(llm.LLM),
 		agent.WithMaxTokens(4000),
@@ -194,6 +198,51 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 		agent.WithTools(tools...),
 		agent.WithMaxIterations(10),
 		agent.WithCancelContext(ctx),
+		agent.WithHooks(agent.Hooks{
+			OnBeforeGenerate: func(ctx context.Context, req *provider.GenerateRequest) {
+				time.Sleep(2 * time.Second)
+				err = executionObserver.Notify(ctx, executor.NodeExecutionStartedEvent{
+					NodeID:    llm.Node.ID,
+					Timestamp: time.Now(),
+				})
+				if err != nil {
+					log.Error().Err(err).Msg("failed to notify execution observer about LLM node execution started")
+				}
+			},
+			OnStepComplete: func(ctx context.Context, step *agent.Step) {
+				llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, llm.Node.ID, 0)
+				llmOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, llm.Node.ID, 0)
+				time.Sleep(2 * time.Second)
+				itemsByInputID := map[string]domain.NodeItems{
+					llmInputHandleID: {
+						FromNodeID: agentNode.ID,
+						Items:      []domain.Item{step.GenerateRequest},
+					},
+				}
+
+				itemsByOutputID := map[string]domain.NodeItems{
+					llmOutputHandleID: {
+						FromNodeID: llm.Node.ID,
+						Items:      []domain.Item{step},
+					},
+				}
+
+				now := time.Now()
+
+				err = executionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
+					NodeID:                llm.Node.ID,
+					ItemsByInputID:        itemsByInputID,
+					ItemsByOutputID:       itemsByOutputID,
+					StartedAt:             now,
+					EndedAt:               now,
+					IntegrationType:       domain.IntegrationType(llm.Node.IntegrationType),
+					IntegrationActionType: domain.IntegrationActionType(llm.Node.ActionNodeOpts.ActionType),
+				})
+				if err != nil {
+					log.Error().Err(err).Msg("failed to notify execution observer about LLM node execution completed")
+				}
+			},
+		}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create agent: %w", err)
@@ -247,13 +296,14 @@ type AgentSettings struct {
 }
 
 type ResolveAgentSettingsParams struct {
+	InputItem         domain.Item
 	AgentNode         domain.WorkflowNode
 	Workflow          domain.Workflow
 	ExecutionObserver domain.ExecutionObserver
 }
 
 func (e *AIAgentExecutor) ResolveAgentSettings(ctx context.Context, params ResolveAgentSettingsParams) (AgentSettings, error) {
-	llm, err := e.ResolveLLM(ctx, params.AgentNode, params.Workflow)
+	llm, err := e.ResolveLLM(ctx, params)
 	if err != nil {
 		return AgentSettings{}, fmt.Errorf("failed to resolve LLM: %w", err)
 	}
@@ -280,8 +330,19 @@ type ResolveLLMResult struct {
 	Node domain.WorkflowNode
 }
 
-func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, agentNode domain.WorkflowNode, workflow domain.Workflow) (ResolveLLMResult, error) {
-	llmHandleID := fmt.Sprintf(HandleIDFormat, agentNode.ID, 1)
+type OpenAIModelSettings struct {
+	Model        string  `json:"model"`
+	Temperature  float32 `json:"temperature"`
+	MaxTokens    int     `json:"max_tokens"`
+	SystemPrompt string  `json:"system_prompt"`
+	CredentialID string  `json:"credential_id"`
+}
+
+func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSettingsParams) (ResolveLLMResult, error) {
+	agentNode := params.AgentNode
+	workflow := params.Workflow
+
+	llmHandleID := fmt.Sprintf(InputHandleIDFormat, agentNode.ID, 1)
 
 	llmInput, exists := agentNode.GetInputByID(llmHandleID)
 	if !exists {
@@ -303,36 +364,33 @@ func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, agentNode domain.Workf
 		return ResolveLLMResult{}, fmt.Errorf("attached LLM node %s not found in workflow", llmNodeID)
 	}
 
-	credentialID, exists := llmNode.IntegrationSettings["credential_id"]
-	if !exists {
+	settings := OpenAIModelSettings{}
+
+	err := e.parameterBinder.BindToStruct(ctx, params.InputItem, &settings, llmNode.IntegrationSettings)
+	if err != nil {
+		return ResolveLLMResult{}, fmt.Errorf("failed to bind LLM node params: %w", err)
+	}
+
+	if settings.CredentialID == "" {
 		return ResolveLLMResult{}, fmt.Errorf("credential_id is not found in LLM node %s", llmNode.ID)
-	}
-
-	credentialIDString, ok := credentialID.(string)
-	if !ok {
-		return ResolveLLMResult{}, fmt.Errorf("credential_id is not a string in LLM node %s", llmNode.ID)
-	}
-
-	model, exists := llmNode.IntegrationSettings["model"]
-	if !exists {
-		return ResolveLLMResult{}, fmt.Errorf("model is not found in LLM node %s", llmNode.ID)
-	}
-
-	modelString, ok := model.(string)
-	if !ok {
-		return ResolveLLMResult{}, fmt.Errorf("model is not a string in LLM node %s", llmNode.ID)
 	}
 
 	var languageModel provider.LanguageModel
 
 	switch llmNode.IntegrationType {
 	case "openai":
-		credential, err := e.credentialGetter.GetDecryptedCredential(ctx, credentialIDString)
+		credential, err := e.credentialGetter.GetDecryptedCredential(ctx, settings.CredentialID)
 		if err != nil {
 			return ResolveLLMResult{}, fmt.Errorf("failed to get credential: %w", err)
 		}
 
-		languageModel = openai.New(credential.APIKey, modelString)
+		languageModel = openai.NewWithConfig(openai.Config{
+			APIKey:      credential.APIKey,
+			Model:       settings.Model,
+			Temperature: settings.Temperature,
+			MaxTokens:   settings.MaxTokens,
+			/* 			SystemPrompt: settings.SystemPrompt, */
+		})
 	default:
 		return ResolveLLMResult{}, fmt.Errorf("unsupported LLM node type: %s", llmNode.IntegrationType)
 	}
@@ -352,7 +410,7 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 	agentNode := params.AgentNode
 	workflow := params.Workflow
 
-	memoryHandleID := fmt.Sprintf(HandleIDFormat, agentNode.ID, 2)
+	memoryHandleID := fmt.Sprintf(InputHandleIDFormat, agentNode.ID, 2)
 
 	memoryInput, exists := agentNode.GetInputByID(memoryHandleID)
 	if !exists {
@@ -413,7 +471,7 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 }
 
 func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentSettingsParams) ([]tool.Tool, error) {
-	toolsHandleID := fmt.Sprintf(HandleIDFormat, params.AgentNode.ID, 3)
+	toolsHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 3)
 
 	toolsInput, exists := params.AgentNode.GetInputByID(toolsHandleID)
 	if !exists {
@@ -536,7 +594,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, workflow domai
 
 		log.Debug().Interface("action_tool", actionTool).Msg("Action tool")
 
-		toolInputHandleID := fmt.Sprintf(HandleIDFormat, toolNode.ID, 0)
+		toolInputHandleID := fmt.Sprintf(InputHandleIDFormat, toolNode.ID, 0)
 
 		executeFunc := func(args string) (string, error) {
 			err = c.observer.Notify(ctx, executor.NodeExecutionStartedEvent{

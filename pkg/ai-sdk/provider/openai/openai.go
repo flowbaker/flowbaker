@@ -235,9 +235,6 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 		var systemFingerprint string
 		streamStarted := false
 
-		// Collect all stream chunks for debugging
-		var streamChunks []openai.ChatCompletionStreamResponse
-
 		for {
 			response, err := stream.Recv()
 			if err != nil {
@@ -248,9 +245,6 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 				errChan <- fmt.Errorf("stream recv error: %w", err)
 				return
 			}
-
-			// Collect chunk for debugging
-			streamChunks = append(streamChunks, response)
 
 			// Send stream start event on first chunk
 			if !streamStarted {
