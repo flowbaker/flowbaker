@@ -52,14 +52,14 @@ func (i *DiscordPollingHandler) HandlePollingEvent(ctx context.Context, p domain
 		return domain.PollResult{}, fmt.Errorf("failed to create Discord session: %w", err)
 	}
 
-	log.Info().Str("eventType", string(p.Trigger.EventType)).Msg("Processing event type")
+	log.Info().Str("eventType", string(p.Trigger.TriggerNodeOpts.EventType)).Msg("Processing event type")
 
-	switch p.Trigger.EventType {
+	switch p.Trigger.TriggerNodeOpts.EventType {
 	case IntegrationTriggerType_MessageReceived:
 		return i.PollChannelMessages(ctx, p, discordSession)
 	}
 
-	return domain.PollResult{}, fmt.Errorf("poll function not found for event type: %s", p.Trigger.EventType)
+	return domain.PollResult{}, fmt.Errorf("poll function not found for event type: %s", p.Trigger.TriggerNodeOpts.EventType)
 }
 
 func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domain.PollingEvent, discordSession *discordgo.Session) (domain.PollResult, error) {

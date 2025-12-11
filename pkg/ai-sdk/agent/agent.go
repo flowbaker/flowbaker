@@ -37,6 +37,15 @@ type Agent struct {
 	eventChan chan types.StreamEvent
 	errChan   chan error
 	doneChan  chan struct{}
+
+	hooks Hooks
+}
+
+type Hooks struct {
+	OnBeforeGenerate func(ctx context.Context, req *provider.GenerateRequest)
+
+	OnStepStart    func(ctx context.Context, step *Step)
+	OnStepComplete func(ctx context.Context, step *Step)
 }
 
 func New(opts ...Option) (*Agent, error) {
@@ -118,6 +127,8 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
 				MaxTokens:   a.MaxTokens,
 			}
 
+			a.OnBeforeGenerate(&req)
+
 			events, errs := a.Model.Stream(a.cancelContext, req)
 
 			for event := range events {
@@ -172,6 +183,10 @@ loop:
 	for {
 		select {
 		case err := <-a.errChan:
+			if err == nil {
+				continue
+			}
+
 			return ChatSyncResult{}, err
 		case <-ctx.Done():
 			return ChatSyncResult{}, ctx.Err()
@@ -189,7 +204,11 @@ loop:
 }
 
 func (a *Agent) OnStepStart() {
-	a.CreateStep(a.currentStepNumber)
+	step := a.CreateStep(a.currentStepNumber)
+
+	if a.hooks.OnStepStart != nil {
+		a.hooks.OnStepStart(a.cancelContext, step)
+	}
 
 	a.eventChan <- types.NewAgentStepStartEvent(a.currentStepNumber, "")
 }
@@ -208,6 +227,10 @@ func (a *Agent) OnStepComplete() {
 		currentStep.Usage,
 		currentStep.FinishReason,
 	)
+
+	if a.hooks.OnStepComplete != nil {
+		a.hooks.OnStepComplete(a.cancelContext, currentStep)
+	}
 }
 
 func (a *Agent) OnComplete() {
@@ -215,13 +238,15 @@ func (a *Agent) OnComplete() {
 }
 
 type Step struct {
-	StepNumber   int
-	Content      string
-	ToolCalls    []types.ToolCall
-	ToolResults  []types.ToolResult
-	Usage        types.Usage
-	FinishReason string
-	Warnings     []types.Warning
+	StepNumber   int                `json:"step_number"`
+	Content      string             `json:"content"`
+	ToolCalls    []types.ToolCall   `json:"tool_calls"`
+	ToolResults  []types.ToolResult `json:"tool_results"`
+	Usage        types.Usage        `json:"usage"`
+	FinishReason string             `json:"finish_reasons"`
+	Warnings     []types.Warning    `json:"warnings,omitempty"`
+
+	GenerateRequest provider.GenerateRequest `json:"generate_request"`
 }
 
 func (a *Agent) OnEvent(event types.StreamEvent) {
@@ -268,6 +293,19 @@ func (a *Agent) CreateStep(stepNumber int) *Step {
 	a.steps = append(a.steps, step)
 
 	return step
+}
+
+func (a *Agent) OnBeforeGenerate(req *provider.GenerateRequest) {
+	currentStep, ok := a.GetCurrentStep()
+	if !ok {
+		return
+	}
+
+	currentStep.GenerateRequest = *req
+
+	if a.hooks.OnBeforeGenerate != nil {
+		a.hooks.OnBeforeGenerate(a.cancelContext, req)
+	}
 }
 
 func (a *Agent) NeedsIntervention() bool {

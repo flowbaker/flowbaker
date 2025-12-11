@@ -114,46 +114,49 @@ type Workflow struct {
 	AuthorUserID     string                   `json:"author_user_id"`
 	Slug             string                   `json:"slug"`
 	Nodes            []WorkflowNode           `json:"nodes"`
-	Triggers         []WorkflowTrigger        `json:"triggers"`
 	LastUpdatedAt    int64                    `json:"last_updated_at"`
 	ActivationStatus WorkflowActivationStatus `json:"activation_status"`
 }
 
+type NodeType string
+
+const (
+	NodeTypeAction  NodeType = "action"
+	NodeTypeTrigger NodeType = "trigger"
+)
+
 // WorkflowNode represents a node in a workflow
 type WorkflowNode struct {
-	ID                           string                `json:"id"`
-	WorkflowID                   string                `json:"workflow_id"`
-	Name                         string                `json:"name"`
-	IntegrationType              IntegrationType       `json:"integration_type"`
-	IntegrationActionType        IntegrationActionType `json:"integration_action_type"`
-	IntegrationSettings          map[string]any        `json:"integration_settings"`
-	Settings                     Settings              `json:"common_settings"`
-	ExpressionSelectedProperties []string              `json:"expression_selected_properties"`
-	ProvidedByAgent              []string              `json:"provided_by_agent"`
-	XPosition                    float64               `json:"x_position"`
-	YPosition                    float64               `json:"y_position"`
-	Inputs                       []NodeInput           `json:"inputs"`
-	UsageContext                 string                `json:"usage_context,omitempty"`
+	ID                           string          `json:"id"`
+	WorkflowID                   string          `json:"workflow_id"`
+	Name                         string          `json:"name"`
+	Type                         NodeType        `json:"type"`
+	IntegrationType              IntegrationType `json:"integration_type"`
+	IntegrationSettings          map[string]any  `json:"integration_settings"`
+	Settings                     Settings        `json:"common_settings"`
+	ExpressionSelectedProperties []string        `json:"expression_selected_properties"`
+	ProvidedByAgent              []string        `json:"provided_by_agent"`
+	XPosition                    float64         `json:"x_position"`
+	YPosition                    float64         `json:"y_position"`
+	Inputs                       []NodeInput     `json:"inputs"`
+	UsageContext                 string          `json:"usage_context,omitempty"`
+	ParentID                     string          `json:"parent_id,omitempty"`
+	ActionNodeOpts               ActionNodeOpts  `json:"action_node_opts,omitempty"`
+	TriggerNodeOpts              TriggerNodeOpts `json:"trigger_node_opts,omitempty"`
+}
+
+type ActionNodeOpts struct {
+	ActionType IntegrationActionType `json:"action_type"`
+}
+
+type TriggerNodeOpts struct {
+	EventType IntegrationTriggerEventType `json:"event_type"`
 }
 
 // NodeInput represents an input for a workflow node
 type NodeInput struct {
 	InputID          string   `json:"input_id"`
 	SubscribedEvents []string `json:"subscribed_events"`
-}
-
-// WorkflowTrigger represents a trigger for a workflow
-type WorkflowTrigger struct {
-	ID                  string                      `json:"id"`
-	WorkflowID          string                      `json:"workflow_id"`
-	Name                string                      `json:"name"`
-	Description         string                      `json:"description"`
-	Type                IntegrationType             `json:"integration_type"`
-	EventType           IntegrationTriggerEventType `json:"event_type"`
-	IntegrationSettings map[string]any              `json:"integration_settings"`
-	Settings            Settings                    `json:"common_settings"`
-	XPosition           float64                     `json:"x_position"`
-	YPosition           float64                     `json:"y_position"`
 }
 
 type Settings struct {
@@ -164,7 +167,7 @@ type Settings struct {
 // PollingEventRequest represents a request to handle a polling event
 type PollingEventRequest struct {
 	IntegrationType IntegrationType `json:"integration_type"`
-	Trigger         WorkflowTrigger `json:"trigger"`
+	Trigger         WorkflowNode    `json:"trigger"`
 	Workflow        Workflow        `json:"workflow"`
 	UserID          string          `json:"user_id"`
 	WorkflowType    WorkflowType    `json:"workflow_type"`

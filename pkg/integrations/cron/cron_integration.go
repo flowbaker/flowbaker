@@ -30,16 +30,16 @@ func (h *CronPollingHandler) HandlePollingEvent(ctx context.Context, params doma
 	log.Info().
 		Str("trigger_id", params.Trigger.ID).
 		Str("workflow_id", params.Workflow.ID).
-		Str("event_type", string(params.Trigger.EventType)).
+		Str("event_type", string(params.Trigger.TriggerNodeOpts.EventType)).
 		Msg("Handling polling event")
 
-	switch params.Trigger.EventType {
+	switch params.Trigger.TriggerNodeOpts.EventType {
 	case IntegrationTriggerType_Cron:
 		return h.HandleCronTrigger(ctx, params)
 	case IntegrationTriggerType_Simple:
 		return h.HandleSimpleTrigger(ctx, params)
 	default:
-		return domain.PollResult{}, fmt.Errorf("unsupported trigger event type: %s", params.Trigger.EventType)
+		return domain.PollResult{}, fmt.Errorf("unsupported trigger event type: %s", params.Trigger.TriggerNodeOpts.EventType)
 	}
 }
 

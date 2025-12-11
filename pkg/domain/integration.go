@@ -71,6 +71,7 @@ const (
 	IntegrationType_FileToItem           IntegrationType = "filetoitem"
 	IntegrationType_BrightData           IntegrationType = "brightdata"
 	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
+	IntegrationType_Toolset              IntegrationType = "toolset"
 )
 
 type Integration struct {
@@ -83,19 +84,21 @@ type Integration struct {
 	Triggers             []IntegrationTrigger        `json:"triggers" bson:"triggers"`
 	EmbeddingModels      []IntegrationEmbeddingModel `json:"embedding_models,omitempty" bson:"embedding_models,omitempty"`
 
+	IsGroup bool `json:"is_group" bson:"is_group"`
+
 	CanTestConnection    bool `json:"can_test_connection" bson:"can_test_connection"`
 	IsCredentialOptional bool `json:"is_credential_optional" bson:"is_credential_optional"`
 }
 
 type IntegrationTrigger struct {
-	ID                            string                      `json:"id" bson:"id"`
-	EventType                     IntegrationTriggerEventType `json:"event_type" bson:"event_type"`
-	Name                          string                      `json:"name" bson:"name"`
-	Description                   string                      `json:"description" bson:"description"`
-	Properties                    []NodeProperty              `json:"properties" bson:"properties"`
-	OutputHandles                 []NodeHandle                `json:"output_handles" bson:"output_handles"`
-	IsNonAvailableForDefaultOAuth bool                        `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
-	Decoration                    NodeDecoration              `json:"decoration" bson:"decoration"`
+	ID                            string                                `json:"id" bson:"id"`
+	EventType                     IntegrationTriggerEventType           `json:"event_type" bson:"event_type"`
+	Name                          string                                `json:"name" bson:"name"`
+	Description                   string                                `json:"description" bson:"description"`
+	Properties                    []NodeProperty                        `json:"properties" bson:"properties"`
+	HandlesByContext              map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
+	IsNonAvailableForDefaultOAuth bool                                  `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
+	Decoration                    NodeDecoration                        `json:"decoration" bson:"decoration"`
 }
 
 type NodeDecoration struct {
