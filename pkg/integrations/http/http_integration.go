@@ -939,7 +939,7 @@ func (i *HTTPIntegration) setResponseBody(ctx context.Context, resp *http.Respon
 
 		return executionFile, nil
 	default:
-		return body, nil
+		return string(body), nil
 	}
 
 	return nil, fmt.Errorf("unsupported content type: %s", contentTypeHeader)
