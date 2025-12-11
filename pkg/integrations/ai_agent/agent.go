@@ -475,7 +475,7 @@ func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentS
 
 	toolsInput, exists := params.AgentNode.GetInputByID(toolsHandleID)
 	if !exists {
-		return nil, fmt.Errorf("tools input %s not found in agent node %s", toolsHandleID, params.AgentNode.ID)
+		return nil, nil
 	}
 
 	if len(toolsInput.SubscribedEvents) == 0 {
@@ -488,6 +488,10 @@ func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentS
 
 	for _, toolNodeID := range toolNodeIDs {
 		nodeReferences = append(nodeReferences, NodeReference{NodeID: toolNodeID})
+	}
+
+	if len(nodeReferences) == 0 {
+		return nil, nil
 	}
 
 	toolCreator := NewIntegrationToolCreator(IntegrationToolCreatorDeps{

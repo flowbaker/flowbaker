@@ -17,9 +17,9 @@ var (
 		Actions: []domain.IntegrationAction{
 			{
 				ID:          "ai_agent",
-				Name:        "Function Calling Agent",
+				Name:        "Tool Agent",
 				ActionType:  IntegrationActionType_FunctionCallingAgent,
-				Description: "Execute Function Calling Agent with LLM, memory, and tools for autonomous task completion",
+				Description: "Use Tool Agent to complete tasks using available tools",
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "prompt",
