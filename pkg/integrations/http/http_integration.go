@@ -165,10 +165,10 @@ const (
 )
 
 type HTTPResponse struct {
-	StatusCode int
-	Status     string
-	Header     http.Header
-	Body       any
+	StatusCode int         `json:"status_code"`
+	Status     string      `json:"status"`
+	Header     http.Header `json:"header"`
+	Body       any         `json:"body"`
 }
 
 type HTTPRequestFunctionParams struct {
