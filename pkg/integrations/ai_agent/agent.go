@@ -500,7 +500,11 @@ func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentS
 		ExecutionObserver:          params.ExecutionObserver,
 	})
 
-	tools, err := toolCreator.CreateTools(ctx, params.Workflow, nodeReferences...)
+	tools, err := toolCreator.CreateTools(ctx, CreateToolsParams{
+		Workflow:       params.Workflow,
+		NodeReferences: nodeReferences,
+		AgentNode:      params.AgentNode,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tools: %w", err)
 	}
@@ -554,7 +558,16 @@ func NewIntegrationToolCreator(deps IntegrationToolCreatorDeps) *IntegrationTool
 	}
 }
 
-func (c *IntegrationToolCreator) CreateTools(ctx context.Context, workflow domain.Workflow, nodeReferences ...NodeReference) ([]tool.Tool, error) {
+type CreateToolsParams struct {
+	Workflow       domain.Workflow
+	NodeReferences []NodeReference
+	AgentNode      domain.WorkflowNode
+}
+
+func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateToolsParams) ([]tool.Tool, error) {
+	workflow := params.Workflow
+	nodeReferences := params.NodeReferences
+
 	toolNodes := make([]domain.WorkflowNode, 0)
 
 	for _, nodeReference := range nodeReferences {
@@ -598,7 +611,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, workflow domai
 
 		log.Debug().Interface("action_tool", actionTool).Msg("Action tool")
 
-		toolInputHandleID := fmt.Sprintf(InputHandleIDFormat, toolNode.ID, 0)
+		agentToolInputHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 3)
 
 		executeFunc := func(args string) (string, error) {
 			err = c.observer.Notify(ctx, executor.NodeExecutionStartedEvent{
@@ -630,14 +643,14 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, workflow domai
 					Settings: inputItem,
 				},
 				PayloadByInputID: map[string]domain.Payload{
-					toolInputHandleID: domain.Payload(inputPayload),
+					agentToolInputHandleID: domain.Payload(inputPayload),
 				},
 				Workflow: &workflow,
 			}
 
 			itemsByInputID := map[string]domain.NodeItems{
-				toolInputHandleID: {
-					FromNodeID: toolNode.ID,
+				agentToolInputHandleID: {
+					FromNodeID: params.AgentNode.ID,
 					Items:      []domain.Item{inputItem},
 				},
 			}
