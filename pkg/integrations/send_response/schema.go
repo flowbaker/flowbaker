@@ -22,6 +22,9 @@ var (
 				Name:        "Send Response",
 				ActionType:  IntegrationActionType_SendResponse,
 				Description: "Send a response to a webhook",
+				SupportedContexts: []domain.ActionUsageContext{
+					domain.UsageContextWorkflow,
+				},
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "response_type",

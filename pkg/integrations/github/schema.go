@@ -77,15 +77,14 @@ var (
 				ActionType:  GithubActionType_CreateIssue,
 				Properties: []domain.NodeProperty{
 					{
-						Key:                      "repository_id",
-						Name:                     "Repository",
-						Description:              "The repository to create the issue in (e.g., 'owner/repo')",
-						Required:                 true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to create the issue in (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "title",
@@ -102,15 +101,14 @@ var (
 						Type:        domain.NodePropertyType_Text,
 					},
 					{
-						Key:          "assignee",
-						Name:         "Assignee",
-						Description:  "Login of the user to assign the issue to",
-						Required:     false,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Users,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "assignee",
+						Name:                   "Assignee",
+						Description:            "Login of the user to assign the issue to",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Users,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "labels",
@@ -128,15 +126,14 @@ var (
 				ActionType:  GithubActionType_GetIssue,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to get the issue from (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to get the issue from (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "issue_number",
@@ -154,15 +151,14 @@ var (
 				ActionType:  GithubActionType_CreateIssueComment,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the issue (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the issue (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "issue_number",
@@ -187,15 +183,14 @@ var (
 				ActionType:  GithubActionType_EditIssue,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the issue (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the issue (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "issue_number",
@@ -226,15 +221,14 @@ var (
 						Type:        domain.NodePropertyType_String,
 					},
 					{
-						Key:          "assignee",
-						Name:         "Assignee",
-						Description:  "Login of the user to assign. Use empty string to unassign single assignee.",
-						Required:     false,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Users,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "assignee",
+						Name:                   "Assignee",
+						Description:            "Login of the user to assign. Use empty string to unassign single assignee.",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Users,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "labels",
@@ -252,15 +246,14 @@ var (
 				ActionType:  GithubActionType_LockIssue,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the issue (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the issue (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "issue_number",
@@ -292,15 +285,14 @@ var (
 				ActionType:  GithubActionType_CreateFile,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to create the file in (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to create the file in (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "path",
@@ -324,14 +316,14 @@ var (
 						Type:        domain.NodePropertyType_Text,
 					},
 					{
-						Key:          "branch",
-						Name:         "Branch",
-						Description:  "The branch name. Default: the repository's default branch.",
-						Required:     false,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Branches,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "branch",
+						Name:                   "Branch",
+						Description:            "The branch name. Default: the repository's default branch.",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Branches,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -349,15 +341,14 @@ var (
 				ActionType:  GithubActionType_DeleteFile,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to delete the file from (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to delete the file from (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "path",
@@ -381,14 +372,14 @@ var (
 						Type:        domain.NodePropertyType_String,
 					},
 					{
-						Key:          "branch",
-						Name:         "Branch",
-						Description:  "The branch name. Default: the repository's default branch.",
-						Required:     false,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Branches,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "branch",
+						Name:                   "Branch",
+						Description:            "The branch name. Default: the repository's default branch.",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Branches,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -400,21 +391,20 @@ var (
 				},
 			},
 			{
-				ID:          "update_file", // Renamed from EditFile for consistency
+				ID:          "edit_file",
 				Name:        "Update File",
 				Description: "Update an existing file in a repository",
-				ActionType:  GithubActionType_EditFile, // ActionType still refers to the original constant name
+				ActionType:  GithubActionType_EditFile,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository where the file exists (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository where the file exists (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "path",
@@ -445,14 +435,14 @@ var (
 						Type:        domain.NodePropertyType_String,
 					},
 					{
-						Key:          "branch",
-						Name:         "Branch",
-						Description:  "The branch name. Default: the repository's default branch.",
-						Required:     false,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Branches,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "branch",
+						Name:                   "Branch",
+						Description:            "The branch name. Default: the repository's default branch.",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Branches,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -470,15 +460,14 @@ var (
 				ActionType:  GithubActionType_GetFile,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the file (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the file (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "path",
@@ -497,21 +486,20 @@ var (
 				},
 			},
 			{
-				ID:          "list_repository_content", // Renamed from ListFiles
+				ID:          "list_files",
 				Name:        "List Repository Content",
 				Description: "List content of a directory in a repository",
-				ActionType:  GithubActionType_ListFiles, // ActionType still refers to the original constant name
+				ActionType:  GithubActionType_ListFiles,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to list content from (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to list content from (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "path",
@@ -606,15 +594,14 @@ var (
 				ActionType:  GithubActionType_CreateRelease,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to create the release in (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to create the release in (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "tag_name",
@@ -667,15 +654,14 @@ var (
 				ActionType:  GithubActionType_DeleteRelease,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the release (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the release (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "release_id",
@@ -693,15 +679,14 @@ var (
 				ActionType:  GithubActionType_GetRelease,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the release (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the release (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "release_id",
@@ -719,15 +704,14 @@ var (
 				ActionType:  GithubActionType_ListReleases,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to list releases from (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to list releases from (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "limit",
@@ -752,15 +736,14 @@ var (
 				ActionType:  GithubActionType_UpdateRelease,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the release (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the release (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "release_id",
@@ -821,34 +804,32 @@ var (
 				ActionType:  GithubActionType_GetRepository,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to get details for (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to get details for (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 				},
 			},
 			{
-				ID:          "list_repository_issues",
+				ID:          "get_repository_issues",
 				Name:        "List Repository Issues",
 				Description: "List issues for a repository",
 				ActionType:  GithubActionType_GetRepositoryIssues,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to list issues from (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to list issues from (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "milestone",
@@ -870,37 +851,34 @@ var (
 						},
 					},
 					{
-						Key:          "assignee",
-						Name:         "Assignee",
-						Description:  "Filter by assignee's login name. Use '*' for any, 'none' for no assignee",
-						Required:     false,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Users,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "assignee",
+						Name:                   "Assignee",
+						Description:            "Filter by assignee's login name. Use '*' for any, 'none' for no assignee",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Users,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
-						Key:          "creator",
-						Name:         "Creator",
-						Description:  "Filter by creator's login name",
-						Required:     false,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Users,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "creator",
+						Name:                   "Creator",
+						Description:            "Filter by creator's login name",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Users,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
-						Key:          "mentioned",
-						Name:         "Mentioned User",
-						Description:  "Filter by login of a user mentioned in the issue.",
-						Required:     false,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Users,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "mentioned",
+						Name:                   "Mentioned User",
+						Description:            "Filter by login of a user mentioned in the issue.",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Users,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "labels",
@@ -962,53 +940,50 @@ var (
 				ActionType:  GithubActionType_GetRepositoryLicense,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to get the license from (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to get the license from (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 				},
 			},
 			{
-				ID:          "get_repository_community_profile", // Renamed from GetRepositoryProfile
+				ID:          "get_repository_profile",
 				Name:        "Get Repository Community Profile",
 				Description: "Get community profile metrics for a repository",
-				ActionType:  GithubActionType_GetRepositoryProfile, // ActionType still refers to original
+				ActionType:  GithubActionType_GetRepositoryProfile,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to get community profile for (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to get community profile for (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 				},
 			},
 			{
-				ID:          "list_pull_requests",
+				ID:          "get_repository_prs",
 				Name:        "List Pull Requests",
 				Description: "List pull requests for a repository",
 				ActionType:  GithubActionType_GetRepositoryPRs,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to list pull requests from (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to list pull requests from (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "state",
@@ -1077,60 +1052,57 @@ var (
 				},
 			},
 			{
-				ID:          "get_top_referral_paths", // Renamed from ListPopularPaths
+				ID:          "list_popular_paths",
 				Name:        "Get Top Referral Paths",
 				Description: "Get the top 10 popular content paths for a repository (last 14 days).",
-				ActionType:  GithubActionType_ListPopularPaths, // ActionType still refers to original
+				ActionType:  GithubActionType_ListPopularPaths,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to get top paths for (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to get top paths for (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 				},
 			},
 			{
-				ID:          "get_top_referral_sources", // Renamed from ListRepositoryReferrers
+				ID:          "list_repository_referrers",
 				Name:        "Get Top Referral Sources",
 				Description: "Get the top 10 referral sources for a repository (last 14 days).",
-				ActionType:  GithubActionType_ListRepositoryReferrers, // ActionType still refers to original
+				ActionType:  GithubActionType_ListRepositoryReferrers,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to get top sources for (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to get top sources for (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 				},
 			},
 			// Review Actions (Pull Request Reviews)
 			{
-				ID:          "create_pull_request_review",
+				ID:          "create_review",
 				Name:        "Create Pull Request Review",
 				Description: "Create a review for a pull request",
 				ActionType:  GithubActionType_CreateReview,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the pull request (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the pull request (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "pull_number",
@@ -1168,21 +1140,20 @@ var (
 				},
 			},
 			{
-				ID:          "get_pull_request_review", // Renamed from GetReview
+				ID:          "get_review",
 				Name:        "Get Pull Request Review",
 				Description: "Get a specific review for a pull request",
-				ActionType:  GithubActionType_GetReview, // ActionType still refers to original
+				ActionType:  GithubActionType_GetReview,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the pull request (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the pull request (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "pull_number",
@@ -1201,21 +1172,20 @@ var (
 				},
 			},
 			{
-				ID:          "list_pull_request_reviews", // Renamed from ListReviews
+				ID:          "list_reviews",
 				Name:        "List Pull Request Reviews",
 				Description: "List reviews for a pull request",
-				ActionType:  GithubActionType_ListReviews, // ActionType still refers to original
+				ActionType:  GithubActionType_ListReviews,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the pull request (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the pull request (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "pull_number",
@@ -1241,21 +1211,20 @@ var (
 				},
 			},
 			{
-				ID:          "update_pull_request_review", // Renamed from UpdateReview
+				ID:          "update_review",
 				Name:        "Update Pull Request Review",
 				Description: "Update the body of an existing review for a pull request",
-				ActionType:  GithubActionType_UpdateReview, // ActionType still refers to original
+				ActionType:  GithubActionType_UpdateReview,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository containing the pull request (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository containing the pull request (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "pull_number",
@@ -1282,7 +1251,7 @@ var (
 			},
 			// User Actions
 			{
-				ID:          "list_authenticated_user_repositories",
+				ID:          "user_get_repositories",
 				Name:        "List Authenticated User Repositories",
 				Description: "List repositories for the authenticated user",
 				ActionType:  GithubActionType_UserGetRepositories,
@@ -1361,32 +1330,30 @@ var (
 				},
 			},
 			{
-				ID:          "invite_user_to_repository",
+				ID:          "user_invite",
 				Name:        "Invite User to Repository",
 				Description: "Invite a user to collaborate on a repository",
 				ActionType:  GithubActionType_UserInvite,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to invite the user to (e.g., 'owner/repo')",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to invite the user to (e.g., 'owner/repo')",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
-						Key:          "username",
-						Name:         "Username",
-						Description:  "The GitHub username of the user to invite",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Users,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "username",
+						Name:                   "Username",
+						Description:            "The GitHub username of the user to invite",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Users,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "permission",
@@ -1413,15 +1380,14 @@ var (
 				EventType:   IntegrationEventType_GithubUniversalTrigger,
 				Properties: []domain.NodeProperty{
 					{
-						Key:          "repository_id",
-						Name:         "Repository",
-						Description:  "The repository to monitor (e.g., 'owner/repo'). If empty, listens to organization/app level events if applicable for selected event types.",
-						Required:     true,
-						Type:                     domain.NodePropertyType_String,
-						Peekable:                 true,
-						PeekableType:             GithubPeekable_Repositories,
-						PeekablePaginationType:   domain.PeekablePaginationType_Offset,
-
+						Key:                    "repository_id",
+						Name:                   "Repository",
+						Description:            "The repository to monitor (e.g., 'owner/repo'). If empty, listens to organization/app level events if applicable for selected event types.",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           GithubPeekable_Repositories,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
 						Key:         "selected_events",

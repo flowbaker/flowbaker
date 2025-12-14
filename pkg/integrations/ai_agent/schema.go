@@ -22,9 +22,18 @@ var (
 				Description: "Use Tool Agent to complete tasks using available tools",
 				Properties: []domain.NodeProperty{
 					{
+						Key:         "system_prompt",
+						Name:        "System Prompt",
+						Description: "The system prompt for the AI agent",
+						Type:        domain.NodePropertyType_Text,
+						Required:    false,
+						Placeholder: "The system prompt for the AI agent",
+						Help:        "The system prompt for the AI agent",
+					},
+					{
 						Key:         "prompt",
-						Name:        "Initial Prompt",
-						Description: "The initial task description or prompt to give the AI agent",
+						Name:        "Prompt",
+						Description: "The task description or prompt to give the AI agent",
 						Type:        domain.NodePropertyType_Text,
 						Required:    true,
 						Placeholder: "Describe the task you want the AI agent to complete...",
@@ -37,12 +46,11 @@ var (
 					domain.UsageContextWorkflow: {
 						Input: []domain.NodeHandle{
 							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input", UsageContext: domain.UsageContextWorkflow},
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "LLM", UsageContext: domain.UsageContextLLMProvider},
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "Memory", UsageContext: domain.UsageContextMemoryProvider},
 							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionRight, Text: "Tools", UsageContext: domain.UsageContextTool},
 						},
 						Output: []domain.NodeHandle{
 							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Output", UsageContext: domain.UsageContextWorkflow},
+							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "Agent", UsageContext: domain.UsageContextTool},
 						},
 					},
 				},

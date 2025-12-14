@@ -90,7 +90,8 @@ const (
 )
 
 type ExecuteParams struct {
-	Prompt string `json:"prompt,omitempty"`
+	Prompt       string `json:"prompt,omitempty"`
+	SystemPrompt string `json:"system_prompt,omitempty"`
 }
 
 type MemoryNodeParams struct {
@@ -101,10 +102,9 @@ type MemoryNodeParams struct {
 }
 
 type LLMNodeParams struct {
-	Model        string  `json:"model"`
-	MaxTokens    int     `json:"max_tokens"`
-	Temperature  float32 `json:"temperature"`
-	SystemPrompt string  `json:"system_prompt"`
+	Model       string  `json:"model"`
+	MaxTokens   int     `json:"max_tokens"`
+	Temperature float32 `json:"temperature"`
 }
 
 const InputHandleIDFormat = "input-%s-%d"
@@ -122,25 +122,12 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 		return nil, fmt.Errorf("failed to bind parameters: %w", err)
 	}
 
-	action := domain.IntegrationAction{}
-
-	for _, schemaAction := range schema.Actions {
-		if schemaAction.ActionType == IntegrationActionType_FunctionCallingAgent {
-			action = schemaAction
-			break
-		}
-	}
-
-	handles := action.HandlesByContext[domain.UsageContextWorkflow]
-
-	if len(handles.Input) < 4 {
-		return nil, fmt.Errorf("agent node %s has less than 4 input handles", params.NodeID)
-	}
-
 	agentNode, exists := params.Workflow.GetNodeByID(params.NodeID)
 	if !exists {
 		return nil, fmt.Errorf("agent node %s not found in workflow", params.NodeID)
 	}
+
+	subNodes := params.Workflow.GetSubNodes(params.NodeID)
 
 	workflow := *params.Workflow
 
@@ -153,6 +140,7 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 		InputItem:         item,
 		AgentNode:         agentNode,
 		Workflow:          workflow,
+		SubNodes:          subNodes,
 		ExecutionObserver: executionContext.ExecutionObserver,
 	})
 	if err != nil {
@@ -187,20 +175,21 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 		}
 	}
 
+	log.Debug().Interface("tools", tools).Msg("Tools")
+
 	executionObserver := executionContext.ExecutionObserver
 
 	a, err := agent.New(
 		agent.WithModel(llm.LLM),
 		agent.WithMaxTokens(4000),
 		agent.WithTemperature(1),
-		agent.WithSystemPrompt("You are a helpful assistant."),
+		agent.WithSystemPrompt(executeParams.SystemPrompt),
 		agent.WithMemory(memory.Memory),
 		agent.WithTools(tools...),
 		agent.WithMaxIterations(10),
 		agent.WithCancelContext(ctx),
 		agent.WithHooks(agent.Hooks{
 			OnBeforeGenerate: func(ctx context.Context, req *provider.GenerateRequest) {
-				time.Sleep(2 * time.Second)
 				err = executionObserver.Notify(ctx, executor.NodeExecutionStartedEvent{
 					NodeID:    llm.Node.ID,
 					Timestamp: time.Now(),
@@ -212,7 +201,7 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 			OnStepComplete: func(ctx context.Context, step *agent.Step) {
 				llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, llm.Node.ID, 0)
 				llmOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, llm.Node.ID, 0)
-				time.Sleep(2 * time.Second)
+
 				itemsByInputID := map[string]domain.NodeItems{
 					llmInputHandleID: {
 						FromNodeID: agentNode.ID,
@@ -300,6 +289,7 @@ type ResolveAgentSettingsParams struct {
 	AgentNode         domain.WorkflowNode
 	Workflow          domain.Workflow
 	ExecutionObserver domain.ExecutionObserver
+	SubNodes          []domain.WorkflowNode
 }
 
 func (e *AIAgentExecutor) ResolveAgentSettings(ctx context.Context, params ResolveAgentSettingsParams) (AgentSettings, error) {
@@ -339,29 +329,17 @@ type OpenAIModelSettings struct {
 }
 
 func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSettingsParams) (ResolveLLMResult, error) {
-	agentNode := params.AgentNode
-	workflow := params.Workflow
+	llmNode := domain.WorkflowNode{}
 
-	llmHandleID := fmt.Sprintf(InputHandleIDFormat, agentNode.ID, 1)
-
-	llmInput, exists := agentNode.GetInputByID(llmHandleID)
-	if !exists {
-		return ResolveLLMResult{}, fmt.Errorf("LLM input %s not found in agent node %s", llmHandleID, agentNode.ID)
+	for _, subNode := range params.SubNodes {
+		if subNode.UsageContext == string(domain.UsageContextLLMProvider) {
+			llmNode = subNode
+			break
+		}
 	}
 
-	if len(llmInput.SubscribedEvents) == 0 {
+	if llmNode.ID == "" {
 		return ResolveLLMResult{}, fmt.Errorf("LLM node is required")
-	}
-
-	llmNodeID := e.GetNodeIDFromOutputID(llmInput.SubscribedEvents[0])
-
-	if llmNodeID == "" {
-		return ResolveLLMResult{}, fmt.Errorf("LLM node is required")
-	}
-
-	llmNode, exists := workflow.GetNodeByID(llmNodeID)
-	if !exists {
-		return ResolveLLMResult{}, fmt.Errorf("attached LLM node %s not found in workflow", llmNodeID)
 	}
 
 	settings := OpenAIModelSettings{}
@@ -407,29 +385,17 @@ type ResolveMemoryResult struct {
 }
 
 func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgentSettingsParams) (ResolveMemoryResult, error) {
-	agentNode := params.AgentNode
-	workflow := params.Workflow
+	memoryNode := domain.WorkflowNode{}
 
-	memoryHandleID := fmt.Sprintf(InputHandleIDFormat, agentNode.ID, 2)
+	for _, subNode := range params.SubNodes {
+		if subNode.UsageContext == string(domain.UsageContextMemoryProvider) {
+			memoryNode = subNode
+			break
+		}
+	}
 
-	memoryInput, exists := agentNode.GetInputByID(memoryHandleID)
-	if !exists {
+	if memoryNode.ID == "" {
 		return ResolveMemoryResult{}, nil
-	}
-
-	if len(memoryInput.SubscribedEvents) == 0 {
-		return ResolveMemoryResult{}, nil
-	}
-
-	memoryNodeID := e.GetNodeIDFromOutputID(memoryInput.SubscribedEvents[0])
-
-	if memoryNodeID == "" {
-		return ResolveMemoryResult{}, fmt.Errorf("memory node is not found in agent node %s", agentNode.ID)
-	}
-
-	memoryNode, exists := workflow.GetNodeByID(memoryNodeID)
-	if !exists {
-		return ResolveMemoryResult{}, fmt.Errorf("attached memory node %s not found in workflow", memoryNodeID)
 	}
 
 	creator, err := e.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
@@ -452,7 +418,7 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 	}
 
 	memory, err := creator.CreateIntegration(ctx, domain.CreateIntegrationParams{
-		WorkspaceID:  workflow.WorkspaceID,
+		WorkspaceID:  params.Workflow.WorkspaceID,
 		CredentialID: credentialID,
 	})
 	if err != nil {
@@ -471,14 +437,17 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 }
 
 func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentSettingsParams) ([]tool.Tool, error) {
-	toolsHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 3)
+	toolsHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 1)
 
 	toolsInput, exists := params.AgentNode.GetInputByID(toolsHandleID)
 	if !exists {
 		return nil, nil
 	}
 
+	log.Debug().Interface("tools_input", toolsInput).Msg("Tools input")
+
 	if len(toolsInput.SubscribedEvents) == 0 {
+		log.Debug().Msg("Tools input has no subscribed events")
 		return nil, nil
 	}
 
@@ -489,6 +458,8 @@ func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentS
 	for _, toolNodeID := range toolNodeIDs {
 		nodeReferences = append(nodeReferences, NodeReference{NodeID: toolNodeID})
 	}
+
+	log.Debug().Interface("node_references", nodeReferences).Msg("Node references")
 
 	if len(nodeReferences) == 0 {
 		return nil, nil
@@ -571,7 +542,18 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 	toolNodes := make([]domain.WorkflowNode, 0)
 
 	for _, nodeReference := range nodeReferences {
-		toolNodes = append(toolNodes, workflow.GetSubNodes(nodeReference.NodeID)...)
+		node, exists := workflow.GetNodeByID(nodeReference.NodeID)
+		if !exists {
+			return nil, fmt.Errorf("node %s not found in workflow", nodeReference.NodeID)
+		}
+
+		if node.IntegrationType == domain.IntegrationType_Toolset {
+			toolNodes = append(toolNodes, workflow.GetSubNodes(node.ID)...)
+
+			continue
+		}
+
+		toolNodes = append(toolNodes, node)
 	}
 
 	log.Debug().Interface("tool_nodes", toolNodes).Msg("Tool nodes")
@@ -579,6 +561,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 	tools := make([]tool.Tool, 0, len(toolNodes))
 
 	for _, toolNode := range toolNodes {
+
 		creator, err := c.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
 			IntegrationType: domain.IntegrationType(toolNode.IntegrationType),
 		})
@@ -588,7 +571,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 
 		credentialID, exists := toolNode.IntegrationSettings["credential_id"]
 		if !exists {
-			return nil, fmt.Errorf("credential_id is not found in tool node %s", toolNode.ID)
+			credentialID = ""
 		}
 
 		credentialIDString, ok := credentialID.(string)
@@ -611,9 +594,11 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 
 		log.Debug().Interface("action_tool", actionTool).Msg("Action tool")
 
-		agentToolInputHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 3)
+		agentToolInputHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 1)
 
 		executeFunc := func(args string) (string, error) {
+			log.Debug().Str("node_id", toolNode.ID).Msg("Notifying observer about tool execution started")
+
 			err = c.observer.Notify(ctx, executor.NodeExecutionStartedEvent{
 				NodeID:    toolNode.ID,
 				Timestamp: time.Now(),
