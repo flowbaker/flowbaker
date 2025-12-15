@@ -83,11 +83,9 @@ type ConditionalDispatchValue struct {
 }
 
 type IfElseResult struct {
-	OutputIndex    int    `json:"output_index"`
-	ValueType      string `json:"value_type"`
-	Value1         any    `json:"value1"`
-	Value2         any    `json:"value2"`
-	ComparisonType string `json:"comparison_type"`
+	OutputIndex int `json:"output_index"`
+	Value1      any `json:"value1"`
+	Value2      any `json:"value2"`
 }
 
 type ConditionalDispatchResult struct {
@@ -118,20 +116,15 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		return domain.RoutableOutput{}, fmt.Errorf("no conditions found")
 	}
 
-	conditionType := p.Conditions[0].ConditionType
-	if conditionType == "" {
-		return domain.RoutableOutput{}, fmt.Errorf("no condition type found")
-	}
-
-	parts := strings.SplitN(conditionType, ".", 2)
-	if len(parts) != 2 {
-		return domain.RoutableOutput{}, fmt.Errorf("invalid condition type: %s", conditionType)
-	}
-
-	valueType := parts[0]
-	comparisonType := parts[1]
-
 	for _, condition := range p.Conditions {
+		parts := strings.SplitN(condition.ConditionType, ".", 2)
+		if len(parts) != 2 {
+			return domain.RoutableOutput{}, fmt.Errorf("invalid condition type: %s", condition.ConditionType)
+		}
+
+		valueType := parts[0]
+		comparisonType := parts[1]
+
 		conditionResult, err := EvaluateCondition(valueType, EvaluateConditionParams{
 			Value1:         condition.Value1,
 			Value2:         condition.Value2,
@@ -159,11 +152,9 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 	}
 
 	ifElseResult := IfElseResult{
-		OutputIndex:    outputIndex,
-		ValueType:      valueType,
-		Value1:         p.Conditions,
-		Value2:         p.Conditions,
-		ComparisonType: comparisonType,
+		OutputIndex: outputIndex,
+		Value1:      p.Conditions,
+		Value2:      p.Conditions,
 	}
 
 	enhancedItem["__if_else_result__"] = ifElseResult
