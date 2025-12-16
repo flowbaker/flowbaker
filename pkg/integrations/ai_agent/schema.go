@@ -41,6 +41,14 @@ var (
 						MinLength:   1,
 						MaxLength:   2000,
 					},
+					{
+						Key:         "max_steps",
+						Name:        "Max Steps",
+						Description: "The maximum number of steps the AI agent can take",
+						Type:        domain.NodePropertyType_Number,
+						Placeholder: "30",
+						Help:        "The maximum number of steps the AI agent can take",
+					},
 				},
 				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
 					domain.UsageContextWorkflow: {
