@@ -133,6 +133,7 @@ var (
 )
 
 type NodeHandle struct {
+	Index        int                `json:"index" bson:"index"`
 	Type         NodeHandleType     `json:"type" bson:"type"`
 	Position     NodeHandlePosition `json:"position,omitempty" bson:"position,omitempty"`
 	Text         string             `json:"text,omitempty" bson:"text,omitempty"`
@@ -152,6 +153,7 @@ type IntegrationAction struct {
 	Properties        []NodeProperty                        `json:"properties" bson:"properties"`
 	HandlesByContext  map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
 	SupportedContexts []ActionUsageContext                  `json:"supported_contexts" bson:"supported_contexts"`
+	CombinedContexts  []ActionUsageContext                  `json:"combined_contexts" bson:"combined_contexts"`
 
 	IsNonAvailableForDefaultOAuth bool           `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
 	Decoration                    NodeDecoration `json:"decoration" bson:"decoration"`

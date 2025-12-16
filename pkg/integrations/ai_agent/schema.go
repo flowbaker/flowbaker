@@ -45,17 +45,29 @@ var (
 				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
 					domain.UsageContextWorkflow: {
 						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input", UsageContext: domain.UsageContextWorkflow},
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionRight, Text: "Tools", UsageContext: domain.UsageContextTool},
+							{Index: 0, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input", UsageContext: domain.UsageContextWorkflow},
+							{Index: 3, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionRight, Text: "Tools", UsageContext: domain.UsageContextTool},
 						},
 						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Output", UsageContext: domain.UsageContextWorkflow},
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "Agent", UsageContext: domain.UsageContextTool},
+							{Index: 2, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Output", UsageContext: domain.UsageContextWorkflow},
+						},
+					},
+					domain.UsageContextTool: {
+						Input: []domain.NodeHandle{
+							{Index: 3, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionRight, Text: "Tools", UsageContext: domain.UsageContextTool},
+						},
+						Output: []domain.NodeHandle{
+							{Index: 1, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "Agent", UsageContext: domain.UsageContextTool},
 						},
 					},
 				},
 				SupportedContexts: []domain.ActionUsageContext{
 					domain.UsageContextWorkflow,
+					domain.UsageContextTool,
+				},
+				CombinedContexts: []domain.ActionUsageContext{
+					domain.UsageContextWorkflow,
+					domain.UsageContextTool,
 				},
 			},
 		},
