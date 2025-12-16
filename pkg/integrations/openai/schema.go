@@ -276,6 +276,43 @@ var (
 						Required:    false,
 						Type:        domain.NodePropertyType_Integer,
 					},
+					{
+						Key:         "top_p",
+						Name:        "Top P",
+						Description: "The top P value to use for nucleus sampling",
+						Required:    false,
+						Type:        domain.NodePropertyType_Number,
+						NumberOpts: &domain.NumberPropertyOptions{
+							Min: 0,
+							Max: 1,
+						},
+					},
+					{
+						Key:         "frequency_penalty",
+						Name:        "Frequency Penalty",
+						Description: "The frequency penalty to use for generation",
+						Required:    false,
+						Type:        domain.NodePropertyType_Number,
+						NumberOpts: &domain.NumberPropertyOptions{
+							Min:     0,
+							Max:     1,
+							Default: 0,
+							Step:    0.01,
+						},
+					},
+					{
+						Key:         "presence_penalty",
+						Name:        "Presence Penalty",
+						Description: "The presence penalty to use for generation",
+						Required:    false,
+						Type:        domain.NodePropertyType_Number,
+						NumberOpts: &domain.NumberPropertyOptions{
+							Min:     0,
+							Max:     1,
+							Default: 0,
+							Step:    0.01,
+						},
+					},
 				},
 			},
 			/* 			{

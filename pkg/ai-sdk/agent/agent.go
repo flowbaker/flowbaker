@@ -63,7 +63,7 @@ func New(opts ...Option) (*Agent, error) {
 		return nil, errors.New("model is required")
 	}
 
-	if agent.MaxIterations == 0 {
+	if agent.MaxIterations <= 0 {
 		agent.MaxIterations = 10
 	}
 
