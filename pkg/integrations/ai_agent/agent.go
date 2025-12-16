@@ -746,8 +746,15 @@ func (c *IntegrationToolCreator) convertPropertyToJSONSchema(prop domain.NodePro
 		schema["description"] = prop.Description
 	}
 
+	// Handle TagInput type - always an array of strings
+	if prop.Type == domain.NodePropertyType_TagInput {
+		schema["items"] = map[string]any{
+			"type": "string",
+		}
+	}
+
 	// Handle array types
-	if prop.Type == domain.NodePropertyType_Array || prop.Type == domain.NodePropertyType_TagInput {
+	if prop.Type == domain.NodePropertyType_Array {
 		if prop.ArrayOpts != nil {
 			itemsSchema := map[string]any{
 				"type": c.mapPropertyTypeToJSONType(prop.ArrayOpts.ItemType),
