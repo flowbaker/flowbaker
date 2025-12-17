@@ -92,6 +92,7 @@ const (
 type ExecuteParams struct {
 	Prompt       string `json:"prompt,omitempty"`
 	SystemPrompt string `json:"system_prompt,omitempty"`
+	MaxSteps     int    `json:"max_steps,omitempty"`
 }
 
 type MemoryNodeParams struct {
@@ -179,6 +180,11 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 
 	executionObserver := executionContext.ExecutionObserver
 
+	maxSteps := executeParams.MaxSteps
+	if maxSteps == 0 {
+		maxSteps = 30
+	}
+
 	a, err := agent.New(
 		agent.WithModel(llm.LLM),
 		agent.WithMaxTokens(4000),
@@ -186,10 +192,20 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 		agent.WithSystemPrompt(executeParams.SystemPrompt),
 		agent.WithMemory(memory.Memory),
 		agent.WithTools(tools...),
-		agent.WithMaxIterations(10),
+		agent.WithMaxIterations(maxSteps),
 		agent.WithCancelContext(ctx),
 		agent.WithHooks(agent.Hooks{
 			OnBeforeGenerate: func(ctx context.Context, req *provider.GenerateRequest) {
+				llmNodeParams := LLMNodeParams{}
+
+				err := e.parameterBinder.BindToStruct(ctx, item, &llmNodeParams, llm.Node.IntegrationSettings)
+				if err != nil {
+					log.Error().Err(err).Msg("failed to bind LLM node params")
+				}
+
+				req.MaxTokens = llmNodeParams.MaxTokens
+				req.Temperature = llmNodeParams.Temperature
+
 				err = executionObserver.Notify(ctx, executor.NodeExecutionStartedEvent{
 					NodeID:    llm.Node.ID,
 					Timestamp: time.Now(),
@@ -198,14 +214,79 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 					log.Error().Err(err).Msg("failed to notify execution observer about LLM node execution started")
 				}
 			},
-			OnStepComplete: func(ctx context.Context, step *agent.Step) {
+			OnGenerationFailed: func(ctx context.Context, req *provider.GenerateRequest, step *agent.Step, err error) {
 				llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, llm.Node.ID, 0)
 				llmOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, llm.Node.ID, 0)
+
+				llmInputItem := map[string]any{}
+
+				rawRequestJSON, err := json.Marshal(step.GenerateRequest)
+				if err != nil {
+					log.Error().Err(err).Msg("failed to marshal LLM input item")
+				}
+
+				err = json.Unmarshal(rawRequestJSON, &llmInputItem)
+				if err != nil {
+					log.Error().Err(err).Msg("failed to unmarshal LLM input item")
+				}
+
+				llmInputItem["agent"] = map[string]any{
+					"item": item,
+				}
 
 				itemsByInputID := map[string]domain.NodeItems{
 					llmInputHandleID: {
 						FromNodeID: agentNode.ID,
-						Items:      []domain.Item{step.GenerateRequest},
+						Items:      []domain.Item{llmInputItem},
+					},
+				}
+
+				itemsByOutputID := map[string]domain.NodeItems{
+					llmOutputHandleID: {
+						FromNodeID: llm.Node.ID,
+						Items:      []domain.Item{step},
+					},
+				}
+
+				now := time.Now()
+
+				err = executionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
+					NodeID:                llm.Node.ID,
+					ItemsByInputID:        itemsByInputID,
+					ItemsByOutputID:       itemsByOutputID,
+					StartedAt:             now,
+					EndedAt:               now,
+					IntegrationType:       domain.IntegrationType(llm.Node.IntegrationType),
+					IntegrationActionType: domain.IntegrationActionType(llm.Node.ActionNodeOpts.ActionType),
+				})
+				if err != nil {
+					log.Error().Err(err).Msg("failed to notify execution observer about LLM node execution completed")
+				}
+			},
+			OnStepComplete: func(ctx context.Context, step *agent.Step) {
+				llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, llm.Node.ID, 0)
+				llmOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, llm.Node.ID, 0)
+
+				llmInputItem := map[string]any{}
+
+				rawRequestJSON, err := json.Marshal(step.GenerateRequest)
+				if err != nil {
+					log.Error().Err(err).Msg("failed to marshal LLM input item")
+				}
+
+				err = json.Unmarshal(rawRequestJSON, &llmInputItem)
+				if err != nil {
+					log.Error().Err(err).Msg("failed to unmarshal LLM input item")
+				}
+
+				llmInputItem["agent"] = map[string]any{
+					"item": item,
+				}
+
+				itemsByInputID := map[string]domain.NodeItems{
+					llmInputHandleID: {
+						FromNodeID: agentNode.ID,
+						Items:      []domain.Item{llmInputItem},
 					},
 				}
 
@@ -952,4 +1033,91 @@ type JSONSchemaProperty struct {
 	MinLength   int                           `json:"minLength,omitempty"`
 	MaxLength   int                           `json:"maxLength,omitempty"`
 	Pattern     string                        `json:"pattern,omitempty"`
+}
+
+type AgentHooksManager struct {
+	AgentNodeID       string
+	InputItem         domain.Item
+	ExecutionObserver domain.ExecutionObserver
+	ParameterBinder   domain.IntegrationParameterBinder
+
+	LLMNode domain.WorkflowNode
+}
+
+func (m *AgentHooksManager) OnBeforeGenerate(ctx context.Context, req *provider.GenerateRequest) {
+	llmNodeParams := LLMNodeParams{}
+
+	item := m.InputItem
+
+	err := m.ParameterBinder.BindToStruct(ctx, item, &llmNodeParams, m.LLMNode.IntegrationSettings)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to bind LLM node params")
+	}
+
+	req.MaxTokens = llmNodeParams.MaxTokens
+	req.Temperature = llmNodeParams.Temperature
+
+	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionStartedEvent{
+		NodeID:    m.LLMNode.ID,
+		Timestamp: time.Now(),
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to notify execution observer about LLM node execution started")
+	}
+}
+
+func (m *AgentHooksManager) OnGenerationFailed(ctx context.Context, req *provider.GenerateRequest, step *agent.Step, err error) {
+	
+}
+
+func (m *AgentHooksManager) OnStepStart(ctx context.Context, step *agent.Step) {
+	llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, m.LLMNode.ID, 0)
+	llmOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, m.LLMNode.ID, 0)
+
+	llmInputItem := map[string]any{}
+
+	rawRequestJSON, err := json.Marshal(step.GenerateRequest)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to marshal LLM input item")
+	}
+
+	err = json.Unmarshal(rawRequestJSON, &llmInputItem)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal LLM input item")
+	}
+
+	item := m.InputItem
+
+	llmInputItem["agent"] = map[string]any{
+		"item": item,
+	}
+
+	itemsByInputID := map[string]domain.NodeItems{
+		llmInputHandleID: {
+			FromNodeID: m.AgentNodeID,
+			Items:      []domain.Item{llmInputItem},
+		},
+	}
+
+	itemsByOutputID := map[string]domain.NodeItems{
+		llmOutputHandleID: {
+			FromNodeID: m.LLMNode.ID,
+			Items:      []domain.Item{step},
+		},
+	}
+
+	now := time.Now()
+
+	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
+		NodeID:                m.LLMNode.ID,
+		ItemsByInputID:        itemsByInputID,
+		ItemsByOutputID:       itemsByOutputID,
+		StartedAt:             now,
+		EndedAt:               now,
+		IntegrationType:       domain.IntegrationType(m.LLMNode.IntegrationType),
+		IntegrationActionType: domain.IntegrationActionType(m.LLMNode.ActionNodeOpts.ActionType),
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to notify execution observer about LLM node execution completed")
+	}
 }

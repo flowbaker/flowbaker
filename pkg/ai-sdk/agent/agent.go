@@ -42,7 +42,8 @@ type Agent struct {
 }
 
 type Hooks struct {
-	OnBeforeGenerate func(ctx context.Context, req *provider.GenerateRequest)
+	OnBeforeGenerate   func(ctx context.Context, req *provider.GenerateRequest)
+	OnGenerationFailed func(ctx context.Context, req *provider.GenerateRequest, step *Step, err error)
 
 	OnStepStart    func(ctx context.Context, step *Step)
 	OnStepComplete func(ctx context.Context, step *Step)
