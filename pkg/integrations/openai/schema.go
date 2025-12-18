@@ -256,13 +256,6 @@ var (
 						Options:     modelOptions,
 					},
 					{
-						Key:         "system_prompt",
-						Name:        "System Prompt",
-						Description: "The system prompt for the AI agent",
-						Required:    false,
-						Type:        domain.NodePropertyType_Text,
-					},
-					{
 						Key:         "temperature",
 						Name:        "Temperature",
 						Description: "Controls randomness in the output. Higher values make output more random",
@@ -270,10 +263,9 @@ var (
 						Type:        domain.NodePropertyType_Number,
 						Advanced:    true,
 						NumberOpts: &domain.NumberPropertyOptions{
-							Min:     0,
-							Max:     2,
-							Default: 0.7,
-							Step:    0.1,
+							Min:  0,
+							Max:  2,
+							Step: 0.1,
 						},
 					},
 					{
@@ -282,6 +274,65 @@ var (
 						Description: "The maximum number of tokens to generate",
 						Required:    false,
 						Type:        domain.NodePropertyType_Integer,
+					},
+					{
+						Key:         "top_p",
+						Name:        "Top P",
+						Description: "The top P value to use for nucleus sampling",
+						Required:    false,
+						Type:        domain.NodePropertyType_Number,
+						NumberOpts: &domain.NumberPropertyOptions{
+							Min: 0,
+							Max: 1,
+						},
+					},
+					{
+						Key:         "frequency_penalty",
+						Name:        "Frequency Penalty",
+						Description: "The frequency penalty to use for generation",
+						Required:    false,
+						Type:        domain.NodePropertyType_Number,
+						NumberOpts: &domain.NumberPropertyOptions{
+							Min:  0,
+							Max:  1,
+							Step: 0.01,
+						},
+					},
+					{
+						Key:         "presence_penalty",
+						Name:        "Presence Penalty",
+						Description: "The presence penalty to use for generation",
+						Required:    false,
+						Type:        domain.NodePropertyType_Number,
+						NumberOpts: &domain.NumberPropertyOptions{
+							Min:  0,
+							Max:  1,
+							Step: 0.01,
+						},
+					},
+					{
+						Key:         "reasoning_effort",
+						Name:        "Reasoning Effort",
+						Description: "The reasoning effort to use for generation",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
+						Options: []domain.NodePropertyOption{
+							{Label: "Low", Value: "low"},
+							{Label: "Medium", Value: "medium"},
+							{Label: "High", Value: "high"},
+						},
+					},
+					{
+						Key:         "verbosity",
+						Name:        "Verbosity",
+						Description: "The verbosity of the generation",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
+						Options: []domain.NodePropertyOption{
+							{Label: "Low", Value: "low"},
+							{Label: "Medium", Value: "medium"},
+							{Label: "High", Value: "high"},
+						},
 					},
 				},
 			},
@@ -340,48 +391,47 @@ var (
 )
 
 var modelOptions = []domain.NodePropertyOption{
-	// General models
-	{Label: "GPT-5", Value: "gpt-5"},
-	{Label: "O1", Value: "o1"},
-	{Label: "GPT-4", Value: "gpt-4"},
-	{Label: "GPT-4o", Value: "gpt-4o"},
-	{Label: "GPT-3.5 Turbo", Value: "gpt-3.5-turbo"},
+	// GPT-5.2 series (Dec 2025 - Latest)
+	{Label: "GPT-5.2", Value: "gpt-5.2"},
 
-	// GPT-5 series
+	// GPT-5.1 series (Nov 2025)
+	{Label: "GPT-5.1", Value: "gpt-5.1"},
+
+	// GPT-5 series (Aug 2025)
+	{Label: "GPT-5", Value: "gpt-5"},
 	{Label: "GPT-5 Mini", Value: "gpt-5-mini"},
 	{Label: "GPT-5 Nano", Value: "gpt-5-nano"},
 	{Label: "GPT-5 Chat Latest", Value: "gpt-5-chat-latest"},
 
-	// GPT-4.1 series
-	{Label: "GPT-4.1", Value: "gpt-4.1"},
-	{Label: "GPT-4.1 2025-04-14", Value: "gpt-4.1-2025-04-14"},
-	{Label: "GPT-4.1 Mini", Value: "gpt-4.1-mini"},
-	{Label: "GPT-4.1 Mini 2025-04-14", Value: "gpt-4.1-mini-2025-04-14"},
-	{Label: "GPT-4.1 Nano", Value: "gpt-4.1-nano"},
-	{Label: "GPT-4.1 Nano 2025-04-14", Value: "gpt-4.1-nano-2025-04-14"},
-
-	// O-series models
-	{Label: "O1 2024-12-17", Value: "o1-2024-12-17"},
-	{Label: "O3", Value: "o3"},
-	{Label: "O3 2025-04-16", Value: "o3-2025-04-16"},
-	{Label: "O3 Mini", Value: "o3-mini"},
-	{Label: "O3 Mini 2025-01-31", Value: "o3-mini-2025-01-31"},
+	// O-series models (2025)
 	{Label: "O4 Mini", Value: "o4-mini"},
-	{Label: "O4 Mini 2025-04-16", Value: "o4-mini-2025-04-16"},
+	{Label: "O3", Value: "o3"},
+	{Label: "O3 Mini", Value: "o3-mini"},
 
-	// GPT-4o series
-	{Label: "GPT-4o 2024-05-13", Value: "gpt-4o-2024-05-13"},
-	{Label: "GPT-4o 2024-08-06", Value: "gpt-4o-2024-08-06"},
-	{Label: "GPT-4o 2024-11-20", Value: "gpt-4o-2024-11-20"},
+	// GPT-4.1 series (Apr 2025)
+	{Label: "GPT-4.1", Value: "gpt-4.1"},
+	{Label: "GPT-4.1 Mini", Value: "gpt-4.1-mini"},
+	{Label: "GPT-4.1 Nano", Value: "gpt-4.1-nano"},
+
+	// GPT-4.5 series (Feb 2025)
+	{Label: "GPT-4.5", Value: "gpt-4.5"},
+
+	// GPT-4o series (2024)
+	{Label: "GPT-4o", Value: "gpt-4o"},
 	{Label: "ChatGPT-4o Latest", Value: "chatgpt-4o-latest"},
 	{Label: "GPT-4o Mini", Value: "gpt-4o-mini"},
-	{Label: "GPT-4o Mini 2024-07-18", Value: "gpt-4o-mini-2024-07-18"},
 
-	// GPT-4 Turbo series
+	// O1 series (2024)
+	{Label: "O1", Value: "o1"},
+
+	// GPT-4 Turbo series (2024)
 	{Label: "GPT-4 Turbo", Value: "gpt-4-turbo"},
-	{Label: "GPT-4 Turbo 2024-04-09", Value: "gpt-4-turbo-2024-04-09"},
 	{Label: "GPT-4 Turbo Preview", Value: "gpt-4-turbo-preview"},
 
-	// GPT-3.5 series
+	// GPT-4 series
+	{Label: "GPT-4", Value: "gpt-4"},
+
+	// GPT-3.5 series (2023-2024)
 	{Label: "GPT-3.5 Turbo 0125", Value: "gpt-3.5-turbo-0125"},
+	{Label: "GPT-3.5 Turbo", Value: "gpt-3.5-turbo"},
 }

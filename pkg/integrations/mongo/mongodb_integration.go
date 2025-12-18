@@ -7,6 +7,7 @@ import (
 
 	"github.com/flowbaker/flowbaker/internal/managers"
 	"github.com/flowbaker/flowbaker/pkg/domain"
+	"github.com/rs/zerolog/log"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -243,6 +244,8 @@ func (i *MongoDBIntegration) FindMany(ctx context.Context, params domain.Integra
 	}
 
 	filter := bson.M{}
+
+	log.Debug().Interface("params", p).Msg("Params")
 
 	err = json.Unmarshal([]byte(p.Filter), &filter)
 	if err != nil {

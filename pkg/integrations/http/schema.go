@@ -151,7 +151,7 @@ var (
 		},
 		Actions: []domain.IntegrationAction{
 			{
-				ID:          "http_get",
+				ID:          string(IntegrationActionType_Get),
 				Name:        "GET Request",
 				ActionType:  IntegrationActionType_Get,
 				Description: "Make an HTTP GET request",
@@ -220,7 +220,7 @@ var (
 				},
 			},
 			{
-				ID:          "http_post",
+				ID:          string(IntegrationActionType_Post),
 				Name:        "POST Request",
 				ActionType:  IntegrationActionType_Post,
 				Description: "Make an HTTP POST request",
@@ -410,7 +410,7 @@ var (
 				},
 			},
 			{
-				ID:          "http_put",
+				ID:          string(IntegrationActionType_Put),
 				Name:        "PUT Request",
 				ActionType:  IntegrationActionType_Put,
 				Description: "Make an HTTP PUT request",
@@ -600,7 +600,7 @@ var (
 				},
 			},
 			{
-				ID:          "http_patch",
+				ID:          string(IntegrationActionType_Patch),
 				Name:        "PATCH Request",
 				ActionType:  IntegrationActionType_Patch,
 				Description: "Make an HTTP PATCH request",
@@ -790,7 +790,7 @@ var (
 				},
 			},
 			{
-				ID:          "http_delete",
+				ID:          string(IntegrationActionType_Delete),
 				Name:        "DELETE Request",
 				ActionType:  IntegrationActionType_Delete,
 				Description: "Make an HTTP DELETE request",

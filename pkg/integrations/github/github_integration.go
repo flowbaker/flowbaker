@@ -18,52 +18,52 @@ import (
 
 const (
 	// File Actions
-	GithubActionType_CreateFile domain.IntegrationActionType = "github_create_file"
-	GithubActionType_DeleteFile domain.IntegrationActionType = "github_delete_file"
-	GithubActionType_EditFile   domain.IntegrationActionType = "github_edit_file"
-	GithubActionType_GetFile    domain.IntegrationActionType = "github_get_file"
-	GithubActionType_ListFiles  domain.IntegrationActionType = "github_list_files"
+	GithubActionType_CreateFile domain.IntegrationActionType = "create_file"
+	GithubActionType_DeleteFile domain.IntegrationActionType = "delete_file"
+	GithubActionType_EditFile   domain.IntegrationActionType = "edit_file"
+	GithubActionType_GetFile    domain.IntegrationActionType = "get_file"
+	GithubActionType_ListFiles  domain.IntegrationActionType = "list_files"
 
 	// Organization Actions
-	GithubActionType_OrgGetRepositories domain.IntegrationActionType = "github_org_get_repositories"
+	GithubActionType_OrgGetRepositories domain.IntegrationActionType = "org_get_repositories"
 
 	// Release Actions
-	GithubActionType_CreateRelease domain.IntegrationActionType = "github_create_release"
-	GithubActionType_DeleteRelease domain.IntegrationActionType = "github_delete_release"
-	GithubActionType_GetRelease    domain.IntegrationActionType = "github_get_release"
-	GithubActionType_ListReleases  domain.IntegrationActionType = "github_list_releases"
-	GithubActionType_UpdateRelease domain.IntegrationActionType = "github_update_release"
+	GithubActionType_CreateRelease domain.IntegrationActionType = "create_release"
+	GithubActionType_DeleteRelease domain.IntegrationActionType = "delete_release"
+	GithubActionType_GetRelease    domain.IntegrationActionType = "get_release"
+	GithubActionType_ListReleases  domain.IntegrationActionType = "list_releases"
+	GithubActionType_UpdateRelease domain.IntegrationActionType = "update_release"
 
 	// Repository Actions
-	GithubActionType_GetRepository           domain.IntegrationActionType = "github_get_repository"
-	GithubActionType_GetRepositoryIssues     domain.IntegrationActionType = "github_get_repository_issues"
-	GithubActionType_GetRepositoryLicense    domain.IntegrationActionType = "github_get_repository_license"
-	GithubActionType_GetRepositoryProfile    domain.IntegrationActionType = "github_get_repository_profile"
-	GithubActionType_GetRepositoryPRs        domain.IntegrationActionType = "github_get_repository_prs"
-	GithubActionType_ListPopularPaths        domain.IntegrationActionType = "github_list_popular_paths"
-	GithubActionType_ListRepositoryReferrers domain.IntegrationActionType = "github_list_repository_referrers"
+	GithubActionType_GetRepository           domain.IntegrationActionType = "get_repository"
+	GithubActionType_GetRepositoryIssues     domain.IntegrationActionType = "get_repository_issues"
+	GithubActionType_GetRepositoryLicense    domain.IntegrationActionType = "get_repository_license"
+	GithubActionType_GetRepositoryProfile    domain.IntegrationActionType = "get_repository_profile"
+	GithubActionType_GetRepositoryPRs        domain.IntegrationActionType = "get_repository_prs"
+	GithubActionType_ListPopularPaths        domain.IntegrationActionType = "list_popular_paths"
+	GithubActionType_ListRepositoryReferrers domain.IntegrationActionType = "list_repository_referrers"
 
 	// Review Actions
-	GithubActionType_CreateReview domain.IntegrationActionType = "github_create_review"
-	GithubActionType_GetReview    domain.IntegrationActionType = "github_get_review"
-	GithubActionType_ListReviews  domain.IntegrationActionType = "github_list_reviews"
-	GithubActionType_UpdateReview domain.IntegrationActionType = "github_update_review"
+	GithubActionType_CreateReview domain.IntegrationActionType = "create_review"
+	GithubActionType_GetReview    domain.IntegrationActionType = "get_review"
+	GithubActionType_ListReviews  domain.IntegrationActionType = "list_reviews"
+	GithubActionType_UpdateReview domain.IntegrationActionType = "update_review"
 
 	// User Actions
-	GithubActionType_UserGetRepositories domain.IntegrationActionType = "github_user_get_repositories"
-	GithubActionType_UserInvite          domain.IntegrationActionType = "github_user_invite"
+	GithubActionType_UserGetRepositories domain.IntegrationActionType = "user_get_repositories"
+	GithubActionType_UserInvite          domain.IntegrationActionType = "user_invite"
 
 	// Issue Actions
-	GithubActionType_CreateIssue        domain.IntegrationActionType = "github_create_issue"
-	GithubActionType_CreateIssueComment domain.IntegrationActionType = "github_create_issue_comment"
-	GithubActionType_EditIssue          domain.IntegrationActionType = "github_edit_issue"
-	GithubActionType_GetIssue           domain.IntegrationActionType = "github_get_issue"
-	GithubActionType_LockIssue          domain.IntegrationActionType = "github_lock_issue"
+	GithubActionType_CreateIssue        domain.IntegrationActionType = "create_issue"
+	GithubActionType_CreateIssueComment domain.IntegrationActionType = "create_issue_comment"
+	GithubActionType_EditIssue          domain.IntegrationActionType = "edit_issue"
+	GithubActionType_GetIssue           domain.IntegrationActionType = "get_issue"
+	GithubActionType_LockIssue          domain.IntegrationActionType = "lock_issue"
 
 	// Peekable Types
-	GithubPeekable_Repositories domain.IntegrationPeekableType = "github_repositories"
-	GithubPeekable_Users        domain.IntegrationPeekableType = "github_users"
-	GithubPeekable_Branches     domain.IntegrationPeekableType = "github_branches"
+	GithubPeekable_Repositories domain.IntegrationPeekableType = "repositories"
+	GithubPeekable_Users        domain.IntegrationPeekableType = "users"
+	GithubPeekable_Branches     domain.IntegrationPeekableType = "branches"
 )
 
 type GithubIntegrationCreator struct {

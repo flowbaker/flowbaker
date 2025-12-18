@@ -128,11 +128,6 @@ var (
 				Name:        "HTTP Request Received",
 				EventType:   IntegrationTriggerType_HttpRequestReceived,
 				Description: "Triggered when an HTTP request is received",
-				OutputHandles: []domain.NodeHandle{
-					{
-						Type: domain.NodeHandleTypeDefault,
-					},
-				},
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "path",
