@@ -379,6 +379,15 @@ func (a *Agent) IncrementStepNumber() {
 
 func (a *Agent) OnError(err error) {
 	a.errChan <- err
+
+	if a.hooks.OnGenerationFailed != nil {
+		currentStep, ok := a.GetCurrentStep()
+		if !ok {
+			return
+		}
+
+		a.hooks.OnGenerationFailed(a.cancelContext, &currentStep.GenerateRequest, currentStep, err)
+	}
 }
 
 func (a *Agent) Cleanup() {

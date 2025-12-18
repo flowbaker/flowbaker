@@ -19,12 +19,19 @@ type Provider struct {
 
 // Config holds OpenAI-specific configuration
 type Config struct {
-	APIKey      string
-	Model       string
-	BaseURL     string
-	OrgID       string
-	Temperature float32
-	MaxTokens   int
+	APIKey  string
+	Model   string
+	BaseURL string
+	OrgID   string
+
+	Temperature      float32
+	MaxTokens        int
+	TopP             float32
+	FrequencyPenalty float32
+	PresencePenalty  float32
+	Seed             *int64
+	Stop             []string
+	ReasoningEffort  string
 }
 
 // New creates a new OpenAI provider
