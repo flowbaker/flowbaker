@@ -19,6 +19,8 @@ type LanguageModel interface {
 
 	// Capabilities returns the capabilities of this model
 	Capabilities() Capabilities
+
+	ProviderName() string
 }
 
 // GenerateRequest contains all parameters for generating text
@@ -32,29 +34,31 @@ type GenerateRequest struct {
 	// Tools is a list of tools available to the model
 	Tools []types.Tool `json:"tools,omitempty"`
 
-	// Temperature controls randomness (0.0 to 2.0)
-	Temperature float32 `json:"temperature,omitempty"`
+	/*
+		 	// Temperature controls randomness (0.0 to 2.0)
+			Temperature float32 `json:"temperature,omitempty"`
 
-	// MaxTokens is the maximum number of tokens to generate
-	MaxTokens int `json:"max_tokens,omitempty"`
+			// MaxTokens is the maximum number of tokens to generate
+			MaxTokens int `json:"max_tokens,omitempty"`
 
-	// TopP controls nucleus sampling
-	TopP float32 `json:"top_p,omitempty"`
+			// TopP controls nucleus sampling
+			TopP float32 `json:"top_p,omitempty"`
 
-	// TopK limits sampling to top K tokens
-	TopK int `json:"top_k,omitempty"`
+			// TopK limits sampling to top K tokens
+			TopK int `json:"top_k,omitempty"`
 
-	// FrequencyPenalty reduces likelihood of repeating tokens
-	FrequencyPenalty float32 `json:"frequency_penalty,omitempty"`
+			// FrequencyPenalty reduces likelihood of repeating tokens
+			FrequencyPenalty float32 `json:"frequency_penalty,omitempty"`
 
-	// PresencePenalty reduces likelihood of repeating topics
-	PresencePenalty float32 `json:"presence_penalty,omitempty"`
+			// PresencePenalty reduces likelihood of repeating topics
+			PresencePenalty float32 `json:"presence_penalty,omitempty"`
 
-	// Seed for deterministic generation (if supported)
-	Seed *int64 `json:"seed,omitempty"`
+			// Seed for deterministic generation (if supported)
+			Seed *int64 `json:"seed,omitempty"`
 
-	// Stop sequences where generation should stop
-	Stop []string `json:"stop,omitempty"`
+			// Stop sequences where generation should stop
+			Stop []string `json:"stop,omitempty"`
+	*/
 }
 
 // Capabilities describes what a model can do

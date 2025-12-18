@@ -201,8 +201,6 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 
 	a, err := agent.New(
 		agent.WithModel(llm.LLM),
-		agent.WithMaxTokens(4000),
-		agent.WithTemperature(1),
 		agent.WithSystemPrompt(executeParams.SystemPrompt),
 		agent.WithMemory(memory.Memory),
 		agent.WithTools(tools...),
@@ -214,10 +212,11 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 		return nil, fmt.Errorf("failed to create agent: %w", err)
 	}
 
+	hooksManager.Agent = a
+
 	result, err := a.ChatSync(ctx, agent.ChatRequest{
 		Prompt:    initialPrompt,
 		SessionID: "",
-		UserID:    "",
 	})
 	if err != nil {
 		log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
@@ -298,11 +297,17 @@ type ResolveLLMResult struct {
 }
 
 type OpenAIModelSettings struct {
-	Model        string  `json:"model"`
-	Temperature  float32 `json:"temperature"`
-	MaxTokens    int     `json:"max_tokens"`
-	SystemPrompt string  `json:"system_prompt"`
-	CredentialID string  `json:"credential_id"`
+	Model            string   `json:"model"`
+	Temperature      float32  `json:"temperature"`
+	MaxTokens        int      `json:"max_tokens"`
+	SystemPrompt     string   `json:"system_prompt"`
+	CredentialID     string   `json:"credential_id"`
+	TopP             float32  `json:"top_p"`
+	FrequencyPenalty float32  `json:"frequency_penalty"`
+	PresencePenalty  float32  `json:"presence_penalty"`
+	Stop             []string `json:"stop"`
+	ReasoningEffort  string   `json:"reasoning_effort"`
+	Verbosity        string   `json:"verbosity"`
 }
 
 func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSettingsParams) (ResolveLLMResult, error) {
@@ -321,7 +326,15 @@ func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSet
 
 	settings := OpenAIModelSettings{}
 
-	err := e.parameterBinder.BindToStruct(ctx, params.InputItem, &settings, llmNode.IntegrationSettings)
+	item := params.InputItem
+
+	llmInputItem := map[string]map[string]any{
+		"agent": {
+			"item": item,
+		},
+	}
+
+	err := e.parameterBinder.BindToStruct(ctx, llmInputItem, &settings, llmNode.IntegrationSettings)
 	if err != nil {
 		return ResolveLLMResult{}, fmt.Errorf("failed to bind LLM node params: %w", err)
 	}
@@ -339,13 +352,21 @@ func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSet
 			return ResolveLLMResult{}, fmt.Errorf("failed to get credential: %w", err)
 		}
 
-		languageModel = openai.NewWithConfig(openai.Config{
-			APIKey:      credential.APIKey,
-			Model:       settings.Model,
-			Temperature: settings.Temperature,
-			MaxTokens:   settings.MaxTokens,
-			/* 			SystemPrompt: settings.SystemPrompt, */
+		openaiModel := openai.New(credential.APIKey, settings.Model)
+
+		openaiModel.SetRequestSettings(openai.RequestSettings{
+			Model:            settings.Model,
+			Temperature:      settings.Temperature,
+			MaxTokens:        settings.MaxTokens,
+			TopP:             settings.TopP,
+			FrequencyPenalty: settings.FrequencyPenalty,
+			PresencePenalty:  settings.PresencePenalty,
+			Stop:             settings.Stop,
+			ReasoningEffort:  settings.ReasoningEffort,
+			Verbosity:        settings.Verbosity,
 		})
+
+		languageModel = openaiModel
 	default:
 		return ResolveLLMResult{}, fmt.Errorf("unsupported LLM node type: %s", llmNode.IntegrationType)
 	}
@@ -933,24 +954,61 @@ type JSONSchemaProperty struct {
 
 type AgentHooksManager struct {
 	AgentNodeID       string
+	Agent             *agent.Agent
 	InputItem         domain.Item
 	ExecutionObserver domain.ExecutionObserver
 	ParameterBinder   domain.IntegrationParameterBinder
 	LLMNode           domain.WorkflowNode
 }
 
-func (m *AgentHooksManager) OnBeforeGenerate(ctx context.Context, req *provider.GenerateRequest) {
-	llmNodeParams := LLMNodeParams{}
-
+func (m *AgentHooksManager) OnBeforeGenerate(ctx context.Context, req *provider.GenerateRequest, step *agent.Step) {
 	item := m.InputItem
 
-	err := m.ParameterBinder.BindToStruct(ctx, item, &llmNodeParams, m.LLMNode.IntegrationSettings)
+	llmInputItem := map[string]any{}
+
+	rawRequestJSON, err := json.Marshal(step.GenerateRequest)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to bind LLM node params")
+		log.Error().Err(err).Msg("failed to marshal LLM input item")
 	}
 
-	req.MaxTokens = llmNodeParams.MaxTokens
-	req.Temperature = llmNodeParams.Temperature
+	err = json.Unmarshal(rawRequestJSON, &llmInputItem)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal LLM input item")
+	}
+
+	llmInputItem["agent"] = map[string]any{
+		"item": item,
+	}
+
+	providerName := m.Agent.Model.ProviderName()
+
+	switch providerName {
+	case "openai":
+		modelParams := OpenAIModelSettings{}
+
+		err = m.ParameterBinder.BindToStruct(ctx, llmInputItem, &modelParams, m.LLMNode.IntegrationSettings)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to bind LLM node params")
+		}
+
+		openaiProvider, ok := m.Agent.Model.(*openai.Provider)
+		if !ok {
+			log.Error().Msg("failed to cast agent model to openai provider")
+			return
+		}
+
+		openaiProvider.SetRequestSettings(openai.RequestSettings{
+			Model:            modelParams.Model,
+			Temperature:      modelParams.Temperature,
+			MaxTokens:        modelParams.MaxTokens,
+			TopP:             modelParams.TopP,
+			FrequencyPenalty: modelParams.FrequencyPenalty,
+			PresencePenalty:  modelParams.PresencePenalty,
+			Stop:             modelParams.Stop,
+			ReasoningEffort:  modelParams.ReasoningEffort,
+			Verbosity:        modelParams.Verbosity,
+		})
+	}
 
 	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionStartedEvent{
 		NodeID:    m.LLMNode.ID,

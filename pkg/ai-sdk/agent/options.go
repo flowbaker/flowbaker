@@ -34,18 +34,6 @@ func WithSystemPrompt(prompt string) Option {
 	}
 }
 
-func WithTemperature(temp float32) Option {
-	return func(a *Agent) {
-		a.Temperature = temp
-	}
-}
-
-func WithMaxTokens(tokens int) Option {
-	return func(a *Agent) {
-		a.MaxTokens = tokens
-	}
-}
-
 func WithMaxIterations(iterations int) Option {
 	return func(a *Agent) {
 		a.MaxIterations = iterations

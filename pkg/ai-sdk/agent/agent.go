@@ -19,8 +19,6 @@ type Agent struct {
 	Tools               []tool.Tool
 	UserInputTools      map[string]tool.UserInputTool
 	SystemPrompt        string
-	Temperature         float32
-	MaxTokens           int
 	Model               provider.LanguageModel
 	Memory              memory.Store
 	ConversationHistory int
@@ -42,7 +40,7 @@ type Agent struct {
 }
 
 type Hooks struct {
-	OnBeforeGenerate   func(ctx context.Context, req *provider.GenerateRequest)
+	OnBeforeGenerate   func(ctx context.Context, req *provider.GenerateRequest, step *Step)
 	OnGenerationFailed func(ctx context.Context, req *provider.GenerateRequest, step *Step, err error)
 
 	OnStepStart    func(ctx context.Context, step *Step)
@@ -86,7 +84,6 @@ func New(opts ...Option) (*Agent, error) {
 type ChatRequest struct {
 	Prompt      string
 	SessionID   string
-	UserID      string
 	ToolResults []types.ToolResult // For resuming after user input pause
 }
 
@@ -121,11 +118,9 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
 			}
 
 			req := provider.GenerateRequest{
-				Messages:    conversation.Messages,
-				System:      a.SystemPrompt,
-				Tools:       tools,
-				Temperature: a.Temperature,
-				MaxTokens:   a.MaxTokens,
+				Messages: conversation.Messages,
+				System:   a.SystemPrompt,
+				Tools:    tools,
 			}
 
 			a.OnBeforeGenerate(&req)
@@ -305,7 +300,7 @@ func (a *Agent) OnBeforeGenerate(req *provider.GenerateRequest) {
 	currentStep.GenerateRequest = *req
 
 	if a.hooks.OnBeforeGenerate != nil {
-		a.hooks.OnBeforeGenerate(a.cancelContext, req)
+		a.hooks.OnBeforeGenerate(a.cancelContext, req, currentStep)
 	}
 }
 

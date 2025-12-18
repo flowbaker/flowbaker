@@ -7,56 +7,45 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
+	"github.com/rs/zerolog/log"
 	"github.com/sashabaranov/go-openai"
 )
 
 // Provider implements the LanguageModel interface for OpenAI
 type Provider struct {
 	client *openai.Client
-	model  string
-	config Config
+	apiKey string
+
+	RequestSettings RequestSettings
 }
 
-// Config holds OpenAI-specific configuration
-type Config struct {
-	APIKey  string
-	Model   string
-	BaseURL string
-	OrgID   string
-
+type RequestSettings struct {
+	Model            string
 	Temperature      float32
 	MaxTokens        int
 	TopP             float32
 	FrequencyPenalty float32
 	PresencePenalty  float32
-	Seed             *int64
 	Stop             []string
 	ReasoningEffort  string
+	Verbosity        string
 }
 
 // New creates a new OpenAI provider
 func New(apiKey, model string) *Provider {
-	return NewWithConfig(Config{
-		APIKey: apiKey,
-		Model:  model,
-	})
-}
-
-// NewWithConfig creates a new OpenAI provider with custom configuration
-func NewWithConfig(config Config) *Provider {
-	clientConfig := openai.DefaultConfig(config.APIKey)
-	if config.BaseURL != "" {
-		clientConfig.BaseURL = config.BaseURL
-	}
-	if config.OrgID != "" {
-		clientConfig.OrgID = config.OrgID
-	}
+	clientConfig := openai.DefaultConfig(apiKey)
 
 	return &Provider{
 		client: openai.NewClientWithConfig(clientConfig),
-		model:  config.Model,
-		config: config,
+		apiKey: apiKey,
+		RequestSettings: RequestSettings{
+			Model: model,
+		},
 	}
+}
+
+func (p *Provider) SetRequestSettings(settings RequestSettings) {
+	p.RequestSettings = settings
 }
 
 // Generate implements the Generate method of the LanguageModel interface
@@ -64,56 +53,28 @@ func (p *Provider) Generate(ctx context.Context, req provider.GenerateRequest) (
 	messages := p.convertMessages(req.Messages, req.System)
 	tools := p.convertTools(req.Tools)
 
+	log.Debug().Interface("requestSettings", p.RequestSettings).Msg("Request settings from openai provider")
+
 	chatReq := openai.ChatCompletionRequest{
-		Model:     p.model,
-		Messages:  messages,
-		Verbosity: "low",
+		Model:    p.RequestSettings.Model,
+		Messages: messages,
+		Tools:    tools,
+
+		Verbosity:        p.RequestSettings.Verbosity,
+		ReasoningEffort:  p.RequestSettings.ReasoningEffort,
+		Temperature:      p.RequestSettings.Temperature,
+		TopP:             p.RequestSettings.TopP,
+		FrequencyPenalty: p.RequestSettings.FrequencyPenalty,
+		PresencePenalty:  p.RequestSettings.PresencePenalty,
+		Stop:             p.RequestSettings.Stop,
 	}
 
-	// Apply parameters
-	if req.Temperature > 0 {
-		chatReq.Temperature = req.Temperature
-	} else if p.config.Temperature > 0 {
-		chatReq.Temperature = p.config.Temperature
-	}
-
-	if req.MaxTokens > 0 {
-		if isMaxCompletionTokensModel(p.model) {
-			chatReq.MaxCompletionTokens = req.MaxTokens
+	if p.RequestSettings.MaxTokens > 0 {
+		if isMaxCompletionTokensModel(p.RequestSettings.Model) {
+			chatReq.MaxCompletionTokens = p.RequestSettings.MaxTokens
 		} else {
-			chatReq.MaxTokens = req.MaxTokens
+			chatReq.MaxTokens = p.RequestSettings.MaxTokens
 		}
-	} else if p.config.MaxTokens > 0 {
-		if isMaxCompletionTokensModel(p.model) {
-			chatReq.MaxCompletionTokens = p.config.MaxTokens
-		} else {
-			chatReq.MaxTokens = p.config.MaxTokens
-		}
-	}
-
-	if req.TopP > 0 {
-		chatReq.TopP = req.TopP
-	}
-
-	if req.FrequencyPenalty != 0 {
-		chatReq.FrequencyPenalty = req.FrequencyPenalty
-	}
-
-	if req.PresencePenalty != 0 {
-		chatReq.PresencePenalty = req.PresencePenalty
-	}
-
-	if req.Seed != nil {
-		seed := int(*req.Seed)
-		chatReq.Seed = &seed
-	}
-
-	if len(req.Stop) > 0 {
-		chatReq.Stop = req.Stop
-	}
-
-	if len(tools) > 0 {
-		chatReq.Tools = tools
 	}
 
 	resp, err := p.client.CreateChatCompletion(ctx, chatReq)
@@ -171,61 +132,29 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 		tools := p.convertTools(req.Tools)
 
 		chatReq := openai.ChatCompletionRequest{
-			Model:    p.model,
+			Model:    p.RequestSettings.Model,
 			Messages: messages,
 			Stream:   true,
 			StreamOptions: &openai.StreamOptions{
 				IncludeUsage: true,
 			},
+			Verbosity:        p.RequestSettings.Verbosity,
+			ReasoningEffort:  p.RequestSettings.ReasoningEffort,
+			Temperature:      p.RequestSettings.Temperature,
+			TopP:             p.RequestSettings.TopP,
+			FrequencyPenalty: p.RequestSettings.FrequencyPenalty,
+			PresencePenalty:  p.RequestSettings.PresencePenalty,
+			Stop:             p.RequestSettings.Stop,
+			Tools:            tools,
 		}
 
-		// Apply parameters
-		if req.Temperature > 0 {
-			chatReq.Temperature = req.Temperature
-		} else if p.config.Temperature > 0 {
-			chatReq.Temperature = p.config.Temperature
-		}
-
-		if req.MaxTokens > 0 {
-			if isMaxCompletionTokensModel(p.model) {
-				chatReq.MaxCompletionTokens = req.MaxTokens
+		if p.RequestSettings.MaxTokens > 0 {
+			if isMaxCompletionTokensModel(p.RequestSettings.Model) {
+				chatReq.MaxCompletionTokens = p.RequestSettings.MaxTokens
 			} else {
-				chatReq.MaxTokens = req.MaxTokens
-			}
-		} else if p.config.MaxTokens > 0 {
-			if isMaxCompletionTokensModel(p.model) {
-				chatReq.MaxCompletionTokens = p.config.MaxTokens
-			} else {
-				chatReq.MaxTokens = p.config.MaxTokens
+				chatReq.MaxTokens = p.RequestSettings.MaxTokens
 			}
 		}
-
-		if req.TopP > 0 {
-			chatReq.TopP = req.TopP
-		}
-
-		if req.FrequencyPenalty != 0 {
-			chatReq.FrequencyPenalty = req.FrequencyPenalty
-		}
-
-		if req.PresencePenalty != 0 {
-			chatReq.PresencePenalty = req.PresencePenalty
-		}
-
-		if req.Seed != nil {
-			seed := int(*req.Seed)
-			chatReq.Seed = &seed
-		}
-
-		if len(req.Stop) > 0 {
-			chatReq.Stop = req.Stop
-		}
-
-		if len(tools) > 0 {
-			chatReq.Tools = tools
-		}
-
-		chatReq.ReasoningEffort = "low"
 
 		stream, err := p.client.CreateChatCompletionStream(ctx, chatReq)
 		if err != nil {
@@ -369,7 +298,7 @@ type toolCallBuilder struct {
 
 // ID returns the model identifier
 func (p *Provider) ID() string {
-	return fmt.Sprintf("openai:%s", p.model)
+	return fmt.Sprintf("openai:%s", p.RequestSettings.Model)
 }
 
 // Capabilities returns the model's capabilities
@@ -377,9 +306,9 @@ func (p *Provider) Capabilities() provider.Capabilities {
 	return provider.Capabilities{
 		SupportsTools:     true,
 		SupportsStreaming: true,
-		SupportsVision:    isVisionModel(p.model),
-		MaxContextTokens:  getMaxContextTokens(p.model),
-		MaxOutputTokens:   getMaxOutputTokens(p.model),
+		SupportsVision:    isVisionModel(p.RequestSettings.Model),
+		MaxContextTokens:  getMaxContextTokens(p.RequestSettings.Model),
+		MaxOutputTokens:   getMaxOutputTokens(p.RequestSettings.Model),
 	}
 }
 
@@ -511,4 +440,8 @@ func getMaxOutputTokens(model string) int {
 		return limit
 	}
 	return 4096 // default
+}
+
+func (p *Provider) ProviderName() string {
+	return "openai"
 }
