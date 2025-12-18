@@ -196,7 +196,6 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 	hooks := agent.Hooks{
 		OnBeforeGenerate:   hooksManager.OnBeforeGenerate,
 		OnGenerationFailed: hooksManager.OnGenerationFailed,
-		OnStepStart:        hooksManager.OnStepStart,
 		OnStepComplete:     hooksManager.OnStepComplete,
 	}
 
@@ -1002,58 +1001,6 @@ func (m *AgentHooksManager) OnGenerationFailed(ctx context.Context, req *provide
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to notify execution observer about LLM node execution failed")
-	}
-}
-
-func (m *AgentHooksManager) OnStepStart(ctx context.Context, step *agent.Step) {
-	llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, m.LLMNode.ID, 0)
-	llmOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, m.LLMNode.ID, 0)
-
-	llmInputItem := map[string]any{}
-
-	rawRequestJSON, err := json.Marshal(step.GenerateRequest)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to marshal LLM input item")
-	}
-
-	err = json.Unmarshal(rawRequestJSON, &llmInputItem)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to unmarshal LLM input item")
-	}
-
-	item := m.InputItem
-
-	llmInputItem["agent"] = map[string]any{
-		"item": item,
-	}
-
-	itemsByInputID := map[string]domain.NodeItems{
-		llmInputHandleID: {
-			FromNodeID: m.AgentNodeID,
-			Items:      []domain.Item{llmInputItem},
-		},
-	}
-
-	itemsByOutputID := map[string]domain.NodeItems{
-		llmOutputHandleID: {
-			FromNodeID: m.LLMNode.ID,
-			Items:      []domain.Item{step},
-		},
-	}
-
-	now := time.Now()
-
-	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
-		NodeID:                m.LLMNode.ID,
-		ItemsByInputID:        itemsByInputID,
-		ItemsByOutputID:       itemsByOutputID,
-		StartedAt:             now,
-		EndedAt:               now,
-		IntegrationType:       domain.IntegrationType(m.LLMNode.IntegrationType),
-		IntegrationActionType: domain.IntegrationActionType(m.LLMNode.ActionNodeOpts.ActionType),
-	})
-	if err != nil {
-		log.Error().Err(err).Msg("failed to notify execution observer about LLM node execution completed")
 	}
 }
 
