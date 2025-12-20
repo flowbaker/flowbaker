@@ -64,6 +64,8 @@ const (
 	IntegrationType_Knowledge            IntegrationType = "flowbaker_knowledge"
 	IntegrationType_Base64               IntegrationType = "base64"
 	IntegrationType_ContentClassifier    IntegrationType = "content_classifier"
+
+	IntegrationType_Teams                IntegrationType = "teams"
 	IntegrationType_Pipedrive            IntegrationType = "pipedrive"
 	IntegrationType_StartupsWatch        IntegrationType = "startups_watch"
 	IntegrationType_Manipulation         IntegrationType = "manipulation"
