@@ -73,6 +73,7 @@ const (
 	IntegrationType_FileToItem           IntegrationType = "filetoitem"
 	IntegrationType_BrightData           IntegrationType = "brightdata"
 	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
+	IntegrationType_Notion               IntegrationType = "notion"
 )
 
 type Integration struct {
