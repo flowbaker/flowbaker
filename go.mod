@@ -3,8 +3,9 @@ module github.com/flowbaker/flowbaker
 go 1.25.0
 
 require (
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0
 	github.com/andygrunwald/go-jira v1.16.0
-	github.com/anthropics/anthropic-sdk-go v1.9.1
+	github.com/anthropics/anthropic-sdk-go v1.18.1
 	github.com/aws/aws-sdk-go v1.55.8
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/charmbracelet/bubbles v0.21.0
@@ -20,26 +21,33 @@ require (
 	github.com/gosimple/slug v1.15.0
 	github.com/hasura/go-graphql-client v0.14.4
 	github.com/jackc/pgx/v5 v5.7.5
+	github.com/microsoft/kiota-abstractions-go v1.9.3
+	github.com/microsoft/kiota-authentication-azure-go v1.3.1
+	github.com/microsoft/kiota-serialization-json-go v1.1.2
+	github.com/microsoftgraph/msgraph-sdk-go v1.89.0
 	github.com/redis/go-redis/v9 v9.12.1
 	github.com/resend/resend-go/v2 v2.23.0
 	github.com/robfig/cron v1.2.0
 	github.com/rs/xid v1.6.0
 	github.com/rs/zerolog v1.34.0
-	github.com/sashabaranov/go-openai v1.41.1
+	github.com/sashabaranov/go-openai v1.41.2
 	github.com/slack-go/slack v0.17.3
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 	github.com/stripe/stripe-go/v82 v82.5.0
-	go.mongodb.org/mongo-driver v1.17.4
+	go.mongodb.org/mongo-driver v1.17.6
 	golang.org/x/crypto v0.41.0
 	golang.org/x/oauth2 v0.30.0
 	google.golang.org/api v0.231.0
+	google.golang.org/genai v1.36.0
 )
 
 require (
+	cloud.google.com/go v0.116.0 // indirect
 	cloud.google.com/go/auth v0.16.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -65,6 +73,7 @@ require (
 	github.com/gofiber/utils/v2 v2.0.0-rc.1 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
@@ -81,6 +90,11 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/microsoft/kiota-http-go v1.5.4 // indirect
+	github.com/microsoft/kiota-serialization-form-go v1.1.2 // indirect
+	github.com/microsoft/kiota-serialization-multipart-go v1.1.2 // indirect
+	github.com/microsoft/kiota-serialization-text-go v1.1.3 // indirect
+	github.com/microsoftgraph/msgraph-sdk-go-core v1.4.0 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
@@ -96,6 +110,7 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/std-uritemplate/std-uritemplate/go/v2 v2.0.3 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect

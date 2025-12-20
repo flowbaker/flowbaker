@@ -135,6 +135,34 @@ func (c *ExecutorController) RerunNode(ctx fiber.Ctx) error {
 	})
 }
 
+func (c *ExecutorController) RunNode(ctx fiber.Ctx) error {
+	workspaceID := ctx.Params("workspaceID")
+	if workspaceID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Workspace ID is required")
+	}
+
+	var req executortypes.RunNodeRequest
+	if err := ctx.Bind().Body(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	result, err := c.executorService.RunNode(ctx.RequestCtx(), executor.RunNodeParams{
+		ExecutionID:  req.ExecutionID,
+		NodeID:       req.NodeID,
+		Workflow:     mappers.ExecutorWorkflowToDomain(&req.Workflow),
+		ItemsByInput: req.ItemsByInputID,
+		WorkspaceID:  workspaceID,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to run node")
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to run node")
+	}
+
+	return ctx.JSON(executortypes.RunNodeResponse{
+		Results: result.Results,
+	})
+}
+
 func (c *ExecutorController) StopExecution(ctx fiber.Ctx) error {
 	executionID := ctx.Params("executionID")
 	if executionID == "" {

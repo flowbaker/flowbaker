@@ -58,6 +58,7 @@ var (
 	OAuthTypeLinear  OAuthType = "linear"
 	OAuthTypeJira    OAuthType = "jira"
 	OAuthTypeNotion  OAuthType = "notion"
+	OAuthTypeMicrosoftTeams OAuthType = "microsoft_teams"
 )
 
 type NodeProperty struct {
@@ -65,12 +66,12 @@ type NodeProperty struct {
 	Name              string           `json:"name"`
 	Description       string           `json:"description"`
 	Required          bool             `json:"required"`
-	Hidden            bool             `json:"hidden"`
-	Advanced          bool             `json:"advanced"` // For advanced options that should be hidden by default
-	Disabled          bool             `json:"disabled"` // For properties that should be visible but not editable
+	Hidden            bool             `json:"hidden,omitempty"`
+	Advanced          bool             `json:"advanced,omitempty"` // For advanced options that should be hidden by default
+	Disabled          bool             `json:"disabled,omitempty"` // For properties that should be visible but not editable
 	Type              NodePropertyType `json:"type"`
 	SubNodeProperties []NodeProperty   `json:"sub_node_properties,omitempty"`
-	OAuthType         OAuthType        `json:"oauth_type"`
+	OAuthType         OAuthType        `json:"oauth_type,omitempty"`
 	IsSecret          bool             `json:"is_secret,omitempty"` // Whether this field is a secret
 
 	// Validation
@@ -103,24 +104,24 @@ type NodeProperty struct {
 	EndpointPropertyOpts    *EndpointPropertyOptions     `json:"endpoint_property_opts,omitempty"`    // For endpoint type
 
 	// Syntax highlighting
-	SyntaxHighlightingOpts SyntaxHighlightingOpts `json:"syntax_highlighting_opts"`
+	SyntaxHighlightingOpts SyntaxHighlightingOpts `json:"syntax_highlighting_opts,omitempty"`
 
 	// Code editor specific settings
 	CodeLanguage CodeLanguageType `json:"code_language,omitempty"` // Language for code editor type (e.g., "json", "sql")
 
 	// Dynamic data loading
-	Peekable                    bool                              `json:"peekable"`                                // Whether this field can load options dynamically
+	Peekable                    bool                              `json:"peekable,omitempty"`                      // Whether this field can load options dynamically
 	PeekableType                IntegrationPeekableType           `json:"peekable_type,omitempty"`                 // Type of peekable data
 	PeekablePaginationType      IntegrationPeekablePaginationType `json:"peekable_pagination_type,omitempty"`      // Type of pagination for peekable data
 	PeekableDependentProperties []PeekableDependentProperty       `json:"peekable_dependent_properties,omitempty"` // Properties that this field depends on
 	IsNonCredentialPeekable     bool                              `json:"is_non_credential_peekable,omitempty"`    // Whether this field can be peeked without credentials
 
-	ExpressionChoice bool `json:"expression_choice"` // Whether this field can be set using expressions
+	ExpressionChoice bool `json:"expression_choice,omitempty"` // Whether this field can be set using expressions
 
 	ValidDraggableTypes []string `json:"valid_draggable_types,omitempty"` // Types that can be dragged and dropped into this field
 
-	IsApplicableToHTTP bool `json:"is_applicable_to_http"` // Whether this field is applicable to HTTP requests
-	IsCustomOAuthable  bool `json:"is_custom_oauthable"`   // Whether this field is custom oauthable
+	IsApplicableToHTTP bool `json:"is_applicable_to_http,omitempty"` // Whether this field is applicable to HTTP requests
+	IsCustomOAuthable  bool `json:"is_custom_oauthable,omitempty"`   // Whether this field is custom oauthable
 
 	// Dynamic handle generation
 	GeneratesHandles     bool                     `json:"generates_handles,omitempty"`      // Whether this property generates handles
@@ -128,9 +129,9 @@ type NodeProperty struct {
 }
 
 type SyntaxHighlightingOpts struct {
-	Extension        string `json:"extension"`
-	Dialect          string `json:"dialect"`
-	EnableParameters bool   `json:"enable_parameters"`
+	Extension        string `json:"extension,omitempty"`
+	Dialect          string `json:"dialect,omitempty"`
+	EnableParameters bool   `json:"enable_parameters,omitempty"`
 }
 
 type PeekableDependentProperty struct {

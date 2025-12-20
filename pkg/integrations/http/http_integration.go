@@ -165,10 +165,10 @@ const (
 )
 
 type HTTPResponse struct {
-	StatusCode int
-	Status     string
-	Header     http.Header
-	Body       any
+	StatusCode int         `json:"status_code"`
+	Status     string      `json:"status"`
+	Header     http.Header `json:"header"`
+	Body       any         `json:"body"`
 }
 
 type HTTPRequestFunctionParams struct {
@@ -939,7 +939,7 @@ func (i *HTTPIntegration) setResponseBody(ctx context.Context, resp *http.Respon
 
 		return executionFile, nil
 	default:
-		return body, nil
+		return string(body), nil
 	}
 
 	return nil, fmt.Errorf("unsupported content type: %s", contentTypeHeader)
