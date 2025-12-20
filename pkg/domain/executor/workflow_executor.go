@@ -321,9 +321,33 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 
 	if action, exists := w.workflow.GetActionNodeByID(execution.NodeID); exists {
 		result, err = w.ExecuteActionNode(ctx, action, execution)
+		if err != nil {
+			result, err = w.HandleNodeExecutionError(HandleNodeExecutionErrorParams{
+				Err:             err,
+				IntegrationType: domain.IntegrationType(action.NodeType),
+				ActionType:      domain.IntegrationActionType(action.ActionType),
+				Settings:        action.Settings,
+			})
+			if err != nil {
+				return ExecuteNodeResult{}, err
+			}
+		}
+
 		nodeID = action.ID
 	} else if trigger, exists := w.workflow.GetTriggerByID(execution.NodeID); exists {
 		result, err = w.ExecuteTriggerNode(ctx, trigger, execution)
+		if err != nil {
+			result, err = w.HandleNodeExecutionError(HandleNodeExecutionErrorParams{
+				Err:             err,
+				IntegrationType: domain.IntegrationType(trigger.Type),
+				ActionType:      domain.IntegrationActionType(trigger.EventType),
+				Settings:        trigger.Settings,
+			})
+			if err != nil {
+				return ExecuteNodeResult{}, err
+			}
+		}
+
 		nodeID = trigger.ID
 	} else {
 		return ExecuteNodeResult{}, fmt.Errorf("node %s not found in workflow", execution.NodeID)
@@ -393,9 +417,6 @@ func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, trigger domai
 	inputPayload, exists := execution.PayloadByInputID[inputID]
 	if !exists {
 		err := fmt.Errorf("trigger input payload not found")
-		if trigger.Settings.ReturnErrorAsItem {
-			return w.createErrorAsItemResult(err, domain.IntegrationType(trigger.Type), domain.IntegrationActionType(trigger.EventType))
-		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -426,9 +447,6 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		IntegrationType: node.NodeType,
 	})
 	if err != nil {
-		if node.Settings.ReturnErrorAsItem {
-			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
-		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -440,9 +458,6 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 	credentialIDString, ok := credentialID.(string)
 	if !ok {
 		err := fmt.Errorf("credential_id is not a string")
-		if node.Settings.ReturnErrorAsItem {
-			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
-		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -451,9 +466,6 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		CredentialID: credentialIDString,
 	})
 	if err != nil {
-		if node.Settings.ReturnErrorAsItem {
-			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
-		}
 		return NodeExecutionResult{}, err
 	}
 
@@ -474,9 +486,7 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		ActionType: node.ActionType,
 	})
 	if err != nil {
-		if node.Settings.ReturnErrorAsItem {
-			return w.createErrorAsItemResult(err, node.NodeType, node.ActionType)
-		}
+
 		return NodeExecutionResult{}, err
 	}
 
@@ -712,9 +722,20 @@ type ErrorItem struct {
 	ErrorMessage string `json:"error_message"`
 }
 
-func (w *WorkflowExecutor) createErrorAsItemResult(err error, integrationType domain.IntegrationType, actionType domain.IntegrationActionType) (NodeExecutionResult, error) {
+type HandleNodeExecutionErrorParams struct {
+	Err             error
+	IntegrationType domain.IntegrationType
+	ActionType      domain.IntegrationActionType
+	Settings        domain.Settings
+}
+
+func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorParams) (NodeExecutionResult, error) {
+	if !p.Settings.ReturnErrorAsItem {
+		return NodeExecutionResult{}, p.Err
+	}
+
 	errorItem := ErrorItem{
-		ErrorMessage: err.Error(),
+		ErrorMessage: p.Err.Error(),
 	}
 
 	errorItems := []ErrorItem{errorItem}
@@ -727,7 +748,7 @@ func (w *WorkflowExecutor) createErrorAsItemResult(err error, integrationType do
 		Output: domain.IntegrationOutput{
 			ResultJSONByOutputID: []domain.Payload{errorPayload},
 		},
-		IntegrationType:       integrationType,
-		IntegrationActionType: actionType,
+		IntegrationType:       p.IntegrationType,
+		IntegrationActionType: p.ActionType,
 	}, nil
 }
