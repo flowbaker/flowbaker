@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 
@@ -17,6 +18,8 @@ type ExecutionResult struct {
 	Payload    []byte
 	Headers    map[string][]string
 	StatusCode int
+
+	NodeExecutionResults []domain.NodeExecutionEntry
 }
 
 type WorkflowExecutorService interface {
@@ -26,11 +29,18 @@ type WorkflowExecutorService interface {
 	TestConnection(ctx context.Context, params TestConnectionParams) (bool, error)
 	PeekData(ctx context.Context, params PeekDataParams) (domain.PeekResult, error)
 	RerunNode(ctx context.Context, params RerunNodeParams) (ExecutionResult, error)
+	RunNode(ctx context.Context, params RunNodeParams) (RunNodeResult, error)
 }
 
 type ActiveExecution struct {
 	ExecutionID string
+	WorkflowID  string
+	WorkspaceID string
 	CancelFunc  context.CancelFunc
+}
+
+type StopExecutionParams struct {
+	ExecutionID string
 }
 
 type ExecutionRegistry struct {
@@ -130,6 +140,8 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 
 	activeExecution := ActiveExecution{
 		ExecutionID: params.ExecutionID,
+		WorkflowID:  params.Workflow.ID,
+		WorkspaceID: params.Workflow.WorkspaceID,
 		CancelFunc:  cancel,
 	}
 
@@ -150,6 +162,24 @@ func (s *workflowExecutorService) Stop(ctx context.Context, executionID string) 
 	execution, ok := s.executionRegistry.GetExecution(executionID)
 	if !ok {
 		return errors.New("execution not found")
+	}
+
+	eventCtx := domain.NewContextWithEventOrder(ctx)
+	eventCtx = domain.NewContextWithWorkflowExecutionContext(eventCtx, domain.NewContextWithWorkflowExecutionContextParams{
+		WorkspaceID:         execution.WorkspaceID,
+		WorkflowID:          execution.WorkflowID,
+		WorkflowExecutionID: executionID,
+		EnableEvents:        true,
+		Observer:            nil,
+	})
+
+	err := s.orderedEventPublisher.PublishEvent(eventCtx, &domain.WorkflowExecutionCompletedEvent{
+		WorkflowID:          execution.WorkflowID,
+		WorkflowExecutionID: executionID,
+		Timestamp:           time.Now().UnixNano(),
+	})
+	if err != nil {
+		return err
 	}
 
 	execution.CancelFunc()
@@ -342,7 +372,7 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		PayloadByInputID: payloadByInputID,
 	}
 
-	err := workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{
+	_, err := workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{
 		Task:           task,
 		ExecutionOrder: int64(executionEntry.ExecutionOrder),
 		Propagate:      true,
@@ -352,4 +382,54 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 	}
 
 	return ExecutionResult{}, nil
+}
+
+type RunNodeParams struct {
+	NodeID       string
+	WorkspaceID  string
+	ExecutionID  string
+	Workflow     domain.Workflow
+	ItemsByInput map[string][]byte
+}
+
+type RunNodeResult struct {
+	Results []domain.NodeExecutionEntry `json:"results"`
+}
+
+func (s *workflowExecutorService) RunNode(ctx context.Context, params RunNodeParams) (RunNodeResult, error) {
+	workflowExecutor := NewWorkflowExecutor(WorkflowExecutorDeps{
+		ExecutionID:           params.ExecutionID,
+		Selector:              s.integrationSelector,
+		EnableEvents:          true,
+		Workflow:              params.Workflow,
+		IsTestingWorkflow:     true,
+		ExecutorClient:        s.flowbakerClient,
+		OrderedEventPublisher: s.orderedEventPublisher,
+	})
+
+	ctx = domain.NewContextWithEventOrder(ctx)
+	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
+		WorkspaceID:         params.WorkspaceID,
+		WorkflowID:          params.Workflow.ID,
+		WorkflowExecutionID: params.ExecutionID,
+		EnableEvents:        true,
+		Observer:            workflowExecutor.observer,
+	})
+
+	payload := domain.Payload{}
+
+	for _, p := range params.ItemsByInput {
+		payload = p
+
+		break
+	}
+
+	result, err := workflowExecutor.Execute(ctx, params.NodeID, payload)
+	if err != nil {
+		return RunNodeResult{}, err
+	}
+
+	return RunNodeResult{
+		Results: result.NodeExecutionResults,
+	}, nil
 }

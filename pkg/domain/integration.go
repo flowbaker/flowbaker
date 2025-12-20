@@ -64,6 +64,8 @@ const (
 	IntegrationType_Knowledge            IntegrationType = "flowbaker_knowledge"
 	IntegrationType_Base64               IntegrationType = "base64"
 	IntegrationType_ContentClassifier    IntegrationType = "content_classifier"
+
+	IntegrationType_Teams                IntegrationType = "teams"
 	IntegrationType_Pipedrive            IntegrationType = "pipedrive"
 	IntegrationType_StartupsWatch        IntegrationType = "startups_watch"
 	IntegrationType_Manipulation         IntegrationType = "manipulation"
@@ -71,6 +73,7 @@ const (
 	IntegrationType_FileToItem           IntegrationType = "filetoitem"
 	IntegrationType_BrightData           IntegrationType = "brightdata"
 	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
+	IntegrationType_Notion               IntegrationType = "notion"
 )
 
 type Integration struct {
@@ -130,9 +133,10 @@ var (
 )
 
 type NodeHandle struct {
-	Type     NodeHandleType     `json:"type" bson:"type"`
-	Position NodeHandlePosition `json:"position,omitempty" bson:"position,omitempty"`
-	Text     string             `json:"text,omitempty" bson:"text,omitempty"`
+	Type         NodeHandleType     `json:"type" bson:"type"`
+	Position     NodeHandlePosition `json:"position,omitempty" bson:"position,omitempty"`
+	Text         string             `json:"text,omitempty" bson:"text,omitempty"`
+	UsageContext ActionUsageContext `json:"usage_context,omitempty" bson:"usage_context,omitempty"`
 }
 
 type ContextHandles struct {
@@ -162,7 +166,6 @@ type IntegrationEmbeddingModel struct {
 
 type IntegrationInput struct {
 	NodeID            string
-	InputJSON         []byte
 	PayloadByInputID  map[string]Payload
 	IntegrationParams IntegrationParams
 	ActionType        IntegrationActionType

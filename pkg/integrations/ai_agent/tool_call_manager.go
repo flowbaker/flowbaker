@@ -524,7 +524,6 @@ func (m *DefaultToolCallManager) createIntegrationInputWithResolvedParams(
 
 	integrationInput := domain.IntegrationInput{
 		ActionType: toolDef.ActionType,
-		InputJSON:  []byte("{}"),
 		PayloadByInputID: map[string]domain.Payload{
 			"tool_call_input": domain.Payload(payloadJSON),
 		},
