@@ -90,6 +90,9 @@ type ClientInterface interface {
 
 	// LLM operations (for executor clients)
 	ClassifyContent(ctx context.Context, workspaceID string, req *ClassifyContentRequest) (*ClassifyContentResponse, error)
+
+	// Event streaming operations (for executor clients)
+	CreateEventStream(ctx context.Context, req *CreateEventStreamRequest) (*CreateEventStreamResult, error)
 }
 
 // Client provides a high-level interface for interacting with the Flowbaker API
@@ -924,6 +927,36 @@ func (c *Client) doRequestWithHeaders(ctx context.Context, method, path string, 
 	}
 
 	return nil, fmt.Errorf("request failed after %d retries: %w", c.config.RetryAttempts, lastErr)
+}
+
+func (c *Client) doStreamingRequest(ctx context.Context, method, urlPath string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, urlPath, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create streaming request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-ndjson")
+	req.Header.Set("Transfer-Encoding", "chunked")
+
+	for key, value := range c.config.DefaultHeaders {
+		req.Header.Set(key, value)
+	}
+
+	// Apply user agent
+	if c.config.UserAgent != "" {
+		req.Header.Set("User-Agent", c.config.UserAgent)
+	}
+
+	// Sign the request with empty body hash (streaming body is not known upfront)
+	// The signature proves executor identity, TLS secures the actual content
+	c.signRequest(req, nil)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("streaming request failed: %w", err)
+	}
+
+	return resp, nil
 }
 
 // handleResponse processes the HTTP response and unmarshals JSON if successful
