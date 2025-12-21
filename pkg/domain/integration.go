@@ -72,6 +72,7 @@ const (
 	IntegrationType_BrightData           IntegrationType = "brightdata"
 	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
 	IntegrationType_Toolset              IntegrationType = "toolset"
+	IntegrationType_ChatTrigger          IntegrationType = "chat_trigger"
 )
 
 type Integration struct {
