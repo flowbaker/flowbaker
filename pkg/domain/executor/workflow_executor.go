@@ -79,13 +79,14 @@ type WorkflowExecutor struct {
 
 	integrationSelector domain.IntegrationSelector
 	enableEvents        bool
+	enableStreaming     bool
 
 	IsTestingWorkflow bool
 
 	WorkflowExecutionStartedAt time.Time
 
 	client   flowbaker.ClientInterface
-	observer domain.ExecutionObserver
+	observer *executionObserver
 
 	historyRecorder *HistoryRecorder
 	usageCollector  *UsageCollector
@@ -97,6 +98,7 @@ type WorkflowExecutorDeps struct {
 	Selector              domain.IntegrationSelector
 	EventPublisher        domain.EventPublisher
 	EnableEvents          bool
+	EnableStreaming       bool
 	IsTestingWorkflow     bool
 	ExecutorClient        flowbaker.ClientInterface
 	OrderedEventPublisher domain.EventPublisher
@@ -150,6 +152,7 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) WorkflowExecutor {
 		integrationSelector:        deps.Selector,
 		executionCountByNodeID:     map[string]int{},
 		enableEvents:               deps.EnableEvents,
+		enableStreaming:            deps.EnableStreaming,
 		IsTestingWorkflow:          deps.IsTestingWorkflow,
 		WorkflowExecutionStartedAt: time.Now(),
 		client:                     deps.ExecutorClient,
@@ -168,6 +171,20 @@ const (
 
 func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload domain.Payload) (ExecutionResult, error) {
 	workspaceID := w.workflow.WorkspaceID
+
+	// Create event stream if streaming is enabled
+	if w.enableStreaming {
+		result, err := w.client.CreateEventStream(ctx, &flowbaker.CreateEventStreamRequest{
+			WorkspaceID: workspaceID,
+		})
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create event stream, continuing without streaming")
+		} else {
+			streamBroadcaster := NewStreamEventBroadcaster(result.Writer)
+			w.observer.SubscribeStream(streamBroadcaster)
+			defer result.Writer.Close()
+		}
+	}
 
 	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{

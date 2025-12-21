@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	"github.com/flowbaker/flowbaker/pkg/domain"
 	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
@@ -206,4 +207,25 @@ func (u *UsageCollector) GetNodeExecutions() []domain.NodeExecution {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 	return u.nodeExecutions
+}
+
+// StreamEventBroadcaster broadcasts stream events to the backend via HTTP chunked streaming
+type StreamEventBroadcaster struct {
+	streamWriter *flowbaker.EventStreamWriter
+}
+
+// NewStreamEventBroadcaster creates a new stream event broadcaster
+func NewStreamEventBroadcaster(streamWriter *flowbaker.EventStreamWriter) *StreamEventBroadcaster {
+	return &StreamEventBroadcaster{
+		streamWriter: streamWriter,
+	}
+}
+
+// HandleStreamEvent processes stream events and writes them to the stream
+func (b *StreamEventBroadcaster) HandleStreamEvent(ctx context.Context, event domain.StreamEvent) error {
+	if b.streamWriter == nil {
+		return nil
+	}
+
+	return b.streamWriter.WriteEvent(string(event.GetStreamEventType()), event)
 }
