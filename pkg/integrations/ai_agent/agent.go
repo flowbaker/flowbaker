@@ -115,6 +115,19 @@ func (e *AIAgentExecutor) Execute(ctx context.Context, params domain.Integration
 	return e.actionManager.Run(ctx, params.ActionType, params)
 }
 
+type AIChatStreamEvent struct {
+	SessionID   string `json:"session_id"`
+	WorkspaceID string `json:"workspace_id"`
+	UserID      string `json:"user_id"`
+	EventType   string `json:"event_type"`
+	EventData   any    `json:"event_data"`
+	Timestamp   int64  `json:"timestamp"`
+}
+
+func (e AIChatStreamEvent) GetEventType() domain.StreamEventType {
+	return domain.StreamEventTypeAIChatStream
+}
+
 func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
 	executeParams := ExecuteParams{}
 

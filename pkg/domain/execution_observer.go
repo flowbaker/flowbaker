@@ -33,14 +33,9 @@ type ExecutionEvent interface {
 type StreamEventType string
 
 const (
-	StreamEventTypeTextDelta   StreamEventType = "text_delta"
-	StreamEventTypeStreamStart StreamEventType = "stream_start"
-	StreamEventTypeStreamEnd   StreamEventType = "stream_end"
-	StreamEventTypeToolCall    StreamEventType = "tool_call"
-	StreamEventTypeToolResult  StreamEventType = "tool_result"
-	StreamEventTypeError       StreamEventType = "error"
+	StreamEventTypeAIChatStream StreamEventType = "ai_chat_stream"
 )
 
 type StreamEvent interface {
-	GetStreamEventType() StreamEventType
+	GetEventType() StreamEventType
 }
