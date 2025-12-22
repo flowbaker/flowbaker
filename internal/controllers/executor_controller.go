@@ -92,6 +92,10 @@ func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
 		IsTestingWorkflow: isTestingWorkflow,
 	}
 
+	if isTestingWorkflow {
+		p.UserID = req.UserID
+	}
+
 	result, err := c.executorService.Execute(ctx.RequestCtx(), p)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to execute workflow")
