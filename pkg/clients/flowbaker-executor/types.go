@@ -43,6 +43,7 @@ type IntegrationTriggerEventType string
 // StartExecutionRequest represents the request to start a workflow execution
 type StartExecutionRequest struct {
 	ExecutionID     string           `json:"execution_id"`
+	UserID          *string          `json:"user_id,omitempty"`
 	EventName       string           `json:"event_name"`
 	PayloadJSON     []byte           `json:"payload_json"`
 	EnableEvents    bool             `json:"enable_events"`

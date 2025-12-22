@@ -90,9 +90,6 @@ type ClientInterface interface {
 
 	// LLM operations (for executor clients)
 	ClassifyContent(ctx context.Context, workspaceID string, req *ClassifyContentRequest) (*ClassifyContentResponse, error)
-
-	// Event streaming operations (for executor clients)
-	CreateEventStream(ctx context.Context, req *CreateEventStreamRequest) (*CreateEventStreamResult, error)
 }
 
 // Client provides a high-level interface for interacting with the Flowbaker API

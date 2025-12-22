@@ -33,7 +33,7 @@ type ExecutionEvent interface {
 type StreamEventType string
 
 const (
-	StreamEventTypeAIChatStream StreamEventType = "ai_chat_stream"
+	StreamEventTypeAIChatStream StreamEventType = "ai_chat_stream_event"
 )
 
 type StreamEvent interface {

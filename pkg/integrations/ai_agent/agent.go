@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/flowbaker/flowbaker/internal/managers"
@@ -93,6 +94,7 @@ type ExecuteParams struct {
 	Prompt       string `json:"prompt,omitempty"`
 	SystemPrompt string `json:"system_prompt,omitempty"`
 	MaxSteps     int    `json:"max_steps,omitempty"`
+	SessionID    string `json:"session_id,omitempty"`
 }
 
 type MemoryNodeParams struct {
@@ -227,7 +229,7 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 
 	hooksManager.Agent = a
 
-	result, err := a.ChatSync(ctx, agent.ChatRequest{
+	result, err := a.Chat(ctx, agent.ChatRequest{
 		Prompt:    initialPrompt,
 		SessionID: "",
 	})
@@ -236,10 +238,43 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 		return nil, fmt.Errorf("failed to chat with agent: %w", err)
 	}
 
+	wg := sync.WaitGroup{}
+
+	wg.Go(func() {
+		for event := range result.EventChan {
+			log.Debug().Interface("event", event).Msg("Event")
+			streamEvent := AIChatStreamEvent{
+				SessionID:   executeParams.SessionID,
+				WorkspaceID: executionContext.WorkspaceID,
+				EventType:   string(event.GetType()),
+				EventData:   event,
+				Timestamp:   time.Now().Unix(),
+			}
+
+			if executionContext.UserID != nil {
+				log.Debug().Str("user_id", *executionContext.UserID).Msg("User ID")
+				streamEvent.UserID = *executionContext.UserID
+			}
+
+			err = executionObserver.NotifyStream(ctx, streamEvent)
+			if err != nil {
+				log.Error().Str("err", err.Error()).Msg("failed to notify stream event")
+			}
+		}
+
+		if err := <-result.ErrChan; err != nil {
+			log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
+		}
+	})
+
+	wg.Wait()
+
 	maxStepNumber := math.MinInt
 	maxStep := &agent.Step{}
 
-	for _, step := range result.Steps {
+	steps := a.GetSteps()
+
+	for _, step := range steps {
 		log.Debug().Interface("step", step).Msg("Step")
 
 		if step.StepNumber > maxStepNumber {

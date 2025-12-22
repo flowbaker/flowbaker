@@ -107,6 +107,7 @@ func NewWorkflowExecutorService(deps WorkflowExecutorServiceDependencies) Workfl
 
 type ExecuteParams struct {
 	ExecutionID       string
+	UserID            *string // Optional, Only filled in testing workflows
 	Workflow          domain.Workflow
 	EventName         string
 	PayloadJSON       string
@@ -115,8 +116,9 @@ type ExecuteParams struct {
 }
 
 func (s *workflowExecutorService) Execute(ctx context.Context, params ExecuteParams) (ExecutionResult, error) {
-	workflowExecutor := NewWorkflowExecutor(WorkflowExecutorDeps{
+	workflowExecutor, err := NewWorkflowExecutor(WorkflowExecutorDeps{
 		ExecutionID:           params.ExecutionID,
+		UserID:                params.UserID,
 		Workflow:              params.Workflow,
 		Selector:              s.integrationSelector,
 		EnableEvents:          params.EnableEvents,
@@ -124,6 +126,9 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 		ExecutorClient:        s.flowbakerClient,
 		OrderedEventPublisher: s.orderedEventPublisher,
 	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
 
 	p, err := ConvertToArray(params.PayloadJSON)
 	if err != nil {
@@ -331,7 +336,7 @@ type RerunNodeParams struct {
 }
 
 func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNodeParams) (ExecutionResult, error) {
-	workflowExecutor := NewWorkflowExecutor(WorkflowExecutorDeps{
+	workflowExecutor, err := NewWorkflowExecutor(WorkflowExecutorDeps{
 		ExecutionID:           params.ExecutionID,
 		Selector:              s.integrationSelector,
 		EnableEvents:          true,
@@ -340,6 +345,9 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		ExecutorClient:        s.flowbakerClient,
 		OrderedEventPublisher: s.orderedEventPublisher,
 	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
 
 	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
@@ -372,7 +380,7 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		PayloadByInputID: payloadByInputID,
 	}
 
-	_, err := workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{
+	_, err = workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{
 		Task:           task,
 		ExecutionOrder: int64(executionEntry.ExecutionOrder),
 		Propagate:      true,
@@ -397,7 +405,7 @@ type RunNodeResult struct {
 }
 
 func (s *workflowExecutorService) RunNode(ctx context.Context, params RunNodeParams) (RunNodeResult, error) {
-	workflowExecutor := NewWorkflowExecutor(WorkflowExecutorDeps{
+	workflowExecutor, err := NewWorkflowExecutor(WorkflowExecutorDeps{
 		ExecutionID:           params.ExecutionID,
 		Selector:              s.integrationSelector,
 		EnableEvents:          true,
@@ -406,6 +414,9 @@ func (s *workflowExecutorService) RunNode(ctx context.Context, params RunNodePar
 		ExecutorClient:        s.flowbakerClient,
 		OrderedEventPublisher: s.orderedEventPublisher,
 	})
+	if err != nil {
+		return RunNodeResult{}, err
+	}
 
 	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{

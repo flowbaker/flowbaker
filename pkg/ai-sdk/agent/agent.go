@@ -636,3 +636,7 @@ func (a *Agent) CanFinish() bool {
 
 	return false
 }
+
+func (a *Agent) GetSteps() []*Step {
+	return a.steps
+}

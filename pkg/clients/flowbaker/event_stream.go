@@ -51,44 +51,47 @@ type EventStreamWriter struct {
 	err      error
 }
 
-// CreateEventStream creates a streaming event writer
-// Events written to the writer are automatically sent to the backend as they are written
-// Uses Ed25519 signature authentication (same as other executor endpoints)
-func (c *Client) CreateEventStream(ctx context.Context, req *CreateEventStreamRequest) (*CreateEventStreamResult, error) {
-	if c.config.ExecutorID == "" {
-		return nil, fmt.Errorf("executor ID is required for event streaming")
+type NewEventStreamWriterParams struct {
+	Client      *Client
+	WorkspaceID string
+	Ctx         context.Context
+	CancelCtx   context.CancelFunc
+	PipeReader  *io.PipeReader
+	PipeWriter  *io.PipeWriter
+}
+
+func NewEventStreamWriter(params NewEventStreamWriterParams) (*EventStreamWriter, error) {
+
+	if params.Client == nil {
+		return nil, fmt.Errorf("client is required")
 	}
 
-	if req.WorkspaceID == "" {
+	if params.WorkspaceID == "" {
 		return nil, fmt.Errorf("workspace ID is required")
 	}
 
-	// Create cancellable context for the stream
-	streamCtx, cancelCtx := context.WithCancel(ctx)
-
-	// Create pipe for streaming
-	pipeReader, pipeWriter := io.Pipe()
-
 	writer := &EventStreamWriter{
-		client:      c,
-		workspaceID: req.WorkspaceID,
-		ctx:         streamCtx,
-		cancelCtx:   cancelCtx,
-		pipeReader:  pipeReader,
-		pipeWriter:  pipeWriter,
+		client:      params.Client,
+		workspaceID: params.WorkspaceID,
+		ctx:         params.Ctx,
+		cancelCtx:   params.CancelCtx,
+		pipeReader:  params.PipeReader,
+		pipeWriter:  params.PipeWriter,
+		mu:          sync.Mutex{},
 	}
 
-	// Start the HTTP request in a goroutine
-	writer.wg.Add(1)
-	go writer.runStreamRequest()
+	return writer, nil
+}
 
-	return &CreateEventStreamResult{
-		Writer: writer,
-	}, nil
+func (w *EventStreamWriter) Initialize() error {
+	w.wg.Add(1)
+	go w.initialize()
+
+	return nil
 }
 
 // runStreamRequest runs the HTTP POST request with chunked transfer encoding
-func (w *EventStreamWriter) runStreamRequest() {
+func (w *EventStreamWriter) initialize() {
 	defer w.wg.Done()
 
 	// Use the existing doRequestWithExecutorID method which handles Ed25519 signing
