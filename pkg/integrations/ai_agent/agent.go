@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -118,12 +119,13 @@ func (e *AIAgentExecutor) Execute(ctx context.Context, params domain.Integration
 }
 
 type AIChatStreamEvent struct {
-	SessionID   string `json:"session_id"`
-	WorkspaceID string `json:"workspace_id"`
-	UserID      string `json:"user_id"`
-	EventType   string `json:"event_type"`
-	EventData   any    `json:"event_data"`
-	Timestamp   int64  `json:"timestamp"`
+	SessionID         string `json:"session_id"`
+	WorkspaceID       string `json:"workspace_id"`
+	UserID            string `json:"user_id"`
+	EventType         string `json:"event_type"`
+	EventData         any    `json:"event_data"`
+	Timestamp         int64  `json:"timestamp"`
+	IsFromChatTrigger bool   `json:"is_from_chat_trigger"`
 }
 
 func (e AIChatStreamEvent) GetEventType() domain.StreamEventType {
@@ -242,13 +244,27 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 
 	wg.Go(func() {
 		for event := range result.EventChan {
-			log.Debug().Interface("event", event).Msg("Event")
+			eventType := string(event.GetType())
+
+			disabledEventTypes := []string{
+				"tool-call-start",
+				"tool-call-delta",
+				"tool-call-complete",
+				"tool-execution-start",
+				"tool-execution-complete",
+			}
+
+			if slices.Contains(disabledEventTypes, eventType) {
+				continue
+			}
+
 			streamEvent := AIChatStreamEvent{
-				SessionID:   executeParams.SessionID,
-				WorkspaceID: executionContext.WorkspaceID,
-				EventType:   string(event.GetType()),
-				EventData:   event,
-				Timestamp:   time.Now().Unix(),
+				SessionID:         executeParams.SessionID,
+				WorkspaceID:       executionContext.WorkspaceID,
+				EventType:         string(event.GetType()),
+				EventData:         event,
+				Timestamp:         time.Now().Unix(),
+				IsFromChatTrigger: true,
 			}
 
 			if executionContext.UserID != nil {
@@ -275,8 +291,6 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 	steps := a.GetSteps()
 
 	for _, step := range steps {
-		log.Debug().Interface("step", step).Msg("Step")
-
 		if step.StepNumber > maxStepNumber {
 			maxStepNumber = step.StepNumber
 			maxStep = step
@@ -601,8 +615,6 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 
 		toolNodes = append(toolNodes, node)
 	}
-
-	log.Debug().Interface("tool_nodes", toolNodes).Msg("Tool nodes")
 
 	tools := make([]tool.Tool, 0, len(toolNodes))
 
