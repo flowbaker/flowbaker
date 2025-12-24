@@ -366,15 +366,7 @@ func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSet
 
 	settings := OpenAIModelSettings{}
 
-	item := params.InputItem
-
-	llmInputItem := map[string]any{
-		"agent": map[string]any{
-			"item": item,
-		},
-	}
-
-	err := e.parameterBinder.BindToStruct(ctx, llmInputItem, &settings, llmNode.IntegrationSettings)
+	err := e.parameterBinder.BindToStruct(ctx, params.InputItem, &settings, llmNode.IntegrationSettings)
 	if err != nil {
 		return ResolveLLMResult{}, fmt.Errorf("failed to bind LLM node params: %w", err)
 	}
@@ -386,7 +378,7 @@ func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSet
 	var languageModel provider.LanguageModel
 
 	switch llmNode.IntegrationType {
-	case "openai":
+	case domain.IntegrationType_OpenAI:
 		credential, err := e.credentialGetter.GetDecryptedCredential(ctx, settings.CredentialID)
 		if err != nil {
 			return ResolveLLMResult{}, fmt.Errorf("failed to get credential: %w", err)
@@ -1015,55 +1007,7 @@ type AgentHooksManager struct {
 }
 
 func (m *AgentHooksManager) OnBeforeGenerate(ctx context.Context, req *provider.GenerateRequest, step *agent.Step) {
-	item := m.InputItem
-
-	llmInputItem := map[string]any{}
-
-	rawRequestJSON, err := json.Marshal(step.GenerateRequest)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to marshal LLM input item")
-	}
-
-	err = json.Unmarshal(rawRequestJSON, &llmInputItem)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to unmarshal LLM input item")
-	}
-
-	llmInputItem["agent"] = map[string]any{
-		"item": item,
-	}
-
-	providerName := m.Agent.Model.ProviderName()
-
-	switch providerName {
-	case "openai":
-		modelParams := OpenAIModelSettings{}
-
-		err = m.ParameterBinder.BindToStruct(ctx, llmInputItem, &modelParams, m.LLMNode.IntegrationSettings)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to bind LLM node params")
-		}
-
-		openaiProvider, ok := m.Agent.Model.(*openai.Provider)
-		if !ok {
-			log.Error().Msg("failed to cast agent model to openai provider")
-			return
-		}
-
-		openaiProvider.SetRequestSettings(openai.RequestSettings{
-			Model:            modelParams.Model,
-			Temperature:      modelParams.Temperature,
-			MaxTokens:        modelParams.MaxTokens,
-			TopP:             modelParams.TopP,
-			FrequencyPenalty: modelParams.FrequencyPenalty,
-			PresencePenalty:  modelParams.PresencePenalty,
-			Stop:             modelParams.Stop,
-			ReasoningEffort:  modelParams.ReasoningEffort,
-			Verbosity:        modelParams.Verbosity,
-		})
-	}
-
-	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionStartedEvent{
+	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionStartedEvent{
 		NodeID:    m.LLMNode.ID,
 		Timestamp: time.Now(),
 	})
