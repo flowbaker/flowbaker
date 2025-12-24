@@ -45,6 +45,13 @@ type Hooks struct {
 
 	OnStepStart    func(ctx context.Context, step *Step)
 	OnStepComplete func(ctx context.Context, step *Step)
+
+	OnBeforeMemoryRetrieve  func(ctx context.Context, filter memory.Filter)
+	OnMemoryRetrieved       func(ctx context.Context, filter memory.Filter, conversations []*types.Conversation)
+	OnMemoryRetrievalFailed func(ctx context.Context, filter memory.Filter, err error)
+	OnBeforeMemorySave      func(ctx context.Context, conversation *types.Conversation)
+	OnMemorySaved           func(ctx context.Context, conversation *types.Conversation)
+	OnMemorySaveFailed      func(ctx context.Context, conversation *types.Conversation, err error)
 }
 
 func New(opts ...Option) (*Agent, error) {
@@ -471,7 +478,7 @@ func (a *Agent) GetTool(toolName string) (tool.Tool, bool) {
 }
 
 func (a *Agent) GetSessionHistory(ctx context.Context, sessionID string) ([]types.Message, error) {
-	conversations, err := a.Memory.GetConversations(ctx, memory.Filter{
+	conversations, err := a.GetConversations(ctx, memory.Filter{
 		SessionID: sessionID,
 		Limit:     a.ConversationHistory,
 	})
@@ -492,7 +499,7 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) (*types.
 	messages := []types.Message{}
 
 	if a.Memory != nil {
-		interruptedConversations, err := a.Memory.GetConversations(ctx, memory.Filter{
+		interruptedConversations, err := a.GetConversations(ctx, memory.Filter{
 			SessionID: req.SessionID,
 			Status:    types.StatusInterrupted,
 			Limit:     1,
@@ -510,7 +517,7 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) (*types.
 				Timestamp:   time.Now(),
 			})
 
-			err = a.Memory.SaveConversation(ctx, conversation)
+			err = a.SaveConversation(ctx, conversation)
 			if err != nil {
 				return nil, fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
 			}
@@ -567,7 +574,7 @@ func (a *Agent) ApplyStepToConversation(ctx context.Context) error {
 		Timestamp: time.Now(),
 	})
 
-	err := a.Memory.SaveConversation(ctx, conversation)
+	err := a.SaveConversation(ctx, conversation)
 	if err != nil {
 		return fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
 	}
@@ -596,7 +603,7 @@ func (a *Agent) ApplyToolResultsToConversation(ctx context.Context) error {
 		Timestamp:   time.Now(),
 	})
 
-	err := a.Memory.SaveConversation(ctx, conversation)
+	err := a.SaveConversation(ctx, conversation)
 	if err != nil {
 		return fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
 	}
@@ -639,4 +646,86 @@ func (a *Agent) CanFinish() bool {
 
 func (a *Agent) GetSteps() []*Step {
 	return a.steps
+}
+
+func (a *Agent) SaveConversation(ctx context.Context, conversation *types.Conversation) error {
+	if a.Memory == nil {
+		return nil
+	}
+
+	if conversation.SessionID == "" {
+		return nil
+	}
+
+	a.OnBeforeMemorySave(ctx, conversation)
+
+	err := a.Memory.SaveConversation(ctx, conversation)
+	if err != nil {
+		a.OnMemorySaveFailed(ctx, conversation, err)
+
+		return err
+	}
+
+	a.OnMemorySaved(ctx, conversation)
+
+	return nil
+}
+
+func (a *Agent) GetConversations(ctx context.Context, filter memory.Filter) ([]*types.Conversation, error) {
+	if a.Memory == nil {
+		return nil, nil
+	}
+
+	if filter.Status != types.StatusInterrupted {
+		a.OnBeforeMemoryRetrieve(ctx, filter)
+	}
+
+	conversations, err := a.Memory.GetConversations(ctx, filter)
+	if err != nil {
+		a.OnMemoryRetrievalFailed(ctx, filter, err)
+
+		return nil, err
+	}
+
+	if filter.Status != types.StatusInterrupted {
+		a.OnMemoryRetrieved(ctx, filter, conversations)
+	}
+
+	return conversations, nil
+}
+
+func (a *Agent) OnMemoryRetrieved(ctx context.Context, filter memory.Filter, conversations []*types.Conversation) {
+	if a.hooks.OnMemoryRetrieved != nil {
+		a.hooks.OnMemoryRetrieved(ctx, filter, conversations)
+	}
+}
+
+func (a *Agent) OnBeforeMemoryRetrieve(ctx context.Context, filter memory.Filter) {
+	if a.hooks.OnBeforeMemoryRetrieve != nil {
+		a.hooks.OnBeforeMemoryRetrieve(ctx, filter)
+	}
+}
+
+func (a *Agent) OnMemoryRetrievalFailed(ctx context.Context, filter memory.Filter, err error) {
+	if a.hooks.OnMemoryRetrievalFailed != nil {
+		a.hooks.OnMemoryRetrievalFailed(ctx, filter, err)
+	}
+}
+
+func (a *Agent) OnBeforeMemorySave(ctx context.Context, conversation *types.Conversation) {
+	if a.hooks.OnBeforeMemorySave != nil {
+		a.hooks.OnBeforeMemorySave(ctx, conversation)
+	}
+}
+
+func (a *Agent) OnMemorySaved(ctx context.Context, conversation *types.Conversation) {
+	if a.hooks.OnMemorySaved != nil {
+		a.hooks.OnMemorySaved(ctx, conversation)
+	}
+}
+
+func (a *Agent) OnMemorySaveFailed(ctx context.Context, conversation *types.Conversation, err error) {
+	if a.hooks.OnMemorySaveFailed != nil {
+		a.hooks.OnMemorySaveFailed(ctx, conversation, err)
+	}
 }

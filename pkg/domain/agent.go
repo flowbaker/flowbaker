@@ -1,45 +1,8 @@
 package domain
 
 import (
-	"context"
 	"time"
 )
-
-// Message represents a single message in a conversation
-type ConversationMessage struct {
-	Role        string       `json:"role"`
-	Content     string       `json:"content"`
-	ToolCalls   []ToolCall   `json:"tool_calls,omitempty"`
-	ToolResults []ToolResult `json:"tool_results,omitempty"`
-}
-
-// ToolCall represents a tool call request from the LLM
-type ToolCall struct {
-	ID        string                 `json:"id"`
-	Name      string                 `json:"name"`
-	Arguments map[string]interface{} `json:"arguments"`
-}
-
-// ToolResult represents the result of a tool call
-type ToolResult struct {
-	ToolCallID string `json:"tool_call_id"`
-	Content    string `json:"content"`
-	IsError    bool   `json:"is_error,omitempty"`
-}
-
-// Tool represents a tool available to the LLM
-type Tool struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Parameters  map[string]interface{} `json:"parameters"`
-}
-
-// ModelResponse represents the response from an LLM
-type ModelResponse struct {
-	Content      string     `json:"content"`
-	ToolCalls    []ToolCall `json:"tool_calls,omitempty"`
-	FinishReason string     `json:"finish_reason,omitempty"`
-}
 
 // AgentConversation represents a stored AI agent conversation
 type AgentConversation struct {
@@ -78,32 +41,6 @@ type AgentToolCall struct {
 type AgentToolResult struct {
 	ToolCallID string `bson:"tool_call_id" json:"tool_call_id"`
 	Content    string `bson:"content" json:"content"`
-}
-
-// GenerateRequest represents a request to generate a response
-type GenerateRequest struct {
-	Messages     []ConversationMessage `json:"messages"`
-	SystemPrompt string                `json:"system_prompt,omitempty"`
-	Tools        []Tool                `json:"tools,omitempty"`
-	Temperature  float32               `json:"temperature,omitempty"`
-	MaxTokens    int                   `json:"max_tokens,omitempty"`
-	Model        string                `json:"model,omitempty"`
-}
-
-type IntegrationLLM interface {
-	GenerateWithConversation(ctx context.Context, req GenerateRequest) (ModelResponse, error)
-}
-
-type IntegrationMemory interface {
-	StoreConversation(ctx context.Context, request StoreConversationRequest) error
-	RetrieveConversations(ctx context.Context, filter ConversationFilter) ([]AgentConversation, error)
-}
-
-type StoreConversationRequest struct {
-	Conversation *AgentConversation `json:"conversation"`
-	Embedding    []float32          `json:"embedding"`
-	TTL          int                `json:"ttl"`
-	PartitionKey string             `json:"partition_key"`
 }
 
 type ConversationFilter struct {

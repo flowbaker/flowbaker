@@ -18,6 +18,8 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/tool"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
 	"github.com/flowbaker/flowbaker/pkg/domain/executor"
+	"github.com/flowbaker/flowbaker/pkg/integrations/ai_agent/memory/mongodb"
+	mongodbIntegration "github.com/flowbaker/flowbaker/pkg/integrations/mongo"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
@@ -61,6 +63,7 @@ type AIAgentExecutor struct {
 	integrationSelector        domain.IntegrationSelector
 	parameterBinder            domain.IntegrationParameterBinder
 	executorIntegrationManager domain.ExecutorIntegrationManager
+	executorCredentialManager  domain.ExecutorCredentialManager
 	actionManager              *domain.IntegrationActionManager
 	credentialGetter           domain.CredentialGetter[OpenAICredential]
 }
@@ -70,6 +73,7 @@ func NewAIAgentExecutor(deps domain.IntegrationDeps) domain.IntegrationExecutor 
 		integrationSelector:        deps.IntegrationSelector,
 		parameterBinder:            deps.ParameterBinder,
 		executorIntegrationManager: deps.ExecutorIntegrationManager,
+		executorCredentialManager:  deps.ExecutorCredentialManager,
 		credentialGetter:           managers.NewExecutorCredentialGetter[OpenAICredential](deps.ExecutorCredentialManager),
 	}
 
@@ -95,20 +99,6 @@ type ExecuteParams struct {
 	Prompt       string `json:"prompt,omitempty"`
 	SystemPrompt string `json:"system_prompt,omitempty"`
 	MaxSteps     int    `json:"max_steps,omitempty"`
-	SessionID    string `json:"session_id,omitempty"`
-}
-
-type MemoryNodeParams struct {
-	SessionID           string `json:"session_id"`
-	SessionTTLInSeconds int    `json:"session_ttl_in_seconds"`
-	MaxContextLength    int    `json:"max_context_length"`
-	ConversationCount   int    `json:"conversation_count"`
-}
-
-type LLMNodeParams struct {
-	Model       string  `json:"model"`
-	MaxTokens   int     `json:"max_tokens"`
-	Temperature float32 `json:"temperature"`
 }
 
 const InputHandleIDFormat = "input-%s-%d"
@@ -175,26 +165,6 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 	memory := agentSettings.Memory
 	tools := agentSettings.Tools
 
-	memoryNodeParams := MemoryNodeParams{}
-
-	if memory.Memory != nil {
-		err := e.parameterBinder.BindToStruct(ctx, item, &memoryNodeParams, memory.Node.IntegrationSettings)
-		if err != nil {
-			return nil, fmt.Errorf("failed to bind memory node params: %w", err)
-		}
-	}
-
-	llmNodeParams := LLMNodeParams{}
-
-	if llm.LLM != nil {
-		err := e.parameterBinder.BindToStruct(ctx, item, &llmNodeParams, llm.Node.IntegrationSettings)
-		if err != nil {
-			return nil, fmt.Errorf("failed to bind LLM node params: %w", err)
-		}
-	}
-
-	log.Debug().Interface("tools", tools).Msg("Tools")
-
 	executionObserver := executionContext.ExecutionObserver
 
 	maxSteps := executeParams.MaxSteps
@@ -208,12 +178,19 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 		ExecutionObserver: executionObserver,
 		ParameterBinder:   e.parameterBinder,
 		LLMNode:           llm.Node,
+		MemoryNode:        memory.Node,
 	}
 
 	hooks := agent.Hooks{
-		OnBeforeGenerate:   hooksManager.OnBeforeGenerate,
-		OnGenerationFailed: hooksManager.OnGenerationFailed,
-		OnStepComplete:     hooksManager.OnStepComplete,
+		OnBeforeGenerate:        hooksManager.OnBeforeGenerate,
+		OnGenerationFailed:      hooksManager.OnGenerationFailed,
+		OnStepComplete:          hooksManager.OnStepComplete,
+		OnBeforeMemoryRetrieve:  hooksManager.OnBeforeMemoryRetrieve,
+		OnMemoryRetrieved:       hooksManager.OnMemoryRetrieved,
+		OnMemoryRetrievalFailed: hooksManager.OnMemoryRetrievalFailed,
+		OnBeforeMemorySave:      hooksManager.OnBeforeMemorySave,
+		OnMemorySaved:           hooksManager.OnMemorySaved,
+		OnMemorySaveFailed:      hooksManager.OnMemorySaveFailed,
 	}
 
 	a, err := agent.New(
@@ -233,7 +210,7 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 
 	result, err := a.Chat(ctx, agent.ChatRequest{
 		Prompt:    initialPrompt,
-		SessionID: "",
+		SessionID: agentSettings.Memory.SessionID,
 	})
 	if err != nil {
 		log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
@@ -259,7 +236,7 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 			}
 
 			streamEvent := AIChatStreamEvent{
-				SessionID:         executeParams.SessionID,
+				SessionID:         agentSettings.Memory.SessionID,
 				WorkspaceID:       executionContext.WorkspaceID,
 				EventType:         string(event.GetType()),
 				EventData:         event,
@@ -354,8 +331,9 @@ func (e *AIAgentExecutor) ResolveAgentSettings(ctx context.Context, params Resol
 }
 
 type ResolveLLMResult struct {
-	LLM  provider.LanguageModel
-	Node domain.WorkflowNode
+	LLM       provider.LanguageModel
+	Node      domain.WorkflowNode
+	SessionID string
 }
 
 type OpenAIModelSettings struct {
@@ -390,8 +368,8 @@ func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSet
 
 	item := params.InputItem
 
-	llmInputItem := map[string]map[string]any{
-		"agent": {
+	llmInputItem := map[string]any{
+		"agent": map[string]any{
 			"item": item,
 		},
 	}
@@ -440,8 +418,15 @@ func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSet
 }
 
 type ResolveMemoryResult struct {
-	Memory memory.Store
-	Node   domain.WorkflowNode
+	Memory    memory.Store
+	Node      domain.WorkflowNode
+	SessionID string
+}
+
+type MongoDBMemoryParams struct {
+	Database   string `json:"database"`
+	Collection string `json:"collection"`
+	SessionID  string `json:"session_id"`
 }
 
 func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgentSettingsParams) (ResolveMemoryResult, error) {
@@ -458,13 +443,6 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 		return ResolveMemoryResult{}, nil
 	}
 
-	creator, err := e.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
-		IntegrationType: domain.IntegrationType(memoryNode.IntegrationType),
-	})
-	if err != nil {
-		return ResolveMemoryResult{}, fmt.Errorf("failed to resolve memory: %w", err)
-	}
-
 	var credentialID string
 
 	credentialIDValue, exists := memoryNode.IntegrationSettings["credential_id"]
@@ -477,23 +455,37 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 		credentialID = credentialIDString
 	}
 
-	memory, err := creator.CreateIntegration(ctx, domain.CreateIntegrationParams{
-		WorkspaceID:  params.Workflow.WorkspaceID,
-		CredentialID: credentialID,
-	})
-	if err != nil {
-		return ResolveMemoryResult{}, fmt.Errorf("failed to create memory: %w", err)
+	switch memoryNode.IntegrationType {
+	case domain.IntegrationType_MongoDB:
+		p := MongoDBMemoryParams{}
+
+		err := e.parameterBinder.BindToStruct(ctx, params.InputItem, &p, memoryNode.IntegrationSettings)
+		if err != nil {
+			return ResolveMemoryResult{}, fmt.Errorf("failed to bind MongoDB memory node params: %w", err)
+		}
+
+		deps := mongodb.StoreDeps{
+			Context:          ctx,
+			CredentialGetter: managers.NewExecutorCredentialGetter[mongodbIntegration.MongoDBCredential](e.executorCredentialManager),
+		}
+
+		memory, err := mongodb.New(deps, mongodb.Opts{
+			CredentialID:   credentialID,
+			DatabaseName:   p.Database,
+			CollectionName: p.Collection,
+		})
+		if err != nil {
+			return ResolveMemoryResult{}, fmt.Errorf("failed to create memory: %w", err)
+		}
+
+		return ResolveMemoryResult{
+			Memory:    memory,
+			Node:      memoryNode,
+			SessionID: p.SessionID,
+		}, nil
 	}
 
-	_, ok := memory.(domain.IntegrationMemory)
-	if !ok {
-		return ResolveMemoryResult{}, fmt.Errorf("memory is not a domain.IntegrationMemory")
-	}
-
-	return ResolveMemoryResult{
-		/* 		Memory: memoryExecutor, */
-		Node: memoryNode,
-	}, nil
+	return ResolveMemoryResult{}, fmt.Errorf("unsupported memory node type: %s", memoryNode.IntegrationType)
 }
 
 func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentSettingsParams) ([]tool.Tool, error) {
@@ -1019,6 +1011,7 @@ type AgentHooksManager struct {
 	ExecutionObserver domain.ExecutionObserver
 	ParameterBinder   domain.IntegrationParameterBinder
 	LLMNode           domain.WorkflowNode
+	MemoryNode        domain.WorkflowNode
 }
 
 func (m *AgentHooksManager) OnBeforeGenerate(ctx context.Context, req *provider.GenerateRequest, step *agent.Step) {
@@ -1084,34 +1077,16 @@ func (m *AgentHooksManager) OnGenerationFailed(ctx context.Context, req *provide
 
 	llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, m.LLMNode.ID, 0)
 
-	llmInputItem := map[string]any{}
-
-	rawRequestJSON, err := json.Marshal(step.GenerateRequest)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to marshal LLM input item")
-	}
-
-	err = json.Unmarshal(rawRequestJSON, &llmInputItem)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to unmarshal LLM input item")
-	}
-
-	item := m.InputItem
-
-	llmInputItem["agent"] = map[string]any{
-		"item": item,
-	}
-
 	itemsByInputID := map[string]domain.NodeItems{
 		llmInputHandleID: {
 			FromNodeID: m.AgentNodeID,
-			Items:      []domain.Item{llmInputItem},
+			Items:      []domain.Item{m.InputItem},
 		},
 	}
 
 	now := time.Now()
 
-	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionFailedEvent{
+	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionFailedEvent{
 		NodeID:         m.LLMNode.ID,
 		ItemsByInputID: itemsByInputID,
 		Timestamp:      now,
@@ -1129,26 +1104,10 @@ func (m *AgentHooksManager) OnStepComplete(ctx context.Context, step *agent.Step
 	llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, llmNode.ID, 0)
 	llmOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, llmNode.ID, 0)
 
-	llmInputItem := map[string]any{}
-
-	rawRequestJSON, err := json.Marshal(step.GenerateRequest)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to marshal LLM input item")
-	}
-
-	err = json.Unmarshal(rawRequestJSON, &llmInputItem)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to unmarshal LLM input item")
-	}
-
-	llmInputItem["agent"] = map[string]any{
-		"item": item,
-	}
-
 	itemsByInputID := map[string]domain.NodeItems{
 		llmInputHandleID: {
 			FromNodeID: m.AgentNodeID,
-			Items:      []domain.Item{llmInputItem},
+			Items:      []domain.Item{item},
 		},
 	}
 
@@ -1161,7 +1120,7 @@ func (m *AgentHooksManager) OnStepComplete(ctx context.Context, step *agent.Step
 
 	now := time.Now()
 
-	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
+	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
 		NodeID:                llmNode.ID,
 		ItemsByInputID:        itemsByInputID,
 		ItemsByOutputID:       itemsByOutputID,
@@ -1172,5 +1131,163 @@ func (m *AgentHooksManager) OnStepComplete(ctx context.Context, step *agent.Step
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to notify execution observer about LLM node execution completed")
+	}
+}
+
+func (m *AgentHooksManager) OnBeforeMemoryRetrieve(ctx context.Context, filter memory.Filter) {
+	memoryNode := m.MemoryNode
+
+	now := time.Now()
+
+	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionStartedEvent{
+		NodeID:    memoryNode.ID,
+		Timestamp: now,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to notify execution observer about memory node execution started")
+	}
+}
+
+func (m *AgentHooksManager) OnMemoryRetrieved(ctx context.Context, filter memory.Filter, conversations []*types.Conversation) {
+	item := m.InputItem
+	memoryNode := m.MemoryNode
+
+	memoryInputHandleID := fmt.Sprintf(InputHandleIDFormat, memoryNode.ID, 0)
+	memoryOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, memoryNode.ID, 0)
+
+	itemsByInputID := map[string]domain.NodeItems{
+		memoryInputHandleID: {
+			FromNodeID: memoryNode.ID,
+			Items:      []domain.Item{item},
+		},
+	}
+
+	outputItems := []domain.Item{}
+
+	for _, conversation := range conversations {
+		outputItems = append(outputItems, conversation)
+	}
+
+	itemsByOutputID := map[string]domain.NodeItems{
+		memoryOutputHandleID: {
+			FromNodeID: memoryNode.ID,
+			Items:      outputItems,
+		},
+	}
+
+	now := time.Now()
+
+	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
+		NodeID:                memoryNode.ID,
+		ItemsByInputID:        itemsByInputID,
+		ItemsByOutputID:       itemsByOutputID,
+		StartedAt:             now,
+		EndedAt:               now,
+		IntegrationType:       domain.IntegrationType(memoryNode.IntegrationType),
+		IntegrationActionType: domain.IntegrationActionType(memoryNode.ActionNodeOpts.ActionType),
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to notify execution observer about memory node execution completed")
+	}
+}
+
+func (m *AgentHooksManager) OnMemoryRetrievalFailed(ctx context.Context, filter memory.Filter, err error) {
+	item := m.InputItem
+	memoryNode := m.MemoryNode
+
+	memoryInputHandleID := fmt.Sprintf(InputHandleIDFormat, memoryNode.ID, 0)
+
+	now := time.Now()
+
+	itemsByInputID := map[string]domain.NodeItems{
+		memoryInputHandleID: {
+			FromNodeID: memoryNode.ID,
+			Items:      []domain.Item{item},
+		},
+	}
+
+	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionFailedEvent{
+		NodeID:         memoryNode.ID,
+		ItemsByInputID: itemsByInputID,
+		Timestamp:      now,
+		Error:          err,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to notify execution observer about memory node execution failed")
+	}
+}
+
+func (m *AgentHooksManager) OnBeforeMemorySave(ctx context.Context, conversation *types.Conversation) {
+	memoryNode := m.MemoryNode
+
+	now := time.Now()
+
+	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionStartedEvent{
+		NodeID:    memoryNode.ID,
+		Timestamp: now,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to notify execution observer about memory node execution started")
+	}
+}
+
+func (m *AgentHooksManager) OnMemorySaveFailed(ctx context.Context, conversation *types.Conversation, err error) {
+	memoryNode := m.MemoryNode
+
+	now := time.Now()
+
+	memoryInputHandleID := fmt.Sprintf(InputHandleIDFormat, memoryNode.ID, 0)
+
+	itemsByInputID := map[string]domain.NodeItems{
+		memoryInputHandleID: {
+			FromNodeID: memoryNode.ID,
+			Items:      []domain.Item{m.InputItem},
+		},
+	}
+
+	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionFailedEvent{
+		NodeID:         memoryNode.ID,
+		ItemsByInputID: itemsByInputID,
+		Timestamp:      now,
+		Error:          err,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to notify execution observer about memory node execution failed")
+	}
+}
+
+func (m *AgentHooksManager) OnMemorySaved(ctx context.Context, conversation *types.Conversation) {
+	memoryNode := m.MemoryNode
+
+	memoryInputHandleID := fmt.Sprintf(InputHandleIDFormat, memoryNode.ID, 0)
+	memoryOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, memoryNode.ID, 0)
+
+	itemsByInputID := map[string]domain.NodeItems{
+		memoryInputHandleID: {
+			FromNodeID: memoryNode.ID,
+			Items:      []domain.Item{m.InputItem},
+		},
+	}
+
+	itemsByOutputID := map[string]domain.NodeItems{
+		memoryOutputHandleID: {
+			FromNodeID: memoryNode.ID,
+			Items:      []domain.Item{conversation},
+		},
+	}
+
+	now := time.Now()
+
+	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
+		NodeID:                memoryNode.ID,
+		ItemsByInputID:        itemsByInputID,
+		ItemsByOutputID:       itemsByOutputID,
+		StartedAt:             now,
+		EndedAt:               now,
+		IntegrationType:       domain.IntegrationType(memoryNode.IntegrationType),
+		IntegrationActionType: domain.IntegrationActionType(memoryNode.ActionNodeOpts.ActionType),
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to notify execution observer about memory node execution completed")
 	}
 }
