@@ -948,7 +948,9 @@ func (c *Client) doStreamingRequest(ctx context.Context, method, urlPath string,
 	// The signature proves executor identity, TLS secures the actual content
 	c.signRequest(req, nil)
 
-	resp, err := c.httpClient.Do(req)
+	streamingClient := &http.Client{}
+
+	resp, err := streamingClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("streaming request failed: %w", err)
 	}
