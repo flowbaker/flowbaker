@@ -210,18 +210,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 			Propagate:      true,
 		})
 		if err != nil {
-			log.Error().Err(err).Msg("Error executing node")
-
-			// Notify observers about node failure
-			errNotify := w.observer.Notify(ctx, NodeExecutionFailedEvent{
-				NodeID:         execution.NodeID,
-				ItemsByInputID: execution.PayloadByInputID.ToItemsByInputID(),
-				Error:          err,
-				Timestamp:      time.Now(),
-			})
-			if errNotify != nil {
-				log.Error().Err(errNotify).Str("workflow_id", w.workflow.ID).Msg("executor: failed to notify node failed event")
-			}
+			return ExecutionResult{}, err
 		}
 
 		if w.executionCountByNodeID[execution.NodeID] > MaxExecutionCount {
@@ -322,11 +311,12 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	if action, exists := w.workflow.GetActionNodeByID(execution.NodeID); exists {
 		result, err = w.ExecuteActionNode(ctx, action, execution)
 		if err != nil {
-			result, err = w.HandleNodeExecutionError(HandleNodeExecutionErrorParams{
-				Err:             err,
-				IntegrationType: domain.IntegrationType(action.NodeType),
-				ActionType:      domain.IntegrationActionType(action.ActionType),
-				Settings:        action.Settings,
+			result, err = w.HandleNodeExecutionError(ctx, HandleNodeExecutionErrorParams{
+				HandleNodeExecutionErrorTask: execution,
+				Err:                          err,
+				IntegrationType:              domain.IntegrationType(action.NodeType),
+				ActionType:                   domain.IntegrationActionType(action.ActionType),
+				Settings:                     action.Settings,
 			})
 			if err != nil {
 				return ExecuteNodeResult{}, err
@@ -337,11 +327,12 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	} else if trigger, exists := w.workflow.GetTriggerByID(execution.NodeID); exists {
 		result, err = w.ExecuteTriggerNode(ctx, trigger, execution)
 		if err != nil {
-			result, err = w.HandleNodeExecutionError(HandleNodeExecutionErrorParams{
-				Err:             err,
-				IntegrationType: domain.IntegrationType(trigger.Type),
-				ActionType:      domain.IntegrationActionType(trigger.EventType),
-				Settings:        trigger.Settings,
+			result, err = w.HandleNodeExecutionError(ctx, HandleNodeExecutionErrorParams{
+				HandleNodeExecutionErrorTask: execution,
+				Err:                          err,
+				IntegrationType:              domain.IntegrationType(trigger.Type),
+				ActionType:                   domain.IntegrationActionType(trigger.EventType),
+				Settings:                     trigger.Settings,
 			})
 			if err != nil {
 				return ExecuteNodeResult{}, err
@@ -723,13 +714,15 @@ type ErrorItem struct {
 }
 
 type HandleNodeExecutionErrorParams struct {
-	Err             error
-	IntegrationType domain.IntegrationType
-	ActionType      domain.IntegrationActionType
-	Settings        domain.Settings
+	HandleNodeExecutionErrorTask NodeExecutionTask
+	Err                          error
+	IntegrationType              domain.IntegrationType
+	ActionType                   domain.IntegrationActionType
+	Settings                     domain.Settings
 }
 
-func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorParams) (NodeExecutionResult, error) {
+func (w *WorkflowExecutor) HandleNodeExecutionError(ctx context.Context, p HandleNodeExecutionErrorParams) (NodeExecutionResult, error) {
+	execution := p.HandleNodeExecutionErrorTask
 	if !p.Settings.ReturnErrorAsItem {
 		return NodeExecutionResult{}, p.Err
 	}
@@ -742,6 +735,16 @@ func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorPa
 	errorPayload, marshalErr := json.Marshal(errorItems)
 	if marshalErr != nil {
 		return NodeExecutionResult{}, fmt.Errorf("failed to marshal error as item: %w", marshalErr)
+	}
+
+	err := w.observer.Notify(ctx, NodeExecutionFailedEvent{
+		NodeID:         execution.NodeID,
+		ItemsByInputID: execution.PayloadByInputID.ToItemsByInputID(),
+		Error:          p.Err,
+		Timestamp:      time.Now(),
+	})
+	if err != nil {
+		return NodeExecutionResult{}, err
 	}
 
 	return NodeExecutionResult{
