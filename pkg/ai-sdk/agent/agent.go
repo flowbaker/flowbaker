@@ -480,7 +480,7 @@ func (a *Agent) GetTool(toolName string) (tool.Tool, bool) {
 func (a *Agent) GetSessionHistory(ctx context.Context, sessionID string) ([]types.Message, error) {
 	conversations, err := a.GetConversations(ctx, memory.Filter{
 		SessionID: sessionID,
-		Limit:     a.ConversationHistory,
+		Limit:     1,
 	})
 	if err != nil {
 		return nil, err
@@ -498,39 +498,49 @@ func (a *Agent) GetSessionHistory(ctx context.Context, sessionID string) ([]type
 func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) (*types.Conversation, error) {
 	messages := []types.Message{}
 
-	if a.Memory != nil {
-		interruptedConversations, err := a.GetConversations(ctx, memory.Filter{
-			SessionID: req.SessionID,
-			Status:    types.StatusInterrupted,
-			Limit:     1,
+	interruptedConversations, err := a.GetConversations(ctx, memory.Filter{
+		SessionID: req.SessionID,
+		Status:    types.StatusInterrupted,
+		Limit:     1,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(interruptedConversations) > 0 {
+		conversation := interruptedConversations[0]
+
+		conversation.Messages = append(conversation.Messages, types.Message{
+			Role:        types.RoleTool,
+			ToolResults: req.ToolResults,
+			Timestamp:   time.Now(),
 		})
+
+		err = a.SaveConversation(ctx, conversation)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
 		}
 
-		if len(interruptedConversations) > 0 {
-			conversation := interruptedConversations[0]
+		a.conversation = conversation
 
-			conversation.Messages = append(conversation.Messages, types.Message{
-				Role:        types.RoleTool,
-				ToolResults: req.ToolResults,
-				Timestamp:   time.Now(),
-			})
+		return conversation, nil
+	}
 
-			err = a.SaveConversation(ctx, conversation)
-			if err != nil {
-				return nil, fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
-			}
+	conversations, err := a.GetConversations(ctx, memory.Filter{
+		SessionID: req.SessionID,
+		Limit:     1,
+	})
+	if err != nil {
+		return nil, err
+	}
 
-			a.conversation = conversation
+	conversationID := uuid.New().String()
 
-			return conversation, nil
-		}
+	if len(conversations) > 0 {
+		conversation := conversations[0]
+		conversationID = conversation.ID
 
-		messages, err = a.GetSessionHistory(ctx, req.SessionID)
-		if err != nil {
-			return nil, err
-		}
+		messages = conversation.Messages
 	}
 
 	if req.Prompt != "" {
@@ -542,7 +552,7 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) (*types.
 	}
 
 	conversation := &types.Conversation{
-		ID:        uuid.New().String(),
+		ID:        conversationID,
 		SessionID: req.SessionID,
 		Messages:  messages,
 		Status:    types.StatusActive,
