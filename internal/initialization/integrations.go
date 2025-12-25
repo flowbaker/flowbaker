@@ -41,6 +41,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/integrations/storage"
 	"github.com/flowbaker/flowbaker/pkg/integrations/stripe"
 	"github.com/flowbaker/flowbaker/pkg/integrations/teams"
+	telegramintegration "github.com/flowbaker/flowbaker/pkg/integrations/telegram"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
@@ -219,6 +220,10 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_ItemsToItem,
 		NewCreator:      items_to_item.NewItemsToItemIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_Telegram,
+		NewCreator:      telegramintegration.NewTelegramIntegrationCreator,
 	},
 	{
 		IntegrationType:     domain.IntegrationType_Notion,

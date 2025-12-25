@@ -65,15 +65,16 @@ const (
 	IntegrationType_Base64               IntegrationType = "base64"
 	IntegrationType_ContentClassifier    IntegrationType = "content_classifier"
 
-	IntegrationType_Teams                IntegrationType = "teams"
-	IntegrationType_Pipedrive            IntegrationType = "pipedrive"
-	IntegrationType_StartupsWatch        IntegrationType = "startups_watch"
-	IntegrationType_Manipulation         IntegrationType = "manipulation"
-	IntegrationType_SplitArray           IntegrationType = "split_array"
-	IntegrationType_FileToItem           IntegrationType = "filetoitem"
-	IntegrationType_BrightData           IntegrationType = "brightdata"
-	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
-	IntegrationType_Notion               IntegrationType = "notion"
+	IntegrationType_Teams         IntegrationType = "teams"
+	IntegrationType_Pipedrive     IntegrationType = "pipedrive"
+	IntegrationType_StartupsWatch IntegrationType = "startups_watch"
+	IntegrationType_Manipulation  IntegrationType = "manipulation"
+	IntegrationType_SplitArray    IntegrationType = "split_array"
+	IntegrationType_FileToItem    IntegrationType = "filetoitem"
+	IntegrationType_BrightData    IntegrationType = "brightdata"
+	IntegrationType_ItemsToItem   IntegrationType = "items_to_item"
+	IntegrationType_Telegram      IntegrationType = "telegram"
+	IntegrationType_Notion        IntegrationType = "notion"
 )
 
 type Integration struct {
