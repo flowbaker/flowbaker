@@ -79,7 +79,6 @@ type ClientInterface interface {
 	// Agent memory operations (for executor clients)
 	SaveAgentConversation(ctx context.Context, workspaceID string, conversation *AgentConversation) (*SaveAgentConversationResponse, error)
 	GetAgentConversations(ctx context.Context, req *GetAgentConversationsRequest) (*GetAgentConversationsResponse, error)
-	DeleteOldAgentConversations(ctx context.Context, req *DeleteOldAgentConversationsRequest) (*DeleteOldAgentConversationsResponse, error)
 
 	// Schedule operations (for executor clients)
 	GetSchedule(ctx context.Context, workspaceID, scheduleID, workflowID string) ([]byte, error)
@@ -1550,10 +1549,18 @@ func (c *Client) GetAgentConversations(ctx context.Context, req *GetAgentConvers
 		return nil, fmt.Errorf("workspace ID is required")
 	}
 
-	path := fmt.Sprintf("/v1/workspaces/%s/agent-memory/conversations?session_id=%s&limit=%d&offset=%d",
-		req.WorkspaceID, req.SessionID, req.Limit, req.Offset)
+	path := fmt.Sprintf("/v1/workspaces/%s/agent-memory/conversations", req.WorkspaceID)
 
-	resp, err := c.doRequestWithExecutorID(ctx, "GET", path, nil)
+	queryParams := url.Values{}
+	queryParams.Add("session_id", req.SessionID)
+	queryParams.Add("limit", strconv.Itoa(req.Limit))
+	queryParams.Add("offset", strconv.Itoa(req.Offset))
+	queryParams.Add("status", string(req.Status))
+	queryString := queryParams.Encode()
+
+	url := fmt.Sprintf("%s?%s", path, queryString)
+
+	resp, err := c.doRequestWithExecutorID(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get agent conversations: %w", err)
 	}
@@ -1561,31 +1568,6 @@ func (c *Client) GetAgentConversations(ctx context.Context, req *GetAgentConvers
 	var result GetAgentConversationsResponse
 	if err := c.handleResponse(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to process get agent conversations response: %w", err)
-	}
-
-	return &result, nil
-}
-
-// DeleteOldAgentConversations deletes old agent conversations for the executor
-func (c *Client) DeleteOldAgentConversations(ctx context.Context, req *DeleteOldAgentConversationsRequest) (*DeleteOldAgentConversationsResponse, error) {
-	if c.config.ExecutorID == "" {
-		return nil, fmt.Errorf("executor ID is required for agent memory operations")
-	}
-
-	if req.WorkspaceID == "" {
-		return nil, fmt.Errorf("workspace ID is required")
-	}
-
-	path := fmt.Sprintf("/v1/workspaces/%s/agent-memory/conversations/cleanup", req.WorkspaceID)
-
-	resp, err := c.doRequestWithExecutorID(ctx, "DELETE", path, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to delete old agent conversations: %w", err)
-	}
-
-	var result DeleteOldAgentConversationsResponse
-	if err := c.handleResponse(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to process delete old agent conversations response: %w", err)
 	}
 
 	return &result, nil

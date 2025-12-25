@@ -473,37 +473,58 @@ type CreateScheduleResponse struct {
 	Schedule Schedule `json:"schedule"`
 }
 
-// Agent memory types
+type ConversationStatus string
 
-// AgentConversation represents a conversation with an AI agent
+const (
+	StatusActive      ConversationStatus = "active"
+	StatusCompleted   ConversationStatus = "completed"
+	StatusFailed      ConversationStatus = "failed"
+	StatusInterrupted ConversationStatus = "interrupted"
+)
+
 type AgentConversation struct {
-	ID             string                 `json:"id"`
-	WorkspaceID    string                 `json:"workspace_id"`
-	SessionID      string                 `json:"session_id"`
-	ConversationID string                 `json:"conversation_id"`
-	UserPrompt     string                 `json:"user_prompt"`
-	FinalResponse  string                 `json:"final_response"`
-	Messages       []AgentMessage         `json:"messages"`
-	ToolsUsed      []string               `json:"tools_used"`
-	Status         string                 `json:"status"`
-	CreatedAt      time.Time              `json:"created_at"`
-	UpdatedAt      time.Time              `json:"updated_at"`
-	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	ID        string                 `json:"id" bson:"id"`
+	SessionID string                 `json:"session_id" bson:"session_id"`
+	UserID    string                 `json:"user_id,omitempty" bson:"user_id,omitempty"`
+	Messages  []Message              `json:"messages" bson:"messages"`
+	CreatedAt time.Time              `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time              `json:"updated_at" bson:"updated_at"`
+	Status    ConversationStatus     `json:"status" bson:"status"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty" bson:"metadata,omitempty"`
 }
 
-// AgentMessage represents a message in an agent conversation
-type AgentMessage struct {
-	Role      string          `json:"role"`
-	Content   string          `json:"content"`
-	ToolCalls []AgentToolCall `json:"tool_calls,omitempty"`
-	Timestamp time.Time       `json:"timestamp"`
+// Message represents a single message in a conversation
+type Message struct {
+	Role        MessageRole            `json:"role" bson:"role"`
+	Content     string                 `json:"content" bson:"content"`
+	ToolCalls   []ToolCall             `json:"tool_calls,omitempty" bson:"tool_calls,omitempty"`
+	ToolResults []ToolResult           `json:"tool_results,omitempty" bson:"tool_results,omitempty"`
+	Timestamp   time.Time              `json:"timestamp" bson:"timestamp"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty" bson:"metadata,omitempty"`
 }
 
-// AgentToolCall represents a tool call made by an agent
-type AgentToolCall struct {
-	ID        string                 `json:"id"`
-	Name      string                 `json:"name"`
-	Arguments map[string]interface{} `json:"arguments,omitempty"`
+// MessageRole defines the role of a message sender
+type MessageRole string
+
+const (
+	RoleUser      MessageRole = "user"
+	RoleAssistant MessageRole = "assistant"
+	RoleSystem    MessageRole = "system"
+	RoleTool      MessageRole = "tool"
+)
+
+// ToolCall represents a tool call request from the LLM
+type ToolCall struct {
+	ID        string                 `json:"id" bson:"id"`
+	Name      string                 `json:"name" bson:"name"`
+	Arguments map[string]interface{} `json:"arguments" bson:"arguments"`
+}
+
+// ToolResult represents the result of a tool call
+type ToolResult struct {
+	ToolCallID string `json:"tool_call_id" bson:"tool_call_id"`
+	Content    string `json:"content" bson:"content"`
+	IsError    bool   `json:"is_error,omitempty" bson:"is_error,omitempty"`
 }
 
 // SaveAgentConversationResponse represents the response from saving an agent conversation
@@ -514,10 +535,11 @@ type SaveAgentConversationResponse struct {
 
 // GetAgentConversationsRequest represents the request to get agent conversations
 type GetAgentConversationsRequest struct {
-	WorkspaceID string `json:"workspace_id"`
-	SessionID   string `json:"session_id,omitempty"`
-	Limit       int    `json:"limit,omitempty"`
-	Offset      int    `json:"offset,omitempty"`
+	WorkspaceID string             `json:"workspace_id"`
+	SessionID   string             `json:"session_id,omitempty"`
+	Limit       int                `json:"limit,omitempty"`
+	Offset      int                `json:"offset,omitempty"`
+	Status      ConversationStatus `json:"status,omitempty"`
 }
 
 // GetAgentConversationsResponse represents the response from getting agent conversations

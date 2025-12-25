@@ -92,10 +92,6 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		Client: config.FlowbakerClient,
 	})
 
-	executorAgentMemoryService := managers.NewExecutorAgentMemoryService(managers.ExecutorAgentMemoryServiceDependencies{
-		Client: config.FlowbakerClient,
-	})
-
 	executorKnowledgeManager := managers.NewExecutorKnowledgeManager(managers.ExecutorKnowledgeManagerDependencies{
 		Client: config.FlowbakerClient,
 	})
@@ -110,7 +106,6 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		ExecutorStorageManager:     executorStorageManager,
 		ExecutorCredentialManager:  executorCredentialManager,
 		ParameterBinder:            kangarooBinder,
-		AgentMemoryService:         executorAgentMemoryService,
 		ExecutorTaskPublisher:      executorTaskPublisher,
 		ExecutorIntegrationManager: executorIntegrationManager,
 		ExecutorScheduleManager:    executorScheduleManager,
@@ -133,8 +128,6 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		WorkflowExecutorService:      workflowExecutorService,
 		WorkspaceRegistrationManager: c.workspaceRegistrationManager,
 	})
-
-	log.Info().Msg("Executor dependencies built successfully")
 
 	return &ExecutorDependencies{
 		FlowbakerClient:         config.FlowbakerClient,

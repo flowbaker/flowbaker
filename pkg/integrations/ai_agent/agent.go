@@ -17,8 +17,10 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider/openai"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/tool"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	"github.com/flowbaker/flowbaker/pkg/domain/executor"
 	"github.com/flowbaker/flowbaker/pkg/integrations/ai_agent/memory/mongodb"
+	"github.com/flowbaker/flowbaker/pkg/integrations/flowbaker_agent_memory"
 	mongodbIntegration "github.com/flowbaker/flowbaker/pkg/integrations/mongo"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
@@ -35,6 +37,7 @@ type AIAgentCreator struct {
 	parameterBinder            domain.IntegrationParameterBinder
 	executorIntegrationManager domain.ExecutorIntegrationManager
 	executorCredentialManager  domain.ExecutorCredentialManager
+	flowbakerClient            flowbaker.ClientInterface
 }
 
 func NewAIAgentCreator(deps domain.IntegrationDeps) domain.IntegrationCreator {
@@ -43,6 +46,7 @@ func NewAIAgentCreator(deps domain.IntegrationDeps) domain.IntegrationCreator {
 		parameterBinder:            deps.ParameterBinder,
 		executorIntegrationManager: deps.ExecutorIntegrationManager,
 		executorCredentialManager:  deps.ExecutorCredentialManager,
+		flowbakerClient:            deps.FlowbakerClient,
 	}
 }
 
@@ -52,6 +56,7 @@ func (c *AIAgentCreator) CreateIntegration(ctx context.Context, params domain.Cr
 		ParameterBinder:            c.parameterBinder,
 		ExecutorIntegrationManager: c.executorIntegrationManager,
 		ExecutorCredentialManager:  c.executorCredentialManager,
+		FlowbakerClient:            c.flowbakerClient,
 	}), nil
 }
 
@@ -66,6 +71,7 @@ type AIAgentExecutor struct {
 	executorCredentialManager  domain.ExecutorCredentialManager
 	actionManager              *domain.IntegrationActionManager
 	credentialGetter           domain.CredentialGetter[OpenAICredential]
+	client                     flowbaker.ClientInterface
 }
 
 func NewAIAgentExecutor(deps domain.IntegrationDeps) domain.IntegrationExecutor {
@@ -75,6 +81,7 @@ func NewAIAgentExecutor(deps domain.IntegrationDeps) domain.IntegrationExecutor 
 		executorIntegrationManager: deps.ExecutorIntegrationManager,
 		executorCredentialManager:  deps.ExecutorCredentialManager,
 		credentialGetter:           managers.NewExecutorCredentialGetter[OpenAICredential](deps.ExecutorCredentialManager),
+		client:                     deps.FlowbakerClient,
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
@@ -220,43 +227,52 @@ func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params dom
 	wg := sync.WaitGroup{}
 
 	wg.Go(func() {
-		for event := range result.EventChan {
-			eventType := string(event.GetType())
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event, ok := <-result.EventChan:
+				if !ok {
+					return
+				}
+				eventType := string(event.GetType())
 
-			disabledEventTypes := []string{
-				"tool-call-start",
-				"tool-call-delta",
-				"tool-call-complete",
-				"tool-execution-start",
-				"tool-execution-complete",
+				disabledEventTypes := []string{
+					"tool-call-start",
+					"tool-call-delta",
+					"tool-call-complete",
+					"tool-execution-start",
+					"tool-execution-complete",
+				}
+
+				if slices.Contains(disabledEventTypes, eventType) {
+					continue
+				}
+
+				streamEvent := AIChatStreamEvent{
+					SessionID:         agentSettings.Memory.SessionID,
+					WorkspaceID:       executionContext.WorkspaceID,
+					EventType:         string(event.GetType()),
+					EventData:         event,
+					Timestamp:         time.Now().Unix(),
+					IsFromChatTrigger: true,
+				}
+
+				if executionContext.UserID != nil {
+					streamEvent.UserID = *executionContext.UserID
+				}
+
+				err = executionObserver.NotifyStream(ctx, streamEvent)
+				if err != nil {
+					log.Error().Str("err", err.Error()).Msg("failed to notify stream event")
+				}
+
+			case err := <-result.ErrChan:
+				if err != nil {
+					log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
+				}
+				return
 			}
-
-			if slices.Contains(disabledEventTypes, eventType) {
-				continue
-			}
-
-			streamEvent := AIChatStreamEvent{
-				SessionID:         agentSettings.Memory.SessionID,
-				WorkspaceID:       executionContext.WorkspaceID,
-				EventType:         string(event.GetType()),
-				EventData:         event,
-				Timestamp:         time.Now().Unix(),
-				IsFromChatTrigger: true,
-			}
-
-			if executionContext.UserID != nil {
-				log.Debug().Str("user_id", *executionContext.UserID).Msg("User ID")
-				streamEvent.UserID = *executionContext.UserID
-			}
-
-			err = executionObserver.NotifyStream(ctx, streamEvent)
-			if err != nil {
-				log.Error().Str("err", err.Error()).Msg("failed to notify stream event")
-			}
-		}
-
-		if err := <-result.ErrChan; err != nil {
-			log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
 		}
 	})
 
@@ -421,6 +437,10 @@ type MongoDBMemoryParams struct {
 	SessionID  string `json:"session_id"`
 }
 
+type FlowbakerAgentMemoryParams struct {
+	SessionID string `json:"session_id"`
+}
+
 func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgentSettingsParams) (ResolveMemoryResult, error) {
 	memoryNode := domain.WorkflowNode{}
 
@@ -465,6 +485,28 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 			CredentialID:   credentialID,
 			DatabaseName:   p.Database,
 			CollectionName: p.Collection,
+		})
+		if err != nil {
+			return ResolveMemoryResult{}, fmt.Errorf("failed to create memory: %w", err)
+		}
+
+		return ResolveMemoryResult{
+			Memory:    memory,
+			Node:      memoryNode,
+			SessionID: p.SessionID,
+		}, nil
+	case domain.IntegrationType_FlowbakerAgentMemory:
+		p := FlowbakerAgentMemoryParams{}
+
+		err := e.parameterBinder.BindToStruct(ctx, params.InputItem, &p, memoryNode.IntegrationSettings)
+		if err != nil {
+			return ResolveMemoryResult{}, fmt.Errorf("failed to bind Flowbaker agent memory node params: %w", err)
+		}
+
+		memory, err := flowbaker_agent_memory.New(ctx, flowbaker_agent_memory.MemoryDependencies{
+			Client:      e.client,
+			WorkspaceID: params.Workflow.WorkspaceID,
+			Binder:      e.parameterBinder,
 		})
 		if err != nil {
 			return ResolveMemoryResult{}, fmt.Errorf("failed to create memory: %w", err)

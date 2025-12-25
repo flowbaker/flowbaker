@@ -240,7 +240,6 @@ type IntegrationDeps struct {
 	TaskSchedulerService       TaskSchedulerService
 	ParameterBinder            IntegrationParameterBinder
 	IntegrationSelector        IntegrationSelector
-	AgentMemoryService         AgentMemoryService
 	ExecutorStorageManager     ExecutorStorageManager
 	ExecutorCredentialManager  ExecutorCredentialManager
 	ExecutorIntegrationManager ExecutorIntegrationManager
