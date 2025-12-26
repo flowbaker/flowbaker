@@ -530,10 +530,7 @@ func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentS
 		return nil, nil
 	}
 
-	log.Debug().Interface("tools_input", toolsInput).Msg("Tools input")
-
 	if len(toolsInput.SubscribedEvents) == 0 {
-		log.Debug().Msg("Tools input has no subscribed events")
 		return nil, nil
 	}
 
@@ -544,8 +541,6 @@ func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentS
 	for _, toolNodeID := range toolNodeIDs {
 		nodeReferences = append(nodeReferences, NodeReference{NodeID: toolNodeID})
 	}
-
-	log.Debug().Interface("node_references", nodeReferences).Msg("Node references")
 
 	if len(nodeReferences) == 0 {
 		return nil, nil
@@ -645,7 +640,6 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 	tools := make([]tool.Tool, 0, len(toolNodes))
 
 	for _, toolNode := range toolNodes {
-
 		creator, err := c.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
 			IntegrationType: domain.IntegrationType(toolNode.IntegrationType),
 		})
@@ -676,13 +670,9 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			return nil, fmt.Errorf("failed to get action tool %s: %w", toolNode.Name, err)
 		}
 
-		log.Debug().Interface("action_tool", actionTool).Msg("Action tool")
-
 		agentToolInputHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 1)
 
 		executeFunc := func(args string) (string, error) {
-			log.Debug().Str("node_id", toolNode.ID).Msg("Notifying observer about tool execution started")
-
 			err = c.observer.Notify(ctx, executor.NodeExecutionStartedEvent{
 				NodeID:    toolNode.ID,
 				Timestamp: time.Now(),

@@ -3,8 +3,6 @@ package domain
 import (
 	"errors"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 type WorkflowType string
@@ -67,7 +65,6 @@ func (w Workflow) GetSubNodes(nodeID string) []WorkflowNode {
 	subNodes := make([]WorkflowNode, 0)
 
 	for _, node := range w.Nodes {
-		log.Debug().Str("node_id", node.ID).Str("parent_id", node.ParentID).Msg("Node parent ID")
 		if node.ParentID == nodeID {
 			subNodes = append(subNodes, node)
 		}
