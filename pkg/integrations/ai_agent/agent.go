@@ -1134,7 +1134,7 @@ func (m *AgentHooksManager) OnBeforeMemoryRetrieve(ctx context.Context, filter m
 	}
 }
 
-func (m *AgentHooksManager) OnMemoryRetrieved(ctx context.Context, filter memory.Filter, conversations []*types.Conversation) {
+func (m *AgentHooksManager) OnMemoryRetrieved(ctx context.Context, filter memory.Filter, conversation types.Conversation) {
 	item := m.InputItem
 	memoryNode := m.MemoryNode
 
@@ -1148,10 +1148,8 @@ func (m *AgentHooksManager) OnMemoryRetrieved(ctx context.Context, filter memory
 		},
 	}
 
-	outputItems := []domain.Item{}
-
-	for _, conversation := range conversations {
-		outputItems = append(outputItems, conversation)
+	outputItems := []domain.Item{
+		conversation,
 	}
 
 	itemsByOutputID := map[string]domain.NodeItems{
@@ -1203,7 +1201,7 @@ func (m *AgentHooksManager) OnMemoryRetrievalFailed(ctx context.Context, filter 
 	}
 }
 
-func (m *AgentHooksManager) OnBeforeMemorySave(ctx context.Context, conversation *types.Conversation) {
+func (m *AgentHooksManager) OnBeforeMemorySave(ctx context.Context, conversation types.Conversation) {
 	memoryNode := m.MemoryNode
 
 	now := time.Now()
@@ -1217,7 +1215,7 @@ func (m *AgentHooksManager) OnBeforeMemorySave(ctx context.Context, conversation
 	}
 }
 
-func (m *AgentHooksManager) OnMemorySaveFailed(ctx context.Context, conversation *types.Conversation, err error) {
+func (m *AgentHooksManager) OnMemorySaveFailed(ctx context.Context, conversation types.Conversation, err error) {
 	memoryNode := m.MemoryNode
 
 	now := time.Now()
@@ -1242,7 +1240,7 @@ func (m *AgentHooksManager) OnMemorySaveFailed(ctx context.Context, conversation
 	}
 }
 
-func (m *AgentHooksManager) OnMemorySaved(ctx context.Context, conversation *types.Conversation) {
+func (m *AgentHooksManager) OnMemorySaved(ctx context.Context, conversation types.Conversation) {
 	memoryNode := m.MemoryNode
 
 	memoryInputHandleID := fmt.Sprintf(InputHandleIDFormat, memoryNode.ID, 0)

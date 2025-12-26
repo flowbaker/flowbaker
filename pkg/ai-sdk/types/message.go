@@ -48,6 +48,22 @@ type Conversation struct {
 	Metadata  map[string]interface{} `json:"metadata,omitempty" bson:"metadata,omitempty"`
 }
 
+func (c *Conversation) IsInterrupted() bool {
+	return c.Status == StatusInterrupted
+}
+
+func (c *Conversation) IsCompleted() bool {
+	return c.Status == StatusCompleted
+}
+
+func (c *Conversation) IsFailed() bool {
+	return c.Status == StatusFailed
+}
+
+func (c *Conversation) IsActive() bool {
+	return c.Status == StatusActive
+}
+
 // ConversationStatus defines the status of a conversation
 type ConversationStatus string
 

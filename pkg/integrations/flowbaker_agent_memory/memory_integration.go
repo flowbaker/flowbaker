@@ -7,6 +7,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/memory"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
+	"github.com/rs/zerolog/log"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
@@ -37,13 +38,15 @@ func New(ctx context.Context, deps MemoryDependencies) (*Memory, error) {
 	return memory, nil
 }
 
-func (m *Memory) SaveConversation(ctx context.Context, conversation *types.Conversation) error {
+func (m *Memory) SaveConversation(ctx context.Context, conversation types.Conversation) error {
+	log.Debug().Interface("conversation", conversation).Msg("Saving conversation")
+
 	if conversation.ID == "" {
-		return fmt.Errorf("conversation ID is required")
+		return fmt.Errorf("failed to save conversation: conversation ID is required")
 	}
 
 	if conversation.SessionID == "" {
-		return fmt.Errorf("session ID is required")
+		return fmt.Errorf("failed to save conversation: session ID is required")
 	}
 
 	convertedMessages := make([]flowbaker.Message, len(conversation.Messages))
@@ -96,72 +99,63 @@ func (m *Memory) SaveConversation(ctx context.Context, conversation *types.Conve
 	return nil
 }
 
-func (m *Memory) GetConversations(ctx context.Context, filter memory.Filter) ([]*types.Conversation, error) {
+func (m *Memory) GetConversation(ctx context.Context, filter memory.Filter) (types.Conversation, error) {
+	log.Debug().Interface("filter", filter).Msg("Getting conversation")
+
 	if filter.SessionID == "" {
-		return nil, fmt.Errorf("session ID is required")
+		return types.Conversation{}, fmt.Errorf("failed to get conversation: session ID is required")
 	}
 
-	req := &flowbaker.GetAgentConversationsRequest{
+	req := &flowbaker.GetAgentConversationRequest{
 		WorkspaceID: m.workspaceID,
 		SessionID:   filter.SessionID,
-		Limit:       filter.Limit,
-		Offset:      filter.Offset,
-		Status:      flowbaker.ConversationStatus(filter.Status),
 	}
 
-	if req.Limit <= 0 {
-		req.Limit = 10
-	}
-
-	resp, err := m.client.GetAgentConversations(ctx, req)
+	resp, err := m.client.GetAgentConversation(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get conversations via FlowbakerClient: %w", err)
+		return types.Conversation{}, fmt.Errorf("failed to get conversations via FlowbakerClient: %w", err)
 	}
 
-	conversations := make([]*types.Conversation, len(resp.Conversations))
+	conv := resp.Conversation
 
-	for i, conv := range resp.Conversations {
-		convertedMessages := make([]types.Message, len(conv.Messages))
+	convertedMessages := make([]types.Message, len(conv.Messages))
 
-		for j, msg := range conv.Messages {
-			convertedToolCalls := make([]types.ToolCall, len(msg.ToolCalls))
-			for k, tc := range msg.ToolCalls {
-				convertedToolCalls[k] = types.ToolCall{
-					ID:        tc.ID,
-					Name:      tc.Name,
-					Arguments: tc.Arguments,
-				}
-			}
-
-			convertedToolResults := make([]types.ToolResult, len(msg.ToolResults))
-			for l, tr := range msg.ToolResults {
-				convertedToolResults[l] = types.ToolResult{
-					ToolCallID: tr.ToolCallID,
-					Content:    tr.Content,
-					IsError:    tr.IsError,
-				}
-			}
-			convertedMessages[j] = types.Message{
-				Role:        types.MessageRole(msg.Role),
-				Content:     msg.Content,
-				ToolCalls:   convertedToolCalls,
-				ToolResults: convertedToolResults,
-				Timestamp:   msg.Timestamp,
-				Metadata:    msg.Metadata,
+	for j, msg := range conv.Messages {
+		convertedToolCalls := make([]types.ToolCall, len(msg.ToolCalls))
+		for k, tc := range msg.ToolCalls {
+			convertedToolCalls[k] = types.ToolCall{
+				ID:        tc.ID,
+				Name:      tc.Name,
+				Arguments: tc.Arguments,
 			}
 		}
 
-		conversations[i] = &types.Conversation{
-			ID:        conv.ID,
-			SessionID: conv.SessionID,
-			UserID:    conv.UserID,
-			CreatedAt: conv.CreatedAt,
-			UpdatedAt: conv.UpdatedAt,
-			Status:    types.ConversationStatus(conv.Status),
-			Metadata:  conv.Metadata,
-			Messages:  convertedMessages,
+		convertedToolResults := make([]types.ToolResult, len(msg.ToolResults))
+		for l, tr := range msg.ToolResults {
+			convertedToolResults[l] = types.ToolResult{
+				ToolCallID: tr.ToolCallID,
+				Content:    tr.Content,
+				IsError:    tr.IsError,
+			}
+		}
+		convertedMessages[j] = types.Message{
+			Role:        types.MessageRole(msg.Role),
+			Content:     msg.Content,
+			ToolCalls:   convertedToolCalls,
+			ToolResults: convertedToolResults,
+			Timestamp:   msg.Timestamp,
+			Metadata:    msg.Metadata,
 		}
 	}
 
-	return conversations, nil
+	return types.Conversation{
+		ID:        conv.ID,
+		SessionID: conv.SessionID,
+		UserID:    conv.UserID,
+		CreatedAt: conv.CreatedAt,
+		UpdatedAt: conv.UpdatedAt,
+		Status:    types.ConversationStatus(conv.Status),
+		Metadata:  conv.Metadata,
+		Messages:  convertedMessages,
+	}, nil
 }

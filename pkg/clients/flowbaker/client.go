@@ -78,7 +78,7 @@ type ClientInterface interface {
 
 	// Agent memory operations (for executor clients)
 	SaveAgentConversation(ctx context.Context, workspaceID string, conversation *AgentConversation) (*SaveAgentConversationResponse, error)
-	GetAgentConversations(ctx context.Context, req *GetAgentConversationsRequest) (*GetAgentConversationsResponse, error)
+	GetAgentConversation(ctx context.Context, req *GetAgentConversationRequest) (*GetAgentConversationResponse, error)
 
 	// Schedule operations (for executor clients)
 	GetSchedule(ctx context.Context, workspaceID, scheduleID, workflowID string) ([]byte, error)
@@ -1510,7 +1510,6 @@ func (c *Client) CreateSchedule(ctx context.Context, workspaceID string, req *Cr
 	return body, nil
 }
 
-// SaveAgentConversation saves an agent conversation for the executor
 func (c *Client) SaveAgentConversation(ctx context.Context, workspaceID string, conversation *AgentConversation) (*SaveAgentConversationResponse, error) {
 	if c.config.ExecutorID == "" {
 		return nil, fmt.Errorf("executor ID is required for agent memory operations")
@@ -1539,8 +1538,7 @@ func (c *Client) SaveAgentConversation(ctx context.Context, workspaceID string, 
 	return &result, nil
 }
 
-// GetAgentConversations retrieves agent conversations for the executor
-func (c *Client) GetAgentConversations(ctx context.Context, req *GetAgentConversationsRequest) (*GetAgentConversationsResponse, error) {
+func (c *Client) GetAgentConversation(ctx context.Context, req *GetAgentConversationRequest) (*GetAgentConversationResponse, error) {
 	if c.config.ExecutorID == "" {
 		return nil, fmt.Errorf("executor ID is required for agent memory operations")
 	}
@@ -1553,9 +1551,6 @@ func (c *Client) GetAgentConversations(ctx context.Context, req *GetAgentConvers
 
 	queryParams := url.Values{}
 	queryParams.Add("session_id", req.SessionID)
-	queryParams.Add("limit", strconv.Itoa(req.Limit))
-	queryParams.Add("offset", strconv.Itoa(req.Offset))
-	queryParams.Add("status", string(req.Status))
 	queryString := queryParams.Encode()
 
 	url := fmt.Sprintf("%s?%s", path, queryString)
@@ -1565,7 +1560,7 @@ func (c *Client) GetAgentConversations(ctx context.Context, req *GetAgentConvers
 		return nil, fmt.Errorf("failed to get agent conversations: %w", err)
 	}
 
-	var result GetAgentConversationsResponse
+	var result GetAgentConversationResponse
 	if err := c.handleResponse(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to process get agent conversations response: %w", err)
 	}

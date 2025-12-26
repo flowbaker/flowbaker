@@ -534,18 +534,14 @@ type SaveAgentConversationResponse struct {
 }
 
 // GetAgentConversationsRequest represents the request to get agent conversations
-type GetAgentConversationsRequest struct {
-	WorkspaceID string             `json:"workspace_id"`
-	SessionID   string             `json:"session_id,omitempty"`
-	Limit       int                `json:"limit,omitempty"`
-	Offset      int                `json:"offset,omitempty"`
-	Status      ConversationStatus `json:"status,omitempty"`
+type GetAgentConversationRequest struct {
+	WorkspaceID string `json:"workspace_id"`
+	SessionID   string `json:"session_id,omitempty"`
 }
 
 // GetAgentConversationsResponse represents the response from getting agent conversations
-type GetAgentConversationsResponse struct {
-	Conversations []*AgentConversation `json:"conversations"`
-	Count         int                  `json:"count"`
+type GetAgentConversationResponse struct {
+	Conversation AgentConversation `json:"conversation"`
 }
 
 // DeleteOldAgentConversationsRequest represents the request to delete old agent conversations

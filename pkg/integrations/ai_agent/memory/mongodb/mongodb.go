@@ -2,6 +2,7 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
 	"github.com/flowbaker/flowbaker/pkg/domain"
 	mongodb "github.com/flowbaker/flowbaker/pkg/integrations/mongo"
+	"github.com/google/uuid"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -100,7 +102,7 @@ func (s *Store) ensureIndexes() {
 }
 
 // SaveConversation saves a new conversation or updates an existing one
-func (s *Store) SaveConversation(ctx context.Context, conversation *types.Conversation) error {
+func (s *Store) SaveConversation(ctx context.Context, conversation types.Conversation) error {
 	if conversation.ID == "" {
 		return types.ErrInvalidMessage
 	}
@@ -119,7 +121,6 @@ func (s *Store) SaveConversation(ctx context.Context, conversation *types.Conver
 
 	update := bson.M{
 		"$set": bson.M{
-			"id":         conversation.ID,
 			"session_id": conversation.SessionID,
 			"user_id":    conversation.UserID,
 			"messages":   conversation.Messages,
@@ -130,8 +131,7 @@ func (s *Store) SaveConversation(ctx context.Context, conversation *types.Conver
 		},
 	}
 
-	opts := options.Update().SetUpsert(true)
-	_, err := s.collection.UpdateOne(ctx, filter, update, opts)
+	_, err := s.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return fmt.Errorf("failed to save conversation: %w", err)
 	}
@@ -139,9 +139,7 @@ func (s *Store) SaveConversation(ctx context.Context, conversation *types.Conver
 	return nil
 }
 
-// GetConversations retrieves conversations based on filter parameters
-func (s *Store) GetConversations(ctx context.Context, filter memory.Filter) ([]*types.Conversation, error) {
-	// Build MongoDB filter
+func (s *Store) GetConversation(ctx context.Context, filter memory.Filter) (types.Conversation, error) {
 	mongoFilter := bson.M{}
 
 	if filter.SessionID != "" {
@@ -152,33 +150,37 @@ func (s *Store) GetConversations(ctx context.Context, filter memory.Filter) ([]*
 		mongoFilter["user_id"] = filter.UserID
 	}
 
-	if filter.Status != "" {
-		mongoFilter["status"] = filter.Status
+	result := s.collection.FindOne(ctx, mongoFilter)
+
+	if result.Err() != nil {
+		if errors.Is(result.Err(), mongo.ErrNoDocuments) {
+			newConversation := types.Conversation{
+				ID:        uuid.New().String(),
+				SessionID: filter.SessionID,
+				UserID:    filter.UserID,
+				Status:    types.StatusActive,
+				Messages:  []types.Message{},
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+				Metadata:  map[string]any{},
+			}
+
+			_, err := s.collection.InsertOne(ctx, newConversation)
+			if err != nil {
+				return types.Conversation{}, fmt.Errorf("failed to insert new conversation: %w", err)
+			}
+
+			return newConversation, nil
+		}
+
+		return types.Conversation{}, fmt.Errorf("failed to find conversation: %w", result.Err())
 	}
 
-	// Set options
-	findOptions := options.Find()
-	findOptions.SetSort(bson.D{{Key: "created_at", Value: -1}}) // Most recent first
+	var conversation types.Conversation
 
-	if filter.Limit > 0 {
-		findOptions.SetLimit(int64(filter.Limit))
+	if err := result.Decode(&conversation); err != nil {
+		return types.Conversation{}, fmt.Errorf("failed to decode conversation: %w", err)
 	}
 
-	if filter.Offset > 0 {
-		findOptions.SetSkip(int64(filter.Offset))
-	}
-
-	// Execute query
-	cursor, err := s.collection.Find(ctx, mongoFilter, findOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find conversations: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var conversations []*types.Conversation
-	if err := cursor.All(ctx, &conversations); err != nil {
-		return nil, fmt.Errorf("failed to decode conversations: %w", err)
-	}
-
-	return conversations, nil
+	return conversation, nil
 }
