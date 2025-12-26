@@ -26,9 +26,6 @@ var (
 				EventType:   IntegrationTriggerType_OnError,
 				Description: "Triggered when an error occurs in the workflow",
 				Properties:  []domain.NodeProperty{},
-				OutputHandles: []domain.NodeHandle{
-					{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Error"},
-				},
 			},
 		},
 	}
