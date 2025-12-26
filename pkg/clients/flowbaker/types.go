@@ -501,6 +501,7 @@ type Message struct {
 	ToolResults []ToolResult           `json:"tool_results,omitempty" bson:"tool_results,omitempty"`
 	Timestamp   time.Time              `json:"timestamp" bson:"timestamp"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty" bson:"metadata,omitempty"`
+	CreatedAt   time.Time              `json:"created_at" bson:"created_at"`
 }
 
 // MessageRole defines the role of a message sender

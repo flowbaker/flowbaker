@@ -7,7 +7,6 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/memory"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
-	"github.com/rs/zerolog/log"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
@@ -39,8 +38,6 @@ func New(ctx context.Context, deps MemoryDependencies) (*Memory, error) {
 }
 
 func (m *Memory) SaveConversation(ctx context.Context, conversation types.Conversation) error {
-	log.Debug().Interface("conversation", conversation).Msg("Saving conversation")
-
 	if conversation.ID == "" {
 		return fmt.Errorf("failed to save conversation: conversation ID is required")
 	}
@@ -78,6 +75,7 @@ func (m *Memory) SaveConversation(ctx context.Context, conversation types.Conver
 			ToolResults: convertedToolResults,
 			Timestamp:   msg.Timestamp,
 			Metadata:    msg.Metadata,
+			CreatedAt:   msg.CreatedAt,
 		}
 	}
 
@@ -100,8 +98,6 @@ func (m *Memory) SaveConversation(ctx context.Context, conversation types.Conver
 }
 
 func (m *Memory) GetConversation(ctx context.Context, filter memory.Filter) (types.Conversation, error) {
-	log.Debug().Interface("filter", filter).Msg("Getting conversation")
-
 	if filter.SessionID == "" {
 		return types.Conversation{}, fmt.Errorf("failed to get conversation: session ID is required")
 	}
@@ -145,6 +141,7 @@ func (m *Memory) GetConversation(ctx context.Context, filter memory.Filter) (typ
 			ToolResults: convertedToolResults,
 			Timestamp:   msg.Timestamp,
 			Metadata:    msg.Metadata,
+			CreatedAt:   msg.CreatedAt,
 		}
 	}
 
