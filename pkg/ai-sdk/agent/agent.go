@@ -100,7 +100,7 @@ type ChatStream struct {
 }
 
 func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
-	conversation, err := a.SetupConversation(ctx, req)
+	err := a.SetupConversation(ctx, req)
 	if err != nil {
 		return ChatStream{}, err
 	}
@@ -122,6 +122,8 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
 			for _, t := range a.Tools {
 				tools = append(tools, tool.ToTypesTool(t))
 			}
+
+			conversation := a.conversation
 
 			req := provider.GenerateRequest{
 				Messages: conversation.Messages,
@@ -476,12 +478,12 @@ func (a *Agent) GetTool(toolName string) (tool.Tool, bool) {
 	return nil, false
 }
 
-func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) (types.Conversation, error) {
+func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 	conversation, err := a.GetConversation(ctx, memory.Filter{
 		SessionID: req.SessionID,
 	})
 	if err != nil {
-		return types.Conversation{}, err
+		return err
 	}
 
 	if conversation.IsInterrupted() {
@@ -493,12 +495,12 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) (types.C
 
 		err = a.SaveConversation(ctx, conversation)
 		if err != nil {
-			return types.Conversation{}, fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
+			return fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
 		}
 
 		a.conversation = &conversation
 
-		return conversation, nil
+		return nil
 	}
 
 	if req.Prompt != "" {
@@ -511,7 +513,7 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) (types.C
 
 	a.conversation = &conversation
 
-	return conversation, nil
+	return nil
 }
 
 func (a *Agent) ApplyStepToConversation(ctx context.Context) error {
