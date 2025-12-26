@@ -20,8 +20,12 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	"github.com/flowbaker/flowbaker/pkg/domain/executor"
 	"github.com/flowbaker/flowbaker/pkg/integrations/ai_agent/memory/mongodb"
+	postgresqlmemory "github.com/flowbaker/flowbaker/pkg/integrations/ai_agent/memory/postgresql"
+	redismemory "github.com/flowbaker/flowbaker/pkg/integrations/ai_agent/memory/redis"
 	"github.com/flowbaker/flowbaker/pkg/integrations/flowbaker_agent_memory"
 	mongodbIntegration "github.com/flowbaker/flowbaker/pkg/integrations/mongo"
+	postgresqlIntegration "github.com/flowbaker/flowbaker/pkg/integrations/postgresql"
+	redisIntegration "github.com/flowbaker/flowbaker/pkg/integrations/redis"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
@@ -437,6 +441,16 @@ type MongoDBMemoryParams struct {
 	SessionID  string `json:"session_id"`
 }
 
+type RedisMemoryParams struct {
+	KeyPrefix string `json:"key_prefix"`
+	SessionID string `json:"session_id"`
+}
+
+type PostgreSQLMemoryParams struct {
+	TablePrefix string `json:"table_prefix"`
+	SessionID   string `json:"session_id"`
+}
+
 type FlowbakerAgentMemoryParams struct {
 	SessionID string `json:"session_id"`
 }
@@ -488,6 +502,58 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 		})
 		if err != nil {
 			return ResolveMemoryResult{}, fmt.Errorf("failed to create memory: %w", err)
+		}
+
+		return ResolveMemoryResult{
+			Memory:    memory,
+			Node:      memoryNode,
+			SessionID: p.SessionID,
+		}, nil
+	case domain.IntegrationType_Redis:
+		p := RedisMemoryParams{}
+
+		err := e.parameterBinder.BindToStruct(ctx, params.InputItem, &p, memoryNode.IntegrationSettings)
+		if err != nil {
+			return ResolveMemoryResult{}, fmt.Errorf("failed to bind Redis memory node params: %w", err)
+		}
+
+		deps := redismemory.StoreDeps{
+			Context:          ctx,
+			CredentialGetter: managers.NewExecutorCredentialGetter[redisIntegration.RedisCredential](e.executorCredentialManager),
+		}
+
+		memory, err := redismemory.New(deps, redismemory.Opts{
+			CredentialID: credentialID,
+			KeyPrefix:    p.KeyPrefix,
+		})
+		if err != nil {
+			return ResolveMemoryResult{}, fmt.Errorf("failed to create Redis memory: %w", err)
+		}
+
+		return ResolveMemoryResult{
+			Memory:    memory,
+			Node:      memoryNode,
+			SessionID: p.SessionID,
+		}, nil
+	case domain.IntegrationType_PostgreSQL:
+		p := PostgreSQLMemoryParams{}
+
+		err := e.parameterBinder.BindToStruct(ctx, params.InputItem, &p, memoryNode.IntegrationSettings)
+		if err != nil {
+			return ResolveMemoryResult{}, fmt.Errorf("failed to bind PostgreSQL memory node params: %w", err)
+		}
+
+		deps := postgresqlmemory.StoreDeps{
+			Context:          ctx,
+			CredentialGetter: managers.NewExecutorCredentialGetter[postgresqlIntegration.PostgreSQLCredential](e.executorCredentialManager),
+		}
+
+		memory, err := postgresqlmemory.New(deps, postgresqlmemory.Opts{
+			CredentialID: credentialID,
+			TablePrefix:  p.TablePrefix,
+		})
+		if err != nil {
+			return ResolveMemoryResult{}, fmt.Errorf("failed to create PostgreSQL memory: %w", err)
 		}
 
 		return ResolveMemoryResult{
