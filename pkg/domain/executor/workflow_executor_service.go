@@ -111,6 +111,7 @@ type ExecuteParams struct {
 	EventName         string
 	PayloadJSON       string
 	EnableEvents      bool
+	ExecutionType     domain.ExecutionType
 	IsTestingWorkflow bool
 }
 
@@ -120,6 +121,7 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 		Workflow:              params.Workflow,
 		Selector:              s.integrationSelector,
 		EnableEvents:          params.EnableEvents,
+		ExecutionType:         params.ExecutionType,
 		IsTestingWorkflow:     params.IsTestingWorkflow,
 		ExecutorClient:        s.flowbakerClient,
 		OrderedEventPublisher: s.orderedEventPublisher,
@@ -335,6 +337,7 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		ExecutionID:           params.ExecutionID,
 		Selector:              s.integrationSelector,
 		EnableEvents:          true,
+		ExecutionType:         domain.ExecutionTypeDefault,
 		Workflow:              params.Workflow,
 		IsTestingWorkflow:     true,
 		ExecutorClient:        s.flowbakerClient,
@@ -401,6 +404,7 @@ func (s *workflowExecutorService) RunNode(ctx context.Context, params RunNodePar
 		ExecutionID:           params.ExecutionID,
 		Selector:              s.integrationSelector,
 		EnableEvents:          true,
+		ExecutionType:         domain.ExecutionTypeDefault,
 		Workflow:              params.Workflow,
 		IsTestingWorkflow:     true,
 		ExecutorClient:        s.flowbakerClient,

@@ -75,6 +75,7 @@ const (
 	IntegrationType_ItemsToItem   IntegrationType = "items_to_item"
 	IntegrationType_Telegram      IntegrationType = "telegram"
 	IntegrationType_Notion        IntegrationType = "notion"
+	IntegrationType_OnError       IntegrationType = "on_error"
 )
 
 type Integration struct {
