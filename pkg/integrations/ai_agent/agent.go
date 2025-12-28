@@ -368,7 +368,7 @@ type ResolveLLMResult struct {
 	SessionID string
 }
 
-type OpenAIModelSettings struct {
+type ModelSettings struct {
 	Model            string   `json:"model"`
 	Temperature      float32  `json:"temperature"`
 	MaxTokens        int      `json:"max_tokens"`
@@ -396,7 +396,7 @@ func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSet
 		return ResolveLLMResult{}, fmt.Errorf("LLM node is required")
 	}
 
-	settings := OpenAIModelSettings{}
+	settings := ModelSettings{}
 
 	err := e.parameterBinder.BindToStruct(ctx, params.InputItem, &settings, llmNode.IntegrationSettings)
 	if err != nil {
