@@ -1124,8 +1124,6 @@ func (s *ArraySentinelSearcher) Search(ctx context.Context, value any, property 
 
 	for _, value := range valueArray {
 		for _, itemProperty := range property.ArrayOpts.ItemProperties {
-			log.Debug().Interface("value", value).Msg("Value")
-
 			valueMap, ok := value.(map[string]any)
 			if !ok {
 				continue
@@ -1187,8 +1185,6 @@ func (m *AgentHooksManager) OnBeforeGenerate(ctx context.Context, req *provider.
 }
 
 func (m *AgentHooksManager) OnGenerationFailed(ctx context.Context, req *provider.GenerateRequest, step *agent.Step, generationErr error) {
-	log.Error().Err(generationErr).Msg("generation failed")
-
 	llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, m.LLMNode.ID, 0)
 
 	itemsByInputID := map[string]domain.NodeItems{
