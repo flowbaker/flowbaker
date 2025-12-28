@@ -57,6 +57,8 @@ var (
 	OAuthTypeGitHub  OAuthType = "github"
 	OAuthTypeLinear  OAuthType = "linear"
 	OAuthTypeJira    OAuthType = "jira"
+	OAuthTypeNotion  OAuthType = "notion"
+	OAuthTypeMicrosoftTeams OAuthType = "microsoft_teams"
 )
 
 type NodeProperty struct {

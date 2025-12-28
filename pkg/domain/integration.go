@@ -75,6 +75,9 @@ const (
 	IntegrationType_Toolset              IntegrationType = "toolset"
 	IntegrationType_ChatTrigger          IntegrationType = "chat_trigger"
 	IntegrationType_Groq                 IntegrationType = "groq"
+	IntegrationType_Teams                IntegrationType = "teams"
+	IntegrationType_Telegram             IntegrationType = "telegram"
+	IntegrationType_Notion               IntegrationType = "notion"
 )
 
 type Integration struct {

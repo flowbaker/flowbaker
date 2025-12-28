@@ -26,6 +26,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/integrations/linear"
 	"github.com/flowbaker/flowbaker/pkg/integrations/manipulation"
 	mongodb "github.com/flowbaker/flowbaker/pkg/integrations/mongo"
+	notionintegration "github.com/flowbaker/flowbaker/pkg/integrations/notion"
 	"github.com/flowbaker/flowbaker/pkg/integrations/openai"
 	pipedriveintegration "github.com/flowbaker/flowbaker/pkg/integrations/pipedrive"
 	"github.com/flowbaker/flowbaker/pkg/integrations/postgresql"
@@ -38,6 +39,8 @@ import (
 	startupswatchintegration "github.com/flowbaker/flowbaker/pkg/integrations/startups_watch"
 	"github.com/flowbaker/flowbaker/pkg/integrations/storage"
 	"github.com/flowbaker/flowbaker/pkg/integrations/stripe"
+	"github.com/flowbaker/flowbaker/pkg/integrations/teams"
+	telegramintegration "github.com/flowbaker/flowbaker/pkg/integrations/telegram"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
@@ -159,6 +162,11 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 		NewConnectionTester: githubintegration.NewGitHubConnectionTester,
 	},
 	{
+		IntegrationType:     domain.IntegrationType_Teams,
+		NewCreator:          teams.NewTeamsIntegrationCreator,
+		NewConnectionTester: teams.NewTeamsConnectionTester,
+	},
+	{
 		IntegrationType: domain.IntegrationType_SendResponse,
 		NewCreator:      sendresponse.NewSendResponseIntegrationCreator,
 	},
@@ -210,6 +218,15 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_ItemsToItem,
 		NewCreator:      items_to_item.NewItemsToItemIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_Telegram,
+		NewCreator:      telegramintegration.NewTelegramIntegrationCreator,
+	},
+	{
+		IntegrationType:     domain.IntegrationType_Notion,
+		NewCreator:          notionintegration.NewNotionIntegrationCreator,
+		NewConnectionTester: notionintegration.NewNotionConnectionTester,
 	},
 }
 
