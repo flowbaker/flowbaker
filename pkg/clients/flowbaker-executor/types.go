@@ -40,20 +40,12 @@ type IntegrationActionType string
 // IntegrationTriggerEventType represents the type of integration trigger event
 type IntegrationTriggerEventType string
 
-type ExecutionType string
-
-const (
-	ExecutionTypeDefault   ExecutionType = "default"
-	ExecutionTypeFromError ExecutionType = "from_error"
-)
-
 type StartExecutionRequest struct {
 	ExecutionID     string           `json:"execution_id"`
 	EventName       string           `json:"event_name"`
 	PayloadJSON     []byte           `json:"payload_json"`
 	EnableEvents    bool             `json:"enable_events"`
 	WorkflowType    WorkflowType     `json:"workflow_type"`
-	ExecutionType   ExecutionType    `json:"execution_type,omitempty"`
 	Workspace       Workspace        `json:"workspace"`
 	Workflow        *Workflow        `json:"workflow,omitempty"`
 	TestingWorkflow *TestingWorkflow `json:"testing_workflow,omitempty"`

@@ -87,7 +87,6 @@ func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
 		EventName:         req.EventName,
 		PayloadJSON:       string(req.PayloadJSON),
 		EnableEvents:      req.EnableEvents,
-		ExecutionType:     mappers.ExecutorExecutionTypeToDomain(req.ExecutionType),
 		IsTestingWorkflow: isTestingWorkflow,
 	}
 

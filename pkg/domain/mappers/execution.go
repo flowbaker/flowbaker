@@ -363,21 +363,3 @@ func DomainPeekResultItemsToExecutor(items []domain.PeekResultItem) []executorty
 	}
 	return result
 }
-
-func ExecutorExecutionTypeToDomain(executionType executortypes.ExecutionType) domain.ExecutionType {
-	switch executionType {
-	case executortypes.ExecutionTypeFromError:
-		return domain.ExecutionTypeFromError
-	default:
-		return domain.ExecutionTypeDefault
-	}
-}
-
-func DomainExecutionTypeToExecutor(executionType domain.ExecutionType) executortypes.ExecutionType {
-	switch executionType {
-	case domain.ExecutionTypeFromError:
-		return executortypes.ExecutionTypeFromError
-	default:
-		return executortypes.ExecutionTypeDefault
-	}
-}

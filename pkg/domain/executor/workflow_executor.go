@@ -97,7 +97,6 @@ type WorkflowExecutorDeps struct {
 	Selector              domain.IntegrationSelector
 	EventPublisher        domain.EventPublisher
 	EnableEvents          bool
-	ExecutionType         domain.ExecutionType
 	IsTestingWorkflow     bool
 	ExecutorClient        flowbaker.ClientInterface
 	OrderedEventPublisher domain.EventPublisher
@@ -130,7 +129,6 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) WorkflowExecutor {
 	eventBroadcaster := NewEventBroadcaster(
 		deps.OrderedEventPublisher,
 		deps.EnableEvents,
-		deps.ExecutionType,
 		deps.Workflow.ID,
 		deps.ExecutionID,
 	)

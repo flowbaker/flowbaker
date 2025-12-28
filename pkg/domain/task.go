@@ -25,21 +25,13 @@ var (
 	ProcessEmbedding TaskType = "process_embedding"
 )
 
-type ExecutionType string
-
-const (
-	ExecutionTypeDefault   ExecutionType = "default"
-	ExecutionTypeFromError ExecutionType = "from_error"
-)
-
 type ExecuteWorkflowTask struct {
-	WorkspaceID   string        `json:"workspace_id"`
-	WorkflowID    string        `json:"workflow_id"`
-	UserID        string        `json:"user_id"`
-	WorkflowType  WorkflowType  `json:"workflow_type"`
-	ExecutionType ExecutionType `json:"execution_type"`
-	FromNodeID    string        `json:"from_node_id"`
-	Payload       any           `json:"payload"`
+	WorkspaceID  string       `json:"workspace_id"`
+	WorkflowID   string       `json:"workflow_id"`
+	UserID       string       `json:"user_id"`
+	WorkflowType WorkflowType `json:"workflow_type"`
+	FromNodeID   string       `json:"from_node_id"`
+	Payload      any          `json:"payload"`
 }
 
 func (t ExecuteWorkflowTask) GetType() TaskType {

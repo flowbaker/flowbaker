@@ -64,7 +64,6 @@ func (h *HistoryRecorder) GetHistoryEntries() []domain.NodeExecutionEntry {
 type EventBroadcaster struct {
 	orderedEventPublisher domain.EventPublisher
 	enableEvents          bool
-	executionType         domain.ExecutionType
 	workflowID            string
 	executionID           string
 }
@@ -73,14 +72,12 @@ type EventBroadcaster struct {
 func NewEventBroadcaster(
 	orderedEventPublisher domain.EventPublisher,
 	enableEvents bool,
-	executionType domain.ExecutionType,
 	workflowID string,
 	executionID string,
 ) *EventBroadcaster {
 	return &EventBroadcaster{
 		orderedEventPublisher: orderedEventPublisher,
 		enableEvents:          enableEvents,
-		executionType:         executionType,
 		workflowID:            workflowID,
 		executionID:           executionID,
 	}
@@ -90,11 +87,6 @@ func NewEventBroadcaster(
 func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.ExecutionEvent) error {
 	if !b.enableEvents {
 		log.Debug().Msg("Skipping event publishing: events disabled")
-		return nil
-	}
-
-	if b.executionType == domain.ExecutionTypeFromError {
-		log.Info().Msg("Skipping event publishing: execution type is from_error")
 		return nil
 	}
 
