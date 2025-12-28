@@ -1271,7 +1271,7 @@ func (m *AgentHooksManager) OnMemoryRetrieved(ctx context.Context, filter memory
 
 	itemsByInputID := map[string]domain.NodeItems{
 		memoryInputHandleID: {
-			FromNodeID: memoryNode.ID,
+			FromNodeID: m.AgentNodeID,
 			Items:      []domain.Item{item},
 		},
 	}
@@ -1313,7 +1313,7 @@ func (m *AgentHooksManager) OnMemoryRetrievalFailed(ctx context.Context, filter 
 
 	itemsByInputID := map[string]domain.NodeItems{
 		memoryInputHandleID: {
-			FromNodeID: memoryNode.ID,
+			FromNodeID: m.AgentNodeID,
 			Items:      []domain.Item{item},
 		},
 	}
@@ -1352,7 +1352,7 @@ func (m *AgentHooksManager) OnMemorySaveFailed(ctx context.Context, conversation
 
 	itemsByInputID := map[string]domain.NodeItems{
 		memoryInputHandleID: {
-			FromNodeID: memoryNode.ID,
+			FromNodeID: m.AgentNodeID,
 			Items:      []domain.Item{m.InputItem},
 		},
 	}
@@ -1376,7 +1376,7 @@ func (m *AgentHooksManager) OnMemorySaved(ctx context.Context, conversation type
 
 	itemsByInputID := map[string]domain.NodeItems{
 		memoryInputHandleID: {
-			FromNodeID: memoryNode.ID,
+			FromNodeID: m.AgentNodeID,
 			Items:      []domain.Item{m.InputItem},
 		},
 	}
