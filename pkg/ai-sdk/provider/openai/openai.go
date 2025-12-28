@@ -13,10 +13,21 @@ import (
 
 // Provider implements the LanguageModel interface for OpenAI
 type Provider struct {
-	client *openai.Client
-	apiKey string
+	client  *openai.Client
+	apiKey  string
+	baseURL string
 
 	RequestSettings RequestSettings
+}
+
+// Option is a function that configures the Provider
+type Option func(*Provider)
+
+// WithBaseURL sets a custom base URL (for OpenAI-compatible APIs like Groq)
+func WithBaseURL(baseURL string) Option {
+	return func(p *Provider) {
+		p.baseURL = baseURL
+	}
 }
 
 type RequestSettings struct {
@@ -32,16 +43,27 @@ type RequestSettings struct {
 }
 
 // New creates a new OpenAI provider
-func New(apiKey, model string) *Provider {
-	clientConfig := openai.DefaultConfig(apiKey)
-
-	return &Provider{
-		client: openai.NewClientWithConfig(clientConfig),
+func New(apiKey, model string, opts ...Option) *Provider {
+	p := &Provider{
 		apiKey: apiKey,
 		RequestSettings: RequestSettings{
 			Model: model,
 		},
 	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(p)
+	}
+
+	// Create client with optional custom base URL
+	clientConfig := openai.DefaultConfig(apiKey)
+	if p.baseURL != "" {
+		clientConfig.BaseURL = p.baseURL
+	}
+	p.client = openai.NewClientWithConfig(clientConfig)
+
+	return p
 }
 
 func (p *Provider) SetRequestSettings(settings RequestSettings) {

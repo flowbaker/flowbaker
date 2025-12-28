@@ -381,6 +381,8 @@ func (a *Agent) IncrementStepNumber() {
 }
 
 func (a *Agent) OnError(err error) {
+	a.eventChan <- types.NewStreamErrorEvent(err, "", err.Error(), false)
+
 	a.errChan <- err
 
 	if a.hooks.OnGenerationFailed != nil {

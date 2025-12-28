@@ -14,6 +14,8 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/agent"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/memory"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider"
+	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider/anthropic"
+	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider/gemini"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider/openai"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/tool"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
@@ -68,13 +70,24 @@ type OpenAICredential struct {
 	APIKey string `json:"api_key"`
 }
 
+type AnthropicCredential struct {
+	APIKey string `json:"api_key"`
+}
+
+type GeminiCredential struct {
+	APIKey string `json:"api_key"`
+}
+
+type GroqCredential struct {
+	APIKey string `json:"api_key"`
+}
+
 type AIAgentExecutor struct {
 	integrationSelector        domain.IntegrationSelector
 	parameterBinder            domain.IntegrationParameterBinder
 	executorIntegrationManager domain.ExecutorIntegrationManager
 	executorCredentialManager  domain.ExecutorCredentialManager
 	actionManager              *domain.IntegrationActionManager
-	credentialGetter           domain.CredentialGetter[OpenAICredential]
 	client                     flowbaker.ClientInterface
 }
 
@@ -84,7 +97,6 @@ func NewAIAgentExecutor(deps domain.IntegrationDeps) domain.IntegrationExecutor 
 		parameterBinder:            deps.ParameterBinder,
 		executorIntegrationManager: deps.ExecutorIntegrationManager,
 		executorCredentialManager:  deps.ExecutorCredentialManager,
-		credentialGetter:           managers.NewExecutorCredentialGetter[OpenAICredential](deps.ExecutorCredentialManager),
 		client:                     deps.FlowbakerClient,
 	}
 
@@ -399,7 +411,9 @@ func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSet
 
 	switch llmNode.IntegrationType {
 	case domain.IntegrationType_OpenAI:
-		credential, err := e.credentialGetter.GetDecryptedCredential(ctx, settings.CredentialID)
+		credentialGetter := managers.NewExecutorCredentialGetter[OpenAICredential](e.executorCredentialManager)
+
+		credential, err := credentialGetter.GetDecryptedCredential(ctx, settings.CredentialID)
 		if err != nil {
 			return ResolveLLMResult{}, fmt.Errorf("failed to get credential: %w", err)
 		}
@@ -419,6 +433,64 @@ func (e *AIAgentExecutor) ResolveLLM(ctx context.Context, params ResolveAgentSet
 		})
 
 		languageModel = openaiModel
+
+	case domain.IntegrationType_Anthropic:
+		credentialGetter := managers.NewExecutorCredentialGetter[AnthropicCredential](e.executorCredentialManager)
+
+		credential, err := credentialGetter.GetDecryptedCredential(ctx, settings.CredentialID)
+		if err != nil {
+			return ResolveLLMResult{}, fmt.Errorf("failed to get credential: %w", err)
+		}
+
+		anthropicModel := anthropic.New(credential.APIKey, settings.Model)
+
+		languageModel = anthropicModel
+
+	case domain.IntegrationType_Gemini:
+		credentialGetter := managers.NewExecutorCredentialGetter[GeminiCredential](e.executorCredentialManager)
+
+		credential, err := credentialGetter.GetDecryptedCredential(ctx, settings.CredentialID)
+		if err != nil {
+			return ResolveLLMResult{}, fmt.Errorf("failed to get credential: %w", err)
+		}
+
+		geminiModel, err := gemini.New(ctx, credential.APIKey, settings.Model)
+		if err != nil {
+			return ResolveLLMResult{}, fmt.Errorf("failed to create Gemini provider: %w", err)
+		}
+
+		geminiModel.SetRequestSettings(gemini.RequestSettings{
+			Model:           settings.Model,
+			Temperature:     settings.Temperature,
+			MaxOutputTokens: int32(settings.MaxTokens),
+			TopP:            settings.TopP,
+		})
+
+		languageModel = geminiModel
+
+	case domain.IntegrationType_Groq:
+		credentialGetter := managers.NewExecutorCredentialGetter[GroqCredential](e.executorCredentialManager)
+
+		credential, err := credentialGetter.GetDecryptedCredential(ctx, settings.CredentialID)
+		if err != nil {
+			return ResolveLLMResult{}, fmt.Errorf("failed to get credential: %w", err)
+		}
+
+		groqModel := openai.New(
+			credential.APIKey,
+			settings.Model,
+			openai.WithBaseURL("https://api.groq.com/openai/v1"),
+		)
+
+		groqModel.SetRequestSettings(openai.RequestSettings{
+			Model:       settings.Model,
+			Temperature: settings.Temperature,
+			MaxTokens:   settings.MaxTokens,
+			TopP:        settings.TopP,
+		})
+
+		languageModel = groqModel
+
 	default:
 		return ResolveLLMResult{}, fmt.Errorf("unsupported LLM node type: %s", llmNode.IntegrationType)
 	}

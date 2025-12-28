@@ -26,9 +26,10 @@ const (
 
 // ToolCall represents a tool call request from the LLM
 type ToolCall struct {
-	ID        string                 `json:"id"`
-	Name      string                 `json:"name"`
-	Arguments map[string]interface{} `json:"arguments"`
+	ID        string         `json:"id"`
+	Name      string         `json:"name"`
+	Arguments map[string]any `json:"arguments"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
 // ToolResult represents the result of a tool call

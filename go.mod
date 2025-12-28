@@ -34,7 +34,7 @@ require (
 	golang.org/x/crypto v0.41.0
 	golang.org/x/oauth2 v0.30.0
 	google.golang.org/api v0.231.0
-	google.golang.org/genai v1.36.0
+	google.golang.org/genai v1.40.0
 )
 
 require (

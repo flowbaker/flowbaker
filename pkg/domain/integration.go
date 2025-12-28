@@ -51,6 +51,7 @@ const (
 	IntegrationType_Redis                IntegrationType = "redis"
 	IntegrationType_Linear               IntegrationType = "linear"
 	IntegrationType_Anthropic            IntegrationType = "anthropic"
+	IntegrationType_Gemini               IntegrationType = "gemini"
 	IntegrationType_Resend               IntegrationType = "resend"
 	IntegrationType_SendResponse         IntegrationType = "send_response"
 	IntegrationType_JWT                  IntegrationType = "jwt"
@@ -73,6 +74,7 @@ const (
 	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
 	IntegrationType_Toolset              IntegrationType = "toolset"
 	IntegrationType_ChatTrigger          IntegrationType = "chat_trigger"
+	IntegrationType_Groq                 IntegrationType = "groq"
 )
 
 type Integration struct {
