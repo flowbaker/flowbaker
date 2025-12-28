@@ -267,6 +267,26 @@ func (i *ClaudeIntegration) getModelsAPI(ctx context.Context) ([]ClaudeModel, er
 func (i *ClaudeIntegration) getDefaultModels() []ClaudeModel {
 	return []ClaudeModel{
 		{
+			ID:          "claude-opus-4-5-20251101",
+			DisplayName: "Claude Opus 4.5",
+			Type:        "model",
+		},
+		{
+			ID:          "claude-haiku-4-5-20251001",
+			DisplayName: "Claude Haiku 4.5",
+			Type:        "model",
+		},
+		{
+			ID:          "claude-sonnet-4-5-20250929",
+			DisplayName: "Claude Sonnet 4.5",
+			Type:        "model",
+		},
+		{
+			ID:          "claude-opus-4-1-20250805",
+			DisplayName: "Claude Opus 4.1",
+			Type:        "model",
+		},
+		{
 			ID:          "claude-opus-4-20250514",
 			DisplayName: "Claude Opus 4",
 			Type:        "model",
@@ -278,37 +298,22 @@ func (i *ClaudeIntegration) getDefaultModels() []ClaudeModel {
 		},
 		{
 			ID:          "claude-3-7-sonnet-20250219",
-			DisplayName: "Claude 3.7 Sonnet",
-			Type:        "model",
-		},
-		{
-			ID:          "claude-3-5-sonnet-20241022",
-			DisplayName: "Claude 3.5 Sonnet (Latest)",
+			DisplayName: "Claude Sonnet 3.7",
 			Type:        "model",
 		},
 		{
 			ID:          "claude-3-5-haiku-20241022",
-			DisplayName: "Claude 3.5 Haiku",
-			Type:        "model",
-		},
-		{
-			ID:          "claude-3-5-sonnet-20240620",
-			DisplayName: "Claude 3.5 Sonnet (June)",
-			Type:        "model",
-		},
-		{
-			ID:          "claude-3-opus-20240229",
-			DisplayName: "Claude 3 Opus",
-			Type:        "model",
-		},
-		{
-			ID:          "claude-3-sonnet-20240229",
-			DisplayName: "Claude 3 Sonnet",
+			DisplayName: "Claude Haiku 3.5",
 			Type:        "model",
 		},
 		{
 			ID:          "claude-3-haiku-20240307",
-			DisplayName: "Claude 3 Haiku",
+			DisplayName: "Claude Haiku 3",
+			Type:        "model",
+		},
+		{
+			ID:          "claude-3-opus-20240229",
+			DisplayName: "Claude Opus 3",
 			Type:        "model",
 		},
 	}

@@ -78,17 +78,23 @@ func (WorkflowExecutionCompletedEvent) GetEventType() domain.ExecutionEventType 
 }
 
 type executionObserver struct {
-	handlers []domain.ExecutionEventHandler
+	handlers       []domain.ExecutionEventHandler
+	streamHandlers []domain.StreamEventHandler
 }
 
 func NewExecutionObserver() *executionObserver {
 	return &executionObserver{
-		handlers: []domain.ExecutionEventHandler{},
+		handlers:       []domain.ExecutionEventHandler{},
+		streamHandlers: []domain.StreamEventHandler{},
 	}
 }
 
 func (o *executionObserver) Subscribe(handler domain.ExecutionEventHandler) {
 	o.handlers = append(o.handlers, handler)
+}
+
+func (o *executionObserver) SubscribeStream(handler domain.StreamEventHandler) {
+	o.streamHandlers = append(o.streamHandlers, handler)
 }
 
 func (o *executionObserver) Notify(ctx context.Context, event domain.ExecutionEvent) error {
@@ -104,6 +110,15 @@ func (o *executionObserver) Notify(ctx context.Context, event domain.ExecutionEv
 
 	for _, handler := range o.handlers {
 		if err := handler.HandleEvent(ctx, event); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (o *executionObserver) NotifyStream(ctx context.Context, event domain.StreamEvent) error {
+	for _, handler := range o.streamHandlers {
+		if err := handler.HandleStreamEvent(ctx, event); err != nil {
 			return err
 		}
 	}

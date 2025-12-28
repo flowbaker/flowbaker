@@ -17,14 +17,23 @@ var (
 		Actions: []domain.IntegrationAction{
 			{
 				ID:          "ai_agent",
-				Name:        "Function Calling Agent",
+				Name:        "Tool Agent",
 				ActionType:  IntegrationActionType_FunctionCallingAgent,
-				Description: "Execute Function Calling Agent with LLM, memory, and tools for autonomous task completion",
+				Description: "Use Tool Agent to complete tasks using available tools",
 				Properties: []domain.NodeProperty{
 					{
+						Key:         "system_prompt",
+						Name:        "System Prompt",
+						Description: "The system prompt for the AI agent",
+						Type:        domain.NodePropertyType_Text,
+						Required:    false,
+						Placeholder: "The system prompt for the AI agent",
+						Help:        "The system prompt for the AI agent",
+					},
+					{
 						Key:         "prompt",
-						Name:        "Initial Prompt",
-						Description: "The initial task description or prompt to give the AI agent",
+						Name:        "Prompt",
+						Description: "The task description or prompt to give the AI agent",
 						Type:        domain.NodePropertyType_Text,
 						Required:    true,
 						Placeholder: "Describe the task you want the AI agent to complete...",
@@ -32,22 +41,46 @@ var (
 						MinLength:   1,
 						MaxLength:   2000,
 					},
+					{
+						Key:         "max_steps",
+						Name:        "Max Steps",
+						Description: "The maximum number of steps the AI agent can take. (Default: 10)",
+						Type:        domain.NodePropertyType_Number,
+						Placeholder: "30",
+						Help:        "The maximum number of steps the AI agent can take. (Default: 10)",
+						NumberOpts: &domain.NumberPropertyOptions{
+							Min:     0,
+							Default: 10,
+							Step:    1,
+						},
+					},
 				},
 				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
 					domain.UsageContextWorkflow: {
 						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input"},
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "LLM"},
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "Memory"},
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionRight, Text: "Tools"},
+							{Index: 0, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input", UsageContext: domain.UsageContextWorkflow},
+							{Index: 3, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionRight, Text: "Tools", UsageContext: domain.UsageContextTool},
 						},
 						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Output"},
+							{Index: 2, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Output", UsageContext: domain.UsageContextWorkflow},
+						},
+					},
+					domain.UsageContextTool: {
+						Input: []domain.NodeHandle{
+							{Index: 3, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionRight, Text: "Tools", UsageContext: domain.UsageContextTool},
+						},
+						Output: []domain.NodeHandle{
+							{Index: 1, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionLeft, Text: "Agent", UsageContext: domain.UsageContextTool},
 						},
 					},
 				},
 				SupportedContexts: []domain.ActionUsageContext{
 					domain.UsageContextWorkflow,
+					domain.UsageContextTool,
+				},
+				CombinedContexts: []domain.ActionUsageContext{
+					domain.UsageContextWorkflow,
+					domain.UsageContextTool,
 				},
 			},
 		},

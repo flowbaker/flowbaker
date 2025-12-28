@@ -2,7 +2,7 @@ package domain
 
 type PollingEvent struct {
 	IntegrationType IntegrationType
-	Trigger         WorkflowTrigger
+	Trigger         WorkflowNode
 	Workflow        Workflow
 	UserID          string
 	WorkflowType    WorkflowType

@@ -4,12 +4,14 @@ import "time"
 
 // Message represents a single message in a conversation
 type Message struct {
-	Role        MessageRole            `json:"role"`
-	Content     string                 `json:"content"`
-	ToolCalls   []ToolCall             `json:"tool_calls,omitempty"`
-	ToolResults []ToolResult           `json:"tool_results,omitempty"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	ConversationID string                 `json:"conversation_id"`
+	Role           MessageRole            `json:"role"`
+	Content        string                 `json:"content"`
+	ToolCalls      []ToolCall             `json:"tool_calls,omitempty"`
+	ToolResults    []ToolResult           `json:"tool_results,omitempty"`
+	Timestamp      time.Time              `json:"timestamp"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt      time.Time              `json:"created_at"`
 }
 
 // MessageRole defines the role of a message sender
@@ -24,9 +26,10 @@ const (
 
 // ToolCall represents a tool call request from the LLM
 type ToolCall struct {
-	ID        string                 `json:"id"`
-	Name      string                 `json:"name"`
-	Arguments map[string]interface{} `json:"arguments"`
+	ID        string         `json:"id"`
+	Name      string         `json:"name"`
+	Arguments map[string]any `json:"arguments"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
 // ToolResult represents the result of a tool call
@@ -38,14 +41,30 @@ type ToolResult struct {
 
 // Conversation represents a complete conversation
 type Conversation struct {
-	ID             string                 `json:"id"`
-	SessionID      string                 `json:"session_id"`
-	UserID         string                 `json:"user_id,omitempty"`
-	Messages       []Message              `json:"messages"`
-	CreatedAt      time.Time              `json:"created_at"`
-	UpdatedAt      time.Time              `json:"updated_at"`
-	Status         ConversationStatus     `json:"status"`
-	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	ID        string                 `json:"id"`
+	SessionID string                 `json:"session_id"`
+	UserID    string                 `json:"user_id,omitempty"`
+	Messages  []Message              `json:"messages"`
+	CreatedAt time.Time              `json:"created_at"`
+	UpdatedAt time.Time              `json:"updated_at"`
+	Status    ConversationStatus     `json:"status"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+}
+
+func (c *Conversation) IsInterrupted() bool {
+	return c.Status == StatusInterrupted
+}
+
+func (c *Conversation) IsCompleted() bool {
+	return c.Status == StatusCompleted
+}
+
+func (c *Conversation) IsFailed() bool {
+	return c.Status == StatusFailed
+}
+
+func (c *Conversation) IsActive() bool {
+	return c.Status == StatusActive
 }
 
 // ConversationStatus defines the status of a conversation

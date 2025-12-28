@@ -2,15 +2,15 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/memory"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
+	"github.com/google/uuid"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -19,14 +19,17 @@ const aiChatConversationsCollection = "ai_chat_conversations"
 
 // Store implements memory.Store interface using MongoDB
 type Store struct {
-	database *mongo.Database
+	database   *mongo.Database
+	collection *mongo.Collection
 }
 
 // New creates a new MongoDB memory store with the given database
 func New(database *mongo.Database) *Store {
 	store := &Store{
-		database: database,
+		database:   database,
+		collection: database.Collection(aiChatConversationsCollection),
 	}
+
 	store.ensureIndexes()
 	return store
 }
@@ -76,11 +79,7 @@ func (s *Store) ensureIndexes() {
 }
 
 // SaveConversation saves a new conversation or updates an existing one
-func (s *Store) SaveConversation(ctx context.Context, conversation *types.Conversation) error {
-	log.Println("saving conversation status", conversation.Status)
-
-	collection := s.database.Collection(aiChatConversationsCollection)
-
+func (s *Store) SaveConversation(ctx context.Context, conversation types.Conversation) error {
 	if conversation.ID == "" {
 		return types.ErrInvalidMessage
 	}
@@ -99,7 +98,6 @@ func (s *Store) SaveConversation(ctx context.Context, conversation *types.Conver
 
 	update := bson.M{
 		"$set": bson.M{
-			"id":         conversation.ID,
 			"session_id": conversation.SessionID,
 			"user_id":    conversation.UserID,
 			"messages":   conversation.Messages,
@@ -110,8 +108,7 @@ func (s *Store) SaveConversation(ctx context.Context, conversation *types.Conver
 		},
 	}
 
-	opts := options.Update().SetUpsert(true)
-	_, err := collection.UpdateOne(ctx, filter, update, opts)
+	_, err := s.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return fmt.Errorf("failed to save conversation: %w", err)
 	}
@@ -119,11 +116,7 @@ func (s *Store) SaveConversation(ctx context.Context, conversation *types.Conver
 	return nil
 }
 
-// GetConversations retrieves conversations based on filter parameters
-func (s *Store) GetConversations(ctx context.Context, filter memory.Filter) ([]*types.Conversation, error) {
-	collection := s.database.Collection(aiChatConversationsCollection)
-
-	// Build MongoDB filter
+func (s *Store) GetConversation(ctx context.Context, filter memory.Filter) (types.Conversation, error) {
 	mongoFilter := bson.M{}
 
 	if filter.SessionID != "" {
@@ -134,116 +127,37 @@ func (s *Store) GetConversations(ctx context.Context, filter memory.Filter) ([]*
 		mongoFilter["user_id"] = filter.UserID
 	}
 
-	if filter.Status != "" {
-		mongoFilter["status"] = filter.Status
+	result := s.collection.FindOne(ctx, mongoFilter)
+
+	if result.Err() != nil {
+		if errors.Is(result.Err(), mongo.ErrNoDocuments) {
+			newConversation := types.Conversation{
+				ID:        uuid.New().String(),
+				SessionID: filter.SessionID,
+				UserID:    filter.UserID,
+				Status:    types.StatusActive,
+				Messages:  []types.Message{},
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+				Metadata:  map[string]any{},
+			}
+
+			_, err := s.collection.InsertOne(ctx, newConversation)
+			if err != nil {
+				return types.Conversation{}, fmt.Errorf("failed to insert new conversation: %w", err)
+			}
+
+			return newConversation, nil
+		}
+
+		return types.Conversation{}, fmt.Errorf("failed to find conversation: %w", result.Err())
 	}
-
-	// Set options
-	findOptions := options.Find()
-	findOptions.SetSort(bson.D{{Key: "created_at", Value: -1}}) // Most recent first
-
-	if filter.Limit > 0 {
-		findOptions.SetLimit(int64(filter.Limit))
-	}
-
-	if filter.Offset > 0 {
-		findOptions.SetSkip(int64(filter.Offset))
-	}
-
-	// Execute query
-	cursor, err := collection.Find(ctx, mongoFilter, findOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find conversations: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var conversations []*types.Conversation
-	if err := cursor.All(ctx, &conversations); err != nil {
-		return nil, fmt.Errorf("failed to decode conversations: %w", err)
-	}
-
-	return conversations, nil
-}
-
-// GetConversation retrieves a single conversation by ID
-func (s *Store) GetConversation(ctx context.Context, id string) (*types.Conversation, error) {
-	collection := s.database.Collection(aiChatConversationsCollection)
-
-	filter := bson.M{"id": id}
 
 	var conversation types.Conversation
-	err := collection.FindOne(ctx, filter).Decode(&conversation)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to find conversation: %w", err)
+
+	if err := result.Decode(&conversation); err != nil {
+		return types.Conversation{}, fmt.Errorf("failed to decode conversation: %w", err)
 	}
 
-	return &conversation, nil
-}
-
-// DeleteConversation removes a conversation by ID
-func (s *Store) DeleteConversation(ctx context.Context, id string) error {
-	collection := s.database.Collection(aiChatConversationsCollection)
-
-	filter := bson.M{"id": id}
-
-	_, err := collection.DeleteOne(ctx, filter)
-	if err != nil {
-		return fmt.Errorf("failed to delete conversation: %w", err)
-	}
-
-	return nil
-}
-
-// DeleteOldConversations removes old conversations keeping only the specified count
-func (s *Store) DeleteOldConversations(ctx context.Context, sessionID string, keepCount int) error {
-	collection := s.database.Collection(aiChatConversationsCollection)
-
-	// First, get the IDs of conversations to keep
-	filter := bson.M{
-		"session_id": sessionID,
-	}
-
-	findOptions := options.Find()
-	findOptions.SetSort(bson.D{{Key: "created_at", Value: -1}})
-	findOptions.SetLimit(int64(keepCount))
-	findOptions.SetProjection(bson.M{"_id": 1})
-
-	cursor, err := collection.Find(ctx, filter, findOptions)
-	if err != nil {
-		return fmt.Errorf("failed to find conversations to keep: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var keepIDs []primitive.ObjectID
-	for cursor.Next(ctx) {
-		var doc struct {
-			ID primitive.ObjectID `bson:"_id"`
-		}
-		if err := cursor.Decode(&doc); err == nil {
-			keepIDs = append(keepIDs, doc.ID)
-		}
-	}
-
-	// Delete all conversations except the ones to keep
-	deleteFilter := bson.M{
-		"session_id": sessionID,
-	}
-
-	if len(keepIDs) > 0 {
-		deleteFilter["_id"] = bson.M{"$nin": keepIDs}
-	}
-
-	result, err := collection.DeleteMany(ctx, deleteFilter)
-	if err != nil {
-		return fmt.Errorf("failed to delete old conversations: %w", err)
-	}
-
-	if result.DeletedCount > 0 {
-		fmt.Printf("Deleted %d old conversations for session %s\n", result.DeletedCount, sessionID)
-	}
-
-	return nil
+	return conversation, nil
 }

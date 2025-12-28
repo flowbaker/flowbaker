@@ -11,7 +11,6 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/tool"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
-	"github.com/google/uuid"
 )
 
 type Agent struct {
@@ -19,8 +18,6 @@ type Agent struct {
 	Tools               []tool.Tool
 	UserInputTools      map[string]tool.UserInputTool
 	SystemPrompt        string
-	Temperature         float32
-	MaxTokens           int
 	Model               provider.LanguageModel
 	Memory              memory.Store
 	ConversationHistory int
@@ -37,6 +34,23 @@ type Agent struct {
 	eventChan chan types.StreamEvent
 	errChan   chan error
 	doneChan  chan struct{}
+
+	hooks Hooks
+}
+
+type Hooks struct {
+	OnBeforeGenerate   func(ctx context.Context, req *provider.GenerateRequest, step *Step)
+	OnGenerationFailed func(ctx context.Context, req *provider.GenerateRequest, step *Step, err error)
+
+	OnStepStart    func(ctx context.Context, step *Step)
+	OnStepComplete func(ctx context.Context, step *Step)
+
+	OnBeforeMemoryRetrieve  func(ctx context.Context, filter memory.Filter)
+	OnMemoryRetrieved       func(ctx context.Context, filter memory.Filter, conversation types.Conversation)
+	OnMemoryRetrievalFailed func(ctx context.Context, filter memory.Filter, err error)
+	OnBeforeMemorySave      func(ctx context.Context, conversation types.Conversation)
+	OnMemorySaved           func(ctx context.Context, conversation types.Conversation)
+	OnMemorySaveFailed      func(ctx context.Context, conversation types.Conversation, err error)
 }
 
 func New(opts ...Option) (*Agent, error) {
@@ -54,7 +68,7 @@ func New(opts ...Option) (*Agent, error) {
 		return nil, errors.New("model is required")
 	}
 
-	if agent.MaxIterations == 0 {
+	if agent.MaxIterations <= 0 {
 		agent.MaxIterations = 10
 	}
 
@@ -76,7 +90,6 @@ func New(opts ...Option) (*Agent, error) {
 type ChatRequest struct {
 	Prompt      string
 	SessionID   string
-	UserID      string
 	ToolResults []types.ToolResult // For resuming after user input pause
 }
 
@@ -87,7 +100,7 @@ type ChatStream struct {
 }
 
 func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
-	conversation, err := a.SetupConversation(ctx, req)
+	err := a.SetupConversation(ctx, req)
 	if err != nil {
 		return ChatStream{}, err
 	}
@@ -110,13 +123,15 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
 				tools = append(tools, tool.ToTypesTool(t))
 			}
 
+			conversation := a.conversation
+
 			req := provider.GenerateRequest{
-				Messages:    conversation.Messages,
-				System:      a.SystemPrompt,
-				Tools:       tools,
-				Temperature: a.Temperature,
-				MaxTokens:   a.MaxTokens,
+				Messages: conversation.Messages,
+				System:   a.SystemPrompt,
+				Tools:    tools,
 			}
+
+			a.OnBeforeGenerate(&req)
 
 			events, errs := a.Model.Stream(a.cancelContext, req)
 
@@ -172,6 +187,10 @@ loop:
 	for {
 		select {
 		case err := <-a.errChan:
+			if err == nil {
+				continue
+			}
+
 			return ChatSyncResult{}, err
 		case <-ctx.Done():
 			return ChatSyncResult{}, ctx.Err()
@@ -189,7 +208,11 @@ loop:
 }
 
 func (a *Agent) OnStepStart() {
-	a.CreateStep(a.currentStepNumber)
+	step := a.CreateStep(a.currentStepNumber)
+
+	if a.hooks.OnStepStart != nil {
+		a.hooks.OnStepStart(a.cancelContext, step)
+	}
 
 	a.eventChan <- types.NewAgentStepStartEvent(a.currentStepNumber, "")
 }
@@ -208,6 +231,10 @@ func (a *Agent) OnStepComplete() {
 		currentStep.Usage,
 		currentStep.FinishReason,
 	)
+
+	if a.hooks.OnStepComplete != nil {
+		a.hooks.OnStepComplete(a.cancelContext, currentStep)
+	}
 }
 
 func (a *Agent) OnComplete() {
@@ -215,13 +242,15 @@ func (a *Agent) OnComplete() {
 }
 
 type Step struct {
-	StepNumber   int
-	Content      string
-	ToolCalls    []types.ToolCall
-	ToolResults  []types.ToolResult
-	Usage        types.Usage
-	FinishReason string
-	Warnings     []types.Warning
+	StepNumber   int                `json:"step_number"`
+	Content      string             `json:"content"`
+	ToolCalls    []types.ToolCall   `json:"tool_calls"`
+	ToolResults  []types.ToolResult `json:"tool_results"`
+	Usage        types.Usage        `json:"usage"`
+	FinishReason string             `json:"finish_reasons"`
+	Warnings     []types.Warning    `json:"warnings,omitempty"`
+
+	GenerateRequest provider.GenerateRequest `json:"generate_request"`
 }
 
 func (a *Agent) OnEvent(event types.StreamEvent) {
@@ -268,6 +297,19 @@ func (a *Agent) CreateStep(stepNumber int) *Step {
 	a.steps = append(a.steps, step)
 
 	return step
+}
+
+func (a *Agent) OnBeforeGenerate(req *provider.GenerateRequest) {
+	currentStep, ok := a.GetCurrentStep()
+	if !ok {
+		return
+	}
+
+	currentStep.GenerateRequest = *req
+
+	if a.hooks.OnBeforeGenerate != nil {
+		a.hooks.OnBeforeGenerate(a.cancelContext, req, currentStep)
+	}
 }
 
 func (a *Agent) NeedsIntervention() bool {
@@ -339,7 +381,18 @@ func (a *Agent) IncrementStepNumber() {
 }
 
 func (a *Agent) OnError(err error) {
+	a.eventChan <- types.NewStreamErrorEvent(err, "", err.Error(), false)
+
 	a.errChan <- err
+
+	if a.hooks.OnGenerationFailed != nil {
+		currentStep, ok := a.GetCurrentStep()
+		if !ok {
+			return
+		}
+
+		a.hooks.OnGenerationFailed(a.cancelContext, &currentStep.GenerateRequest, currentStep, err)
+	}
 }
 
 func (a *Agent) Cleanup() {
@@ -427,82 +480,42 @@ func (a *Agent) GetTool(toolName string) (tool.Tool, bool) {
 	return nil, false
 }
 
-func (a *Agent) GetSessionHistory(ctx context.Context, sessionID string) ([]types.Message, error) {
-	conversations, err := a.Memory.GetConversations(ctx, memory.Filter{
-		SessionID: sessionID,
-		Limit:     a.ConversationHistory,
+func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
+	conversation, err := a.GetConversation(ctx, memory.Filter{
+		SessionID: req.SessionID,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	messages := []types.Message{}
-
-	for _, conversation := range conversations {
-		messages = append(messages, conversation.Messages...)
-	}
-
-	return messages, nil
-}
-
-func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) (*types.Conversation, error) {
-	messages := []types.Message{}
-
-	if a.Memory != nil {
-		interruptedConversations, err := a.Memory.GetConversations(ctx, memory.Filter{
-			SessionID: req.SessionID,
-			Status:    types.StatusInterrupted,
-			Limit:     1,
+	if conversation.IsInterrupted() {
+		conversation.Messages = append(conversation.Messages, types.Message{
+			Role:        types.RoleTool,
+			ToolResults: req.ToolResults,
+			Timestamp:   time.Now(),
 		})
+
+		err = a.SaveConversation(ctx, conversation)
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
 		}
 
-		if len(interruptedConversations) > 0 {
-			conversation := interruptedConversations[0]
+		a.conversation = &conversation
 
-			conversation.Messages = append(conversation.Messages, types.Message{
-				Role:        types.RoleTool,
-				ToolResults: req.ToolResults,
-				Timestamp:   time.Now(),
-			})
-
-			err = a.Memory.SaveConversation(ctx, conversation)
-			if err != nil {
-				return nil, fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
-			}
-
-			a.conversation = conversation
-
-			return conversation, nil
-		}
-
-		messages, err = a.GetSessionHistory(ctx, req.SessionID)
-		if err != nil {
-			return nil, err
-		}
+		return nil
 	}
 
 	if req.Prompt != "" {
-		messages = append(messages, types.Message{
+		conversation.Messages = append(conversation.Messages, types.Message{
 			Role:      types.RoleUser,
 			Content:   req.Prompt,
 			Timestamp: time.Now(),
 		})
 	}
 
-	conversation := &types.Conversation{
-		ID:        uuid.New().String(),
-		SessionID: req.SessionID,
-		Messages:  messages,
-		Status:    types.StatusActive,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
+	a.conversation = &conversation
 
-	a.conversation = conversation
-
-	return conversation, nil
+	return nil
 }
 
 func (a *Agent) ApplyStepToConversation(ctx context.Context) error {
@@ -524,7 +537,7 @@ func (a *Agent) ApplyStepToConversation(ctx context.Context) error {
 		Timestamp: time.Now(),
 	})
 
-	err := a.Memory.SaveConversation(ctx, conversation)
+	err := a.SaveConversation(ctx, *conversation)
 	if err != nil {
 		return fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
 	}
@@ -553,13 +566,12 @@ func (a *Agent) ApplyToolResultsToConversation(ctx context.Context) error {
 		Timestamp:   time.Now(),
 	})
 
-	err := a.Memory.SaveConversation(ctx, conversation)
+	err := a.SaveConversation(ctx, *conversation)
 	if err != nil {
 		return fmt.Errorf("failed to save conversation: %w, conversation_id: %s", err, conversation.ID)
 	}
 
 	return nil
-
 }
 
 func (a *Agent) IsHumanInterventionToolCall(toolCall types.ToolCall) bool {
@@ -592,4 +604,86 @@ func (a *Agent) CanFinish() bool {
 	}
 
 	return false
+}
+
+func (a *Agent) GetSteps() []*Step {
+	return a.steps
+}
+
+func (a *Agent) SaveConversation(ctx context.Context, conversation types.Conversation) error {
+	if a.Memory == nil {
+		return nil
+	}
+
+	if conversation.SessionID == "" {
+		return nil
+	}
+
+	a.OnBeforeMemorySave(ctx, conversation)
+
+	err := a.Memory.SaveConversation(ctx, conversation)
+	if err != nil {
+		a.OnMemorySaveFailed(ctx, conversation, err)
+
+		return err
+	}
+
+	a.OnMemorySaved(ctx, conversation)
+
+	return nil
+}
+
+func (a *Agent) GetConversation(ctx context.Context, filter memory.Filter) (types.Conversation, error) {
+	if a.Memory == nil {
+		return types.Conversation{}, nil
+	}
+
+	a.OnBeforeMemoryRetrieve(ctx, filter)
+
+	conversations, err := a.Memory.GetConversation(ctx, filter)
+	if err != nil {
+		a.OnMemoryRetrievalFailed(ctx, filter, err)
+
+		return types.Conversation{}, err
+	}
+
+	a.OnMemoryRetrieved(ctx, filter, conversations)
+
+	return conversations, nil
+}
+
+func (a *Agent) OnMemoryRetrieved(ctx context.Context, filter memory.Filter, conversation types.Conversation) {
+	if a.hooks.OnMemoryRetrieved != nil {
+		a.hooks.OnMemoryRetrieved(ctx, filter, conversation)
+	}
+}
+
+func (a *Agent) OnBeforeMemoryRetrieve(ctx context.Context, filter memory.Filter) {
+	if a.hooks.OnBeforeMemoryRetrieve != nil {
+		a.hooks.OnBeforeMemoryRetrieve(ctx, filter)
+	}
+}
+
+func (a *Agent) OnMemoryRetrievalFailed(ctx context.Context, filter memory.Filter, err error) {
+	if a.hooks.OnMemoryRetrievalFailed != nil {
+		a.hooks.OnMemoryRetrievalFailed(ctx, filter, err)
+	}
+}
+
+func (a *Agent) OnBeforeMemorySave(ctx context.Context, conversation types.Conversation) {
+	if a.hooks.OnBeforeMemorySave != nil {
+		a.hooks.OnBeforeMemorySave(ctx, conversation)
+	}
+}
+
+func (a *Agent) OnMemorySaved(ctx context.Context, conversation types.Conversation) {
+	if a.hooks.OnMemorySaved != nil {
+		a.hooks.OnMemorySaved(ctx, conversation)
+	}
+}
+
+func (a *Agent) OnMemorySaveFailed(ctx context.Context, conversation types.Conversation, err error) {
+	if a.hooks.OnMemorySaveFailed != nil {
+		a.hooks.OnMemorySaveFailed(ctx, conversation, err)
+	}
 }

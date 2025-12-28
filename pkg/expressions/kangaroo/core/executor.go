@@ -246,13 +246,11 @@ func (e *ASTExecutor) executeNode(node ast.Node, context *types.ExpressionContex
 // executeIdentifier executes identifier nodes (variable references)
 func (e *ASTExecutor) executeIdentifier(node *ast.Identifier, context *types.ExpressionContext) (interface{}, error) {
 	name := node.Name.String()
-	log.Debug().Str("identifier", name).Msg("executing identifier")
 
 	// Check context variables first
 	if context != nil {
 		switch name {
 		case "item":
-			log.Debug().Interface("item", context.Item).Msg("returning item")
 			return context.Item, nil
 		default:
 			if context.Variables != nil {
@@ -302,7 +300,6 @@ func (e *ASTExecutor) executeDotExpression(node *ast.DotExpression, context *typ
 
 	var property string
 	property = node.Identifier.Name.String()
-	log.Debug().Str("property", property).Interface("object", object).Msg("dot access")
 
 	return e.propertyAccess(object, property)
 }
@@ -715,7 +712,6 @@ func (e *ASTExecutor) propertyAccess(object, property interface{}) (interface{},
 		result = nil
 	}
 
-	log.Debug().Interface("result", result).Msg("property access result")
 	return result, nil
 }
 

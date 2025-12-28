@@ -1,19 +1,23 @@
-package claudeintegration
+package groq
 
 import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
+const (
+	GroqIntegrationActionType_Prompt = "prompt"
+)
+
 var (
-	ClaudeSchema = domain.Integration{
-		ID:          domain.IntegrationType_Anthropic,
-		Name:        "Anthropic",
-		Description: "Use Anthropic's Claude AI models to generate content and analyze text.",
+	GroqSchema = domain.Integration{
+		ID:          domain.IntegrationType_Groq,
+		Name:        "Groq",
+		Description: "Ultra-fast LLM inference powered by Groq's LPU technology.",
 		CredentialProperties: []domain.NodeProperty{
 			{
 				Key:         "api_key",
 				Name:        "API Key",
-				Description: "The Anthropic API key for authentication",
+				Description: "The Groq API key for authentication",
 				Required:    true,
 				Type:        domain.NodePropertyType_String,
 			},
@@ -22,13 +26,13 @@ var (
 			{
 				ID:          "prompt",
 				Name:        "Send Prompt",
-				Description: "Send a prompt to Claude AI and get a response",
-				ActionType:  ClaudeIntegrationActionType_Prompt,
+				Description: "Send a prompt to Groq and get a response",
+				ActionType:  GroqIntegrationActionType_Prompt,
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "model",
 						Name:        "Model",
-						Description: "The Claude model to use for generation",
+						Description: "The Groq model to use for generation",
 						Required:    true,
 						Type:        domain.NodePropertyType_String,
 						Options:     modelOptions,
@@ -36,14 +40,14 @@ var (
 					{
 						Key:         "prompt",
 						Name:        "Prompt",
-						Description: "The main prompt to send to Claude",
+						Description: "The main prompt to send to Groq",
 						Required:    true,
 						Type:        domain.NodePropertyType_Text,
 					},
 					{
 						Key:         "system_prompt",
 						Name:        "System Prompt",
-						Description: "Optional system prompt to set Claude's behavior",
+						Description: "Optional system prompt to set the model's behavior",
 						Required:    false,
 						Type:        domain.NodePropertyType_Text,
 					},
@@ -60,7 +64,7 @@ var (
 				ID:          "ai_agent_chat",
 				Name:        "AI Agent Chat",
 				ActionType:  "ai_agent_chat",
-				Description: "Use Claude for AI agent conversation",
+				Description: "Use Groq for AI agent conversation",
 				SupportedContexts: []domain.ActionUsageContext{
 					domain.UsageContextLLMProvider,
 				},
@@ -68,7 +72,7 @@ var (
 					{
 						Key:         "model",
 						Name:        "Model",
-						Description: "The Claude model to use",
+						Description: "The Groq model to use",
 						Required:    true,
 						Type:        domain.NodePropertyType_String,
 						Options:     modelOptions,
@@ -89,7 +93,7 @@ var (
 						Advanced:    true,
 						NumberOpts: &domain.NumberPropertyOptions{
 							Min:  0,
-							Max:  1,
+							Max:  2,
 							Step: 0.1,
 						},
 					},
@@ -113,14 +117,6 @@ var (
 							Step: 0.01,
 						},
 					},
-					{
-						Key:         "top_k",
-						Name:        "Top K",
-						Description: "Only sample from the top K options for each subsequent token",
-						Required:    false,
-						Type:        domain.NodePropertyType_Integer,
-						Advanced:    true,
-					},
 				},
 			},
 		},
@@ -129,25 +125,15 @@ var (
 )
 
 var modelOptions = []domain.NodePropertyOption{
-	// Claude 4.5 models (Latest)
-	{Label: "Claude Opus 4.5", Value: "claude-opus-4-5-20251101"},
-	{Label: "Claude Sonnet 4.5", Value: "claude-sonnet-4-5-20250929"},
-	{Label: "Claude Haiku 4.5", Value: "claude-haiku-4-5-20251001"},
-
-	// Claude 4.1 models
-	{Label: "Claude Opus 4.1", Value: "claude-opus-4-1-20250805"},
-
-	// Claude 4 models
-	{Label: "Claude Opus 4", Value: "claude-opus-4-20250514"},
-	{Label: "Claude Sonnet 4", Value: "claude-sonnet-4-20250514"},
-
-	// Claude 3.7 models
-	{Label: "Claude Sonnet 3.7", Value: "claude-3-7-sonnet-20250219"},
-
-	// Claude 3.5 models
-	{Label: "Claude Haiku 3.5", Value: "claude-3-5-haiku-20241022"},
-
-	// Claude 3 models (Legacy)
-	{Label: "Claude Haiku 3", Value: "claude-3-haiku-20240307"},
-	{Label: "Claude Opus 3", Value: "claude-3-opus-20240229"},
+	{Label: "Groq Compound", Value: "groq/compound"},
+	{Label: "Groq Compound Mini", Value: "groq/compound-mini"},
+	{Label: "GPT-OSS 120B", Value: "openai/gpt-oss-120b"},
+	{Label: "GPT-OSS 20B", Value: "openai/gpt-oss-20b"},
+	{Label: "Llama 4 Maverick 17B", Value: "meta-llama/llama-4-maverick-17b-128e-instruct"},
+	{Label: "Llama 4 Scout 17B", Value: "meta-llama/llama-4-scout-17b-16e-instruct"},
+	{Label: "Llama 3.3 70B Versatile", Value: "llama-3.3-70b-versatile"},
+	{Label: "Llama 3.1 8B Instant", Value: "llama-3.1-8b-instant"},
+	{Label: "Kimi K2 Instruct (262K context)", Value: "moonshotai/kimi-k2-instruct-0905"},
+	{Label: "Kimi K2 Instruct", Value: "moonshotai/kimi-k2-instruct"},
+	{Label: "Qwen 3 32B", Value: "qwen/qwen3-32b"},
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/integrations/discord"
 	"github.com/flowbaker/flowbaker/pkg/integrations/dropbox"
 	"github.com/flowbaker/flowbaker/pkg/integrations/filetoitem"
-	"github.com/flowbaker/flowbaker/pkg/integrations/flowbaker_agent_memory"
 	githubintegration "github.com/flowbaker/flowbaker/pkg/integrations/github"
 	"github.com/flowbaker/flowbaker/pkg/integrations/google/gmail"
 	googledrive "github.com/flowbaker/flowbaker/pkg/integrations/google/google_drive"
@@ -97,7 +96,6 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	},
 	{
 		IntegrationType: domain.IntegrationType_FlowbakerAgentMemory,
-		NewCreator:      flowbaker_agent_memory.NewFlowbakerAgentMemoryIntegrationCreator,
 	},
 	{
 		IntegrationType:            domain.IntegrationType_Dropbox,

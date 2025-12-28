@@ -78,8 +78,7 @@ type ClientInterface interface {
 
 	// Agent memory operations (for executor clients)
 	SaveAgentConversation(ctx context.Context, workspaceID string, conversation *AgentConversation) (*SaveAgentConversationResponse, error)
-	GetAgentConversations(ctx context.Context, req *GetAgentConversationsRequest) (*GetAgentConversationsResponse, error)
-	DeleteOldAgentConversations(ctx context.Context, req *DeleteOldAgentConversationsRequest) (*DeleteOldAgentConversationsResponse, error)
+	GetAgentConversation(ctx context.Context, req *GetAgentConversationRequest) (*GetAgentConversationResponse, error)
 
 	// Schedule operations (for executor clients)
 	GetSchedule(ctx context.Context, workspaceID, scheduleID, workflowID string) ([]byte, error)
@@ -926,6 +925,38 @@ func (c *Client) doRequestWithHeaders(ctx context.Context, method, path string, 
 	return nil, fmt.Errorf("request failed after %d retries: %w", c.config.RetryAttempts, lastErr)
 }
 
+func (c *Client) doStreamingRequest(ctx context.Context, method, urlPath string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, urlPath, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create streaming request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-ndjson")
+	req.Header.Set("Transfer-Encoding", "chunked")
+
+	for key, value := range c.config.DefaultHeaders {
+		req.Header.Set(key, value)
+	}
+
+	// Apply user agent
+	if c.config.UserAgent != "" {
+		req.Header.Set("User-Agent", c.config.UserAgent)
+	}
+
+	// Sign the request with empty body hash (streaming body is not known upfront)
+	// The signature proves executor identity, TLS secures the actual content
+	c.signRequest(req, nil)
+
+	streamingClient := &http.Client{}
+
+	resp, err := streamingClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("streaming request failed: %w", err)
+	}
+
+	return resp, nil
+}
+
 // handleResponse processes the HTTP response and unmarshals JSON if successful
 func (c *Client) handleResponse(resp *http.Response, result interface{}) error {
 	defer resp.Body.Close()
@@ -1479,7 +1510,6 @@ func (c *Client) CreateSchedule(ctx context.Context, workspaceID string, req *Cr
 	return body, nil
 }
 
-// SaveAgentConversation saves an agent conversation for the executor
 func (c *Client) SaveAgentConversation(ctx context.Context, workspaceID string, conversation *AgentConversation) (*SaveAgentConversationResponse, error) {
 	if c.config.ExecutorID == "" {
 		return nil, fmt.Errorf("executor ID is required for agent memory operations")
@@ -1508,8 +1538,7 @@ func (c *Client) SaveAgentConversation(ctx context.Context, workspaceID string, 
 	return &result, nil
 }
 
-// GetAgentConversations retrieves agent conversations for the executor
-func (c *Client) GetAgentConversations(ctx context.Context, req *GetAgentConversationsRequest) (*GetAgentConversationsResponse, error) {
+func (c *Client) GetAgentConversation(ctx context.Context, req *GetAgentConversationRequest) (*GetAgentConversationResponse, error) {
 	if c.config.ExecutorID == "" {
 		return nil, fmt.Errorf("executor ID is required for agent memory operations")
 	}
@@ -1518,42 +1547,22 @@ func (c *Client) GetAgentConversations(ctx context.Context, req *GetAgentConvers
 		return nil, fmt.Errorf("workspace ID is required")
 	}
 
-	path := fmt.Sprintf("/v1/workspaces/%s/agent-memory/conversations?session_id=%s&limit=%d&offset=%d",
-		req.WorkspaceID, req.SessionID, req.Limit, req.Offset)
+	path := fmt.Sprintf("/v1/workspaces/%s/agent-memory/conversations", req.WorkspaceID)
 
-	resp, err := c.doRequestWithExecutorID(ctx, "GET", path, nil)
+	queryParams := url.Values{}
+	queryParams.Add("session_id", req.SessionID)
+	queryString := queryParams.Encode()
+
+	url := fmt.Sprintf("%s?%s", path, queryString)
+
+	resp, err := c.doRequestWithExecutorID(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get agent conversations: %w", err)
 	}
 
-	var result GetAgentConversationsResponse
+	var result GetAgentConversationResponse
 	if err := c.handleResponse(resp, &result); err != nil {
 		return nil, fmt.Errorf("failed to process get agent conversations response: %w", err)
-	}
-
-	return &result, nil
-}
-
-// DeleteOldAgentConversations deletes old agent conversations for the executor
-func (c *Client) DeleteOldAgentConversations(ctx context.Context, req *DeleteOldAgentConversationsRequest) (*DeleteOldAgentConversationsResponse, error) {
-	if c.config.ExecutorID == "" {
-		return nil, fmt.Errorf("executor ID is required for agent memory operations")
-	}
-
-	if req.WorkspaceID == "" {
-		return nil, fmt.Errorf("workspace ID is required")
-	}
-
-	path := fmt.Sprintf("/v1/workspaces/%s/agent-memory/conversations/cleanup", req.WorkspaceID)
-
-	resp, err := c.doRequestWithExecutorID(ctx, "DELETE", path, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to delete old agent conversations: %w", err)
-	}
-
-	var result DeleteOldAgentConversationsResponse
-	if err := c.handleResponse(resp, &result); err != nil {
-		return nil, fmt.Errorf("failed to process delete old agent conversations response: %w", err)
 	}
 
 	return &result, nil

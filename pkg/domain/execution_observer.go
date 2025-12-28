@@ -4,11 +4,17 @@ import "context"
 
 type ExecutionObserver interface {
 	Subscribe(handler ExecutionEventHandler)
+	SubscribeStream(handler StreamEventHandler)
 	Notify(ctx context.Context, event ExecutionEvent) error
+	NotifyStream(ctx context.Context, event StreamEvent) error
 }
 
 type ExecutionEventHandler interface {
 	HandleEvent(ctx context.Context, event ExecutionEvent) error
+}
+
+type StreamEventHandler interface {
+	HandleStreamEvent(ctx context.Context, event StreamEvent) error
 }
 
 type ExecutionEventType string
@@ -22,4 +28,14 @@ const (
 
 type ExecutionEvent interface {
 	GetEventType() ExecutionEventType
+}
+
+type StreamEventType string
+
+const (
+	StreamEventTypeAIChatStream StreamEventType = "ai_chat_stream_event"
+)
+
+type StreamEvent interface {
+	GetEventType() StreamEventType
 }

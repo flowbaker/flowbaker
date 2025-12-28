@@ -2,8 +2,12 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"sync"
+
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 )
 
 type EventPublisher interface {
@@ -190,4 +194,64 @@ func (p *OrderedEventPublisher) PublishEvent(ctx context.Context, event Event) e
 	orderedEvent.SetEventOrder(nextOrder)
 
 	return p.eventPublisher.PublishEvent(ctx, event)
+}
+
+type StreamEventPublisher interface {
+	Initialize() error
+	PublishStreamEvent(ctx context.Context, event StreamEvent) error
+	Close() error
+}
+
+type streamEventPublisher struct {
+	streamWriter *flowbaker.EventStreamWriter
+}
+
+func NewStreamEventPublisher(ctx context.Context, workspaceID string, client flowbaker.ClientInterface) (StreamEventPublisher, error) {
+	if client == nil {
+		return nil, errors.New("stream event publisher: client is required")
+	}
+
+	streamCtx, cancelCtx := context.WithCancel(ctx)
+
+	pipeReader, pipeWriter := io.Pipe()
+
+	writer, err := flowbaker.NewEventStreamWriter(flowbaker.NewEventStreamWriterParams{
+		Client:      client.(*flowbaker.Client),
+		WorkspaceID: workspaceID,
+		Ctx:         streamCtx,
+		CancelCtx:   cancelCtx,
+		PipeReader:  pipeReader,
+		PipeWriter:  pipeWriter,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	publisher := &streamEventPublisher{
+		streamWriter: writer,
+	}
+
+	return publisher, nil
+}
+
+func (p *streamEventPublisher) Initialize() error {
+	return p.streamWriter.Initialize()
+}
+
+func (p *streamEventPublisher) PublishStreamEvent(ctx context.Context, event StreamEvent) error {
+	err := p.streamWriter.WriteEvent(string(event.GetEventType()), event)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *streamEventPublisher) Close() error {
+	_, err := p.streamWriter.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

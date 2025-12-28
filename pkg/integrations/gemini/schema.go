@@ -1,19 +1,23 @@
-package claudeintegration
+package gemini
 
 import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
+const (
+	GeminiIntegrationActionType_Prompt = "prompt"
+)
+
 var (
-	ClaudeSchema = domain.Integration{
-		ID:          domain.IntegrationType_Anthropic,
-		Name:        "Anthropic",
-		Description: "Use Anthropic's Claude AI models to generate content and analyze text.",
+	GeminiSchema = domain.Integration{
+		ID:          domain.IntegrationType_Gemini,
+		Name:        "Google Gemini",
+		Description: "Use Google's Gemini AI models to generate content and analyze text.",
 		CredentialProperties: []domain.NodeProperty{
 			{
 				Key:         "api_key",
 				Name:        "API Key",
-				Description: "The Anthropic API key for authentication",
+				Description: "The Google AI API key for authentication",
 				Required:    true,
 				Type:        domain.NodePropertyType_String,
 			},
@@ -22,13 +26,13 @@ var (
 			{
 				ID:          "prompt",
 				Name:        "Send Prompt",
-				Description: "Send a prompt to Claude AI and get a response",
-				ActionType:  ClaudeIntegrationActionType_Prompt,
+				Description: "Send a prompt to Gemini AI and get a response",
+				ActionType:  GeminiIntegrationActionType_Prompt,
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "model",
 						Name:        "Model",
-						Description: "The Claude model to use for generation",
+						Description: "The Gemini model to use for generation",
 						Required:    true,
 						Type:        domain.NodePropertyType_String,
 						Options:     modelOptions,
@@ -36,14 +40,14 @@ var (
 					{
 						Key:         "prompt",
 						Name:        "Prompt",
-						Description: "The main prompt to send to Claude",
+						Description: "The main prompt to send to Gemini",
 						Required:    true,
 						Type:        domain.NodePropertyType_Text,
 					},
 					{
 						Key:         "system_prompt",
 						Name:        "System Prompt",
-						Description: "Optional system prompt to set Claude's behavior",
+						Description: "Optional system prompt to set Gemini's behavior",
 						Required:    false,
 						Type:        domain.NodePropertyType_Text,
 					},
@@ -60,7 +64,7 @@ var (
 				ID:          "ai_agent_chat",
 				Name:        "AI Agent Chat",
 				ActionType:  "ai_agent_chat",
-				Description: "Use Claude for AI agent conversation",
+				Description: "Use Gemini for AI agent conversation",
 				SupportedContexts: []domain.ActionUsageContext{
 					domain.UsageContextLLMProvider,
 				},
@@ -68,7 +72,7 @@ var (
 					{
 						Key:         "model",
 						Name:        "Model",
-						Description: "The Claude model to use",
+						Description: "The Gemini model to use",
 						Required:    true,
 						Type:        domain.NodePropertyType_String,
 						Options:     modelOptions,
@@ -89,7 +93,7 @@ var (
 						Advanced:    true,
 						NumberOpts: &domain.NumberPropertyOptions{
 							Min:  0,
-							Max:  1,
+							Max:  2,
 							Step: 0.1,
 						},
 					},
@@ -129,25 +133,16 @@ var (
 )
 
 var modelOptions = []domain.NodePropertyOption{
-	// Claude 4.5 models (Latest)
-	{Label: "Claude Opus 4.5", Value: "claude-opus-4-5-20251101"},
-	{Label: "Claude Sonnet 4.5", Value: "claude-sonnet-4-5-20250929"},
-	{Label: "Claude Haiku 4.5", Value: "claude-haiku-4-5-20251001"},
+	// Gemini 3 models (Preview)
+	{Label: "Gemini 3 Pro (Preview)", Value: "gemini-3-pro-preview"},
+	{Label: "Gemini 3 Flash (Preview)", Value: "gemini-3-flash-preview"},
 
-	// Claude 4.1 models
-	{Label: "Claude Opus 4.1", Value: "claude-opus-4-1-20250805"},
+	// Gemini 2.5 models (Stable)
+	{Label: "Gemini 2.5 Pro", Value: "gemini-2.5-pro"},
+	{Label: "Gemini 2.5 Flash", Value: "gemini-2.5-flash"},
+	{Label: "Gemini 2.5 Flash Lite", Value: "gemini-2.5-flash-lite"},
 
-	// Claude 4 models
-	{Label: "Claude Opus 4", Value: "claude-opus-4-20250514"},
-	{Label: "Claude Sonnet 4", Value: "claude-sonnet-4-20250514"},
-
-	// Claude 3.7 models
-	{Label: "Claude Sonnet 3.7", Value: "claude-3-7-sonnet-20250219"},
-
-	// Claude 3.5 models
-	{Label: "Claude Haiku 3.5", Value: "claude-3-5-haiku-20241022"},
-
-	// Claude 3 models (Legacy)
-	{Label: "Claude Haiku 3", Value: "claude-3-haiku-20240307"},
-	{Label: "Claude Opus 3", Value: "claude-3-opus-20240229"},
+	// Gemini 2.0 models
+	{Label: "Gemini 2.0 Flash", Value: "gemini-2.0-flash"},
+	{Label: "Gemini 2.0 Flash Lite", Value: "gemini-2.0-flash-lite"},
 }
