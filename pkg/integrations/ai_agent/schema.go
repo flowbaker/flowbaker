@@ -4,15 +4,13 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
-// IntegrationActionType_AIAgentV2 is defined in ai_agent_integration_v2.go
-
 var (
 	Schema = schema
 
 	schema domain.Integration = domain.Integration{
 		ID:                   domain.IntegrationType_AIAgent,
 		Name:                 "AI Agent",
-		Description:          "Advanced AI Agent integration supporting both ReAct (Reasoning + Acting) and Function Calling patterns, with tool calling, memory management, and structured conversation handling",
+		Description:          "AI Agent that can use tools to complete tasks",
 		CredentialProperties: []domain.NodeProperty{}, // No credentials needed
 		Actions: []domain.IntegrationAction{
 			{
