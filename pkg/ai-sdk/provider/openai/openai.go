@@ -7,7 +7,6 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
-	"github.com/rs/zerolog/log"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -74,8 +73,6 @@ func (p *Provider) SetRequestSettings(settings RequestSettings) {
 func (p *Provider) Generate(ctx context.Context, req provider.GenerateRequest) (*types.GenerateResponse, error) {
 	messages := p.convertMessages(req.Messages, req.System)
 	tools := p.convertTools(req.Tools)
-
-	log.Debug().Interface("requestSettings", p.RequestSettings).Msg("Request settings from openai provider")
 
 	chatReq := openai.ChatCompletionRequest{
 		Model:    p.RequestSettings.Model,
