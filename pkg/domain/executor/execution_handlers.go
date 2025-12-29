@@ -98,6 +98,8 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			NodeID:              e.NodeID,
 			Timestamp:           e.Timestamp.UnixNano(),
 			IsReExecution:       e.IsReExecution,
+			IsTesting:           e.IsTesting,
+			IsFromErrorTrigger:  e.IsFromErrorTrigger,
 		})
 
 	case NodeExecutionCompletedEvent:
@@ -110,6 +112,8 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			ItemsByOutputID:     e.ItemsByOutputID,
 			ExecutionOrder:      int(e.ExecutionOrder),
 			IsReExecution:       e.IsReExecution,
+			IsTesting:           e.IsTesting,
+			IsFromErrorTrigger:  e.IsFromErrorTrigger,
 		})
 
 	case NodeExecutionFailedEvent:
@@ -122,6 +126,8 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			ItemsByInputID:      e.ItemsByInputID,
 			ItemsByOutputID:     map[string]domain.NodeItems{},
 			IsReExecution:       e.IsReExecution,
+			IsFromErrorTrigger:  e.IsFromErrorTrigger,
+			IsTesting:           e.IsTesting,
 		})
 
 	case WorkflowExecutionCompletedEvent:
@@ -129,6 +135,8 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			WorkflowID:          b.workflowID,
 			WorkflowExecutionID: b.executionID,
 			Timestamp:           e.Timestamp.UnixNano(),
+			IsTesting:           e.IsTesting,
+			IsFromErrorTrigger:  e.IsFromErrorTrigger,
 		})
 	}
 
