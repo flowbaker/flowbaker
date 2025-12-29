@@ -13,8 +13,8 @@ require (
 	github.com/charmbracelet/huh v0.7.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/dop251/goja v0.0.0-20250630131328-58d95d85e994
+	github.com/gofiber/fiber/v2 v2.52.10
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
-	github.com/gofiber/fiber/v2 v2.52.9
 	github.com/gofiber/fiber/v3 v3.0.0-rc.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-github/v57 v57.0.0
@@ -40,7 +40,7 @@ require (
 	golang.org/x/crypto v0.41.0
 	golang.org/x/oauth2 v0.30.0
 	google.golang.org/api v0.231.0
-	google.golang.org/genai v1.36.0
+	google.golang.org/genai v1.40.0
 )
 
 require (

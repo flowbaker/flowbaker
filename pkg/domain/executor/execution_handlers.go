@@ -216,3 +216,20 @@ func (u *UsageCollector) GetNodeExecutions() []domain.NodeExecution {
 	defer u.mutex.Unlock()
 	return u.nodeExecutions
 }
+
+// StreamEventBroadcaster broadcasts stream events to the backend via HTTP chunked streaming
+type StreamEventBroadcaster struct {
+	publisher domain.StreamEventPublisher
+}
+
+// NewStreamEventBroadcaster creates a new stream event broadcaster
+func NewStreamEventBroadcaster(publisher domain.StreamEventPublisher) *StreamEventBroadcaster {
+	return &StreamEventBroadcaster{
+		publisher: publisher,
+	}
+}
+
+// HandleStreamEvent processes stream events and writes them to the stream
+func (b *StreamEventBroadcaster) HandleStreamEvent(ctx context.Context, event domain.StreamEvent) error {
+	return b.publisher.PublishStreamEvent(ctx, event)
+}

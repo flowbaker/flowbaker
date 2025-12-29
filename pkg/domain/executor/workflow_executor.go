@@ -77,35 +77,43 @@ type WorkflowExecutor struct {
 
 	mutex sync.Mutex
 
+	userID *string // Optional, Only filled in testing workflows
+
 	integrationSelector domain.IntegrationSelector
 	enableEvents        bool
+	enableStreaming     bool
 
 	IsTestingWorkflow bool
 
 	WorkflowExecutionStartedAt time.Time
 
 	client   flowbaker.ClientInterface
-	observer domain.ExecutionObserver
+	observer *executionObserver
 
 	historyRecorder *HistoryRecorder
 	usageCollector  *UsageCollector
+
+	streamEventPublisher domain.StreamEventPublisher
 }
 
 type WorkflowExecutorDeps struct {
 	ExecutionID           string
+	UserID                *string
 	Workflow              domain.Workflow
 	Selector              domain.IntegrationSelector
-	EventPublisher        domain.EventPublisher
 	EnableEvents          bool
+	EnableStreaming       bool
 	IsTestingWorkflow     bool
 	ExecutorClient        flowbaker.ClientInterface
 	OrderedEventPublisher domain.EventPublisher
 }
 
-func NewWorkflowExecutor(deps WorkflowExecutorDeps) WorkflowExecutor {
+func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 	nodesByEventName := map[string][]domain.WorkflowNode{}
 
-	for _, node := range deps.Workflow.Actions {
+	actionNodes := deps.Workflow.GetActionNodes()
+
+	for _, node := range actionNodes {
 		for _, input := range node.Inputs {
 			for _, eventName := range input.SubscribedEvents {
 				nodes, ok := nodesByEventName[eventName]
@@ -120,6 +128,13 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) WorkflowExecutor {
 		}
 	}
 
+	streamEventPublisher, err := domain.NewStreamEventPublisher(context.TODO(), deps.Workflow.WorkspaceID, deps.ExecutorClient)
+	if err != nil {
+		return WorkflowExecutor{}, fmt.Errorf("failed to create stream event publisher: %w", err)
+	}
+
+	streamEventPublisher.Initialize()
+
 	// Initialize execution observer
 	observer := NewExecutionObserver()
 
@@ -132,14 +147,17 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) WorkflowExecutor {
 		deps.Workflow.ID,
 		deps.ExecutionID,
 	)
+	streamBroadcaster := NewStreamEventBroadcaster(streamEventPublisher)
 
 	// Subscribe handlers to observer
 	observer.Subscribe(historyRecorder)
 	observer.Subscribe(usageCollector)
 	observer.Subscribe(eventBroadcaster)
+	observer.SubscribeStream(streamBroadcaster)
 
 	return WorkflowExecutor{
 		executionID:                deps.ExecutionID,
+		userID:                     deps.UserID,
 		workflow:                   deps.Workflow,
 		waitingExecutionTasks:      []WaitingExecutionTask{},
 		executionQueue:             []NodeExecutionTask{},
@@ -148,13 +166,15 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) WorkflowExecutor {
 		integrationSelector:        deps.Selector,
 		executionCountByNodeID:     map[string]int{},
 		enableEvents:               deps.EnableEvents,
+		enableStreaming:            deps.EnableStreaming,
 		IsTestingWorkflow:          deps.IsTestingWorkflow,
 		WorkflowExecutionStartedAt: time.Now(),
 		client:                     deps.ExecutorClient,
 		observer:                   observer,
 		historyRecorder:            historyRecorder,
 		usageCollector:             usageCollector,
-	}
+		streamEventPublisher:       streamEventPublisher,
+	}, nil
 }
 
 const (
@@ -166,11 +186,13 @@ const (
 
 func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload domain.Payload) (ExecutionResult, error) {
 	workspaceID := w.workflow.WorkspaceID
+	defer w.streamEventPublisher.Close()
 
 	isErrorTrigger := w.IsErrorTrigger(nodeID)
 
 	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
+		UserID:              w.userID,
 		WorkspaceID:         workspaceID,
 		WorkflowID:          w.workflow.ID,
 		WorkflowExecutionID: w.executionID,
@@ -322,41 +344,31 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	var result NodeExecutionResult
 	var nodeID string
 
-	if action, exists := w.workflow.GetActionNodeByID(execution.NodeID); exists {
-		result, err = w.ExecuteActionNode(ctx, action, execution)
-		if err != nil {
-			result, err = w.HandleNodeExecutionError(HandleNodeExecutionErrorParams{
-				Err:             err,
-				IntegrationType: domain.IntegrationType(action.NodeType),
-				ActionType:      domain.IntegrationActionType(action.ActionType),
-				Settings:        action.Settings,
-			})
-			if err != nil {
-				return ExecuteNodeResult{}, err
-			}
-		}
-
-		nodeID = action.ID
-	} else if trigger, exists := w.workflow.GetTriggerByID(execution.NodeID); exists {
-		result, err = w.ExecuteTriggerNode(ctx, trigger, execution)
-		if err != nil {
-			result, err = w.HandleNodeExecutionError(HandleNodeExecutionErrorParams{
-				Err:             err,
-				IntegrationType: domain.IntegrationType(trigger.Type),
-				ActionType:      domain.IntegrationActionType(trigger.EventType),
-				Settings:        trigger.Settings,
-			})
-			if err != nil {
-				return ExecuteNodeResult{}, err
-			}
-		}
-
-		nodeID = trigger.ID
-	} else {
+	node, exists := w.workflow.GetNodeByID(execution.NodeID)
+	if !exists {
 		return ExecuteNodeResult{}, fmt.Errorf("node %s not found in workflow", execution.NodeID)
 	}
 
+	nodeID = node.ID
+
+	switch node.Type {
+	case domain.NodeTypeAction:
+		result, err = w.ExecuteActionNode(ctx, node, execution)
+	case domain.NodeTypeTrigger:
+		result, err = w.ExecuteTriggerNode(ctx, node, execution)
+	default:
+		return ExecuteNodeResult{}, fmt.Errorf("node type is invalid: %s", node.Type)
+	}
+
 	if err != nil {
+		result, err = w.HandleNodeExecutionError(HandleNodeExecutionErrorParams{
+			Err:  err,
+			Node: node,
+		})
+		if err != nil {
+			return ExecuteNodeResult{}, err
+		}
+
 		return ExecuteNodeResult{}, err
 	}
 
@@ -414,9 +426,9 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	}, nil
 }
 
-func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, trigger domain.WorkflowTrigger, execution NodeExecutionTask) (NodeExecutionResult, error) {
+func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, node domain.WorkflowNode, execution NodeExecutionTask) (NodeExecutionResult, error) {
 
-	inputID := fmt.Sprintf(InputHandleFormat, trigger.ID, 0)
+	inputID := fmt.Sprintf(InputHandleFormat, node.ID, 0)
 	inputPayload, exists := execution.PayloadByInputID[inputID]
 	if !exists {
 		err := fmt.Errorf("trigger input payload not found")
@@ -427,8 +439,8 @@ func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, trigger domai
 		Output: domain.IntegrationOutput{
 			ResultJSONByOutputID: []domain.Payload{inputPayload.Payload},
 		},
-		IntegrationType:       domain.IntegrationType(trigger.Type),
-		IntegrationActionType: domain.IntegrationActionType(trigger.EventType),
+		IntegrationType:       domain.IntegrationType(node.Type),
+		IntegrationActionType: domain.IntegrationActionType(node.TriggerNodeOpts.EventType),
 	}, nil
 }
 
@@ -441,13 +453,13 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 			Output: domain.IntegrationOutput{
 				ResultJSONByOutputID: []domain.Payload{},
 			},
-			IntegrationType:       domain.IntegrationType(node.NodeType),
-			IntegrationActionType: node.ActionType,
+			IntegrationType:       domain.IntegrationType(node.IntegrationType),
+			IntegrationActionType: node.ActionNodeOpts.ActionType,
 		}, nil
 	}
 
 	integrationCreator, err := w.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
-		IntegrationType: node.NodeType,
+		IntegrationType: node.IntegrationType,
 	})
 	if err != nil {
 		return NodeExecutionResult{}, err
@@ -486,7 +498,7 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		IntegrationParams: domain.IntegrationParams{
 			Settings: node.IntegrationSettings,
 		},
-		ActionType: node.ActionType,
+		ActionType: node.ActionNodeOpts.ActionType,
 	})
 	if err != nil {
 
@@ -495,8 +507,8 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 
 	return NodeExecutionResult{
 		Output:                output,
-		IntegrationType:       domain.IntegrationType(node.NodeType),
-		IntegrationActionType: node.ActionType,
+		IntegrationType:       domain.IntegrationType(node.IntegrationType),
+		IntegrationActionType: node.ActionNodeOpts.ActionType,
 	}, nil
 }
 
@@ -570,7 +582,7 @@ func (w *WorkflowExecutor) AddTaskForDownstreamNode(ctx context.Context, p AddTa
 		return nil
 	}
 
-	isNextNodeHasMultipleInputs := len(node.Inputs) > 1 && node.NodeType != domain.IntegrationType_AIAgent
+	isNextNodeHasMultipleInputs := len(node.Inputs) > 1 && node.IntegrationType != domain.IntegrationType_AIAgent
 
 	if isNextNodeHasMultipleInputs {
 		w.AddWaitingExecutionTask(WaitingExecutionTask{
@@ -726,14 +738,14 @@ type ErrorItem struct {
 }
 
 type HandleNodeExecutionErrorParams struct {
-	Err             error
-	IntegrationType domain.IntegrationType
-	ActionType      domain.IntegrationActionType
-	Settings        domain.Settings
+	Err  error
+	Node domain.WorkflowNode
 }
 
 func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorParams) (NodeExecutionResult, error) {
-	if !p.Settings.ReturnErrorAsItem {
+	settings := p.Node.Settings
+
+	if !settings.ReturnErrorAsItem {
 		return NodeExecutionResult{}, p.Err
 	}
 
@@ -747,20 +759,31 @@ func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorPa
 		return NodeExecutionResult{}, fmt.Errorf("failed to marshal error as item: %w", marshalErr)
 	}
 
+	integrationType := domain.IntegrationType(p.Node.Type)
+
+	actionType := ""
+
+	switch p.Node.Type {
+	case domain.NodeTypeAction:
+		actionType = string(p.Node.ActionNodeOpts.ActionType)
+	case domain.NodeTypeTrigger:
+		actionType = string(p.Node.TriggerNodeOpts.EventType)
+	}
+
 	return NodeExecutionResult{
 		Output: domain.IntegrationOutput{
 			ResultJSONByOutputID: []domain.Payload{errorPayload},
 		},
-		IntegrationType:       p.IntegrationType,
-		IntegrationActionType: p.ActionType,
+		IntegrationType:       integrationType,
+		IntegrationActionType: domain.IntegrationActionType(actionType),
 	}, nil
 }
 
 func (w *WorkflowExecutor) IsErrorTrigger(nodeID string) bool {
-	trigger, exists := w.workflow.GetTriggerByID(nodeID)
+	node, exists := w.workflow.GetNodeByID(nodeID)
 	if !exists {
 		return false
 	}
 
-	return trigger.EventType == domain.IntegrationTriggerEventType(domain.IntegrationType_OnError)
+	return node.Type == domain.NodeTypeTrigger && node.TriggerNodeOpts.EventType == "on_error"
 }

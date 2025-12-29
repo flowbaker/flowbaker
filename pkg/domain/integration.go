@@ -51,6 +51,7 @@ const (
 	IntegrationType_Redis                IntegrationType = "redis"
 	IntegrationType_Linear               IntegrationType = "linear"
 	IntegrationType_Anthropic            IntegrationType = "anthropic"
+	IntegrationType_Gemini               IntegrationType = "gemini"
 	IntegrationType_Resend               IntegrationType = "resend"
 	IntegrationType_SendResponse         IntegrationType = "send_response"
 	IntegrationType_JWT                  IntegrationType = "jwt"
@@ -64,18 +65,20 @@ const (
 	IntegrationType_Knowledge            IntegrationType = "flowbaker_knowledge"
 	IntegrationType_Base64               IntegrationType = "base64"
 	IntegrationType_ContentClassifier    IntegrationType = "content_classifier"
-
-	IntegrationType_Teams         IntegrationType = "teams"
-	IntegrationType_Pipedrive     IntegrationType = "pipedrive"
-	IntegrationType_StartupsWatch IntegrationType = "startups_watch"
-	IntegrationType_Manipulation  IntegrationType = "manipulation"
-	IntegrationType_SplitArray    IntegrationType = "split_array"
-	IntegrationType_FileToItem    IntegrationType = "filetoitem"
-	IntegrationType_BrightData    IntegrationType = "brightdata"
-	IntegrationType_ItemsToItem   IntegrationType = "items_to_item"
-	IntegrationType_Telegram      IntegrationType = "telegram"
-	IntegrationType_Notion        IntegrationType = "notion"
-	IntegrationType_OnError       IntegrationType = "on_error"
+	IntegrationType_Teams                IntegrationType = "teams"
+	IntegrationType_Pipedrive            IntegrationType = "pipedrive"
+	IntegrationType_StartupsWatch        IntegrationType = "startups_watch"
+	IntegrationType_Manipulation         IntegrationType = "manipulation"
+	IntegrationType_SplitArray           IntegrationType = "split_array"
+	IntegrationType_FileToItem           IntegrationType = "filetoitem"
+	IntegrationType_BrightData           IntegrationType = "brightdata"
+	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
+	IntegrationType_Telegram             IntegrationType = "telegram"
+	IntegrationType_Notion               IntegrationType = "notion"
+	IntegrationType_OnError              IntegrationType = "on_error"
+	IntegrationType_Toolset              IntegrationType = "toolset"
+	IntegrationType_ChatTrigger          IntegrationType = "chat_trigger"
+	IntegrationType_Groq                 IntegrationType = "groq"
 )
 
 type Integration struct {
@@ -88,19 +91,21 @@ type Integration struct {
 	Triggers             []IntegrationTrigger        `json:"triggers" bson:"triggers"`
 	EmbeddingModels      []IntegrationEmbeddingModel `json:"embedding_models,omitempty" bson:"embedding_models,omitempty"`
 
+	IsGroup bool `json:"is_group" bson:"is_group"`
+
 	CanTestConnection    bool `json:"can_test_connection" bson:"can_test_connection"`
 	IsCredentialOptional bool `json:"is_credential_optional" bson:"is_credential_optional"`
 }
 
 type IntegrationTrigger struct {
-	ID                            string                      `json:"id" bson:"id"`
-	EventType                     IntegrationTriggerEventType `json:"event_type" bson:"event_type"`
-	Name                          string                      `json:"name" bson:"name"`
-	Description                   string                      `json:"description" bson:"description"`
-	Properties                    []NodeProperty              `json:"properties" bson:"properties"`
-	OutputHandles                 []NodeHandle                `json:"output_handles" bson:"output_handles"`
-	IsNonAvailableForDefaultOAuth bool                        `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
-	Decoration                    NodeDecoration              `json:"decoration" bson:"decoration"`
+	ID                            string                                `json:"id" bson:"id"`
+	EventType                     IntegrationTriggerEventType           `json:"event_type" bson:"event_type"`
+	Name                          string                                `json:"name" bson:"name"`
+	Description                   string                                `json:"description" bson:"description"`
+	Properties                    []NodeProperty                        `json:"properties" bson:"properties"`
+	HandlesByContext              map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
+	IsNonAvailableForDefaultOAuth bool                                  `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
+	Decoration                    NodeDecoration                        `json:"decoration" bson:"decoration"`
 }
 
 type NodeDecoration struct {
@@ -135,6 +140,7 @@ var (
 )
 
 type NodeHandle struct {
+	Index        int                `json:"index" bson:"index"`
 	Type         NodeHandleType     `json:"type" bson:"type"`
 	Position     NodeHandlePosition `json:"position,omitempty" bson:"position,omitempty"`
 	Text         string             `json:"text,omitempty" bson:"text,omitempty"`
@@ -154,6 +160,7 @@ type IntegrationAction struct {
 	Properties        []NodeProperty                        `json:"properties" bson:"properties"`
 	HandlesByContext  map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
 	SupportedContexts []ActionUsageContext                  `json:"supported_contexts" bson:"supported_contexts"`
+	CombinedContexts  []ActionUsageContext                  `json:"combined_contexts" bson:"combined_contexts"`
 
 	IsNonAvailableForDefaultOAuth bool           `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
 	Decoration                    NodeDecoration `json:"decoration" bson:"decoration"`
@@ -239,7 +246,6 @@ type IntegrationDeps struct {
 	TaskSchedulerService       TaskSchedulerService
 	ParameterBinder            IntegrationParameterBinder
 	IntegrationSelector        IntegrationSelector
-	AgentMemoryService         AgentMemoryService
 	ExecutorStorageManager     ExecutorStorageManager
 	ExecutorCredentialManager  ExecutorCredentialManager
 	ExecutorIntegrationManager ExecutorIntegrationManager

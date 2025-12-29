@@ -7,6 +7,7 @@ import (
 type WorkflowExecutionContextKey struct{}
 
 type WorkflowExecutionContext struct {
+	UserID              *string
 	WorkspaceID         string
 	WorkflowID          string
 	WorkflowExecutionID string
@@ -33,6 +34,7 @@ func (c *WorkflowExecutionContext) SetResponseStatusCode(statusCode int) {
 }
 
 type NewContextWithWorkflowExecutionContextParams struct {
+	UserID              *string
 	WorkspaceID         string
 	WorkflowID          string
 	WorkflowExecutionID string
@@ -45,6 +47,7 @@ type NewContextWithWorkflowExecutionContextParams struct {
 
 func NewContextWithWorkflowExecutionContext(ctx context.Context, params NewContextWithWorkflowExecutionContextParams) context.Context {
 	workflowExecutionContext := &WorkflowExecutionContext{
+		UserID:              params.UserID,
 		WorkspaceID:         params.WorkspaceID,
 		WorkflowID:          params.WorkflowID,
 		WorkflowExecutionID: params.WorkflowExecutionID,

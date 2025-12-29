@@ -90,6 +90,10 @@ func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
 		IsTestingWorkflow: isTestingWorkflow,
 	}
 
+	if isTestingWorkflow {
+		p.UserID = req.UserID
+	}
+
 	result, err := c.executorService.Execute(ctx.RequestCtx(), p)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to execute workflow")
@@ -196,7 +200,7 @@ func (c *ExecutorController) HandlePollingEvent(ctx fiber.Ctx) error {
 	// Convert executor types to domain types
 	pollingEvent := domain.PollingEvent{
 		IntegrationType: domain.IntegrationType(req.IntegrationType),
-		Trigger:         mappers.ExecutorTriggerToDomain(&req.Trigger),
+		Trigger:         mappers.ExecutorWorkflowNodeToDomain(req.Trigger),
 		Workflow:        mappers.ExecutorWorkflowToDomain(&req.Workflow),
 		UserID:          req.UserID,
 		WorkflowType:    mappers.ExecutorWorkflowTypeToDomain(req.WorkflowType),
