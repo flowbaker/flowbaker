@@ -114,20 +114,25 @@ func (i *FileToItemIntegration) ConvertFileToItem(ctx context.Context, params do
 type FileParser struct {
 	ndjsonContentTypes []string
 	ndjsonExtensions   []string
-	ndjsonContentHints []string
 }
 
 func NewFileParser() *FileParser {
 	return &FileParser{
 		ndjsonContentTypes: []string{"ndjson", "x-ndjson"},
 		ndjsonExtensions:   []string{".ndjson", ".jsonl"},
-		ndjsonContentHints: []string{"\n{"},
 	}
 }
 
 func (fp *FileParser) IsNDJSON(content []byte, contentType, fileName string) bool {
 	contentTypeLower := strings.ToLower(contentType)
 	fileNameLower := strings.ToLower(fileName)
+
+	binaryPrefixes := []string{"image/", "video/", "audio/", "application/octet-stream", "application/pdf"}
+	for _, prefix := range binaryPrefixes {
+		if strings.HasPrefix(contentTypeLower, prefix) {
+			return false
+		}
+	}
 
 	for _, ct := range fp.ndjsonContentTypes {
 		if strings.Contains(contentTypeLower, ct) {
@@ -142,9 +147,20 @@ func (fp *FileParser) IsNDJSON(content []byte, contentType, fileName string) boo
 	}
 
 	contentStr := string(content)
-	for _, hint := range fp.ndjsonContentHints {
-		if strings.Contains(contentStr, hint) {
-			return true
+	if strings.Contains(contentStr, "\n{") {
+		lines := strings.Split(contentStr, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			if strings.HasPrefix(line, "{") {
+				var obj map[string]interface{}
+				if json.Unmarshal([]byte(line), &obj) == nil {
+					return true
+				}
+			}
+			break
 		}
 	}
 
