@@ -96,6 +96,16 @@ type Integration struct {
 	IsCredentialOptional bool `json:"is_credential_optional" bson:"is_credential_optional"`
 }
 
+func (i Integration) GetActionByType(actionType IntegrationActionType) (IntegrationAction, bool) {
+	for _, action := range i.Actions {
+		if action.ActionType == actionType {
+			return action, true
+		}
+	}
+
+	return IntegrationAction{}, false
+}
+
 type IntegrationTrigger struct {
 	ID                            string                                `json:"id" bson:"id"`
 	EventType                     IntegrationTriggerEventType           `json:"event_type" bson:"event_type"`

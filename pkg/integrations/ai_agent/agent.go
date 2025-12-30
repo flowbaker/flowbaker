@@ -778,6 +778,11 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 	tools := make([]tool.Tool, 0, len(toolNodes))
 
 	for _, toolNode := range toolNodes {
+		integration, err := c.executorIntegrationManager.GetIntegration(ctx, domain.IntegrationType(toolNode.IntegrationType))
+		if err != nil {
+			return nil, fmt.Errorf("failed to get integration for type %s: %w", toolNode.IntegrationType, err)
+		}
+
 		creator, err := c.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
 			IntegrationType: domain.IntegrationType(toolNode.IntegrationType),
 		})
@@ -785,8 +790,19 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			return nil, fmt.Errorf("failed to resolve tool %s: %w", toolNode.Name, err)
 		}
 
+		action, exists := integration.GetActionByType(toolNode.ActionNodeOpts.ActionType)
+		if !exists {
+			return nil, fmt.Errorf("action %s not found in integration %s", toolNode.ActionNodeOpts.ActionType, integration.Name)
+		}
+
+		isCredentialRequired := len(integration.CredentialProperties) > 0
+
 		credentialID, exists := toolNode.IntegrationSettings["credential_id"]
 		if !exists {
+			if isCredentialRequired {
+				return nil, fmt.Errorf("credential is required for tool %s %s, but not provided", integration.Name, action.Name)
+			}
+
 			credentialID = ""
 		}
 
@@ -803,7 +819,10 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			return nil, fmt.Errorf("failed to create tool %s: %w", toolNode.Name, err)
 		}
 
-		actionTool, err := c.GetActionTool(ctx, toolNode)
+		actionTool, err := c.GetActionTool(ctx, GetActionToolParams{
+			Integration: integration,
+			ToolNode:    toolNode,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get action tool %s: %w", toolNode.Name, err)
 		}
@@ -898,14 +917,19 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 	return tools, nil
 }
 
-func (c *IntegrationToolCreator) GetActionTool(ctx context.Context, toolNode domain.WorkflowNode) (types.Tool, error) {
-	integration, err := c.executorIntegrationManager.GetIntegration(ctx, domain.IntegrationType(toolNode.IntegrationType))
-	if err != nil {
-		return types.Tool{}, fmt.Errorf("failed to get integration for type %s: %w", toolNode.IntegrationType, err)
-	}
+type GetActionToolParams struct {
+	Integration domain.Integration
+	ToolNode    domain.WorkflowNode
+}
+
+func (c *IntegrationToolCreator) GetActionTool(ctx context.Context, params GetActionToolParams) (types.Tool, error) {
+	integration := params.Integration
+	toolNode := params.ToolNode
 
 	var action domain.IntegrationAction
+
 	found := false
+
 	for _, a := range integration.Actions {
 		if a.ActionType == toolNode.ActionNodeOpts.ActionType {
 			action = a
@@ -913,6 +937,7 @@ func (c *IntegrationToolCreator) GetActionTool(ctx context.Context, toolNode dom
 			break
 		}
 	}
+
 	if !found {
 		return types.Tool{}, fmt.Errorf("action not found for type %s in integration %s", toolNode.ActionNodeOpts.ActionType, toolNode.IntegrationType)
 	}
