@@ -40,7 +40,6 @@ type IntegrationActionType string
 // IntegrationTriggerEventType represents the type of integration trigger event
 type IntegrationTriggerEventType string
 
-// StartExecutionRequest represents the request to start a workflow execution
 type StartExecutionRequest struct {
 	ExecutionID     string           `json:"execution_id"`
 	UserID          *string          `json:"user_id,omitempty"`

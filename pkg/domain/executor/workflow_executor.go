@@ -188,6 +188,8 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	workspaceID := w.workflow.WorkspaceID
 	defer w.streamEventPublisher.Close()
 
+	isErrorTrigger := w.IsErrorTrigger(nodeID)
+
 	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
 		UserID:              w.userID,
@@ -196,6 +198,8 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		WorkflowExecutionID: w.executionID,
 		EnableEvents:        w.enableEvents,
 		Observer:            w.observer,
+		IsFromErrorTrigger:  isErrorTrigger,
+		IsTesting:           w.IsTestingWorkflow,
 	})
 
 	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
@@ -234,7 +238,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		if err != nil {
 			log.Error().Err(err).Msg("Error executing node")
 
-			// Notify observers about node failure
 			errNotify := w.observer.Notify(ctx, NodeExecutionFailedEvent{
 				NodeID:         execution.NodeID,
 				ItemsByInputID: execution.PayloadByInputID.ToItemsByInputID(),
@@ -774,4 +777,13 @@ func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorPa
 		IntegrationType:       integrationType,
 		IntegrationActionType: domain.IntegrationActionType(actionType),
 	}, nil
+}
+
+func (w *WorkflowExecutor) IsErrorTrigger(nodeID string) bool {
+	node, exists := w.workflow.GetNodeByID(nodeID)
+	if !exists {
+		return false
+	}
+
+	return node.Type == domain.NodeTypeTrigger && node.TriggerNodeOpts.EventType == "on_error"
 }

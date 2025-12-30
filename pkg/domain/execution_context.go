@@ -17,6 +17,8 @@ type WorkflowExecutionContext struct {
 	ResponseStatusCode  int
 	ExecutionObserver   ExecutionObserver
 	IsReExecution       bool
+	IsFromErrorTrigger  bool
+	IsTesting           bool
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {
@@ -39,6 +41,8 @@ type NewContextWithWorkflowExecutionContextParams struct {
 	EnableEvents        bool
 	Observer            ExecutionObserver
 	IsReExecution       bool
+	IsFromErrorTrigger  bool
+	IsTesting           bool
 }
 
 func NewContextWithWorkflowExecutionContext(ctx context.Context, params NewContextWithWorkflowExecutionContextParams) context.Context {
@@ -53,6 +57,8 @@ func NewContextWithWorkflowExecutionContext(ctx context.Context, params NewConte
 		ResponseStatusCode:  200,
 		ExecutionObserver:   params.Observer,
 		IsReExecution:       params.IsReExecution,
+		IsFromErrorTrigger:  params.IsFromErrorTrigger,
+		IsTesting:           params.IsTesting,
 	}
 
 	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)

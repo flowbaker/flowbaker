@@ -46,3 +46,10 @@ type ProcessEmbeddingTask struct {
 func (t ProcessEmbeddingTask) GetType() TaskType {
 	return ProcessEmbedding
 }
+
+type HandleNodeFailedEventParams struct {
+	WorkflowID  string `json:"workflow_id"`
+	WorkspaceID string `json:"workspace_id"`
+	TriggerID   string `json:"trigger_id"`
+	Payload     any    `json:"payload"`
+}

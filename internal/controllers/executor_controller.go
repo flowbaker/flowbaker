@@ -81,8 +81,6 @@ func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
 		req.Workflow = &req.TestingWorkflow.Workflow
 	}
 
-	log.Info().Msgf("Starting execution for workflow %s in workspace %s", req.Workflow.ID, workspaceID)
-
 	p := executor.ExecuteParams{
 		ExecutionID:       req.ExecutionID,
 		Workflow:          mappers.ExecutorWorkflowToDomain(req.Workflow),

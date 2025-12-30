@@ -78,6 +78,8 @@ type NodeExecutionStartedEvent struct {
 	WorkflowExecutionID string `json:"workflow_execution_id"`
 	EventOrder          int    `json:"event_order"`
 	IsReExecution       bool   `json:"is_re_execution"`
+	IsTesting           bool   `json:"is_testing"`
+	IsFromErrorTrigger  bool   `json:"is_from_error_trigger"`
 }
 
 func (e *NodeExecutionStartedEvent) GetType() EventType {
@@ -102,6 +104,8 @@ type NodeExecutedEvent struct {
 	WorkflowExecutionID string               `json:"workflow_execution_id"`
 	EventOrder          int                  `json:"event_order"`
 	IsReExecution       bool                 `json:"is_re_execution"`
+	IsTesting           bool                 `json:"is_testing"`
+	IsFromErrorTrigger  bool                 `json:"is_from_error_trigger"`
 }
 
 func (e *NodeExecutedEvent) GetType() EventType {
@@ -127,6 +131,8 @@ type NodeFailedEvent struct {
 	ItemsByOutputID     map[string]NodeItems `json:"items_by_output_id"`
 	EventOrder          int                  `json:"event_order"`
 	IsReExecution       bool                 `json:"is_re_execution"`
+	IsTesting           bool                 `json:"is_testing"`
+	IsFromErrorTrigger  bool                 `json:"is_from_error_trigger"`
 }
 
 func (e *NodeFailedEvent) GetType() EventType {
@@ -155,6 +161,8 @@ type WorkflowExecutionCompletedEvent struct {
 	WorkflowExecutionID string `json:"workflow_execution_id"`
 	Timestamp           int64  `json:"timestamp"`
 	EventOrder          int    `json:"event_order"`
+	IsTesting           bool   `json:"is_testing"`
+	IsFromErrorTrigger  bool   `json:"is_from_error_trigger"`
 }
 
 func (e *WorkflowExecutionCompletedEvent) GetType() EventType {

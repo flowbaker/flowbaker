@@ -11,18 +11,40 @@ type ReExecutableEvent interface {
 	SetIsReExecution(isReExecution bool) domain.ExecutionEvent
 }
 
+type FromErrorTriggerEvent interface {
+	SetIsFromErrorTrigger(isFromErrorTrigger bool) domain.ExecutionEvent
+}
+
+type TestingEvent interface {
+	SetIsTesting(isTesting bool) domain.ExecutionEvent
+}
+
 type NodeExecutionStartedEvent struct {
-	NodeID        string
-	Timestamp     time.Time
-	IsReExecution bool
+	NodeID             string
+	Timestamp          time.Time
+	IsReExecution      bool
+	IsTesting          bool
+	IsFromErrorTrigger bool
 }
 
 func (NodeExecutionStartedEvent) GetEventType() domain.ExecutionEventType {
 	return domain.ExecutionEventTypeNodeExecutionStarted
 }
 
+func (e NodeExecutionStartedEvent) SetIsTesting(isTesting bool) domain.ExecutionEvent {
+	e.IsTesting = isTesting
+
+	return e
+}
+
 func (e NodeExecutionStartedEvent) SetIsReExecution(isReExecution bool) domain.ExecutionEvent {
 	e.IsReExecution = isReExecution
+
+	return e
+}
+
+func (e NodeExecutionStartedEvent) SetIsFromErrorTrigger(isFromErrorTrigger bool) domain.ExecutionEvent {
+	e.IsFromErrorTrigger = isFromErrorTrigger
 
 	return e
 }
@@ -39,6 +61,8 @@ type NodeExecutionCompletedEvent struct {
 	IntegrationType            domain.IntegrationType
 	IntegrationActionType      domain.IntegrationActionType
 	IsReExecution              bool
+	IsFromErrorTrigger         bool
+	IsTesting                  bool
 }
 
 func (NodeExecutionCompletedEvent) GetEventType() domain.ExecutionEventType {
@@ -51,12 +75,26 @@ func (e NodeExecutionCompletedEvent) SetIsReExecution(isReExecution bool) domain
 	return e
 }
 
+func (e NodeExecutionCompletedEvent) SetIsFromErrorTrigger(isFromErrorTrigger bool) domain.ExecutionEvent {
+	e.IsFromErrorTrigger = isFromErrorTrigger
+
+	return e
+}
+
+func (e NodeExecutionCompletedEvent) SetIsTesting(isTesting bool) domain.ExecutionEvent {
+	e.IsTesting = isTesting
+
+	return e
+}
+
 type NodeExecutionFailedEvent struct {
-	NodeID         string
-	ItemsByInputID map[string]domain.NodeItems
-	Error          error
-	Timestamp      time.Time
-	IsReExecution  bool
+	NodeID             string
+	ItemsByInputID     map[string]domain.NodeItems
+	Error              error
+	Timestamp          time.Time
+	IsReExecution      bool
+	IsFromErrorTrigger bool
+	IsTesting          bool
 }
 
 func (NodeExecutionFailedEvent) GetEventType() domain.ExecutionEventType {
@@ -69,12 +107,38 @@ func (e NodeExecutionFailedEvent) SetIsReExecution(isReExecution bool) domain.Ex
 	return e
 }
 
+func (e NodeExecutionFailedEvent) SetIsFromErrorTrigger(isFromErrorTrigger bool) domain.ExecutionEvent {
+	e.IsFromErrorTrigger = isFromErrorTrigger
+
+	return e
+}
+
+func (e NodeExecutionFailedEvent) SetIsTesting(isTesting bool) domain.ExecutionEvent {
+	e.IsTesting = isTesting
+
+	return e
+}
+
 type WorkflowExecutionCompletedEvent struct {
-	Timestamp time.Time
+	Timestamp          time.Time
+	IsTesting          bool
+	IsFromErrorTrigger bool
 }
 
 func (WorkflowExecutionCompletedEvent) GetEventType() domain.ExecutionEventType {
 	return domain.ExecutionEventTypeWorkflowExecutionCompleted
+}
+
+func (e WorkflowExecutionCompletedEvent) SetIsTesting(isTesting bool) domain.ExecutionEvent {
+	e.IsTesting = isTesting
+
+	return e
+}
+
+func (e WorkflowExecutionCompletedEvent) SetIsFromErrorTrigger(isFromErrorTrigger bool) domain.ExecutionEvent {
+	e.IsFromErrorTrigger = isFromErrorTrigger
+
+	return e
 }
 
 type executionObserver struct {
@@ -104,6 +168,20 @@ func (o *executionObserver) Notify(ctx context.Context, event domain.ExecutionEv
 			reExecutableEvent, ok := event.(ReExecutableEvent)
 			if ok {
 				event = reExecutableEvent.SetIsReExecution(true)
+			}
+		}
+
+		if executionContext.IsFromErrorTrigger {
+			fromErrorTriggerEvent, ok := event.(FromErrorTriggerEvent)
+			if ok {
+				event = fromErrorTriggerEvent.SetIsFromErrorTrigger(true)
+			}
+		}
+
+		if executionContext.IsTesting {
+			testingEvent, ok := event.(TestingEvent)
+			if ok {
+				event = testingEvent.SetIsTesting(true)
 			}
 		}
 	}
