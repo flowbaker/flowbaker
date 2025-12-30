@@ -14,9 +14,9 @@ var (
 		CredentialProperties: []domain.NodeProperty{}, // No credentials needed
 		Actions: []domain.IntegrationAction{
 			{
-				ID:          "ai_agent",
+				ID:          "execute_agent",
 				Name:        "Tool Agent",
-				ActionType:  IntegrationActionType_FunctionCallingAgent,
+				ActionType:  IntegrationActionType_ExecuteAgent,
 				Description: "Use Tool Agent to complete tasks using available tools",
 				Properties: []domain.NodeProperty{
 					{

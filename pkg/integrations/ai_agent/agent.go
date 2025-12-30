@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	IntegrationActionType_FunctionCallingAgent domain.IntegrationActionType = "function_calling_agent"
+	IntegrationActionType_ExecuteAgent domain.IntegrationActionType = "execute_agent"
 )
 
 type AIAgentCreator struct {
@@ -101,7 +101,7 @@ func NewAIAgentExecutor(deps domain.IntegrationDeps) domain.IntegrationExecutor 
 	}
 
 	actionManager := domain.NewIntegrationActionManager().
-		AddPerItemMulti(IntegrationActionType_FunctionCallingAgent, executor.ProcessFunctionCalling)
+		AddPerItemMulti(IntegrationActionType_ExecuteAgent, executor.ExecuteAgent)
 
 	executor.actionManager = actionManager
 
@@ -145,7 +145,7 @@ func (e AIChatStreamEvent) GetEventType() domain.StreamEventType {
 	return domain.StreamEventTypeAIChatStream
 }
 
-func (e *AIAgentExecutor) ProcessFunctionCalling(ctx context.Context, params domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
+func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
 	executeParams := ExecuteParams{}
 
 	err := e.parameterBinder.BindToStruct(ctx, item, &executeParams, params.IntegrationParams.Settings)
