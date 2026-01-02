@@ -439,22 +439,35 @@ var (
 						Name:        "Notion Events",
 						Description: "Select one or more Notion events to trigger this flow",
 						Required:    true,
-						Type:        domain.NodePropertyType_ListTagInput,
-						Options: []domain.NodePropertyOption{
-							{
-								Label:       "On Page Created",
-								Value:       string(IntegrationEventType_PageCreated),
-								Description: "Triggered when a new page is created in the database or workspace",
-							},
-							{
-								Label:       "On Page Property Updated",
-								Value:       string(IntegrationEventType_PagePropertyUpdated),
-								Description: "Triggered when a page's properties are updated (title, status, etc.)",
-							},
-							{
-								Label:       "On Page Content Updated",
-								Value:       string(IntegrationEventType_PageContentUpdated),
-								Description: "Triggered when a page's content blocks are updated",
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							MinItems: 1,
+							MaxItems: 0,
+							ItemType: domain.NodePropertyType_Map,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:      "event",
+									Name:     "Event",
+									Type:     domain.NodePropertyType_String,
+									Required: true,
+									Options: []domain.NodePropertyOption{
+										{
+											Label:       "On Page Created",
+											Value:       string(IntegrationEventType_PageCreated),
+											Description: "Triggered when a new page is created in the database or workspace",
+										},
+										{
+											Label:       "On Page Property Updated",
+											Value:       string(IntegrationEventType_PagePropertyUpdated),
+											Description: "Triggered when a page's properties are updated (title, status, etc.)",
+										},
+										{
+											Label:       "On Page Content Updated",
+											Value:       string(IntegrationEventType_PageContentUpdated),
+											Description: "Triggered when a page's content blocks are updated",
+										},
+									},
+								},
 							},
 						},
 					},

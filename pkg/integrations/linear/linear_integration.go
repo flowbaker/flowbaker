@@ -317,14 +317,18 @@ func (i *LinearIntegration) Execute(ctx context.Context, params domain.Integrati
 	return i.actionManager.Run(ctx, params.ActionType, params)
 }
 
+type LabelItem struct {
+	LabelID string `json:"label_id"`
+}
+
 type CreateIssueParams struct {
-	CredentialID string   `json:"credential_id"`
-	Title        string   `json:"title"`
-	Description  string   `json:"description"`
-	TeamID       string   `json:"team_id"`
-	PriorityID   string   `json:"priority_id"`
-	AssigneeID   string   `json:"assignee_id"`
-	LabelIDs     []string `json:"label_ids"`
+	CredentialID string      `json:"credential_id"`
+	Title        string      `json:"title"`
+	Description  string      `json:"description"`
+	TeamID       string      `json:"team_id"`
+	PriorityID   string      `json:"priority_id"`
+	AssigneeID   string      `json:"assignee_id"`
+	LabelIDs     []LabelItem `json:"label_ids"`
 }
 
 func (i *LinearIntegration) CreateIssue(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -389,7 +393,11 @@ func (i *LinearIntegration) CreateIssue(ctx context.Context, params domain.Integ
 		vars["assigneeId"] = p.AssigneeID
 	}
 	if len(p.LabelIDs) > 0 {
-		vars["labelIds"] = p.LabelIDs
+		labelIDs := make([]string, len(p.LabelIDs))
+		for idx, item := range p.LabelIDs {
+			labelIDs[idx] = item.LabelID
+		}
+		vars["labelIds"] = labelIDs
 	}
 	err = i.graphqlClient.Exec(ctx, issueCreateMutation, &mutationResponse, vars)
 	if err != nil {
@@ -483,11 +491,11 @@ func (i *LinearIntegration) GetIssue(ctx context.Context, params domain.Integrat
 }
 
 type GetManyIssuesParams struct {
-	TeamID     string   `json:"team_id"`
-	AssigneeID string   `json:"assignee_id"`
-	LabelIDs   []string `json:"label_ids"`
-	Query      string   `json:"query"`
-	Limit      int      `json:"limit"`
+	TeamID     string      `json:"team_id"`
+	AssigneeID string      `json:"assignee_id"`
+	LabelIDs   []LabelItem `json:"label_ids"`
+	Query      string      `json:"query"`
+	Limit      int         `json:"limit"`
 }
 
 func (i *LinearIntegration) GetManyIssues(ctx context.Context, params domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
@@ -508,9 +516,13 @@ func (i *LinearIntegration) GetManyIssues(ctx context.Context, params domain.Int
 		}
 	}
 	if len(p.LabelIDs) > 0 {
+		labelIDs := make([]string, len(p.LabelIDs))
+		for idx, item := range p.LabelIDs {
+			labelIDs[idx] = item.LabelID
+		}
 		issueFilter["labels"] = map[string]interface{}{
 			"some": map[string]interface{}{
-				"id": map[string]interface{}{"in": p.LabelIDs},
+				"id": map[string]interface{}{"in": labelIDs},
 			},
 		}
 	}
@@ -567,14 +579,14 @@ func (i *LinearIntegration) GetManyIssues(ctx context.Context, params domain.Int
 }
 
 type UpdateIssueParams struct {
-	IssueID     string   `json:"issue_id"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	TeamID      string   `json:"team_id"`
-	PriorityID  string   `json:"priority_id"`
-	AssigneeID  string   `json:"assignee_id"`
-	LabelIDs    []string `json:"label_ids"`
-	StateID     string   `json:"state_id"`
+	IssueID     string      `json:"issue_id"`
+	Title       string      `json:"title"`
+	Description string      `json:"description"`
+	TeamID      string      `json:"team_id"`
+	PriorityID  string      `json:"priority_id"`
+	AssigneeID  string      `json:"assignee_id"`
+	LabelIDs    []LabelItem `json:"label_ids"`
+	StateID     string      `json:"state_id"`
 }
 
 func (i *LinearIntegration) UpdateIssue(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -610,7 +622,11 @@ func (i *LinearIntegration) UpdateIssue(ctx context.Context, params domain.Integ
 		if len(p.LabelIDs) == 0 {
 			updateInput["labelIds"] = []string{}
 		} else {
-			updateInput["labelIds"] = p.LabelIDs
+			labelIDs := make([]string, len(p.LabelIDs))
+			for idx, item := range p.LabelIDs {
+				labelIDs[idx] = item.LabelID
+			}
+			updateInput["labelIds"] = labelIDs
 		}
 	}
 	if p.StateID != "" {

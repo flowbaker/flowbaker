@@ -983,13 +983,6 @@ func (c *IntegrationToolCreator) convertPropertyToJSONSchema(prop domain.NodePro
 		schema["description"] = prop.Description
 	}
 
-	// Handle TagInput type - always an array of strings
-	if prop.Type == domain.NodePropertyType_TagInput {
-		schema["items"] = map[string]any{
-			"type": "string",
-		}
-	}
-
 	// Handle array types
 	if prop.Type == domain.NodePropertyType_Array {
 		if prop.ArrayOpts != nil {
@@ -1061,7 +1054,7 @@ func (c *IntegrationToolCreator) mapPropertyTypeToJSONType(propType domain.NodeP
 		return "number"
 	case domain.NodePropertyType_Boolean:
 		return "boolean"
-	case domain.NodePropertyType_Array, domain.NodePropertyType_TagInput:
+	case domain.NodePropertyType_Array:
 		return "array"
 	case domain.NodePropertyType_Map:
 		return "object"

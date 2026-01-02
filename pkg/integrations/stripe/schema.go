@@ -745,172 +745,185 @@ var (
 						Name:        "Stripe Events",
 						Description: "Select one or more Stripe events to trigger this flow",
 						Required:    true,
-						Type:        domain.NodePropertyType_ListTagInput,
-						Options: []domain.NodePropertyOption{
-							// Account events
-							{Label: "On Account Updated", Value: "account.updated", Description: "Triggered when account information is updated"},
-							{Label: "On Account Application Authorized", Value: "account.application.authorized", Description: "Triggered when an application is authorized"},
-							{Label: "On Account Application Deauthorized", Value: "account.application.deauthorized", Description: "Triggered when an application is deauthorized"},
-							{Label: "On Account External Account Created", Value: "account.external_account.created", Description: "Triggered when an external account is created"},
-							{Label: "On Account External Account Deleted", Value: "account.external_account.deleted", Description: "Triggered when an external account is deleted"},
-							{Label: "On Account External Account Updated", Value: "account.external_account.updated", Description: "Triggered when an external account is updated"},
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							MinItems: 1,
+							MaxItems: 0,
+							ItemType: domain.NodePropertyType_Map,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:      "event",
+									Name:     "Event",
+									Type:     domain.NodePropertyType_String,
+									Required: true,
+									Options: []domain.NodePropertyOption{
+										// Account events
+										{Label: "On Account Updated", Value: "account.updated", Description: "Triggered when account information is updated"},
+										{Label: "On Account Application Authorized", Value: "account.application.authorized", Description: "Triggered when an application is authorized"},
+										{Label: "On Account Application Deauthorized", Value: "account.application.deauthorized", Description: "Triggered when an application is deauthorized"},
+										{Label: "On Account External Account Created", Value: "account.external_account.created", Description: "Triggered when an external account is created"},
+										{Label: "On Account External Account Deleted", Value: "account.external_account.deleted", Description: "Triggered when an external account is deleted"},
+										{Label: "On Account External Account Updated", Value: "account.external_account.updated", Description: "Triggered when an external account is updated"},
 
-							// Application fee events
-							{Label: "On Application Fee Created", Value: "application_fee.created", Description: "Triggered when an application fee is created"},
-							{Label: "On Application Fee Refunded", Value: "application_fee.refunded", Description: "Triggered when an application fee is refunded"},
-							{Label: "On Application Fee Refund Updated", Value: "application_fee.refund.updated", Description: "Triggered when an application fee refund is updated"},
+										// Application fee events
+										{Label: "On Application Fee Created", Value: "application_fee.created", Description: "Triggered when an application fee is created"},
+										{Label: "On Application Fee Refunded", Value: "application_fee.refunded", Description: "Triggered when an application fee is refunded"},
+										{Label: "On Application Fee Refund Updated", Value: "application_fee.refund.updated", Description: "Triggered when an application fee refund is updated"},
 
-							// Balance events
-							{Label: "On Balance Available", Value: "balance.available", Description: "Triggered when balance becomes available"},
+										// Balance events
+										{Label: "On Balance Available", Value: "balance.available", Description: "Triggered when balance becomes available"},
 
-							// Capability events
-							{Label: "On Capability Updated", Value: "capability.updated", Description: "Triggered when a capability is updated"},
+										// Capability events
+										{Label: "On Capability Updated", Value: "capability.updated", Description: "Triggered when a capability is updated"},
 
-							// Charge events
-							{Label: "On Charge Captured", Value: "charge.captured", Description: "Triggered when a charge is captured"},
-							{Label: "On Charge Expired", Value: "charge.expired", Description: "Triggered when a charge expires"},
-							{Label: "On Charge Failed", Value: "charge.failed", Description: "Triggered when a charge fails"},
-							{Label: "On Charge Pending", Value: "charge.pending", Description: "Triggered when a charge is pending"},
-							{Label: "On Charge Refunded", Value: "charge.refunded", Description: "Triggered when a charge is refunded"},
-							{Label: "On Charge Succeeded", Value: "charge.succeeded", Description: "Triggered when a charge succeeds"},
-							{Label: "On Charge Updated", Value: "charge.updated", Description: "Triggered when a charge is updated"},
+										// Charge events
+										{Label: "On Charge Captured", Value: "charge.captured", Description: "Triggered when a charge is captured"},
+										{Label: "On Charge Expired", Value: "charge.expired", Description: "Triggered when a charge expires"},
+										{Label: "On Charge Failed", Value: "charge.failed", Description: "Triggered when a charge fails"},
+										{Label: "On Charge Pending", Value: "charge.pending", Description: "Triggered when a charge is pending"},
+										{Label: "On Charge Refunded", Value: "charge.refunded", Description: "Triggered when a charge is refunded"},
+										{Label: "On Charge Succeeded", Value: "charge.succeeded", Description: "Triggered when a charge succeeds"},
+										{Label: "On Charge Updated", Value: "charge.updated", Description: "Triggered when a charge is updated"},
 
-							// Charge dispute events
-							{Label: "On Charge Dispute Closed", Value: "charge.dispute.closed", Description: "Triggered when a charge dispute is closed"},
-							{Label: "On Charge Dispute Created", Value: "charge.dispute.created", Description: "Triggered when a charge dispute is created"},
-							{Label: "On Charge Dispute Funds Reinstated", Value: "charge.dispute.funds_reinstated", Description: "Triggered when charge dispute funds are reinstated"},
-							{Label: "On Charge Dispute Funds Withdrawn", Value: "charge.dispute.funds_withdrawn", Description: "Triggered when charge dispute funds are withdrawn"},
-							{Label: "On Charge Dispute Updated", Value: "charge.dispute.updated", Description: "Triggered when a charge dispute is updated"},
+										// Charge dispute events
+										{Label: "On Charge Dispute Closed", Value: "charge.dispute.closed", Description: "Triggered when a charge dispute is closed"},
+										{Label: "On Charge Dispute Created", Value: "charge.dispute.created", Description: "Triggered when a charge dispute is created"},
+										{Label: "On Charge Dispute Funds Reinstated", Value: "charge.dispute.funds_reinstated", Description: "Triggered when charge dispute funds are reinstated"},
+										{Label: "On Charge Dispute Funds Withdrawn", Value: "charge.dispute.funds_withdrawn", Description: "Triggered when charge dispute funds are withdrawn"},
+										{Label: "On Charge Dispute Updated", Value: "charge.dispute.updated", Description: "Triggered when a charge dispute is updated"},
 
-							// Refund events
-							{Label: "On Charge Refund Updated", Value: "charge.refund.updated", Description: "Triggered when a charge refund is updated"},
+										// Refund events
+										{Label: "On Charge Refund Updated", Value: "charge.refund.updated", Description: "Triggered when a charge refund is updated"},
 
-							// Checkout session events
-							{Label: "On Checkout Session Completed", Value: "checkout.session.completed", Description: "Triggered when a checkout session is completed"},
+										// Checkout session events
+										{Label: "On Checkout Session Completed", Value: "checkout.session.completed", Description: "Triggered when a checkout session is completed"},
 
-							// Coupon events
-							{Label: "On Coupon Created", Value: "coupon.created", Description: "Triggered when a coupon is created"},
-							{Label: "On Coupon Deleted", Value: "coupon.deleted", Description: "Triggered when a coupon is deleted"},
-							{Label: "On Coupon Updated", Value: "coupon.updated", Description: "Triggered when a coupon is updated"},
+										// Coupon events
+										{Label: "On Coupon Created", Value: "coupon.created", Description: "Triggered when a coupon is created"},
+										{Label: "On Coupon Deleted", Value: "coupon.deleted", Description: "Triggered when a coupon is deleted"},
+										{Label: "On Coupon Updated", Value: "coupon.updated", Description: "Triggered when a coupon is updated"},
 
-							// Credit note events
-							{Label: "On Credit Note Created", Value: "credit_note.created", Description: "Triggered when a credit note is created"},
-							{Label: "On Credit Note Updated", Value: "credit_note.updated", Description: "Triggered when a credit note is updated"},
-							{Label: "On Credit Note Voided", Value: "credit_note.voided", Description: "Triggered when a credit note is voided"},
+										// Credit note events
+										{Label: "On Credit Note Created", Value: "credit_note.created", Description: "Triggered when a credit note is created"},
+										{Label: "On Credit Note Updated", Value: "credit_note.updated", Description: "Triggered when a credit note is updated"},
+										{Label: "On Credit Note Voided", Value: "credit_note.voided", Description: "Triggered when a credit note is voided"},
 
-							// Customer events
-							{Label: "On Customer Created", Value: "customer.created", Description: "Triggered when a customer is created"},
-							{Label: "On Customer Deleted", Value: "customer.deleted", Description: "Triggered when a customer is deleted"},
-							{Label: "On Customer Updated", Value: "customer.updated", Description: "Triggered when a customer is updated"},
+										// Customer events
+										{Label: "On Customer Created", Value: "customer.created", Description: "Triggered when a customer is created"},
+										{Label: "On Customer Deleted", Value: "customer.deleted", Description: "Triggered when a customer is deleted"},
+										{Label: "On Customer Updated", Value: "customer.updated", Description: "Triggered when a customer is updated"},
 
-							// Customer discount events
-							{Label: "On Customer Discount Created", Value: "customer.discount.created", Description: "Triggered when a customer discount is created"},
-							{Label: "On Customer Discount Deleted", Value: "customer.discount.deleted", Description: "Triggered when a customer discount is deleted"},
-							{Label: "On Customer Discount Updated", Value: "customer.discount.updated", Description: "Triggered when a customer discount is updated"},
+										// Customer discount events
+										{Label: "On Customer Discount Created", Value: "customer.discount.created", Description: "Triggered when a customer discount is created"},
+										{Label: "On Customer Discount Deleted", Value: "customer.discount.deleted", Description: "Triggered when a customer discount is deleted"},
+										{Label: "On Customer Discount Updated", Value: "customer.discount.updated", Description: "Triggered when a customer discount is updated"},
 
-							// Customer source events
-							{Label: "On Customer Source Created", Value: "customer.source.created", Description: "Triggered when a customer source is created"},
-							{Label: "On Customer Source Deleted", Value: "customer.source.deleted", Description: "Triggered when a customer source is deleted"},
-							{Label: "On Customer Source Expiring", Value: "customer.source.expiring", Description: "Triggered when a customer source is expiring"},
-							{Label: "On Customer Source Updated", Value: "customer.source.updated", Description: "Triggered when a customer source is updated"},
+										// Customer source events
+										{Label: "On Customer Source Created", Value: "customer.source.created", Description: "Triggered when a customer source is created"},
+										{Label: "On Customer Source Deleted", Value: "customer.source.deleted", Description: "Triggered when a customer source is deleted"},
+										{Label: "On Customer Source Expiring", Value: "customer.source.expiring", Description: "Triggered when a customer source is expiring"},
+										{Label: "On Customer Source Updated", Value: "customer.source.updated", Description: "Triggered when a customer source is updated"},
 
-							// Customer subscription events
-							{Label: "On Customer Subscription Created", Value: "customer.subscription.created", Description: "Triggered when a customer subscription is created"},
-							{Label: "On Customer Subscription Deleted", Value: "customer.subscription.deleted", Description: "Triggered when a customer subscription is deleted"},
-							{Label: "On Customer Subscription Trial Will End", Value: "customer.subscription.trial_will_end", Description: "Triggered when a customer subscription trial will end"},
-							{Label: "On Customer Subscription Updated", Value: "customer.subscription.updated", Description: "Triggered when a customer subscription is updated"},
+										// Customer subscription events
+										{Label: "On Customer Subscription Created", Value: "customer.subscription.created", Description: "Triggered when a customer subscription is created"},
+										{Label: "On Customer Subscription Deleted", Value: "customer.subscription.deleted", Description: "Triggered when a customer subscription is deleted"},
+										{Label: "On Customer Subscription Trial Will End", Value: "customer.subscription.trial_will_end", Description: "Triggered when a customer subscription trial will end"},
+										{Label: "On Customer Subscription Updated", Value: "customer.subscription.updated", Description: "Triggered when a customer subscription is updated"},
 
-							// Customer tax ID events
-							{Label: "On Customer Tax ID Created", Value: "customer.tax_id.created", Description: "Triggered when a customer tax ID is created"},
-							{Label: "On Customer Tax ID Deleted", Value: "customer.tax_id.deleted", Description: "Triggered when a customer tax ID is deleted"},
-							{Label: "On Customer Tax ID Updated", Value: "customer.tax_id.updated", Description: "Triggered when a customer tax ID is updated"},
+										// Customer tax ID events
+										{Label: "On Customer Tax ID Created", Value: "customer.tax_id.created", Description: "Triggered when a customer tax ID is created"},
+										{Label: "On Customer Tax ID Deleted", Value: "customer.tax_id.deleted", Description: "Triggered when a customer tax ID is deleted"},
+										{Label: "On Customer Tax ID Updated", Value: "customer.tax_id.updated", Description: "Triggered when a customer tax ID is updated"},
 
-							// File events
-							{Label: "On File Created", Value: "file.created", Description: "Triggered when a file is created"},
+										// File events
+										{Label: "On File Created", Value: "file.created", Description: "Triggered when a file is created"},
 
-							// Invoice events
-							{Label: "On Invoice Created", Value: "invoice.created", Description: "Triggered when an invoice is created"},
-							{Label: "On Invoice Deleted", Value: "invoice.deleted", Description: "Triggered when an invoice is deleted"},
-							{Label: "On Invoice Finalized", Value: "invoice.finalized", Description: "Triggered when an invoice is finalized"},
-							{Label: "On Invoice Marked Uncollectible", Value: "invoice.marked_uncollectible", Description: "Triggered when an invoice is marked uncollectible"},
-							{Label: "On Invoice Payment Action Required", Value: "invoice.payment_action_required", Description: "Triggered when an invoice payment action is required"},
-							{Label: "On Invoice Payment Failed", Value: "invoice.payment_failed", Description: "Triggered when an invoice payment fails"},
-							{Label: "On Invoice Payment Succeeded", Value: "invoice.payment_succeeded", Description: "Triggered when an invoice payment succeeds"},
-							{Label: "On Invoice Sent", Value: "invoice.sent", Description: "Triggered when an invoice is sent"},
-							{Label: "On Invoice Upcoming", Value: "invoice.upcoming", Description: "Triggered when an invoice is upcoming"},
-							{Label: "On Invoice Updated", Value: "invoice.updated", Description: "Triggered when an invoice is updated"},
-							{Label: "On Invoice Voided", Value: "invoice.voided", Description: "Triggered when an invoice is voided"},
+										// Invoice events
+										{Label: "On Invoice Created", Value: "invoice.created", Description: "Triggered when an invoice is created"},
+										{Label: "On Invoice Deleted", Value: "invoice.deleted", Description: "Triggered when an invoice is deleted"},
+										{Label: "On Invoice Finalized", Value: "invoice.finalized", Description: "Triggered when an invoice is finalized"},
+										{Label: "On Invoice Marked Uncollectible", Value: "invoice.marked_uncollectible", Description: "Triggered when an invoice is marked uncollectible"},
+										{Label: "On Invoice Payment Action Required", Value: "invoice.payment_action_required", Description: "Triggered when an invoice payment action is required"},
+										{Label: "On Invoice Payment Failed", Value: "invoice.payment_failed", Description: "Triggered when an invoice payment fails"},
+										{Label: "On Invoice Payment Succeeded", Value: "invoice.payment_succeeded", Description: "Triggered when an invoice payment succeeds"},
+										{Label: "On Invoice Sent", Value: "invoice.sent", Description: "Triggered when an invoice is sent"},
+										{Label: "On Invoice Upcoming", Value: "invoice.upcoming", Description: "Triggered when an invoice is upcoming"},
+										{Label: "On Invoice Updated", Value: "invoice.updated", Description: "Triggered when an invoice is updated"},
+										{Label: "On Invoice Voided", Value: "invoice.voided", Description: "Triggered when an invoice is voided"},
 
-							// Invoice item events
-							{Label: "On Invoice Item Created", Value: "invoiceitem.created", Description: "Triggered when an invoice item is created"},
-							{Label: "On Invoice Item Deleted", Value: "invoiceitem.deleted", Description: "Triggered when an invoice item is deleted"},
-							{Label: "On Invoice Item Updated", Value: "invoiceitem.updated", Description: "Triggered when an invoice item is updated"},
+										// Invoice item events
+										{Label: "On Invoice Item Created", Value: "invoiceitem.created", Description: "Triggered when an invoice item is created"},
+										{Label: "On Invoice Item Deleted", Value: "invoiceitem.deleted", Description: "Triggered when an invoice item is deleted"},
+										{Label: "On Invoice Item Updated", Value: "invoiceitem.updated", Description: "Triggered when an invoice item is updated"},
 
-							// Payment intent events
-							{Label: "On Payment Intent Amount Capturable Updated", Value: "payment_intent.amount_capturable_updated", Description: "Triggered when a payment intent amount capturable is updated"},
-							{Label: "On Payment Intent Canceled", Value: "payment_intent.canceled", Description: "Triggered when a payment intent is canceled"},
-							{Label: "On Payment Intent Created", Value: "payment_intent.created", Description: "Triggered when a payment intent is created"},
-							{Label: "On Payment Intent Payment Failed", Value: "payment_intent.payment_failed", Description: "Triggered when a payment intent payment fails"},
-							{Label: "On Payment Intent Succeeded", Value: "payment_intent.succeeded", Description: "Triggered when a payment intent succeeds"},
-							{Label: "On Payment Intent Requires Action", Value: "payment_intent.requires_action", Description: "Triggered when a payment intent requires action"},
+										// Payment intent events
+										{Label: "On Payment Intent Amount Capturable Updated", Value: "payment_intent.amount_capturable_updated", Description: "Triggered when a payment intent amount capturable is updated"},
+										{Label: "On Payment Intent Canceled", Value: "payment_intent.canceled", Description: "Triggered when a payment intent is canceled"},
+										{Label: "On Payment Intent Created", Value: "payment_intent.created", Description: "Triggered when a payment intent is created"},
+										{Label: "On Payment Intent Payment Failed", Value: "payment_intent.payment_failed", Description: "Triggered when a payment intent payment fails"},
+										{Label: "On Payment Intent Succeeded", Value: "payment_intent.succeeded", Description: "Triggered when a payment intent succeeds"},
+										{Label: "On Payment Intent Requires Action", Value: "payment_intent.requires_action", Description: "Triggered when a payment intent requires action"},
 
-							// Payment method events
-							{Label: "On Payment Method Attached", Value: "payment_method.attached", Description: "Triggered when a payment method is attached"},
-							{Label: "On Payment Method Card Automatically Updated", Value: "payment_method.card_automatically_updated", Description: "Triggered when a payment method card is automatically updated"},
-							{Label: "On Payment Method Detached", Value: "payment_method.detached", Description: "Triggered when a payment method is detached"},
-							{Label: "On Payment Method Updated", Value: "payment_method.updated", Description: "Triggered when a payment method is updated"},
+										// Payment method events
+										{Label: "On Payment Method Attached", Value: "payment_method.attached", Description: "Triggered when a payment method is attached"},
+										{Label: "On Payment Method Card Automatically Updated", Value: "payment_method.card_automatically_updated", Description: "Triggered when a payment method card is automatically updated"},
+										{Label: "On Payment Method Detached", Value: "payment_method.detached", Description: "Triggered when a payment method is detached"},
+										{Label: "On Payment Method Updated", Value: "payment_method.updated", Description: "Triggered when a payment method is updated"},
 
-							// Payout events
-							{Label: "On Payout Canceled", Value: "payout.canceled", Description: "Triggered when a payout is canceled"},
-							{Label: "On Payout Created", Value: "payout.created", Description: "Triggered when a payout is created"},
-							{Label: "On Payout Failed", Value: "payout.failed", Description: "Triggered when a payout fails"},
-							{Label: "On Payout Paid", Value: "payout.paid", Description: "Triggered when a payout is paid"},
-							{Label: "On Payout Updated", Value: "payout.updated", Description: "Triggered when a payout is updated"},
+										// Payout events
+										{Label: "On Payout Canceled", Value: "payout.canceled", Description: "Triggered when a payout is canceled"},
+										{Label: "On Payout Created", Value: "payout.created", Description: "Triggered when a payout is created"},
+										{Label: "On Payout Failed", Value: "payout.failed", Description: "Triggered when a payout fails"},
+										{Label: "On Payout Paid", Value: "payout.paid", Description: "Triggered when a payout is paid"},
+										{Label: "On Payout Updated", Value: "payout.updated", Description: "Triggered when a payout is updated"},
 
-							// Plan events
-							{Label: "On Plan Created", Value: "plan.created", Description: "Triggered when a plan is created"},
-							{Label: "On Plan Deleted", Value: "plan.deleted", Description: "Triggered when a plan is deleted"},
-							{Label: "On Plan Updated", Value: "plan.updated", Description: "Triggered when a plan is updated"},
+										// Plan events
+										{Label: "On Plan Created", Value: "plan.created", Description: "Triggered when a plan is created"},
+										{Label: "On Plan Deleted", Value: "plan.deleted", Description: "Triggered when a plan is deleted"},
+										{Label: "On Plan Updated", Value: "plan.updated", Description: "Triggered when a plan is updated"},
 
-							// Product events
-							{Label: "On Product Created", Value: "product.created", Description: "Triggered when a product is created"},
-							{Label: "On Product Deleted", Value: "product.deleted", Description: "Triggered when a product is deleted"},
-							{Label: "On Product Updated", Value: "product.updated", Description: "Triggered when a product is updated"},
+										// Product events
+										{Label: "On Product Created", Value: "product.created", Description: "Triggered when a product is created"},
+										{Label: "On Product Deleted", Value: "product.deleted", Description: "Triggered when a product is deleted"},
+										{Label: "On Product Updated", Value: "product.updated", Description: "Triggered when a product is updated"},
 
-							// Setup intent events
-							{Label: "On Setup Intent Canceled", Value: "setup_intent.canceled", Description: "Triggered when a setup intent is canceled"},
-							{Label: "On Setup Intent Created", Value: "setup_intent.created", Description: "Triggered when a setup intent is created"},
-							{Label: "On Setup Intent Setup Failed", Value: "setup_intent.setup_failed", Description: "Triggered when a setup intent setup fails"},
-							{Label: "On Setup Intent Succeeded", Value: "setup_intent.succeeded", Description: "Triggered when a setup intent succeeds"},
+										// Setup intent events
+										{Label: "On Setup Intent Canceled", Value: "setup_intent.canceled", Description: "Triggered when a setup intent is canceled"},
+										{Label: "On Setup Intent Created", Value: "setup_intent.created", Description: "Triggered when a setup intent is created"},
+										{Label: "On Setup Intent Setup Failed", Value: "setup_intent.setup_failed", Description: "Triggered when a setup intent setup fails"},
+										{Label: "On Setup Intent Succeeded", Value: "setup_intent.succeeded", Description: "Triggered when a setup intent succeeds"},
 
-							// Source events
-							{Label: "On Source Canceled", Value: "source.canceled", Description: "Triggered when a source is canceled"},
-							{Label: "On Source Chargeable", Value: "source.chargeable", Description: "Triggered when a source becomes chargeable"},
-							{Label: "On Source Failed", Value: "source.failed", Description: "Triggered when a source fails"},
-							{Label: "On Source Transaction Created", Value: "source.transaction.created", Description: "Triggered when a source transaction is created"},
+										// Source events
+										{Label: "On Source Canceled", Value: "source.canceled", Description: "Triggered when a source is canceled"},
+										{Label: "On Source Chargeable", Value: "source.chargeable", Description: "Triggered when a source becomes chargeable"},
+										{Label: "On Source Failed", Value: "source.failed", Description: "Triggered when a source fails"},
+										{Label: "On Source Transaction Created", Value: "source.transaction.created", Description: "Triggered when a source transaction is created"},
 
-							// Subscription events
-							{Label: "On Subscription Created", Value: "subscription.created", Description: "Triggered when a subscription is created"},
-							{Label: "On Subscription Deleted", Value: "subscription.deleted", Description: "Triggered when a subscription is deleted"},
-							{Label: "On Subscription Updated", Value: "subscription.updated", Description: "Triggered when a subscription is updated"},
+										// Subscription events
+										{Label: "On Subscription Created", Value: "subscription.created", Description: "Triggered when a subscription is created"},
+										{Label: "On Subscription Deleted", Value: "subscription.deleted", Description: "Triggered when a subscription is deleted"},
+										{Label: "On Subscription Updated", Value: "subscription.updated", Description: "Triggered when a subscription is updated"},
 
-							// Tax rate events
-							{Label: "On Tax Rate Created", Value: "tax_rate.created", Description: "Triggered when a tax rate is created"},
-							{Label: "On Tax Rate Updated", Value: "tax_rate.updated", Description: "Triggered when a tax rate is updated"},
+										// Tax rate events
+										{Label: "On Tax Rate Created", Value: "tax_rate.created", Description: "Triggered when a tax rate is created"},
+										{Label: "On Tax Rate Updated", Value: "tax_rate.updated", Description: "Triggered when a tax rate is updated"},
 
-							// Topup events
-							{Label: "On Topup Canceled", Value: "topup.canceled", Description: "Triggered when a topup is canceled"},
-							{Label: "On Topup Created", Value: "topup.created", Description: "Triggered when a topup is created"},
-							{Label: "On Topup Failed", Value: "topup.failed", Description: "Triggered when a topup fails"},
-							{Label: "On Topup Reversed", Value: "topup.reversed", Description: "Triggered when a topup is reversed"},
-							{Label: "On Topup Succeeded", Value: "topup.succeeded", Description: "Triggered when a topup succeeds"},
+										// Topup events
+										{Label: "On Topup Canceled", Value: "topup.canceled", Description: "Triggered when a topup is canceled"},
+										{Label: "On Topup Created", Value: "topup.created", Description: "Triggered when a topup is created"},
+										{Label: "On Topup Failed", Value: "topup.failed", Description: "Triggered when a topup fails"},
+										{Label: "On Topup Reversed", Value: "topup.reversed", Description: "Triggered when a topup is reversed"},
+										{Label: "On Topup Succeeded", Value: "topup.succeeded", Description: "Triggered when a topup succeeds"},
 
-							// Transfer events
-							{Label: "On Transfer Created", Value: "transfer.created", Description: "Triggered when a transfer is created"},
-							{Label: "On Transfer Failed", Value: "transfer.failed", Description: "Triggered when a transfer fails"},
-							{Label: "On Transfer Paid", Value: "transfer.paid", Description: "Triggered when a transfer is paid"},
-							{Label: "On Transfer Reversed", Value: "transfer.reversed", Description: "Triggered when a transfer is reversed"},
-							{Label: "On Transfer Updated", Value: "transfer.updated", Description: "Triggered when a transfer is updated"},
+										// Transfer events
+										{Label: "On Transfer Created", Value: "transfer.created", Description: "Triggered when a transfer is created"},
+										{Label: "On Transfer Failed", Value: "transfer.failed", Description: "Triggered when a transfer fails"},
+										{Label: "On Transfer Paid", Value: "transfer.paid", Description: "Triggered when a transfer is paid"},
+										{Label: "On Transfer Reversed", Value: "transfer.reversed", Description: "Triggered when a transfer is reversed"},
+										{Label: "On Transfer Updated", Value: "transfer.updated", Description: "Triggered when a transfer is updated"},
+									},
+								},
+							},
 						},
 					},
 				},

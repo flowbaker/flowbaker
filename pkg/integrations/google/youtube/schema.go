@@ -59,8 +59,21 @@ var (
 						Key:         "tags",
 						Name:        "Tags",
 						Description: "The tags of the video",
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
 						Required:    false,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							MinItems: 0,
+							MaxItems: 0,
+							ItemType: domain.NodePropertyType_Map,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:      "tag",
+									Name:     "Tag",
+									Type:     domain.NodePropertyType_String,
+									Required: true,
+								},
+							},
+						},
 					},
 					{
 						Key:         "privacy_status",

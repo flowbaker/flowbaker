@@ -446,12 +446,16 @@ type GetIssueStatusParams struct {
 	IssueKey     string `json:"issue_key"`
 }
 
+type RecipientItem struct {
+	Email string `json:"email"`
+}
+
 type CreateEmailNotificationParams struct {
-	CredentialID string   `json:"credential_id"`
-	IssueKey     string   `json:"issue_key"`
-	Recipients   []string `json:"recipients"`
-	Subject      string   `json:"subject"`
-	Message      string   `json:"message"`
+	CredentialID string          `json:"credential_id"`
+	IssueKey     string          `json:"issue_key"`
+	Recipients   []RecipientItem `json:"recipients"`
+	Subject      string          `json:"subject"`
+	Message      string          `json:"message"`
 }
 
 // Comment parameter structs
@@ -866,10 +870,10 @@ func (i *JiraIntegration) CreateEmailNotification(ctx context.Context, params do
 		return nil, fmt.Errorf("issue key, recipients, subject, and message are required")
 	}
 
-	// Parse recipients (email addresses from tag input)
+	// Parse recipients (email addresses from array input)
 	var cleanEmails []string
 	for _, recipient := range p.Recipients {
-		if clean := strings.TrimSpace(recipient); clean != "" && strings.Contains(clean, "@") {
+		if clean := strings.TrimSpace(recipient.Email); clean != "" && strings.Contains(clean, "@") {
 			cleanEmails = append(cleanEmails, clean)
 		}
 	}

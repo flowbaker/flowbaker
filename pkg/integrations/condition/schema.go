@@ -422,7 +422,20 @@ var (
 									Name:        "Search Value",
 									Description: "The value to search for in the array",
 									Required:    true,
-									Type:        domain.NodePropertyType_TagInput,
+									Type:        domain.NodePropertyType_Array,
+									ArrayOpts: &domain.ArrayPropertyOptions{
+										MinItems: 1,
+										MaxItems: 0,
+										ItemType: domain.NodePropertyType_Map,
+										ItemProperties: []domain.NodeProperty{
+											{
+												Key:      "value",
+												Name:     "Value",
+												Type:     domain.NodePropertyType_String,
+												Required: true,
+											},
+										},
+									},
 									ShowIf: &domain.ShowIf{
 										PropertyKey: "condition_type",
 										Values: []any{
@@ -681,7 +694,20 @@ var (
 						Name:        "Value",
 						Description: "The tag value to match the condition against",
 						Required:    true,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							MinItems: 0,
+							MaxItems: 0,
+							ItemType: domain.NodePropertyType_Map,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:      "tag",
+									Name:     "Tag",
+									Type:     domain.NodePropertyType_String,
+									Required: true,
+								},
+							},
+						},
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "value_type",
 							Value:       "tag",
@@ -818,8 +844,21 @@ var (
 									Key:         "value",
 									Name:        "Value",
 									Description: "The tag value to match the condition against",
-									Type:        domain.NodePropertyType_TagInput,
+									Type:        domain.NodePropertyType_Array,
 									Required:    true,
+									ArrayOpts: &domain.ArrayPropertyOptions{
+										MinItems: 0,
+										MaxItems: 0,
+										ItemType: domain.NodePropertyType_Map,
+										ItemProperties: []domain.NodeProperty{
+											{
+												Key:      "tag",
+												Name:     "Tag",
+												Type:     domain.NodePropertyType_String,
+												Required: true,
+											},
+										},
+									},
 									DependsOn: &domain.DependsOn{
 										PropertyKey: "value_type",
 										Value:       "tag",

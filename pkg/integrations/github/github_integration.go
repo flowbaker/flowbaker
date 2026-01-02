@@ -705,7 +705,11 @@ func (i *GithubIntegration) GetRepositoryIssues(ctx context.Context, input domai
 		opts.Mentioned = *params.Mentioned
 	}
 	if params.Labels != nil && len(*params.Labels) > 0 {
-		opts.Labels = *params.Labels
+		labels := make([]string, len(*params.Labels))
+		for idx, item := range *params.Labels {
+			labels[idx] = item.Label
+		}
+		opts.Labels = labels
 	}
 	if params.Sort != nil && *params.Sort != "" {
 		opts.Sort = *params.Sort
@@ -1133,13 +1137,17 @@ func (i *GithubIntegration) UserInvite(ctx context.Context, input domain.Integra
 
 // Issue Actions
 
+type LabelItem struct {
+	Label string `json:"label"`
+}
+
 type CreateIssueParams struct {
-	Owner    string   `json:"repository_id"` // Assuming repository_id is in owner/repo format or just repo name if owner is implicit
-	Repo     string   `json:"-"`             // Will be extracted from Owner if in owner/repo format
-	Title    string   `json:"title"`
-	Body     string   `json:"body,omitempty"`
-	Assignee string   `json:"assignee,omitempty"` // Single assignee for simplicity, can be changed to []string
-	Labels   []string `json:"labels,omitempty"`
+	Owner    string      `json:"repository_id"` // Assuming repository_id is in owner/repo format or just repo name if owner is implicit
+	Repo     string      `json:"-"`             // Will be extracted from Owner if in owner/repo format
+	Title    string      `json:"title"`
+	Body     string      `json:"body,omitempty"`
+	Assignee string      `json:"assignee,omitempty"` // Single assignee for simplicity, can be changed to []string
+	Labels   []LabelItem `json:"labels,omitempty"`
 }
 
 type GetIssueParams struct {
@@ -1166,10 +1174,10 @@ type EditIssueParams struct {
 	// If a single 'assignee' string is provided, it will be wrapped in a list.
 	// If 'assignees' list is provided, it will be used directly.
 	// To clear assignees, provide an empty list for 'assignees' or an empty string for 'assignee'.
-	Assignee  *string   `json:"assignee,omitempty"`
-	Assignees *[]string `json:"assignees,omitempty"`
-	Labels    *[]string `json:"labels,omitempty"`    // To clear, provide an empty list
-	Milestone *int      `json:"milestone,omitempty"` // To clear, provide null or omit. GitHub API might require explicit null or 0.
+	Assignee  *string       `json:"assignee,omitempty"`
+	Assignees *[]string     `json:"assignees,omitempty"`
+	Labels    *[]LabelItem  `json:"labels,omitempty"`    // To clear, provide an empty list
+	Milestone *int          `json:"milestone,omitempty"` // To clear, provide null or omit. GitHub API might require explicit null or 0.
 }
 
 type LockIssueParams struct {
@@ -1201,7 +1209,11 @@ func (i *GithubIntegration) CreateIssue(ctx context.Context, input domain.Integr
 		issueRequest.Assignees = &[]string{params.Assignee}
 	}
 	if len(params.Labels) > 0 {
-		issueRequest.Labels = &params.Labels
+		labels := make([]string, len(params.Labels))
+		for idx, item := range params.Labels {
+			labels[idx] = item.Label
+		}
+		issueRequest.Labels = &labels
 	}
 
 	issue, _, err := i.githubClient.Issues.Create(ctx, owner, repoName, issueRequest)
@@ -1280,7 +1292,11 @@ func (i *GithubIntegration) EditIssue(ctx context.Context, input domain.Integrat
 		updated = true
 	}
 	if params.Labels != nil {
-		issueRequest.Labels = params.Labels // To clear, pass an empty slice
+		labels := make([]string, len(*params.Labels))
+		for idx, item := range *params.Labels {
+			labels[idx] = item.Label
+		}
+		issueRequest.Labels = &labels // To clear, pass an empty slice
 		updated = true
 	}
 	if params.Milestone != nil { // To remove a milestone, API typically requires sending null or 0
@@ -1680,19 +1696,19 @@ type UpdateReleaseParams struct {
 }
 
 type GetRepositoryIssuesParams struct {
-	Owner     string    `json:"repository_id"`
-	Repo      string    `json:"-"`
-	Milestone *string   `json:"milestone,omitempty"` // Milestone number or "*" for any, "none" for no milestone
-	State     *string   `json:"state,omitempty"`     // open, closed, all. Default: open
-	Assignee  *string   `json:"assignee,omitempty"`  // User login, "*" for any, "none" for no assignee
-	Creator   *string   `json:"creator,omitempty"`   // User login
-	Mentioned *string   `json:"mentioned,omitempty"` // User login
-	Labels    *[]string `json:"labels,omitempty"`    // List of label names to filter by.
-	Sort      *string   `json:"sort,omitempty"`      // created, updated, comments. Default: created
-	Direction *string   `json:"direction,omitempty"` // asc, desc. Default: desc
-	Since     *string   `json:"since,omitempty"`     // ISO 8601 timestamp (YYYY-MM-DDTHH:MM:SSZ)
-	Limit     *int      `json:"limit,omitempty"`     // Maximum number of issues to return (1-100). Default: 30
-	Page      *int      `json:"page,omitempty"`      // Page number of results to fetch. Default: 1
+	Owner     string       `json:"repository_id"`
+	Repo      string       `json:"-"`
+	Milestone *string      `json:"milestone,omitempty"` // Milestone number or "*" for any, "none" for no milestone
+	State     *string      `json:"state,omitempty"`     // open, closed, all. Default: open
+	Assignee  *string      `json:"assignee,omitempty"`  // User login, "*" for any, "none" for no assignee
+	Creator   *string      `json:"creator,omitempty"`   // User login
+	Mentioned *string      `json:"mentioned,omitempty"` // User login
+	Labels    *[]LabelItem `json:"labels,omitempty"`    // List of label names to filter by.
+	Sort      *string      `json:"sort,omitempty"`      // created, updated, comments. Default: created
+	Direction *string      `json:"direction,omitempty"` // asc, desc. Default: desc
+	Since     *string      `json:"since,omitempty"`     // ISO 8601 timestamp (YYYY-MM-DDTHH:MM:SSZ)
+	Limit     *int         `json:"limit,omitempty"`     // Maximum number of issues to return (1-100). Default: 30
+	Page      *int         `json:"page,omitempty"`      // Page number of results to fetch. Default: 1
 }
 
 type GetRepositoryLicenseParams struct {

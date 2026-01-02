@@ -406,19 +406,19 @@ func (i *PipedriveIntegration) DeleteDeal(ctx context.Context, params domain.Int
 }
 
 type ListDealsParams struct {
-	OwnerID       int      `json:"owner_id,omitempty"`
-	PersonID      int      `json:"person_id,omitempty"`
-	OrgID         int      `json:"org_id,omitempty"`
-	PipelineID    int      `json:"pipeline_id,omitempty"`
-	StageID       int      `json:"stage_id,omitempty"`
-	Status        string   `json:"status,omitempty"`
-	UpdatedSince  string   `json:"updated_since,omitempty"`
-	UpdatedUntil  string   `json:"updated_until,omitempty"`
-	SortBy        string   `json:"sort_by,omitempty"`
-	SortDirection string   `json:"sort_direction,omitempty"`
-	IncludeFields []string `json:"include_fields,omitempty"`
-	Limit         int      `json:"limit,omitempty"`
-	Cursor        string   `json:"cursor,omitempty"`
+	OwnerID       int         `json:"owner_id,omitempty"`
+	PersonID      int         `json:"person_id,omitempty"`
+	OrgID         int         `json:"org_id,omitempty"`
+	PipelineID    int         `json:"pipeline_id,omitempty"`
+	StageID       int         `json:"stage_id,omitempty"`
+	Status        string      `json:"status,omitempty"`
+	UpdatedSince  string      `json:"updated_since,omitempty"`
+	UpdatedUntil  string      `json:"updated_until,omitempty"`
+	SortBy        string      `json:"sort_by,omitempty"`
+	SortDirection string      `json:"sort_direction,omitempty"`
+	IncludeFields []FieldItem `json:"include_fields,omitempty"`
+	Limit         int         `json:"limit,omitempty"`
+	Cursor        string      `json:"cursor,omitempty"`
 }
 
 type ListDealsResponse struct {
@@ -465,8 +465,8 @@ func (i *PipedriveIntegration) ListDeals(ctx context.Context, params domain.Inte
 		queryParams.Add("sort_direction", p.SortDirection)
 	}
 	if len(p.IncludeFields) > 0 {
-		for _, field := range p.IncludeFields {
-			queryParams.Add("include_fields", field)
+		for _, item := range p.IncludeFields {
+			queryParams.Add("include_fields", item.Field)
 		}
 	}
 
@@ -500,11 +500,23 @@ func (i *PipedriveIntegration) ListDeals(ctx context.Context, params domain.Inte
 	return items, nil
 }
 
+type EmailItem struct {
+	Email string `json:"email"`
+}
+
+type PhoneItem struct {
+	Phone string `json:"phone"`
+}
+
+type FieldItem struct {
+	Field string `json:"field"`
+}
+
 type CreatePersonParams struct {
-	Name   string   `json:"name"`
-	Emails []string `json:"emails,omitempty"`
-	Phones []string `json:"phones,omitempty"`
-	OrgID  int      `json:"org_id,omitempty"`
+	Name   string      `json:"name"`
+	Emails []EmailItem `json:"emails,omitempty"`
+	Phones []PhoneItem `json:"phones,omitempty"`
+	OrgID  int         `json:"org_id,omitempty"`
 }
 
 type CreatePersonRequest struct {
@@ -534,16 +546,16 @@ func (i *PipedriveIntegration) CreatePerson(ctx context.Context, params domain.I
 	}
 
 	phones := []CreatePersonPhone{}
-	for _, phone := range p.Phones {
+	for _, item := range p.Phones {
 		phones = append(phones, CreatePersonPhone{
-			Value: phone,
+			Value: item.Phone,
 		})
 	}
 
 	emails := []CreatePersonEmail{}
-	for _, email := range p.Emails {
+	for _, item := range p.Emails {
 		emails = append(emails, CreatePersonEmail{
-			Value: email,
+			Value: item.Email,
 		})
 	}
 
@@ -568,11 +580,11 @@ func (i *PipedriveIntegration) CreatePerson(ctx context.Context, params domain.I
 }
 
 type UpdatePersonParams struct {
-	ID     int      `json:"id"`
-	Name   string   `json:"name,omitempty"`
-	Emails []string `json:"email,omitempty"`
-	Phones []string `json:"phone,omitempty"`
-	OrgID  int      `json:"org_id,omitempty"`
+	ID     int         `json:"id"`
+	Name   string      `json:"name,omitempty"`
+	Emails []EmailItem `json:"emails,omitempty"`
+	Phones []PhoneItem `json:"phones,omitempty"`
+	OrgID  int         `json:"org_id,omitempty"`
 }
 
 type UpdatePersonRequest struct {
@@ -591,10 +603,20 @@ func (i *PipedriveIntegration) UpdatePerson(ctx context.Context, params domain.I
 
 	endpoint := fmt.Sprintf("/persons/%d", p.ID)
 
+	emails := make([]string, len(p.Emails))
+	for idx, item := range p.Emails {
+		emails[idx] = item.Email
+	}
+
+	phones := make([]string, len(p.Phones))
+	for idx, item := range p.Phones {
+		phones[idx] = item.Phone
+	}
+
 	request := UpdatePersonRequest{
 		Name:   p.Name,
-		Emails: p.Emails,
-		Phones: p.Phones,
+		Emails: emails,
+		Phones: phones,
 		OrgID:  p.OrgID,
 	}
 
@@ -788,18 +810,18 @@ func (i *PipedriveIntegration) DeletePerson(ctx context.Context, params domain.I
 }
 
 type ListPersonsParams struct {
-	QueryMode     string   `json:"query_mode,omitempty"`
-	FilterID      int      `json:"filter_id,omitempty"`
-	IDs           string   `json:"ids,omitempty"`
-	OwnerID       int      `json:"owner_id,omitempty"`
-	OrgID         int      `json:"org_id,omitempty"`
-	UpdatedSince  string   `json:"updated_since,omitempty"`
-	UpdatedUntil  string   `json:"updated_until,omitempty"`
-	SortBy        string   `json:"sort_by,omitempty"`
-	SortDirection string   `json:"sort_direction,omitempty"`
-	IncludeFields []string `json:"include_fields,omitempty"`
-	Limit         int      `json:"limit,omitempty"`
-	Cursor        string   `json:"cursor,omitempty"`
+	QueryMode     string      `json:"query_mode,omitempty"`
+	FilterID      int         `json:"filter_id,omitempty"`
+	IDs           string      `json:"ids,omitempty"`
+	OwnerID       int         `json:"owner_id,omitempty"`
+	OrgID         int         `json:"org_id,omitempty"`
+	UpdatedSince  string      `json:"updated_since,omitempty"`
+	UpdatedUntil  string      `json:"updated_until,omitempty"`
+	SortBy        string      `json:"sort_by,omitempty"`
+	SortDirection string      `json:"sort_direction,omitempty"`
+	IncludeFields []FieldItem `json:"include_fields,omitempty"`
+	Limit         int         `json:"limit,omitempty"`
+	Cursor        string      `json:"cursor,omitempty"`
 }
 
 type ListPersonsResponse struct {
@@ -834,8 +856,8 @@ func (i *PipedriveIntegration) ListPersons(ctx context.Context, params domain.In
 		queryParams.Add("sort_direction", p.SortDirection)
 	}
 	if len(p.IncludeFields) > 0 {
-		for _, field := range p.IncludeFields {
-			queryParams.Add("include_fields", field)
+		for _, item := range p.IncludeFields {
+			queryParams.Add("include_fields", item.Field)
 		}
 	}
 
@@ -895,14 +917,14 @@ func (i *PipedriveIntegration) DeleteOrganization(ctx context.Context, params do
 }
 
 type ListOrganizationsParams struct {
-	OwnerID       int      `json:"owner_id,omitempty"`
-	UpdatedSince  string   `json:"updated_since,omitempty"`
-	UpdatedUntil  string   `json:"updated_until,omitempty"`
-	SortBy        string   `json:"sort_by,omitempty"`
-	SortDirection string   `json:"sort_direction,omitempty"`
-	IncludeFields []string `json:"include_fields,omitempty"`
-	Limit         int      `json:"limit,omitempty"`
-	Cursor        string   `json:"cursor,omitempty"`
+	OwnerID       int         `json:"owner_id,omitempty"`
+	UpdatedSince  string      `json:"updated_since,omitempty"`
+	UpdatedUntil  string      `json:"updated_until,omitempty"`
+	SortBy        string      `json:"sort_by,omitempty"`
+	SortDirection string      `json:"sort_direction,omitempty"`
+	IncludeFields []FieldItem `json:"include_fields,omitempty"`
+	Limit         int         `json:"limit,omitempty"`
+	Cursor        string      `json:"cursor,omitempty"`
 }
 
 type ListOrganizationsResponse struct {
@@ -934,8 +956,8 @@ func (i *PipedriveIntegration) ListOrganizations(ctx context.Context, params dom
 		queryParams.Add("sort_direction", p.SortDirection)
 	}
 	if len(p.IncludeFields) > 0 {
-		for _, field := range p.IncludeFields {
-			queryParams.Add("include_fields", field)
+		for _, item := range p.IncludeFields {
+			queryParams.Add("include_fields", item.Field)
 		}
 	}
 
@@ -1183,18 +1205,18 @@ func (i *PipedriveIntegration) DeleteActivity(ctx context.Context, params domain
 }
 
 type ListActivitiesParams struct {
-	OwnerID       int      `json:"owner_id,omitempty"`
-	DealID        int      `json:"deal_id,omitempty"`
-	PersonID      int      `json:"person_id,omitempty"`
-	OrgID         int      `json:"org_id,omitempty"`
-	Done          string   `json:"done,omitempty"`
-	UpdatedSince  string   `json:"updated_since,omitempty"`
-	UpdatedUntil  string   `json:"updated_until,omitempty"`
-	SortBy        string   `json:"sort_by,omitempty"`
-	SortDirection string   `json:"sort_direction,omitempty"`
-	IncludeFields []string `json:"include_fields,omitempty"`
-	Limit         int      `json:"limit,omitempty"`
-	Cursor        string   `json:"cursor,omitempty"`
+	OwnerID       int         `json:"owner_id,omitempty"`
+	DealID        int         `json:"deal_id,omitempty"`
+	PersonID      int         `json:"person_id,omitempty"`
+	OrgID         int         `json:"org_id,omitempty"`
+	Done          string      `json:"done,omitempty"`
+	UpdatedSince  string      `json:"updated_since,omitempty"`
+	UpdatedUntil  string      `json:"updated_until,omitempty"`
+	SortBy        string      `json:"sort_by,omitempty"`
+	SortDirection string      `json:"sort_direction,omitempty"`
+	IncludeFields []FieldItem `json:"include_fields,omitempty"`
+	Limit         int         `json:"limit,omitempty"`
+	Cursor        string      `json:"cursor,omitempty"`
 }
 
 type ListActivitiesResponse struct {
@@ -1238,8 +1260,8 @@ func (i *PipedriveIntegration) ListActivities(ctx context.Context, params domain
 		queryParams.Add("sort_direction", p.SortDirection)
 	}
 	if len(p.IncludeFields) > 0 {
-		for _, field := range p.IncludeFields {
-			queryParams.Add("include_fields", field)
+		for _, item := range p.IncludeFields {
+			queryParams.Add("include_fields", item.Field)
 		}
 	}
 

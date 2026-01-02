@@ -154,16 +154,24 @@ func (i *ResendIntegration) createResendContact(ctx context.Context, params Crea
 	}, nil
 }
 
+type EmailItem struct {
+	Email string `json:"email"`
+}
+
+type TagItem struct {
+	Tag string `json:"tag"`
+}
+
 type SendEmailParams struct {
-	From    string   `json:"from"`
-	To      []string `json:"to"` // tag input array
-	Subject string   `json:"subject"`
-	Html    string   `json:"html,omitempty"`
-	Text    string   `json:"text,omitempty"`
-	ReplyTo string   `json:"reply_to,omitempty"`
-	Cc      []string `json:"cc,omitempty"`   // tag input array
-	Bcc     []string `json:"bcc,omitempty"`  // tag input array
-	Tags    []string `json:"tags,omitempty"` // tag input array
+	From    string      `json:"from"`
+	To      []EmailItem `json:"to"`
+	Subject string      `json:"subject"`
+	Html    string      `json:"html,omitempty"`
+	Text    string      `json:"text,omitempty"`
+	ReplyTo string      `json:"reply_to,omitempty"`
+	Cc      []EmailItem `json:"cc,omitempty"`
+	Bcc     []EmailItem `json:"bcc,omitempty"`
+	Tags    []TagItem   `json:"tags,omitempty"`
 }
 
 type SendEmailOutputItem struct {
@@ -192,10 +200,16 @@ func (i *ResendIntegration) SendEmail(ctx context.Context, params domain.Integra
 
 // sendEmailAPI makes the actual API call to send an email via Resend
 func (i *ResendIntegration) sendResendEmail(ctx context.Context, params SendEmailParams) (SendEmailOutputItem, error) {
+	// Convert []EmailItem to []string for To
+	toEmails := make([]string, len(params.To))
+	for idx, item := range params.To {
+		toEmails[idx] = item.Email
+	}
+
 	// Create email request using Resend SDK
 	sendEmailRequest := &resend.SendEmailRequest{
 		From:    params.From,
-		To:      params.To, // Already a []string array
+		To:      toEmails,
 		Subject: params.Subject,
 		Html:    params.Html,
 		Text:    params.Text,
@@ -203,15 +217,23 @@ func (i *ResendIntegration) sendResendEmail(ctx context.Context, params SendEmai
 	}
 
 	if len(params.Cc) > 0 {
-		sendEmailRequest.Cc = params.Cc
+		ccEmails := make([]string, len(params.Cc))
+		for idx, item := range params.Cc {
+			ccEmails[idx] = item.Email
+		}
+		sendEmailRequest.Cc = ccEmails
 	}
 	if len(params.Bcc) > 0 {
-		sendEmailRequest.Bcc = params.Bcc
+		bccEmails := make([]string, len(params.Bcc))
+		for idx, item := range params.Bcc {
+			bccEmails[idx] = item.Email
+		}
+		sendEmailRequest.Bcc = bccEmails
 	}
 	if len(params.Tags) > 0 {
 		tags := make([]resend.Tag, len(params.Tags))
-		for i, tagStr := range params.Tags {
-			tags[i] = resend.Tag{Name: tagStr, Value: tagStr}
+		for idx, tagItem := range params.Tags {
+			tags[idx] = resend.Tag{Name: tagItem.Tag, Value: tagItem.Tag}
 		}
 		sendEmailRequest.Tags = tags
 	}
@@ -225,8 +247,8 @@ func (i *ResendIntegration) sendResendEmail(ctx context.Context, params SendEmai
 	return SendEmailOutputItem{
 		ID:        response.Id,
 		From:      params.From,
-		To:        strings.Join(params.To, ", "), // Convert array back to comma-separated string for consistency
-		CreatedAt: "",                            // SDK doesn't return created_at in send response
+		To:        strings.Join(toEmails, ", "),
+		CreatedAt: "",
 	}, nil
 }
 

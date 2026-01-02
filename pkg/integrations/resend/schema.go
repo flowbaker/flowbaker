@@ -82,7 +82,21 @@ var (
 						Name:        "To",
 						Description: "The recipient email addresses",
 						Required:    true,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							MinItems: 1,
+							MaxItems: 50,
+							ItemType: domain.NodePropertyType_Map,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:      "email",
+									Name:     "Email",
+									Type:     domain.NodePropertyType_String,
+									Required: true,
+									RegexKey: "email",
+								},
+							},
+						},
 					},
 					{
 						Key:         "subject",
@@ -117,21 +131,62 @@ var (
 						Name:        "CC",
 						Description: "CC email addresses",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							MinItems: 0,
+							MaxItems: 50,
+							ItemType: domain.NodePropertyType_Map,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:      "email",
+									Name:     "Email",
+									Type:     domain.NodePropertyType_String,
+									Required: true,
+									RegexKey: "email",
+								},
+							},
+						},
 					},
 					{
 						Key:         "bcc",
 						Name:        "BCC",
 						Description: "BCC email addresses",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							MinItems: 0,
+							MaxItems: 50,
+							ItemType: domain.NodePropertyType_Map,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:      "email",
+									Name:     "Email",
+									Type:     domain.NodePropertyType_String,
+									Required: true,
+									RegexKey: "email",
+								},
+							},
+						},
 					},
 					{
 						Key:         "tags",
 						Name:        "Tags",
 						Description: "Email tags",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							MinItems: 0,
+							MaxItems: 20,
+							ItemType: domain.NodePropertyType_Map,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:      "tag",
+									Name:     "Tag",
+									Type:     domain.NodePropertyType_String,
+									Required: true,
+								},
+							},
+						},
 					},
 				},
 			},

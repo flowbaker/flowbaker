@@ -97,11 +97,15 @@ func (i *YoutubeIntegration) Execute(ctx context.Context, params domain.Integrat
 	return i.actionManager.Run(ctx, params.ActionType, params)
 }
 
+type TagItem struct {
+	Tag string `json:"tag"`
+}
+
 type UploadVideoParams struct {
 	Title         string          `json:"title"`
 	Description   string          `json:"description"`
 	Video         domain.FileItem `json:"video"`
-	Tags          []string        `json:"tags"`
+	Tags          []TagItem       `json:"tags"`
 	PrivacyStatus string          `json:"privacy_status"`
 }
 
@@ -117,11 +121,16 @@ func (i *YoutubeIntegration) UploadVideo(ctx context.Context, input domain.Integ
 		return nil, fmt.Errorf("failed to bind to struct: %w", err)
 	}
 
+	tags := make([]string, len(uploadParams.Tags))
+	for idx, tagItem := range uploadParams.Tags {
+		tags[idx] = tagItem.Tag
+	}
+
 	call := i.youtubeService.Videos.Insert([]string{"snippet", "status"}, &youtube.Video{
 		Snippet: &youtube.VideoSnippet{
 			Title:       uploadParams.Title,
 			Description: uploadParams.Description,
-			Tags:        uploadParams.Tags,
+			Tags:        tags,
 		},
 		Status: &youtube.VideoStatus{
 			PrivacyStatus: uploadParams.PrivacyStatus,

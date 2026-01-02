@@ -844,7 +844,17 @@ func convertToTime(value any) (time.Time, error) {
 func convertToArray(value any) ([]any, error) {
 	switch v := value.(type) {
 	case []any:
-		return v, nil
+		result := make([]any, 0, len(v))
+		for _, item := range v {
+			if m, ok := item.(map[string]any); ok && len(m) == 1 {
+				for _, innerVal := range m {
+					result = append(result, innerVal)
+				}
+			} else {
+				result = append(result, item)
+			}
+		}
+		return result, nil
 	case string:
 		if len(v) == 0 {
 			return []any{}, nil
@@ -857,7 +867,8 @@ func convertToArray(value any) ([]any, error) {
 			return nil, fmt.Errorf("cannot unmarshal string to []any: %w", err)
 		}
 
-		return arr, nil
+		// Recursively handle parsed array
+		return convertToArray(arr)
 	case nil:
 		return []any{}, nil
 	default:

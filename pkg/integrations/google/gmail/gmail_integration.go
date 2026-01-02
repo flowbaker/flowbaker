@@ -173,12 +173,16 @@ type DraftParams struct {
 	DraftID string `json:"draft_id"`
 }
 
+type EmailItem struct {
+	Email string `json:"email"`
+}
+
 type SendMailParams struct {
-	To      []string `json:"to"`
-	Cc      []string `json:"cc"`
-	Bcc     []string `json:"bcc"`
-	Subject string   `json:"subject"`
-	Body    string   `json:"body"`
+	To      []EmailItem `json:"to"`
+	Cc      []EmailItem `json:"cc"`
+	Bcc     []EmailItem `json:"bcc"`
+	Subject string      `json:"subject"`
+	Body    string      `json:"body"`
 }
 
 type ReplyMailParams struct {
@@ -1740,11 +1744,11 @@ func formatRawEmail(p SendMailParams) (string, error) {
 
 	// Validate email addresses using the isValidEmail function
 	var validTo []string
-	for _, email := range p.To {
-		if strings.Contains(email, "@") {
-			validTo = append(validTo, email)
+	for _, item := range p.To {
+		if strings.Contains(item.Email, "@") {
+			validTo = append(validTo, item.Email)
 		} else {
-			log.Warn().Msgf("Skipping invalid email address: %s", email)
+			log.Warn().Msgf("Skipping invalid email address: %s", item.Email)
 		}
 	}
 
@@ -1755,19 +1759,19 @@ func formatRawEmail(p SendMailParams) (string, error) {
 
 	// Similarly validate Cc and Bcc
 	var validCc, validBcc []string
-	for _, email := range p.Cc {
-		if strings.Contains(email, "@") {
-			validCc = append(validCc, email)
+	for _, item := range p.Cc {
+		if strings.Contains(item.Email, "@") {
+			validCc = append(validCc, item.Email)
 		} else {
-			log.Warn().Msgf("Skipping invalid CC email address: %s", email)
+			log.Warn().Msgf("Skipping invalid CC email address: %s", item.Email)
 		}
 	}
 
-	for _, email := range p.Bcc {
-		if strings.Contains(email, "@") {
-			validBcc = append(validBcc, email)
+	for _, item := range p.Bcc {
+		if strings.Contains(item.Email, "@") {
+			validBcc = append(validBcc, item.Email)
 		} else {
-			log.Warn().Msgf("Skipping invalid BCC email address: %s", email)
+			log.Warn().Msgf("Skipping invalid BCC email address: %s", item.Email)
 		}
 	}
 
