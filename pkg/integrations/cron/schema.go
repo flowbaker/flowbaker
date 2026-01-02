@@ -13,7 +13,7 @@ var (
 	Schema domain.Integration = domain.Integration{
 		ID:                   domain.IntegrationType_Cron,
 		Name:                 "Schedule",
-		Description:          "Schedule workflows to run at specific times",
+		Description:          "Schedule workflows to run at specific times.",
 		CredentialProperties: []domain.NodeProperty{},
 		Actions:              []domain.IntegrationAction{},
 		Triggers: []domain.IntegrationTrigger{
@@ -83,12 +83,12 @@ var (
 				ID:          "cron",
 				Name:        "Cron",
 				EventType:   IntegrationTriggerType_Cron,
-				Description: "Triggered when the cron schedule is met",
+				Description: "Triggered when the cron schedule is met. Timezone is UTC-0.",
 				Properties: []domain.NodeProperty{
 					{
 						Key:              "cron",
 						Name:             "Cron",
-						Description:      "The cron schedule",
+						Description:      "Triggered when the cron schedule is met. Timezone is UTC-0.",
 						Required:         true,
 						Type:             domain.NodePropertyType_String,
 						RegexKey:         "cron",
