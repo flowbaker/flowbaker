@@ -748,6 +748,15 @@ func NewIntegrationToolCreator(deps IntegrationToolCreatorDeps) *IntegrationTool
 	}
 }
 
+func (c *IntegrationToolCreator) CreateToolSchema(
+	ctx context.Context,
+	providedByAgent []string,
+	properties []domain.NodeProperty,
+) map[string]any {
+	builder := NewPathBasedSchemaBuilder()
+	return builder.Build(providedByAgent, properties)
+}
+
 type CreateToolsParams struct {
 	Workflow       domain.Workflow
 	NodeReferences []NodeReference
@@ -795,7 +804,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			return nil, fmt.Errorf("action %s not found in integration %s", toolNode.ActionNodeOpts.ActionType, integration.Name)
 		}
 
-		isCredentialRequired := len(integration.CredentialProperties) > 0
+		isCredentialRequired := len(integration.CredentialProperties) > 0 || !integration.IsCredentialOptional
 
 		credentialID, exists := toolNode.IntegrationSettings["credential_id"]
 		if !exists {
@@ -811,6 +820,8 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			return nil, fmt.Errorf("credential_id is not a string in tool node %s", toolNode.ID)
 		}
 
+		delete(toolNode.IntegrationSettings, "credential_id")
+
 		integrationExecutor, err := creator.CreateIntegration(ctx, domain.CreateIntegrationParams{
 			WorkspaceID:  workflow.WorkspaceID,
 			CredentialID: credentialIDString,
@@ -819,13 +830,9 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			return nil, fmt.Errorf("failed to create tool %s: %w", toolNode.Name, err)
 		}
 
-		actionTool, err := c.GetActionTool(ctx, GetActionToolParams{
-			Integration: integration,
-			ToolNode:    toolNode,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get action tool %s: %w", toolNode.Name, err)
-		}
+		toolParameters := c.CreateToolSchema(ctx, toolNode.ProvidedByAgent, action.Properties)
+		toolName := fmt.Sprintf("%s_%s", strings.ToLower(string(toolNode.IntegrationType)), strings.ToLower(string(action.ActionType)))
+		toolDescription := fmt.Sprintf("%s: %s", action.Name, action.Description)
 
 		agentToolInputHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 1)
 
@@ -845,7 +852,10 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 				return "", fmt.Errorf("failed to unmarshal tool input: %w", err)
 			}
 
-			inputItems := []domain.Item{inputItem}
+			merger := NewPathBasedSettingsMerger()
+			mergedSettings := merger.Merge(toolNode.IntegrationSettings, toolNode.ProvidedByAgent, inputItem)
+
+			inputItems := []domain.Item{mergedSettings}
 
 			inputPayload, err := json.Marshal(inputItems)
 			if err != nil {
@@ -856,7 +866,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 				NodeID:     toolNode.ID,
 				ActionType: toolNode.ActionNodeOpts.ActionType,
 				IntegrationParams: domain.IntegrationParams{
-					Settings: inputItem,
+					Settings: mergedSettings,
 				},
 				PayloadByInputID: map[string]domain.Payload{
 					agentToolInputHandleID: domain.Payload(inputPayload),
@@ -867,7 +877,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			itemsByInputID := map[string]domain.NodeItems{
 				agentToolInputHandleID: {
 					FromNodeID: params.AgentNode.ID,
-					Items:      []domain.Item{inputItem},
+					Items:      []domain.Item{mergedSettings},
 				},
 			}
 
@@ -909,7 +919,9 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			return string(lastPayload), nil
 		}
 
-		funcTool := tool.Define(actionTool.Name, actionTool.Description, actionTool.Parameters, executeFunc)
+		funcTool := tool.Define(toolName, toolDescription, toolParameters, executeFunc)
+
+		log.Debug().Interface("toolname", toolName).Interface("tooldescription", toolDescription).Interface("toolparameters", toolParameters).Msg("Created tool")
 
 		tools = append(tools, funcTool)
 	}
@@ -917,262 +929,425 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 	return tools, nil
 }
 
-type GetActionToolParams struct {
-	Integration domain.Integration
-	ToolNode    domain.WorkflowNode
+type PropertyPathLookup struct {
+	pathManager *domain.PropertyPathManager
 }
 
-func (c *IntegrationToolCreator) GetActionTool(ctx context.Context, params GetActionToolParams) (types.Tool, error) {
-	integration := params.Integration
-	toolNode := params.ToolNode
+func NewPropertyPathLookup() *PropertyPathLookup {
+	return &PropertyPathLookup{
+		pathManager: domain.NewPropertyPathManager(),
+	}
+}
 
-	var action domain.IntegrationAction
+func (l *PropertyPathLookup) LookupByPath(path string, properties []domain.NodeProperty) (domain.NodeProperty, bool) {
+	segments, err := l.pathManager.ParsePath(path)
+	if err != nil {
+		log.Warn().Str("path", path).Err(err).Msg("failed to parse property path")
+		return domain.NodeProperty{}, false
+	}
 
+	if len(segments) == 0 {
+		return domain.NodeProperty{}, false
+	}
+
+	return l.lookupSegments(segments, properties)
+}
+
+func (l *PropertyPathLookup) lookupSegments(segments []domain.PropertyPathSegment, properties []domain.NodeProperty) (domain.NodeProperty, bool) {
+	if len(segments) == 0 || len(properties) == 0 {
+		return domain.NodeProperty{}, false
+	}
+
+	currentSegment := segments[0]
+	remainingSegments := segments[1:]
+
+	var foundProperty domain.NodeProperty
 	found := false
-
-	for _, a := range integration.Actions {
-		if a.ActionType == toolNode.ActionNodeOpts.ActionType {
-			action = a
+	for _, prop := range properties {
+		if prop.Key == currentSegment.Key {
+			foundProperty = prop
 			found = true
 			break
 		}
 	}
 
 	if !found {
-		return types.Tool{}, fmt.Errorf("action not found for type %s in integration %s", toolNode.ActionNodeOpts.ActionType, toolNode.IntegrationType)
+		return domain.NodeProperty{}, false
 	}
 
-	properties := make(map[string]any)
-	required := []string{}
-
-	for _, prop := range action.Properties {
-		propSchema := c.convertPropertyToJSONSchema(prop)
-		properties[prop.Key] = propSchema
-
-		if prop.Required {
-			required = append(required, prop.Key)
-		}
+	if len(remainingSegments) == 0 {
+		return foundProperty, true
 	}
 
-	parameters := map[string]any{
-		"type":       "object",
-		"properties": properties,
-	}
-	if len(required) > 0 {
-		parameters["required"] = required
+	childProperties := l.getChildProperties(foundProperty, currentSegment)
+	if len(childProperties) == 0 {
+		return domain.NodeProperty{}, false
 	}
 
-	// Create the tool name in format: {integration_type}_{action_type}
-	toolName := fmt.Sprintf("%s_%s", strings.ToLower(string(toolNode.IntegrationType)), strings.ToLower(string(action.ActionType)))
-
-	return types.Tool{
-		Name:        toolName,
-		Description: fmt.Sprintf("%s: %s", action.Name, action.Description),
-		Parameters:  parameters,
-	}, nil
+	return l.lookupSegments(remainingSegments, childProperties)
 }
 
-// convertPropertyToJSONSchema converts a domain.NodeProperty to a JSON Schema object
-func (c *IntegrationToolCreator) convertPropertyToJSONSchema(prop domain.NodeProperty) map[string]any {
-	schema := map[string]any{
-		"type": c.mapPropertyTypeToJSONType(prop.Type),
-	}
-
-	// Add description
-	if prop.Description != "" {
-		schema["description"] = prop.Description
-	}
-
-	// Handle TagInput type - always an array of strings
-	if prop.Type == domain.NodePropertyType_TagInput {
-		schema["items"] = map[string]any{
-			"type": "string",
+func (l *PropertyPathLookup) getChildProperties(prop domain.NodeProperty, segment domain.PropertyPathSegment) []domain.NodeProperty {
+	if segment.Index != nil {
+		if prop.Type == domain.NodePropertyType_Array && prop.ArrayOpts != nil {
+			return prop.ArrayOpts.ItemProperties
 		}
+		return nil
 	}
 
-	// Handle array types
-	if prop.Type == domain.NodePropertyType_Array {
+	switch prop.Type {
+	case domain.NodePropertyType_Array:
 		if prop.ArrayOpts != nil {
-			itemsSchema := map[string]any{
-				"type": c.mapPropertyTypeToJSONType(prop.ArrayOpts.ItemType),
-			}
-
-			// Handle nested properties for array items (e.g., array of objects)
-			if len(prop.ArrayOpts.ItemProperties) > 0 {
-				itemsProperties := make(map[string]any)
-				itemsRequired := []string{}
-
-				for _, itemProp := range prop.ArrayOpts.ItemProperties {
-					itemsProperties[itemProp.Key] = c.convertPropertyToJSONSchema(itemProp)
-					if itemProp.Required {
-						itemsRequired = append(itemsRequired, itemProp.Key)
-					}
-				}
-
-				itemsSchema["properties"] = itemsProperties
-				if len(itemsRequired) > 0 {
-					itemsSchema["required"] = itemsRequired
-				}
-			}
-
-			schema["items"] = itemsSchema
-
-			// Add array constraints
-			if prop.ArrayOpts.MinItems > 0 {
-				schema["minItems"] = prop.ArrayOpts.MinItems
-			}
-			if prop.ArrayOpts.MaxItems > 0 {
-				schema["maxItems"] = prop.ArrayOpts.MaxItems
-			}
+			return prop.ArrayOpts.ItemProperties
+		}
+	case domain.NodePropertyType_Map:
+		if prop.MapOpts != nil {
+			return prop.MapOpts.Properties
+		}
+	default:
+		if len(prop.SubNodeProperties) > 0 {
+			return prop.SubNodeProperties
 		}
 	}
 
-	// Handle enum options
-	if len(prop.Options) > 0 {
-		enumValues := make([]any, 0, len(prop.Options))
-		for _, option := range prop.Options {
-			enumValues = append(enumValues, option.Value)
-		}
-		schema["enum"] = enumValues
+	return nil
+}
+
+type PropertySchemaCreator interface {
+	Create(property domain.NodeProperty) JSONSchemaProperty
+	Supports(propertyType domain.NodePropertyType) bool
+}
+
+type StringSchemaCreator struct{}
+
+func (c *StringSchemaCreator) Supports(propertyType domain.NodePropertyType) bool {
+	switch propertyType {
+	case domain.NodePropertyType_String,
+		domain.NodePropertyType_Text,
+		domain.NodePropertyType_CodeEditor,
+		domain.NodePropertyType_Date,
+		domain.NodePropertyType_Query,
+		domain.NodePropertyType_Endpoint:
+		return true
+	}
+	return false
+}
+
+func (c *StringSchemaCreator) Create(property domain.NodeProperty) JSONSchemaProperty {
+	return JSONSchemaProperty{
+		Type:        "string",
+		Description: property.Description,
+		MinLength:   property.MinLength,
+		MaxLength:   property.MaxLength,
+		Pattern:     property.Pattern,
+	}
+}
+
+type NumberSchemaCreator struct{}
+
+func (c *NumberSchemaCreator) Supports(propertyType domain.NodePropertyType) bool {
+	switch propertyType {
+	case domain.NodePropertyType_Integer,
+		domain.NodePropertyType_Number,
+		domain.NodePropertyType_Float:
+		return true
+	}
+	return false
+}
+
+func (c *NumberSchemaCreator) Create(property domain.NodeProperty) JSONSchemaProperty {
+	schemaType := "number"
+	if property.Type == domain.NodePropertyType_Integer {
+		schemaType = "integer"
+	}
+	return JSONSchemaProperty{
+		Type:        schemaType,
+		Description: property.Description,
+	}
+}
+
+type BooleanSchemaCreator struct{}
+
+func (c *BooleanSchemaCreator) Supports(propertyType domain.NodePropertyType) bool {
+	return propertyType == domain.NodePropertyType_Boolean
+}
+
+func (c *BooleanSchemaCreator) Create(property domain.NodeProperty) JSONSchemaProperty {
+	return JSONSchemaProperty{
+		Type:        "boolean",
+		Description: property.Description,
+	}
+}
+
+type ArraySchemaCreator struct{}
+
+func (c *ArraySchemaCreator) Supports(propertyType domain.NodePropertyType) bool {
+	switch propertyType {
+	case domain.NodePropertyType_Array,
+		domain.NodePropertyType_TagInput,
+		domain.NodePropertyType_ListTagInput:
+		return true
+	}
+	return false
+}
+
+func (c *ArraySchemaCreator) Create(property domain.NodeProperty) JSONSchemaProperty {
+	schema := JSONSchemaProperty{
+		Type:        "array",
+		Description: property.Description,
 	}
 
-	// Add string validation constraints
-	if prop.MinLength > 0 {
-		schema["minLength"] = prop.MinLength
+	if property.ArrayOpts != nil {
+		schema.MinItems = property.ArrayOpts.MinItems
+		schema.MaxItems = property.ArrayOpts.MaxItems
 	}
-	if prop.MaxLength > 0 {
-		schema["maxLength"] = prop.MaxLength
-	}
-	if prop.Pattern != "" {
-		schema["pattern"] = prop.Pattern
+
+	switch property.Type {
+	case domain.NodePropertyType_TagInput:
+		schema.Items = &JSONSchemaProperty{Type: "string"}
+	case domain.NodePropertyType_ListTagInput:
+		schema.Items = &JSONSchemaProperty{
+			Type:  "array",
+			Items: &JSONSchemaProperty{Type: "string"},
+		}
+	default:
+		schema.Items = &JSONSchemaProperty{Type: "object"}
 	}
 
 	return schema
 }
 
-// mapPropertyTypeToJSONType maps domain.NodePropertyType to JSON Schema type strings
-func (c *IntegrationToolCreator) mapPropertyTypeToJSONType(propType domain.NodePropertyType) string {
-	switch propType {
-	case domain.NodePropertyType_String, domain.NodePropertyType_Text, domain.NodePropertyType_CodeEditor:
-		return "string"
-	case domain.NodePropertyType_Integer:
-		return "integer"
-	case domain.NodePropertyType_Number, domain.NodePropertyType_Float:
-		return "number"
-	case domain.NodePropertyType_Boolean:
-		return "boolean"
-	case domain.NodePropertyType_Array, domain.NodePropertyType_TagInput:
-		return "array"
-	case domain.NodePropertyType_Map:
-		return "object"
-	case domain.NodePropertyType_Date:
-		return "string"
-	default:
-		return "string"
-	}
+type MapSchemaCreator struct{}
+
+func (c *MapSchemaCreator) Supports(propertyType domain.NodePropertyType) bool {
+	return propertyType == domain.NodePropertyType_Map
 }
 
-type PropertySentinelSearcher struct {
-	sentinel string
-}
-
-func NewPropertySentinelSearcher(sentinel string) *PropertySentinelSearcher {
-	return &PropertySentinelSearcher{sentinel: sentinel}
-}
-
-func (s *PropertySentinelSearcher) Search(ctx context.Context, value any, property domain.NodeProperty) (JSONSchemaProperty, bool) {
-	stringSearcher := StringSentinelSearcher{sentinel: s.sentinel}
-	arraySearcher := ArraySentinelSearcher{sentinelSearcher: PropertySentinelSearcher{
-		sentinel: s.sentinel,
-	}}
-
-	switch property.Type {
-	case domain.NodePropertyType_String:
-		return stringSearcher.Search(ctx, value, property)
-	case domain.NodePropertyType_Array:
-		return arraySearcher.Search(ctx, value, property)
-	}
-
-	return JSONSchemaProperty{}, false
-}
-
-type StringSentinelSearcher struct {
-	sentinel string
-}
-
-func (s *StringSentinelSearcher) Search(ctx context.Context, value any, property domain.NodeProperty) (JSONSchemaProperty, bool) {
-	p := JSONSchemaProperty{
-		Type:        "string",
+func (c *MapSchemaCreator) Create(property domain.NodeProperty) JSONSchemaProperty {
+	return JSONSchemaProperty{
+		Type:        "object",
 		Description: property.Description,
-		Properties:  make(map[string]JSONSchemaProperty),
-		Required:    []string{},
-		MinLength:   property.MinLength,
-		MaxLength:   property.MaxLength,
-		Pattern:     property.Pattern,
 	}
-
-	valueString, ok := value.(string)
-	if !ok {
-		return p, false
-	}
-
-	if valueString == s.sentinel {
-		return p, true
-	}
-
-	return p, false
 }
 
-type ArraySentinelSearcher struct {
-	sentinelSearcher PropertySentinelSearcher
+type PathBasedSchemaBuilder struct {
+	lookup   *PropertyPathLookup
+	creators []PropertySchemaCreator
 }
 
-func (s *ArraySentinelSearcher) Search(ctx context.Context, value any, property domain.NodeProperty) (JSONSchemaProperty, bool) {
-	p := JSONSchemaProperty{
-		Type:        "array",
-		Description: property.Description,
-		Properties:  make(map[string]JSONSchemaProperty),
-		Required:    []string{},
-		Items: &JSONSchemaProperty{
-			Type:       "object",
-			Properties: make(map[string]JSONSchemaProperty),
-			Required:   []string{},
+func NewPathBasedSchemaBuilder() *PathBasedSchemaBuilder {
+	return &PathBasedSchemaBuilder{
+		lookup: NewPropertyPathLookup(),
+		creators: []PropertySchemaCreator{
+			&StringSchemaCreator{},
+			&NumberSchemaCreator{},
+			&BooleanSchemaCreator{},
+			&ArraySchemaCreator{},
+			&MapSchemaCreator{},
 		},
-		MinItems: property.ArrayOpts.MinItems,
-		MaxItems: property.ArrayOpts.MaxItems,
 	}
+}
 
-	valueArray, ok := value.([]any)
-	if !ok {
-		return JSONSchemaProperty{}, false
-	}
+func (b *PathBasedSchemaBuilder) Build(paths []string, properties []domain.NodeProperty) map[string]any {
+	schemaProperties := make(map[string]any)
+	required := []string{}
 
-	for _, value := range valueArray {
-		for _, itemProperty := range property.ArrayOpts.ItemProperties {
-			valueMap, ok := value.(map[string]any)
-			if !ok {
-				continue
-			}
+	for _, path := range paths {
+		prop, found := b.lookup.LookupByPath(path, properties)
+		if !found {
+			log.Warn().Str("path", path).Msg("property not found for path, skipping")
+			continue
+		}
 
-			subPropertyValue, exists := valueMap[itemProperty.Key]
-			if !exists {
-				continue
-			}
+		schema := b.createSchemaForProperty(prop)
+		schemaProperties[path] = schema
 
-			subProperty, ok := s.sentinelSearcher.Search(ctx, subPropertyValue, itemProperty)
-			if !ok {
-				continue
-			}
-
-			p.Items.Properties[itemProperty.Key] = subProperty
+		if prop.Required {
+			required = append(required, path)
 		}
 	}
 
-	if len(p.Items.Properties) == 0 {
-		return JSONSchemaProperty{}, false
+	result := map[string]any{
+		"type":       "object",
+		"properties": schemaProperties,
 	}
 
-	return p, true
+	if len(required) > 0 {
+		result["required"] = required
+	}
+
+	return result
+}
+
+func (b *PathBasedSchemaBuilder) createSchemaForProperty(property domain.NodeProperty) JSONSchemaProperty {
+	for _, creator := range b.creators {
+		if creator.Supports(property.Type) {
+			return creator.Create(property)
+		}
+	}
+
+	return JSONSchemaProperty{
+		Type:        "string",
+		Description: property.Description,
+	}
+}
+
+type PathBasedSettingsMerger struct {
+	pathManager *domain.PropertyPathManager
+}
+
+func NewPathBasedSettingsMerger() *PathBasedSettingsMerger {
+	return &PathBasedSettingsMerger{
+		pathManager: domain.NewPropertyPathManager(),
+	}
+}
+
+func (m *PathBasedSettingsMerger) Merge(
+	userSettings map[string]any,
+	providedByAgent []string,
+	aiValues map[string]any,
+) map[string]any {
+	result := m.deepCopy(userSettings).(map[string]any)
+
+	for _, path := range providedByAgent {
+		aiValue, exists := aiValues[path]
+		if !exists {
+			continue
+		}
+
+		err := m.SetValueAtPath(result, path, aiValue)
+		if err != nil {
+			log.Warn().Str("path", path).Err(err).Msg("failed to set value at path")
+		}
+	}
+
+	return result
+}
+
+func (m *PathBasedSettingsMerger) SetValueAtPath(target map[string]any, path string, value any) error {
+	segments, err := m.pathManager.ParsePath(path)
+	if err != nil {
+		return fmt.Errorf("failed to parse path: %w", err)
+	}
+
+	if len(segments) == 0 {
+		return fmt.Errorf("empty path")
+	}
+
+	return m.setValueAtSegments(target, segments, value)
+}
+
+func (m *PathBasedSettingsMerger) setValueAtSegments(target any, segments []domain.PropertyPathSegment, value any) error {
+	if len(segments) == 0 {
+		return nil
+	}
+
+	segment := segments[0]
+	isLastSegment := len(segments) == 1
+
+	switch t := target.(type) {
+	case map[string]any:
+		return m.setInMap(t, segment, segments[1:], value, isLastSegment)
+	case []any:
+		return m.setInArray(t, segment, segments[1:], value, isLastSegment)
+	default:
+		return fmt.Errorf("unexpected target type: %T", target)
+	}
+}
+
+func (m *PathBasedSettingsMerger) setInMap(target map[string]any, segment domain.PropertyPathSegment, remainingSegments []domain.PropertyPathSegment, value any, isLastSegment bool) error {
+	key := segment.Key
+
+	if segment.Index != nil {
+		existing, exists := target[key]
+		var arr []any
+		if exists {
+			if a, ok := existing.([]any); ok {
+				arr = a
+			} else {
+				arr = []any{}
+			}
+		} else {
+			arr = []any{}
+		}
+
+		arr = m.ensureArrayIndex(arr, *segment.Index)
+		target[key] = arr
+
+		if isLastSegment {
+			arr = append(arr, value)
+			target[key] = arr
+			return nil
+		}
+
+		if arr[*segment.Index] == nil {
+			arr[*segment.Index] = make(map[string]any)
+		}
+		return m.setValueAtSegments(arr[*segment.Index], remainingSegments, value)
+	}
+
+	if isLastSegment {
+		target[key] = value
+		return nil
+	}
+
+	existing, exists := target[key]
+	if !exists {
+		if len(remainingSegments) > 0 && remainingSegments[0].Index != nil {
+			target[key] = []any{}
+		} else {
+			target[key] = make(map[string]any)
+		}
+		existing = target[key]
+	}
+
+	return m.setValueAtSegments(existing, remainingSegments, value)
+}
+
+func (m *PathBasedSettingsMerger) setInArray(target []any, segment domain.PropertyPathSegment, remainingSegments []domain.PropertyPathSegment, value any, isLastSegment bool) error {
+	if segment.Index == nil {
+		return fmt.Errorf("expected array index for segment %s", segment.Key)
+	}
+
+	index := *segment.Index
+	target = m.ensureArrayIndex(target, index)
+
+	if isLastSegment {
+		target[index] = value
+		return nil
+	}
+
+	if target[index] == nil {
+		target[index] = make(map[string]any)
+	}
+
+	return m.setValueAtSegments(target[index], remainingSegments, value)
+}
+
+func (m *PathBasedSettingsMerger) ensureArrayIndex(arr []any, index int) []any {
+	for len(arr) <= index {
+		arr = append(arr, make(map[string]any))
+	}
+	return arr
+}
+
+func (m *PathBasedSettingsMerger) deepCopy(v any) any {
+	switch val := v.(type) {
+	case map[string]any:
+		result := make(map[string]any)
+		for k, v := range val {
+			result[k] = m.deepCopy(v)
+		}
+		return result
+	case []any:
+		result := make([]any, len(val))
+		for i, v := range val {
+			result[i] = m.deepCopy(v)
+		}
+		return result
+	default:
+		return v
+	}
 }
 
 type JSONSchemaProperty struct {
