@@ -804,7 +804,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			return nil, fmt.Errorf("action %s not found in integration %s", toolNode.ActionNodeOpts.ActionType, integration.Name)
 		}
 
-		isCredentialRequired := len(integration.CredentialProperties) > 0 || !integration.IsCredentialOptional
+		isCredentialRequired := len(integration.CredentialProperties) > 0 && !integration.IsCredentialOptional
 
 		credentialID, exists := toolNode.IntegrationSettings["credential_id"]
 		if !exists {
