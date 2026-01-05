@@ -1092,29 +1092,7 @@ func (c *ArraySchemaCreator) Supports(propertyType domain.NodePropertyType) bool
 }
 
 func (c *ArraySchemaCreator) Create(property domain.NodeProperty) JSONSchemaProperty {
-	schema := JSONSchemaProperty{
-		Type:        "array",
-		Description: property.Description,
-	}
-
-	if property.ArrayOpts != nil {
-		schema.MinItems = property.ArrayOpts.MinItems
-		schema.MaxItems = property.ArrayOpts.MaxItems
-	}
-
-	switch property.Type {
-	case domain.NodePropertyType_TagInput:
-		schema.Items = &JSONSchemaProperty{Type: "string"}
-	case domain.NodePropertyType_ListTagInput:
-		schema.Items = &JSONSchemaProperty{
-			Type:  "array",
-			Items: &JSONSchemaProperty{Type: "string"},
-		}
-	default:
-		schema.Items = &JSONSchemaProperty{Type: "object"}
-	}
-
-	return schema
+	return buildPropertySchema(property)
 }
 
 type MapSchemaCreator struct{}
@@ -1128,6 +1106,103 @@ func (c *MapSchemaCreator) Create(property domain.NodeProperty) JSONSchemaProper
 		Type:        "object",
 		Description: property.Description,
 	}
+}
+
+// buildPropertySchema recursively builds a JSON schema for a property, handling all types
+// including nested arrays and maps with unlimited depth.
+func buildPropertySchema(prop domain.NodeProperty) JSONSchemaProperty {
+	schema := JSONSchemaProperty{
+		Description: prop.Description,
+	}
+
+	// Handle enum options
+	if len(prop.Options) > 0 {
+		enumValues := make([]string, 0, len(prop.Options))
+		for _, opt := range prop.Options {
+			enumValues = append(enumValues, fmt.Sprintf("%v", opt.Value))
+		}
+		schema.Enum = enumValues
+	}
+
+	switch prop.Type {
+	case domain.NodePropertyType_String, domain.NodePropertyType_Text,
+		domain.NodePropertyType_CodeEditor, domain.NodePropertyType_Date,
+		domain.NodePropertyType_Query, domain.NodePropertyType_Endpoint:
+		schema.Type = "string"
+		schema.MinLength = prop.MinLength
+		schema.MaxLength = prop.MaxLength
+		schema.Pattern = prop.Pattern
+
+	case domain.NodePropertyType_Integer:
+		schema.Type = "integer"
+
+	case domain.NodePropertyType_Number, domain.NodePropertyType_Float:
+		schema.Type = "number"
+
+	case domain.NodePropertyType_Boolean:
+		schema.Type = "boolean"
+
+	case domain.NodePropertyType_Array:
+		schema.Type = "array"
+		if prop.ArrayOpts != nil {
+			schema.MinItems = prop.ArrayOpts.MinItems
+			schema.MaxItems = prop.ArrayOpts.MaxItems
+			if len(prop.ArrayOpts.ItemProperties) > 0 {
+				schema.Items = buildObjectSchema(prop.ArrayOpts.ItemProperties)
+			} else {
+				schema.Items = &JSONSchemaProperty{Type: "object"}
+			}
+		} else {
+			schema.Items = &JSONSchemaProperty{Type: "object"}
+		}
+
+	case domain.NodePropertyType_TagInput:
+		schema.Type = "array"
+		schema.Items = &JSONSchemaProperty{Type: "string"}
+
+	case domain.NodePropertyType_ListTagInput:
+		schema.Type = "array"
+		schema.Items = &JSONSchemaProperty{
+			Type:  "array",
+			Items: &JSONSchemaProperty{Type: "string"},
+		}
+
+	case domain.NodePropertyType_Map:
+		schema.Type = "object"
+		if prop.MapOpts != nil && len(prop.MapOpts.Properties) > 0 {
+			schema.Properties = make(map[string]JSONSchemaProperty)
+			for _, subProp := range prop.MapOpts.Properties {
+				schema.Properties[subProp.Key] = buildPropertySchema(subProp)
+			}
+		}
+
+	default:
+		schema.Type = "string"
+	}
+
+	return schema
+}
+
+// buildObjectSchema builds a JSON object schema from a list of properties
+func buildObjectSchema(properties []domain.NodeProperty) *JSONSchemaProperty {
+	schema := &JSONSchemaProperty{
+		Type:       "object",
+		Properties: make(map[string]JSONSchemaProperty),
+	}
+
+	var required []string
+	for _, prop := range properties {
+		schema.Properties[prop.Key] = buildPropertySchema(prop)
+		if prop.Required {
+			required = append(required, prop.Key)
+		}
+	}
+
+	if len(required) > 0 {
+		schema.Required = required
+	}
+
+	return schema
 }
 
 type PathBasedSchemaBuilder struct {
@@ -1180,16 +1255,7 @@ func (b *PathBasedSchemaBuilder) Build(paths []string, properties []domain.NodeP
 }
 
 func (b *PathBasedSchemaBuilder) createSchemaForProperty(property domain.NodeProperty) JSONSchemaProperty {
-	for _, creator := range b.creators {
-		if creator.Supports(property.Type) {
-			return creator.Create(property)
-		}
-	}
-
-	return JSONSchemaProperty{
-		Type:        "string",
-		Description: property.Description,
-	}
+	return buildPropertySchema(property)
 }
 
 type PathBasedSettingsMerger struct {
