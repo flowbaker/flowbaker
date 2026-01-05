@@ -51,13 +51,13 @@ const (
 type OAuthType string
 
 var (
-	OAuthTypeGoogle  OAuthType = "google"
-	OAuthTypeSlack   OAuthType = "slack"
-	OAuthTypeDropbox OAuthType = "dropbox"
-	OAuthTypeGitHub  OAuthType = "github"
-	OAuthTypeLinear  OAuthType = "linear"
-	OAuthTypeJira    OAuthType = "jira"
-	OAuthTypeNotion  OAuthType = "notion"
+	OAuthTypeGoogle         OAuthType = "google"
+	OAuthTypeSlack          OAuthType = "slack"
+	OAuthTypeDropbox        OAuthType = "dropbox"
+	OAuthTypeGitHub         OAuthType = "github"
+	OAuthTypeLinear         OAuthType = "linear"
+	OAuthTypeJira           OAuthType = "jira"
+	OAuthTypeNotion         OAuthType = "notion"
 	OAuthTypeMicrosoftTeams OAuthType = "microsoft_teams"
 )
 
@@ -168,10 +168,11 @@ type NumberPropertyOptions struct {
 }
 
 type ArrayPropertyOptions struct {
-	MinItems       int              `json:"min_items,omitempty"`
-	MaxItems       int              `json:"max_items,omitempty"`
-	ItemType       NodePropertyType `json:"item_type"`
-	ItemProperties []NodeProperty   `json:"item_properties,omitempty"`
+	MinItems       int                  `json:"min_items,omitempty"`
+	MaxItems       int                  `json:"max_items,omitempty"`
+	ItemType       NodePropertyType     `json:"item_type"`
+	ItemProperties []NodeProperty       `json:"item_properties,omitempty"`
+	Options        []NodePropertyOption `json:"options,omitempty"`
 }
 
 type CredentialSelectionOptions struct {

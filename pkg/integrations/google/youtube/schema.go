@@ -59,7 +59,10 @@ var (
 						Key:         "tags",
 						Name:        "Tags",
 						Description: "The tags of the video",
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+						},
 						Required:    false,
 					},
 					{

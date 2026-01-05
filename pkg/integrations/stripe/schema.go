@@ -745,8 +745,10 @@ var (
 						Name:        "Stripe Events",
 						Description: "Select one or more Stripe events to trigger this flow",
 						Required:    true,
-						Type:        domain.NodePropertyType_ListTagInput,
-						Options: []domain.NodePropertyOption{
+						Type: domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							Options: []domain.NodePropertyOption{
 							// Account events
 							{Label: "On Account Updated", Value: "account.updated", Description: "Triggered when account information is updated"},
 							{Label: "On Account Application Authorized", Value: "account.application.authorized", Description: "Triggered when an application is authorized"},
@@ -911,6 +913,7 @@ var (
 							{Label: "On Transfer Paid", Value: "transfer.paid", Description: "Triggered when a transfer is paid"},
 							{Label: "On Transfer Reversed", Value: "transfer.reversed", Description: "Triggered when a transfer is reversed"},
 							{Label: "On Transfer Updated", Value: "transfer.updated", Description: "Triggered when a transfer is updated"},
+							},
 						},
 					},
 				},

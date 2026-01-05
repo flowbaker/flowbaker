@@ -59,44 +59,44 @@ var (
 						Name:             "Resource Types",
 						Description:      "Select the types of Linear resources to listen for (e.g., Issue, Comment, Project).",
 						Required:         true,
-						Type:             domain.NodePropertyType_ListTagInput,
+						Type:             domain.NodePropertyType_Array,
 						ExpressionChoice: false,
-						Options: []domain.NodePropertyOption{
-							{
-								Label:       "Issue",
-								Value:       "Issue",
-								Description: "Track and manage tasks, bugs, and features",
-							},
-							{
-								Label:       "Comment",
-								Value:       "Comment",
-								Description: "Comments and discussions on issues",
-							},
-							{
-								Label:       "Cycle",
-								Value:       "Cycle",
-								Description: "Time-boxed periods for completing work",
-							},
-							{
-								Label:       "Issue Label",
-								Value:       "IssueLabel",
-								Description: "Categories and tags for organizing issues",
-							},
-							{
-								Label:       "Reaction",
-								Value:       "Reaction",
-								Description: "Emoji reactions on issues and comments",
-							},
-							{
-								Label:       "Project",
-								Value:       "Project",
-								Description: "Collections of issues organized by project",
-							},
-						},
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 1,
 							MaxItems: 6,
 							ItemType: domain.NodePropertyType_String,
+							Options: []domain.NodePropertyOption{
+								{
+									Label:       "Issue",
+									Value:       "Issue",
+									Description: "Track and manage tasks, bugs, and features",
+								},
+								{
+									Label:       "Comment",
+									Value:       "Comment",
+									Description: "Comments and discussions on issues",
+								},
+								{
+									Label:       "Cycle",
+									Value:       "Cycle",
+									Description: "Time-boxed periods for completing work",
+								},
+								{
+									Label:       "Issue Label",
+									Value:       "IssueLabel",
+									Description: "Categories and tags for organizing issues",
+								},
+								{
+									Label:       "Reaction",
+									Value:       "Reaction",
+									Description: "Emoji reactions on issues and comments",
+								},
+								{
+									Label:       "Project",
+									Value:       "Project",
+									Description: "Collections of issues organized by project",
+								},
+							},
 						},
 					},
 				},
@@ -159,7 +159,10 @@ var (
 						Name:                   "Labels",
 						Description:            "One or more labels to attach to the issue.",
 						Required:               false,
-						Type:                   domain.NodePropertyType_TagInput,
+						Type:                   domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+						},
 						Peekable:               true,
 						PeekableType:           LinearIntegrationPeekable_Labels,
 						ExpressionChoice:       true,
@@ -229,7 +232,10 @@ var (
 						Name:                   "Filter by Labels",
 						Description:            "Optionally filter issues by one or more labels.",
 						Required:               false,
-						Type:                   domain.NodePropertyType_TagInput,
+						Type:                   domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+						},
 						Peekable:               true,
 						PeekableType:           LinearIntegrationPeekable_Labels,
 						ExpressionChoice:       true,
@@ -314,7 +320,10 @@ var (
 						Name:                   "New Labels",
 						Description:            "Replace existing labels with new ones, or add/remove (provide an empty array to remove all labels).",
 						Required:               false,
-						Type:                   domain.NodePropertyType_TagInput,
+						Type:                   domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+						},
 						Peekable:               true,
 						PeekableType:           LinearIntegrationPeekable_Labels,
 						ExpressionChoice:       true,

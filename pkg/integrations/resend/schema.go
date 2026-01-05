@@ -82,7 +82,10 @@ var (
 						Name:        "To",
 						Description: "The recipient email addresses",
 						Required:    true,
-						Type:        domain.NodePropertyType_TagInput,
+						Type: domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+						},
 					},
 					{
 						Key:         "subject",
@@ -117,21 +120,30 @@ var (
 						Name:        "CC",
 						Description: "CC email addresses",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type: domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+						},
 					},
 					{
 						Key:         "bcc",
 						Name:        "BCC",
 						Description: "BCC email addresses",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type: domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+						},
 					},
 					{
 						Key:         "tags",
 						Name:        "Tags",
 						Description: "Email tags",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type: domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+						},
 					},
 				},
 			},

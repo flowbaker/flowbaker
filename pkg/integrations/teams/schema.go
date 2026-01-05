@@ -394,9 +394,12 @@ var (
 						Name:        "Teams Events",
 						Description: "Select one or more Microsoft Teams events to trigger this flow.",
 						Required:    true,
-						Type:        domain.NodePropertyType_ListTagInput,
-						Options: []domain.NodePropertyOption{
-							{Label: "On Channel Message Posted", Value: string(IntegrationEventType_TeamsChannelMessage), Description: "Triggered when a message is posted in a channel (works with Business Basic)"},
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							Options: []domain.NodePropertyOption{
+								{Label: "On Channel Message Posted", Value: string(IntegrationEventType_TeamsChannelMessage), Description: "Triggered when a message is posted in a channel (works with Business Basic)"},
+							},
 						},
 					},
 				},

@@ -422,7 +422,10 @@ var (
 									Name:        "Search Value",
 									Description: "The value to search for in the array",
 									Required:    true,
-									Type:        domain.NodePropertyType_TagInput,
+									Type:        domain.NodePropertyType_Array,
+									ArrayOpts: &domain.ArrayPropertyOptions{
+										ItemType: domain.NodePropertyType_String,
+									},
 									ShowIf: &domain.ShowIf{
 										PropertyKey: "condition_type",
 										Values: []any{
@@ -681,7 +684,10 @@ var (
 						Name:        "Value",
 						Description: "The tag value to match the condition against",
 						Required:    true,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+						},
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "value_type",
 							Value:       "tag",
@@ -818,7 +824,10 @@ var (
 									Key:         "value",
 									Name:        "Value",
 									Description: "The tag value to match the condition against",
-									Type:        domain.NodePropertyType_TagInput,
+									Type:        domain.NodePropertyType_Array,
+									ArrayOpts: &domain.ArrayPropertyOptions{
+										ItemType: domain.NodePropertyType_String,
+									},
 									Required:    true,
 									DependsOn: &domain.DependsOn{
 										PropertyKey: "value_type",
