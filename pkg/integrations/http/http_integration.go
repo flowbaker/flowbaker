@@ -880,10 +880,11 @@ func (i *HTTPIntegration) setResponseBody(ctx context.Context, resp *http.Respon
 
 	switch contentType.Type {
 	case string(ContentType_Application_JSON):
-		var jsonBody map[string]interface{}
-		if err := json.Unmarshal(body, &jsonBody); err == nil {
-			return jsonBody, nil
+		var jsonBody any
+		if err := json.Unmarshal(body, &jsonBody); err != nil {
+			return nil, fmt.Errorf("failed to parse JSON response: %w", err)
 		}
+		return jsonBody, nil
 
 	case string(ContentType_Text_Plain):
 		return string(body), nil

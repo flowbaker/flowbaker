@@ -149,6 +149,7 @@ var (
 				},
 			},
 		},
+		IsCredentialOptional: true,
 		Actions: []domain.IntegrationAction{
 			{
 				ID:          string(IntegrationActionType_Get),
