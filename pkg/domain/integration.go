@@ -150,11 +150,12 @@ var (
 )
 
 type NodeHandle struct {
-	Index        int                `json:"index" bson:"index"`
-	Type         NodeHandleType     `json:"type" bson:"type"`
-	Position     NodeHandlePosition `json:"position,omitempty" bson:"position,omitempty"`
-	Text         string             `json:"text,omitempty" bson:"text,omitempty"`
-	UsageContext ActionUsageContext `json:"usage_context,omitempty" bson:"usage_context,omitempty"`
+	Index               int                `json:"index" bson:"index"`
+	Type                NodeHandleType     `json:"type" bson:"type"`
+	Position            NodeHandlePosition `json:"position,omitempty" bson:"position,omitempty"`
+	Text                string             `json:"text,omitempty" bson:"text,omitempty"`
+	UsageContext        ActionUsageContext `json:"usage_context,omitempty" bson:"usage_context,omitempty"`
+	AllowedIntegrations []IntegrationType  `json:"allowed_integrations,omitempty" bson:"allowed_integrations,omitempty"`
 }
 
 type ContextHandles struct {

@@ -21,6 +21,21 @@ var (
 				Name:        "Chat Message Received",
 				EventType:   IntegrationTriggerType_ChatMessageReceived,
 				Description: "Triggered when a chat message is received",
+				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
+					domain.UsageContextWorkflow: {
+						Output: []domain.NodeHandle{
+							{
+								Type:         domain.NodeHandleTypeDefault,
+								Position:     domain.NodeHandlePositionBottom,
+								Text:         "Agent",
+								UsageContext: domain.UsageContextWorkflow,
+								AllowedIntegrations: []domain.IntegrationType{
+									domain.IntegrationType_AIAgent,
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	}
