@@ -853,23 +853,12 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 				return "", fmt.Errorf("failed to unmarshal tool input: %w", err)
 			}
 
-			log.Debug().
-				Str("args", args).
-				Interface("inputItem", inputItem).
-				Interface("providedByAgent", toolNode.ProvidedByAgent).
-				Interface("integrationSettings", toolNode.IntegrationSettings).
-				Msg("AI tool execution debug - before merge")
-
 			if validationErr := validateToolInput(inputItem, toolParameters); validationErr != nil {
 				return "", validationErr
 			}
 
 			merger := NewSettingsMerger()
 			mergedSettings := merger.Merge(toolNode.IntegrationSettings, toolNode.ProvidedByAgent, inputItem)
-
-			log.Debug().
-				Interface("mergedSettings", mergedSettings).
-				Msg("AI tool execution debug - after merge")
 
 			inputItems := []domain.Item{mergedSettings}
 
@@ -936,8 +925,6 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 		}
 
 		funcTool := tool.Define(toolName, toolDescription, toolParameters, executeFunc)
-
-		log.Debug().Interface("toolname", toolName).Interface("tooldescription", toolDescription).Interface("toolparameters", toolParameters).Msg("Created tool")
 
 		tools = append(tools, funcTool)
 	}
