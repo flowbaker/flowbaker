@@ -120,8 +120,6 @@ func (e *ASTExecutor) Execute(node ast.Node, context *types.ExpressionContext) (
 		}, nil
 	}
 
-	log.Debug().Interface("context", context).Msg("executing")
-
 	value, err := e.executeNode(node, context)
 	executionTime := time.Since(e.startTime).Microseconds()
 
