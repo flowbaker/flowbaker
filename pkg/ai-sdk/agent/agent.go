@@ -628,6 +628,15 @@ func (a *Agent) SaveConversation(ctx context.Context, conversation types.Convers
 		return err
 	}
 
+	now := time.Now()
+
+	for index, message := range conversation.Messages {
+		if message.CreatedAt.IsZero() {
+			message.CreatedAt = now
+			conversation.Messages[index] = message
+		}
+	}
+
 	a.OnMemorySaved(ctx, conversation)
 
 	return nil

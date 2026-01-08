@@ -200,7 +200,7 @@ func (a *PathAccessor) setInMap(target map[string]any, segment domain.PropertyPa
 		target[key] = arr
 
 		if isLastSegment {
-			arr = append(arr, value)
+			arr[*segment.Index] = value
 			target[key] = arr
 			return nil
 		}
@@ -251,7 +251,7 @@ func (a *PathAccessor) setInArray(target []any, segment domain.PropertyPathSegme
 
 func (a *PathAccessor) ensureArrayIndex(arr []any, index int) []any {
 	for len(arr) <= index {
-		arr = append(arr, make(map[string]any))
+		arr = append(arr, nil)
 	}
 	return arr
 }

@@ -1001,11 +1001,15 @@ func (l *PropertyPathLookup) lookupSegments(segments []domain.PropertyPathSegmen
 		return domain.NodeProperty{}, false
 	}
 
+	if currentSegment.Index != nil {
+		foundProperty = l.resolveArrayItemProperty(foundProperty)
+	}
+
 	if len(remainingSegments) == 0 {
 		return foundProperty, true
 	}
 
-	childProperties := l.getChildProperties(foundProperty, currentSegment)
+	childProperties := l.getChildProperties(foundProperty)
 	if len(childProperties) == 0 {
 		return domain.NodeProperty{}, false
 	}
@@ -1013,14 +1017,25 @@ func (l *PropertyPathLookup) lookupSegments(segments []domain.PropertyPathSegmen
 	return l.lookupSegments(remainingSegments, childProperties)
 }
 
-func (l *PropertyPathLookup) getChildProperties(prop domain.NodeProperty, segment domain.PropertyPathSegment) []domain.NodeProperty {
-	if segment.Index != nil {
-		if prop.Type == domain.NodePropertyType_Array && prop.ArrayOpts != nil {
-			return prop.ArrayOpts.ItemProperties
-		}
-		return nil
+func (l *PropertyPathLookup) resolveArrayItemProperty(prop domain.NodeProperty) domain.NodeProperty {
+	if prop.Type != domain.NodePropertyType_Array || prop.ArrayOpts == nil {
+		return prop
 	}
 
+	if len(prop.ArrayOpts.ItemProperties) > 0 {
+		return prop.ArrayOpts.ItemProperties[0]
+	}
+
+	return domain.NodeProperty{
+		Key:         prop.Key,
+		Name:        prop.Name,
+		Description: prop.Description,
+		Required:    prop.Required,
+		Type:        prop.ArrayOpts.ItemType,
+	}
+}
+
+func (l *PropertyPathLookup) getChildProperties(prop domain.NodeProperty) []domain.NodeProperty {
 	switch prop.Type {
 	case domain.NodePropertyType_Array:
 		if prop.ArrayOpts != nil {
@@ -1185,10 +1200,30 @@ func (c *ArraySchemaCreator) Create(prop domain.NodeProperty, registry SchemaCre
 		if prop.ArrayOpts != nil {
 			schema.MinItems = prop.ArrayOpts.MinItems
 			schema.MaxItems = prop.ArrayOpts.MaxItems
-			if len(prop.ArrayOpts.ItemProperties) > 0 {
-				schema.Items = registry.CreateObjectSchema(prop.ArrayOpts.ItemProperties)
-			} else {
-				schema.Items = &JSONSchemaProperty{Type: "object"}
+
+			switch prop.ArrayOpts.ItemType {
+			case domain.NodePropertyType_String, domain.NodePropertyType_Text,
+				domain.NodePropertyType_CodeEditor, domain.NodePropertyType_Date,
+				domain.NodePropertyType_Query, domain.NodePropertyType_Endpoint:
+				schema.Items = &JSONSchemaProperty{Type: "string"}
+			case domain.NodePropertyType_Integer:
+				schema.Items = &JSONSchemaProperty{Type: "integer"}
+			case domain.NodePropertyType_Number, domain.NodePropertyType_Float:
+				schema.Items = &JSONSchemaProperty{Type: "number"}
+			case domain.NodePropertyType_Boolean:
+				schema.Items = &JSONSchemaProperty{Type: "boolean"}
+			case domain.NodePropertyType_Map:
+				if len(prop.ArrayOpts.ItemProperties) > 0 {
+					schema.Items = registry.CreateObjectSchema(prop.ArrayOpts.ItemProperties)
+				} else {
+					schema.Items = &JSONSchemaProperty{Type: "object"}
+				}
+			default:
+				if len(prop.ArrayOpts.ItemProperties) > 0 {
+					schema.Items = registry.CreateObjectSchema(prop.ArrayOpts.ItemProperties)
+				} else {
+					schema.Items = &JSONSchemaProperty{Type: "object"}
+				}
 			}
 		} else {
 			schema.Items = &JSONSchemaProperty{Type: "object"}
