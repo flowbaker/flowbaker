@@ -435,29 +435,27 @@ var (
 						PeekableType: NotionPeekable_Databases,
 					},
 					{
-						Key:         "selected_events",
-						Name:        "Notion Events",
-						Description: "Select one or more Notion events to trigger this flow",
-						Required:    true,
-						Type:        domain.NodePropertyType_Array,
-						ArrayOpts: &domain.ArrayPropertyOptions{
-							ItemType: domain.NodePropertyType_String,
-							Options: []domain.NodePropertyOption{
-								{
-									Label:       "On Page Created",
-									Value:       string(IntegrationEventType_PageCreated),
-									Description: "Triggered when a new page is created in the database or workspace",
-								},
-								{
-									Label:       "On Page Property Updated",
-									Value:       string(IntegrationEventType_PagePropertyUpdated),
-									Description: "Triggered when a page's properties are updated (title, status, etc.)",
-								},
-								{
-									Label:       "On Page Content Updated",
-									Value:       string(IntegrationEventType_PageContentUpdated),
-									Description: "Triggered when a page's content blocks are updated",
-								},
+						Key:              "selected_events",
+						Name:             "Notion Events",
+						Description:      "Select one or more Notion events to trigger this flow",
+						Required:         true,
+						Type:             domain.NodePropertyType_ListTagInput,
+						ExpressionChoice: false,
+						Options: []domain.NodePropertyOption{
+							{
+								Label:       "On Page Created",
+								Value:       string(IntegrationEventType_PageCreated),
+								Description: "Triggered when a new page is created in the database or workspace",
+							},
+							{
+								Label:       "On Page Property Updated",
+								Value:       string(IntegrationEventType_PagePropertyUpdated),
+								Description: "Triggered when a page's properties are updated (title, status, etc.)",
+							},
+							{
+								Label:       "On Page Content Updated",
+								Value:       string(IntegrationEventType_PageContentUpdated),
+								Description: "Triggered when a page's content blocks are updated",
 							},
 						},
 					},

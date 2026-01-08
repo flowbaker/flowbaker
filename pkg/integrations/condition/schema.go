@@ -425,6 +425,14 @@ var (
 									Type:        domain.NodePropertyType_Array,
 									ArrayOpts: &domain.ArrayPropertyOptions{
 										ItemType: domain.NodePropertyType_String,
+										ItemProperties: []domain.NodeProperty{
+											{
+												Key:         "value",
+												Name:        "Value",
+												Description: "The value to search for in the array",
+												Type:        domain.NodePropertyType_String,
+											},
+										},
 									},
 									ShowIf: &domain.ShowIf{
 										PropertyKey: "condition_type",
@@ -687,6 +695,14 @@ var (
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "value",
+									Name:        "Value",
+									Description: "The value to search for in the array",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "value_type",
@@ -827,8 +843,16 @@ var (
 									Type:        domain.NodePropertyType_Array,
 									ArrayOpts: &domain.ArrayPropertyOptions{
 										ItemType: domain.NodePropertyType_String,
+										ItemProperties: []domain.NodeProperty{
+											{
+												Key:         "value",
+												Name:        "Value",
+												Description: "The value to search for in the array",
+												Type:        domain.NodePropertyType_String,
+											},
+										},
 									},
-									Required:    true,
+									Required: true,
 									DependsOn: &domain.DependsOn{
 										PropertyKey: "value_type",
 										Value:       "tag",

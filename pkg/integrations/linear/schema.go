@@ -59,43 +59,38 @@ var (
 						Name:             "Resource Types",
 						Description:      "Select the types of Linear resources to listen for (e.g., Issue, Comment, Project).",
 						Required:         true,
-						Type:             domain.NodePropertyType_Array,
+						Type:             domain.NodePropertyType_ListTagInput,
 						ExpressionChoice: false,
-						ArrayOpts: &domain.ArrayPropertyOptions{
-							MinItems: 1,
-							MaxItems: 6,
-							ItemType: domain.NodePropertyType_String,
-							Options: []domain.NodePropertyOption{
-								{
-									Label:       "Issue",
-									Value:       "Issue",
-									Description: "Track and manage tasks, bugs, and features",
-								},
-								{
-									Label:       "Comment",
-									Value:       "Comment",
-									Description: "Comments and discussions on issues",
-								},
-								{
-									Label:       "Cycle",
-									Value:       "Cycle",
-									Description: "Time-boxed periods for completing work",
-								},
-								{
-									Label:       "Issue Label",
-									Value:       "IssueLabel",
-									Description: "Categories and tags for organizing issues",
-								},
-								{
-									Label:       "Reaction",
-									Value:       "Reaction",
-									Description: "Emoji reactions on issues and comments",
-								},
-								{
-									Label:       "Project",
-									Value:       "Project",
-									Description: "Collections of issues organized by project",
-								},
+						Options: []domain.NodePropertyOption{
+							{
+								Label:       "Issue",
+								Value:       "Issue",
+								Description: "Track and manage tasks, bugs, and features",
+							},
+							{
+								Label:       "Comment",
+								Value:       "Comment",
+								Description: "Comments and discussions on issues",
+							},
+							{
+								Label:       "Cycle",
+								Value:       "Cycle",
+								Description: "Time-boxed periods for completing work",
+							},
+							{
+								Label:       "Issue Label",
+								Value:       "IssueLabel",
+								Description: "Categories and tags for organizing issues",
+							},
+							{
+								Label:       "Reaction",
+								Value:       "Reaction",
+								Description: "Emoji reactions on issues and comments",
+							},
+							{
+								Label:       "Project",
+								Value:       "Project",
+								Description: "Collections of issues organized by project",
 							},
 						},
 					},
@@ -155,13 +150,21 @@ var (
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
-						Key:                    "label_ids",
-						Name:                   "Labels",
-						Description:            "One or more labels to attach to the issue.",
-						Required:               false,
-						Type:                   domain.NodePropertyType_Array,
+						Key:         "label_ids",
+						Name:        "Labels",
+						Description: "One or more labels to attach to the issue.",
+						Required:    false,
+						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "label_id",
+									Name:        "Label ID",
+									Description: "The ID of the label",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 						Peekable:               true,
 						PeekableType:           LinearIntegrationPeekable_Labels,
@@ -228,13 +231,21 @@ var (
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
-						Key:                    "label_ids",
-						Name:                   "Filter by Labels",
-						Description:            "Optionally filter issues by one or more labels.",
-						Required:               false,
-						Type:                   domain.NodePropertyType_Array,
+						Key:         "label_ids",
+						Name:        "Filter by Labels",
+						Description: "Optionally filter issues by one or more labels.",
+						Required:    false,
+						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "label_id",
+									Name:        "Label ID",
+									Description: "The ID of the label",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 						Peekable:               true,
 						PeekableType:           LinearIntegrationPeekable_Labels,
@@ -316,13 +327,21 @@ var (
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
-						Key:                    "label_ids",
-						Name:                   "New Labels",
-						Description:            "Replace existing labels with new ones, or add/remove (provide an empty array to remove all labels).",
-						Required:               false,
-						Type:                   domain.NodePropertyType_Array,
+						Key:         "label_ids",
+						Name:        "New Labels",
+						Description: "Replace existing labels with new ones, or add/remove (provide an empty array to remove all labels).",
+						Required:    false,
+						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "label_id",
+									Name:        "Label ID",
+									Description: "The ID of the label",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 						Peekable:               true,
 						PeekableType:           LinearIntegrationPeekable_Labels,

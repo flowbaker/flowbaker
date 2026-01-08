@@ -79,14 +79,14 @@ var (
 				Description: "Create a new issue",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "project_key",
-						Name:             "Project Key",
-						Description:      "The project key where the issue will be created",
-						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     JiraIntegrationPeekable_Projects,
-					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "project_key",
+						Name:                   "Project Key",
+						Description:            "The project key where the issue will be created",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           JiraIntegrationPeekable_Projects,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
 						ExpressionChoice: true,
 					},
@@ -108,16 +108,16 @@ var (
 						ExpressionChoice: true,
 					},
 					{
-						Key:          "parent_key",
-						Name:         "Parent Issue Key",
-						Description:  "Parent issue key for creating subtasks (e.g., PROJ-123). Required when creating subtasks.",
-						Required:     false,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: JiraIntegrationPeekable_Issues,
-					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "parent_key",
+						Name:                   "Parent Issue Key",
+						Description:            "Parent issue key for creating subtasks (e.g., PROJ-123). Required when creating subtasks.",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           JiraIntegrationPeekable_Issues,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
-						Dependent:    []string{"project_key", "issue_type"},
+						Dependent: []string{"project_key", "issue_type"},
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "project_key",
@@ -161,16 +161,16 @@ var (
 						},
 					},
 					{
-						Key:          "assignee",
-						Name:         "Assignee",
-						Description:  "Email or username of the assignee",
-						Required:     false,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: JiraIntegrationPeekable_Assignees,
-					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "assignee",
+						Name:                   "Assignee",
+						Description:            "Email or username of the assignee",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           JiraIntegrationPeekable_Assignees,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
-						Dependent:    []string{"project_key"},
+						Dependent: []string{"project_key"},
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "project_key",
@@ -217,16 +217,16 @@ var (
 						PeekableType: JiraIntegrationPeekable_Priorities,
 					},
 					{
-						Key:          "assignee",
-						Name:         "Assignee",
-						Description:  "Updated assignee email or username",
-						Required:     false,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: JiraIntegrationPeekable_Assignees,
-					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "assignee",
+						Name:                   "Assignee",
+						Description:            "Updated assignee email or username",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           JiraIntegrationPeekable_Assignees,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
-						Dependent:    []string{"issue_key"},
+						Dependent: []string{"issue_key"},
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "issue_key",
@@ -318,6 +318,14 @@ var (
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 					},
 					{
@@ -493,14 +501,14 @@ var (
 				Description: "Triggers on selected Jira events for a project or organization.",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "project_key",
-						Name:             "Project Key (Optional)",
-						Description:      "The project key to monitor (e.g., 'PROJ'). If empty, listens to organization/instance level events if applicable for selected event types.",
-						Required:         false,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     JiraIntegrationPeekable_Projects,
-					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "project_key",
+						Name:                   "Project Key (Optional)",
+						Description:            "The project key to monitor (e.g., 'PROJ'). If empty, listens to organization/instance level events if applicable for selected event types.",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           JiraIntegrationPeekable_Projects,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
 						ExpressionChoice: true,
 					},
@@ -519,69 +527,66 @@ var (
 						Name:        "Jira Events",
 						Description: "Select one or more Jira events to trigger this flow. The webhook URL for these events will be generated by FlowBaker.",
 						Required:    true,
-						Type:        domain.NodePropertyType_Array,
-						ArrayOpts: &domain.ArrayPropertyOptions{
-							ItemType: domain.NodePropertyType_String,
-							Options: []domain.NodePropertyOption{
-								// Issue Events
-								{Label: "On Issue Created", Value: "jira:issue_created", Description: "Triggered when a new issue is created"},
-								{Label: "On Issue Updated", Value: "jira:issue_updated", Description: "Triggered when an issue is updated (fields changed, status transitions, etc.)"},
-								{Label: "On Issue Deleted", Value: "jira:issue_deleted", Description: "Triggered when an issue is deleted"},
+						Type:        domain.NodePropertyType_ListTagInput,
+						Options: []domain.NodePropertyOption{
+							// Issue Events
+							{Label: "On Issue Created", Value: "jira:issue_created", Description: "Triggered when a new issue is created"},
+							{Label: "On Issue Updated", Value: "jira:issue_updated", Description: "Triggered when an issue is updated (fields changed, status transitions, etc.)"},
+							{Label: "On Issue Deleted", Value: "jira:issue_deleted", Description: "Triggered when an issue is deleted"},
 
-								// Comment Events
-								{Label: "On Comment Created", Value: "comment_created", Description: "Triggered when a new comment is added to an issue"},
-								{Label: "On Comment Updated", Value: "comment_updated", Description: "Triggered when an existing comment is modified"},
-								{Label: "On Comment Deleted", Value: "comment_deleted", Description: "Triggered when a comment is removed from an issue"},
+							// Comment Events
+							{Label: "On Comment Created", Value: "comment_created", Description: "Triggered when a new comment is added to an issue"},
+							{Label: "On Comment Updated", Value: "comment_updated", Description: "Triggered when an existing comment is modified"},
+							{Label: "On Comment Deleted", Value: "comment_deleted", Description: "Triggered when a comment is removed from an issue"},
 
-								// Board Events
-								{Label: "On Board Created", Value: "board_created", Description: "Triggered when a new board is created"},
-								{Label: "On Board Updated", Value: "board_updated", Description: "Triggered when board settings are modified"},
-								{Label: "On Board Deleted", Value: "board_deleted", Description: "Triggered when a board is deleted"},
-								{Label: "On Board Configuration Changed", Value: "board_configuration_changed", Description: "Triggered when board configuration is modified"},
+							// Board Events
+							{Label: "On Board Created", Value: "board_created", Description: "Triggered when a new board is created"},
+							{Label: "On Board Updated", Value: "board_updated", Description: "Triggered when board settings are modified"},
+							{Label: "On Board Deleted", Value: "board_deleted", Description: "Triggered when a board is deleted"},
+							{Label: "On Board Configuration Changed", Value: "board_configuration_changed", Description: "Triggered when board configuration is modified"},
 
-								// Project Events
-								{Label: "On Project Created", Value: "project_created", Description: "Triggered when a new project is created"},
-								{Label: "On Project Updated", Value: "project_updated", Description: "Triggered when project settings are modified"},
-								{Label: "On Project Deleted", Value: "project_deleted", Description: "Triggered when a project is deleted"},
+							// Project Events
+							{Label: "On Project Created", Value: "project_created", Description: "Triggered when a new project is created"},
+							{Label: "On Project Updated", Value: "project_updated", Description: "Triggered when project settings are modified"},
+							{Label: "On Project Deleted", Value: "project_deleted", Description: "Triggered when a project is deleted"},
 
-								// Sprint Events (Agile)
-								{Label: "On Sprint Created", Value: "sprint_created", Description: "Triggered when a new sprint is created"},
-								{Label: "On Sprint Updated", Value: "sprint_updated", Description: "Triggered when sprint details are modified"},
-								{Label: "On Sprint Started", Value: "sprint_started", Description: "Triggered when a sprint is started"},
-								{Label: "On Sprint Closed", Value: "sprint_closed", Description: "Triggered when a sprint is completed/closed"},
-								{Label: "On Sprint Deleted", Value: "sprint_deleted", Description: "Triggered when a sprint is deleted"},
+							// Sprint Events (Agile)
+							{Label: "On Sprint Created", Value: "sprint_created", Description: "Triggered when a new sprint is created"},
+							{Label: "On Sprint Updated", Value: "sprint_updated", Description: "Triggered when sprint details are modified"},
+							{Label: "On Sprint Started", Value: "sprint_started", Description: "Triggered when a sprint is started"},
+							{Label: "On Sprint Closed", Value: "sprint_closed", Description: "Triggered when a sprint is completed/closed"},
+							{Label: "On Sprint Deleted", Value: "sprint_deleted", Description: "Triggered when a sprint is deleted"},
 
-								// User Events
-								{Label: "On User Created", Value: "user_created", Description: "Triggered when a new user is created"},
-								{Label: "On User Updated", Value: "user_updated", Description: "Triggered when user details are modified"},
-								{Label: "On User Deleted", Value: "user_deleted", Description: "Triggered when a user is deleted"},
+							// User Events
+							{Label: "On User Created", Value: "user_created", Description: "Triggered when a new user is created"},
+							{Label: "On User Updated", Value: "user_updated", Description: "Triggered when user details are modified"},
+							{Label: "On User Deleted", Value: "user_deleted", Description: "Triggered when a user is deleted"},
 
-								// Version Events
-								{Label: "On Version Created", Value: "version_created", Description: "Triggered when a new version/release is created"},
-								{Label: "On Version Updated", Value: "version_updated", Description: "Triggered when version details are modified"},
-								{Label: "On Version Deleted", Value: "version_deleted", Description: "Triggered when a version is deleted"},
-								{Label: "On Version Released", Value: "version_released", Description: "Triggered when a version is marked as released"},
-								{Label: "On Version Unreleased", Value: "version_unreleased", Description: "Triggered when a version release is reverted"},
-								{Label: "On Version Moved", Value: "version_moved", Description: "Triggered when a version is moved to a different project"},
+							// Version Events
+							{Label: "On Version Created", Value: "version_created", Description: "Triggered when a new version/release is created"},
+							{Label: "On Version Updated", Value: "version_updated", Description: "Triggered when version details are modified"},
+							{Label: "On Version Deleted", Value: "version_deleted", Description: "Triggered when a version is deleted"},
+							{Label: "On Version Released", Value: "version_released", Description: "Triggered when a version is marked as released"},
+							{Label: "On Version Unreleased", Value: "version_unreleased", Description: "Triggered when a version release is reverted"},
+							{Label: "On Version Moved", Value: "version_moved", Description: "Triggered when a version is moved to a different project"},
 
-								// Worklog Events
-								{Label: "On Worklog Created", Value: "worklog_created", Description: "Triggered when time is logged on an issue"},
-								{Label: "On Worklog Updated", Value: "worklog_updated", Description: "Triggered when existing worklog is modified"},
-								{Label: "On Worklog Deleted", Value: "worklog_deleted", Description: "Triggered when worklog is removed from an issue"},
+							// Worklog Events
+							{Label: "On Worklog Created", Value: "worklog_created", Description: "Triggered when time is logged on an issue"},
+							{Label: "On Worklog Updated", Value: "worklog_updated", Description: "Triggered when existing worklog is modified"},
+							{Label: "On Worklog Deleted", Value: "worklog_deleted", Description: "Triggered when worklog is removed from an issue"},
 
-								// Issue Link Events
-								{Label: "On Issue Link Created", Value: "issuelink_created", Description: "Triggered when a link between issues is created"},
-								{Label: "On Issue Link Deleted", Value: "issuelink_deleted", Description: "Triggered when a link between issues is removed"},
+							// Issue Link Events
+							{Label: "On Issue Link Created", Value: "issuelink_created", Description: "Triggered when a link between issues is created"},
+							{Label: "On Issue Link Deleted", Value: "issuelink_deleted", Description: "Triggered when a link between issues is removed"},
 
-								// Option Events (Project Configuration)
-								{Label: "On Attachments Option Changed", Value: "option_attachments_changed", Description: "Triggered when project attachment settings are modified"},
-								{Label: "On Issue Links Option Changed", Value: "option_issuelinks_changed", Description: "Triggered when project issue linking settings are modified"},
-								{Label: "On Subtasks Option Changed", Value: "option_subtasks_changed", Description: "Triggered when project subtask settings are modified"},
-								{Label: "On Time Tracking Option Changed", Value: "option_timetracking_changed", Description: "Triggered when project time tracking settings are modified"},
-								{Label: "On Unassigned Issues Option Changed", Value: "option_unassigned_issues_changed", Description: "Triggered when project unassigned issue settings are modified"},
-								{Label: "On Voting Option Changed", Value: "option_voting_changed", Description: "Triggered when project voting settings are modified"},
-								{Label: "On Watching Option Changed", Value: "option_watching_changed", Description: "Triggered when project watching settings are modified"},
-							},
+							// Option Events (Project Configuration)
+							{Label: "On Attachments Option Changed", Value: "option_attachments_changed", Description: "Triggered when project attachment settings are modified"},
+							{Label: "On Issue Links Option Changed", Value: "option_issuelinks_changed", Description: "Triggered when project issue linking settings are modified"},
+							{Label: "On Subtasks Option Changed", Value: "option_subtasks_changed", Description: "Triggered when project subtask settings are modified"},
+							{Label: "On Time Tracking Option Changed", Value: "option_timetracking_changed", Description: "Triggered when project time tracking settings are modified"},
+							{Label: "On Unassigned Issues Option Changed", Value: "option_unassigned_issues_changed", Description: "Triggered when project unassigned issue settings are modified"},
+							{Label: "On Voting Option Changed", Value: "option_voting_changed", Description: "Triggered when project voting settings are modified"},
+							{Label: "On Watching Option Changed", Value: "option_watching_changed", Description: "Triggered when project watching settings are modified"},
 						},
 					},
 				},

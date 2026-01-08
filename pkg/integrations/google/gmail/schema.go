@@ -47,6 +47,14 @@ var (
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 						RegexKey: "email",
 					},
@@ -58,6 +66,14 @@ var (
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient to CC",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 						RegexKey: "email",
 					},
@@ -69,6 +85,14 @@ var (
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient to BCC",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 						RegexKey: "email",
 					},
@@ -359,6 +383,14 @@ var (
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 					},
 					{
@@ -369,6 +401,14 @@ var (
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient to CC",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 					},
 					{
@@ -379,6 +419,14 @@ var (
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient to BCC",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
 						},
 					},
 					{
