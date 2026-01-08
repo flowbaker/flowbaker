@@ -44,24 +44,57 @@ var (
 						Name:        "To",
 						Description: "The email address of the recipient",
 						Required:    true,
-						Type:        domain.NodePropertyType_TagInput,
-						RegexKey:    "email",
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
+						},
+						RegexKey: "email",
 					},
 					{
 						Key:         "cc",
 						Name:        "Cc",
 						Description: "The email address of the recipient to CC",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
-						RegexKey:    "email",
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient to CC",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
+						},
+						RegexKey: "email",
 					},
 					{
 						Key:         "bcc",
 						Name:        "Bcc",
 						Description: "The email address of the recipient to BCC",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
-						RegexKey:    "email",
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient to BCC",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
+						},
+						RegexKey: "email",
 					},
 					{
 						Key:         "subject",
@@ -347,21 +380,54 @@ var (
 						Name:        "To",
 						Description: "The email address of the recipient",
 						Required:    true,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
+						},
 					},
 					{
 						Key:         "cc",
 						Name:        "Cc",
 						Description: "The email address of the recipient to CC",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient to CC",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
+						},
 					},
 					{
 						Key:         "bcc",
 						Name:        "Bcc",
 						Description: "The email address of the recipient to BCC",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient to BCC",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
+						},
 					},
 					{
 						Key:         "subject",

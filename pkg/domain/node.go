@@ -51,13 +51,13 @@ const (
 type OAuthType string
 
 var (
-	OAuthTypeGoogle  OAuthType = "google"
-	OAuthTypeSlack   OAuthType = "slack"
-	OAuthTypeDropbox OAuthType = "dropbox"
-	OAuthTypeGitHub  OAuthType = "github"
-	OAuthTypeLinear  OAuthType = "linear"
-	OAuthTypeJira    OAuthType = "jira"
-	OAuthTypeNotion  OAuthType = "notion"
+	OAuthTypeGoogle         OAuthType = "google"
+	OAuthTypeSlack          OAuthType = "slack"
+	OAuthTypeDropbox        OAuthType = "dropbox"
+	OAuthTypeGitHub         OAuthType = "github"
+	OAuthTypeLinear         OAuthType = "linear"
+	OAuthTypeJira           OAuthType = "jira"
+	OAuthTypeNotion         OAuthType = "notion"
 	OAuthTypeMicrosoftTeams OAuthType = "microsoft_teams"
 )
 

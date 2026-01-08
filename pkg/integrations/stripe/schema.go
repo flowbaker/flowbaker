@@ -741,11 +741,12 @@ var (
 						},
 					},
 					{
-						Key:         "selected_events",
-						Name:        "Stripe Events",
-						Description: "Select one or more Stripe events to trigger this flow",
-						Required:    true,
-						Type:        domain.NodePropertyType_ListTagInput,
+						Key:              "selected_events",
+						Name:             "Stripe Events",
+						Description:      "Select one or more Stripe events to trigger this flow",
+						Required:         true,
+						Type:             domain.NodePropertyType_ListTagInput,
+						ExpressionChoice: false,
 						Options: []domain.NodePropertyOption{
 							// Account events
 							{Label: "On Account Updated", Value: "account.updated", Description: "Triggered when account information is updated"},

@@ -82,7 +82,19 @@ var (
 						Name:        "To",
 						Description: "The recipient email addresses",
 						Required:    true,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "The email address of the recipient",
+									Type:        domain.NodePropertyType_String,
+									RegexKey:    "email",
+								},
+							},
+						},
 					},
 					{
 						Key:         "subject",
@@ -117,21 +129,56 @@ var (
 						Name:        "CC",
 						Description: "CC email addresses",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "The email address of the CC recipient",
+									Type:        domain.NodePropertyType_String,
+									RegexKey:    "email",
+								},
+							},
+						},
 					},
 					{
 						Key:         "bcc",
 						Name:        "BCC",
 						Description: "BCC email addresses",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "The email address of the BCC recipient",
+									Type:        domain.NodePropertyType_String,
+									RegexKey:    "email",
+								},
+							},
+						},
 					},
 					{
 						Key:         "tags",
 						Name:        "Tags",
 						Description: "Email tags",
 						Required:    false,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "tag",
+									Name:        "Tag",
+									Description: "The tag to add to the email",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
+						},
 					},
 				},
 			},

@@ -79,14 +79,14 @@ var (
 				Description: "Create a new issue",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "project_key",
-						Name:             "Project Key",
-						Description:      "The project key where the issue will be created",
-						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     JiraIntegrationPeekable_Projects,
-					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "project_key",
+						Name:                   "Project Key",
+						Description:            "The project key where the issue will be created",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           JiraIntegrationPeekable_Projects,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
 						ExpressionChoice: true,
 					},
@@ -108,16 +108,16 @@ var (
 						ExpressionChoice: true,
 					},
 					{
-						Key:          "parent_key",
-						Name:         "Parent Issue Key",
-						Description:  "Parent issue key for creating subtasks (e.g., PROJ-123). Required when creating subtasks.",
-						Required:     false,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: JiraIntegrationPeekable_Issues,
-					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "parent_key",
+						Name:                   "Parent Issue Key",
+						Description:            "Parent issue key for creating subtasks (e.g., PROJ-123). Required when creating subtasks.",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           JiraIntegrationPeekable_Issues,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
-						Dependent:    []string{"project_key", "issue_type"},
+						Dependent: []string{"project_key", "issue_type"},
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "project_key",
@@ -161,16 +161,16 @@ var (
 						},
 					},
 					{
-						Key:          "assignee",
-						Name:         "Assignee",
-						Description:  "Email or username of the assignee",
-						Required:     false,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: JiraIntegrationPeekable_Assignees,
-					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "assignee",
+						Name:                   "Assignee",
+						Description:            "Email or username of the assignee",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           JiraIntegrationPeekable_Assignees,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
-						Dependent:    []string{"project_key"},
+						Dependent: []string{"project_key"},
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "project_key",
@@ -217,16 +217,16 @@ var (
 						PeekableType: JiraIntegrationPeekable_Priorities,
 					},
 					{
-						Key:          "assignee",
-						Name:         "Assignee",
-						Description:  "Updated assignee email or username",
-						Required:     false,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: JiraIntegrationPeekable_Assignees,
-					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "assignee",
+						Name:                   "Assignee",
+						Description:            "Updated assignee email or username",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           JiraIntegrationPeekable_Assignees,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
-						Dependent:    []string{"issue_key"},
+						Dependent: []string{"issue_key"},
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
 								PropertyKey: "issue_key",
@@ -315,7 +315,18 @@ var (
 						Name:        "Recipients",
 						Description: "Email addresses of notification recipients",
 						Required:    true,
-						Type:        domain.NodePropertyType_TagInput,
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							ItemType: domain.NodePropertyType_String,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "email",
+									Name:        "Email",
+									Description: "Email address of the recipient",
+									Type:        domain.NodePropertyType_String,
+								},
+							},
+						},
 					},
 					{
 						Key:         "subject",
@@ -490,14 +501,14 @@ var (
 				Description: "Triggers on selected Jira events for a project or organization.",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "project_key",
-						Name:             "Project Key (Optional)",
-						Description:      "The project key to monitor (e.g., 'PROJ'). If empty, listens to organization/instance level events if applicable for selected event types.",
-						Required:         false,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     JiraIntegrationPeekable_Projects,
-					PeekablePaginationType:   domain.PeekablePaginationType_Offset,
+						Key:                    "project_key",
+						Name:                   "Project Key (Optional)",
+						Description:            "The project key to monitor (e.g., 'PROJ'). If empty, listens to organization/instance level events if applicable for selected event types.",
+						Required:               false,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           JiraIntegrationPeekable_Projects,
+						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 
 						ExpressionChoice: true,
 					},

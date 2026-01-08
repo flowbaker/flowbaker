@@ -390,11 +390,12 @@ var (
 						Placeholder:  "teamId:channelId",
 					},
 					{
-						Key:         "selected_events",
-						Name:        "Teams Events",
-						Description: "Select one or more Microsoft Teams events to trigger this flow.",
-						Required:    true,
-						Type:        domain.NodePropertyType_ListTagInput,
+						Key:              "selected_events",
+						Name:             "Teams Events",
+						Description:      "Select one or more Microsoft Teams events to trigger this flow.",
+						Required:         true,
+						Type:             domain.NodePropertyType_ListTagInput,
+						ExpressionChoice: false,
 						Options: []domain.NodePropertyOption{
 							{Label: "On Channel Message Posted", Value: string(IntegrationEventType_TeamsChannelMessage), Description: "Triggered when a message is posted in a channel (works with Business Basic)"},
 						},
