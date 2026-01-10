@@ -361,7 +361,7 @@ func (i *StorageIntegration) PeekFolders(ctx context.Context, params domain.Peek
 		WorkspaceID:    workspaceID,
 		ParentFolderID: peekParams.ParentFolderID,
 		IncludeDeleted: false,
-		AllFolders:     false,
+		AllFolders:     true,
 	})
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to list folders: %w", err)
