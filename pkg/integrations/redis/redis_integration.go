@@ -363,7 +363,6 @@ func (i *RedisIntegration) Exists(ctx context.Context, input domain.IntegrationI
 	}
 
 	return map[string]any{
-		"keys":         p.Keys,
 		"exists_count": count,
 		"all_exist":    count == int64(len(p.Keys)),
 	}, nil
