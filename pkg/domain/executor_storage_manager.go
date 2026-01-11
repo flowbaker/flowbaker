@@ -60,7 +60,6 @@ type PersistExecutionFileParams struct {
 type ListWorkspaceFilesParams struct {
 	WorkspaceID string
 	FolderIDs   []string
-	ExcludeRoot bool
 	Cursor      string
 	Limit       int
 }

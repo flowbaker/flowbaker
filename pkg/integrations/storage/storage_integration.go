@@ -112,21 +112,14 @@ func (i *StorageIntegration) ListFiles(ctx context.Context, params domain.Integr
 
 	folderIDs := []string{}
 
-	excludeRoot := true
-
 	if p.FolderID != nil && *p.FolderID != "" {
-		if *p.FolderID == HomeFolderID {
-			excludeRoot = false
-		} else {
-			folderIDs = append(folderIDs, *p.FolderID)
-		}
+		folderIDs = append(folderIDs, *p.FolderID)
 	}
 
 	listParams := domain.ListWorkspaceFilesParams{
 		WorkspaceID: i.workspaceID,
 		FolderIDs:   folderIDs,
 		Limit:       limit,
-		ExcludeRoot: excludeRoot,
 	}
 
 	if p.FromFileID != nil && *p.FromFileID != "" {
@@ -325,24 +318,20 @@ func (i *StorageIntegration) PeekFiles(ctx context.Context, params domain.PeekPa
 
 	var folderIDs []string
 
-	excludeRoot := true
 	if peekParams.FolderID != nil {
 		folderID := *peekParams.FolderID
 
-		if folderID == HomeFolderID {
-			excludeRoot = false
-		} else {
-			folderIDs = append(folderIDs, folderID)
-		}
+		folderIDs = append(folderIDs, folderID)
 	}
 
-	result, err := i.executorStorageManager.ListWorkspaceFiles(ctx, domain.ListWorkspaceFilesParams{
+	listParams := domain.ListWorkspaceFilesParams{
 		WorkspaceID: workspaceID,
 		FolderIDs:   folderIDs,
 		Cursor:      params.Pagination.Cursor,
 		Limit:       peekParams.Limit,
-		ExcludeRoot: excludeRoot,
-	})
+	}
+
+	result, err := i.executorStorageManager.ListWorkspaceFiles(ctx, listParams)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to list workspace files: %w", err)
 	}

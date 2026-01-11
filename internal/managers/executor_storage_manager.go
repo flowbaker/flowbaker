@@ -133,7 +133,6 @@ func (s *executorStorageManager) ListWorkspaceFiles(ctx context.Context, params 
 	resp, err := s.client.ListWorkspaceFiles(ctx, &flowbaker.ListWorkspaceFilesRequest{
 		WorkspaceID: params.WorkspaceID,
 		FolderIDs:   params.FolderIDs,
-		ExcludeRoot: params.ExcludeRoot,
 		Cursor:      params.Cursor,
 		Limit:       params.Limit,
 	})
