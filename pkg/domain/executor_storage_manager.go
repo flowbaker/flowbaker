@@ -59,7 +59,7 @@ type PersistExecutionFileParams struct {
 
 type ListWorkspaceFilesParams struct {
 	WorkspaceID string
-	FolderID    *string // nil for root level, specific ID for folder contents
+	FolderIDs   []string
 	Cursor      string
 	Limit       int
 }
