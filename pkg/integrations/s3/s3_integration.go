@@ -105,10 +105,9 @@ func NewS3Integration(ctx context.Context, deps S3IntegrationDependencies) (*S3I
 		AddPerItem(IntegrationActionType_DeleteBucket, integration.DeleteBucket)
 
 	peekFuncs := map[domain.IntegrationPeekableType]domain.PeekFunc{
-		S3IntegrationPeekable_Buckets:  integration.PeekBuckets,
-		S3IntegrationPeekable_Objects:  integration.PeekObjects,
-		S3IntegrationPeekable_Prefixes: integration.PeekPrefixes,
-		S3IntegrationPeekable_Regions:  integration.PeekRegions,
+		S3IntegrationPeekable_Buckets: integration.PeekBuckets,
+		S3IntegrationPeekable_Objects: integration.PeekObjects,
+		S3IntegrationPeekable_Regions: integration.PeekRegions,
 	}
 
 	integration.peekFuncs = peekFuncs
@@ -150,9 +149,11 @@ func (i *S3Integration) UploadObject(ctx context.Context, params domain.Integrat
 
 	metadata := map[string]any{}
 
-	err = json.Unmarshal([]byte(p.MetadataJSON), &metadata)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+	if p.MetadataJSON != "" {
+		err = json.Unmarshal([]byte(p.MetadataJSON), &metadata)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+		}
 	}
 
 	contentType := p.ContentType
@@ -262,9 +263,17 @@ func (i *S3Integration) DeleteObject(ctx context.Context, params domain.Integrat
 
 // List Objects
 type ListObjectsParams struct {
-	Bucket  string `json:"bucket"`
-	Prefix  string `json:"prefix"`
-	MaxKeys int64  `json:"max_keys"`
+	Bucket                   string   `json:"bucket"`
+	Prefix                   string   `json:"prefix"`
+	MaxKeys                  int64    `json:"max_keys"`
+	Delimiter                string   `json:"delimiter"`
+	FetchOwner               bool     `json:"fetch_owner"`
+	ContinuationToken        string   `json:"continuation_token"`
+	RequestPayer             string   `json:"request_payer"`
+	EncodingType             string   `json:"encoding_type"`
+	ExpectedBucketOwner      string   `json:"expected_bucket_owner"`
+	OptionalObjectAttributes []string `json:"optional_object_attributes"`
+	StartAfter               string   `json:"start_after"`
 }
 
 func (i *S3Integration) ListObjects(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -275,12 +284,49 @@ func (i *S3Integration) ListObjects(ctx context.Context, params domain.Integrati
 		return domain.IntegrationOutput{}, err
 	}
 
-	listResult, err := i.s3Client.ListObjectsV2(&s3.ListObjectsV2Input{
-		Bucket:    aws.String(p.Bucket),
-		Prefix:    aws.String(p.Prefix),
-		MaxKeys:   aws.Int64(p.MaxKeys),
-		Delimiter: aws.String("/"),
-	})
+	input := &s3.ListObjectsV2Input{}
+
+	if p.Bucket != "" {
+		input.Bucket = aws.String(p.Bucket)
+	}
+
+	if p.Prefix != "" {
+		input.Prefix = aws.String(p.Prefix)
+	}
+
+	if p.MaxKeys > 0 {
+		input.MaxKeys = aws.Int64(p.MaxKeys)
+	}
+
+	if p.Delimiter != "" {
+		input.Delimiter = aws.String(p.Delimiter)
+	}
+
+	if p.FetchOwner {
+		input.FetchOwner = aws.Bool(p.FetchOwner)
+	}
+
+	if p.ContinuationToken != "" {
+		input.ContinuationToken = aws.String(p.ContinuationToken)
+	}
+
+	if p.StartAfter != "" {
+		input.StartAfter = aws.String(p.StartAfter)
+	}
+
+	if p.EncodingType != "" {
+		input.EncodingType = aws.String(p.EncodingType)
+	}
+
+	if p.ExpectedBucketOwner != "" {
+		input.ExpectedBucketOwner = aws.String(p.ExpectedBucketOwner)
+	}
+
+	if p.RequestPayer != "" {
+		input.RequestPayer = aws.String(p.RequestPayer)
+	}
+
+	listResult, err := i.s3Client.ListObjectsV2WithContext(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -453,58 +499,6 @@ func (i *S3Integration) PeekObjects(ctx context.Context, params domain.PeekParam
 			Key:     *obj.Key,
 			Value:   *obj.Key,
 			Content: *obj.Key,
-		})
-	}
-
-	peekResult := domain.PeekResult{
-		Result: items,
-	}
-
-	if result.NextContinuationToken != nil {
-		peekResult.Pagination.NextCursor = *result.NextContinuationToken
-	}
-
-	if result.IsTruncated != nil {
-		peekResult.Pagination.HasMore = *result.IsTruncated
-	}
-
-	return peekResult, nil
-}
-
-type PeekPrefixesParams struct {
-	Bucket string `json:"bucket"`
-}
-
-func (i *S3Integration) PeekPrefixes(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	var p PeekPrefixesParams
-	if err := json.Unmarshal(params.PayloadJSON, &p); err != nil {
-		return domain.PeekResult{}, err
-	}
-
-	limit := params.GetLimitWithMax(20, 1000)
-	pageToken := params.Pagination.Cursor
-
-	input := &s3.ListObjectsV2Input{
-		Bucket:    aws.String(p.Bucket),
-		Delimiter: aws.String("/"),
-		MaxKeys:   aws.Int64(int64(limit)),
-	}
-
-	if pageToken != "" {
-		input.ContinuationToken = aws.String(pageToken)
-	}
-
-	result, err := i.s3Client.ListObjectsV2(input)
-	if err != nil {
-		return domain.PeekResult{}, err
-	}
-
-	var items []domain.PeekResultItem
-	for _, prefix := range result.CommonPrefixes {
-		items = append(items, domain.PeekResultItem{
-			Key:     *prefix.Prefix,
-			Value:   *prefix.Prefix,
-			Content: *prefix.Prefix,
 		})
 	}
 
