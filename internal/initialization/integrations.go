@@ -13,7 +13,7 @@ import (
 	cronintegration "github.com/flowbaker/flowbaker/pkg/integrations/cron"
 	"github.com/flowbaker/flowbaker/pkg/integrations/discord"
 	"github.com/flowbaker/flowbaker/pkg/integrations/dropbox"
-	"github.com/flowbaker/flowbaker/pkg/integrations/filetoitem"
+	"github.com/flowbaker/flowbaker/pkg/integrations/rawfiletoitem"
 	githubintegration "github.com/flowbaker/flowbaker/pkg/integrations/github"
 	"github.com/flowbaker/flowbaker/pkg/integrations/google/gmail"
 	googledrive "github.com/flowbaker/flowbaker/pkg/integrations/google/google_drive"
@@ -187,8 +187,8 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 		NewCreator:      base64.NewBase64IntegrationCreator,
 	},
 	{
-		IntegrationType: domain.IntegrationType_FileToItem,
-		NewCreator:      filetoitem.NewFileToItemIntegrationCreator,
+		IntegrationType: domain.IntegrationType_RawFileToItem,
+		NewCreator:      rawfiletoitem.NewRawFileToItemIntegrationCreator,
 	},
 	{
 		IntegrationType: domain.IntegrationType_BrightData,

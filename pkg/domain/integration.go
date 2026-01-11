@@ -70,7 +70,7 @@ const (
 	IntegrationType_StartupsWatch        IntegrationType = "startups_watch"
 	IntegrationType_Manipulation         IntegrationType = "manipulation"
 	IntegrationType_SplitArray           IntegrationType = "split_array"
-	IntegrationType_FileToItem           IntegrationType = "filetoitem"
+	IntegrationType_RawFileToItem        IntegrationType = "rawfiletoitem"
 	IntegrationType_BrightData           IntegrationType = "brightdata"
 	IntegrationType_ItemsToItem          IntegrationType = "items_to_item"
 	IntegrationType_Telegram             IntegrationType = "telegram"
