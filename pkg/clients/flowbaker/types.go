@@ -344,10 +344,11 @@ type Folder struct {
 
 // ListWorkspaceFilesRequest represents the request to list workspace files
 type ListWorkspaceFilesRequest struct {
-	WorkspaceID string  `json:"workspace_id"`
-	FolderID    *string `json:"folder_id,omitempty"` // nil for root level, specific ID for folder contents
-	Cursor      string  `json:"cursor,omitempty"`
-	Limit       int     `json:"limit,omitempty"`
+	WorkspaceID string   `json:"workspace_id"`
+	FolderIDs   []string `json:"folder_ids,omitempty"`   // List of folder IDs to include
+	ExcludeRoot bool     `json:"exclude_root,omitempty"` // Exclude root level files when using FolderIDs
+	Cursor      string   `json:"cursor,omitempty"`
+	Limit       int      `json:"limit,omitempty"`
 }
 
 // ListWorkspaceFilesResponse represents the response from listing workspace files

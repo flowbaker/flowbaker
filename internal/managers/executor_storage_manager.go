@@ -132,7 +132,8 @@ func (s *executorStorageManager) PersistExecutionFile(ctx context.Context, param
 func (s *executorStorageManager) ListWorkspaceFiles(ctx context.Context, params domain.ListWorkspaceFilesParams) (domain.ListWorkspaceFilesResult, error) {
 	resp, err := s.client.ListWorkspaceFiles(ctx, &flowbaker.ListWorkspaceFilesRequest{
 		WorkspaceID: params.WorkspaceID,
-		FolderID:    params.FolderID,
+		FolderIDs:   params.FolderIDs,
+		ExcludeRoot: params.ExcludeRoot,
 		Cursor:      params.Cursor,
 		Limit:       params.Limit,
 	})

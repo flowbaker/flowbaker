@@ -11,6 +11,10 @@ import (
 )
 
 const (
+	HomeFolderID string = "home"
+)
+
+const (
 	StorageIntegrationPeekable_Files   domain.IntegrationPeekableType = "files"
 	StorageIntegrationPeekable_Folders domain.IntegrationPeekableType = "folders"
 )
@@ -101,31 +105,42 @@ func (i *StorageIntegration) ListFiles(ctx context.Context, params domain.Integr
 		return nil, fmt.Errorf("failed to bind parameters: %w", err)
 	}
 
-	// Set default limit if not provided
-	limit := 1000
+	limit := 20
 	if p.Limit != nil {
 		limit = *p.Limit
 	}
 
-	if p.FolderID != nil && *p.FolderID == "" {
-		p.FolderID = nil
+	folderIDs := []string{}
+
+	excludeRoot := true
+
+	if p.FolderID != nil && *p.FolderID != "" {
+		if *p.FolderID == HomeFolderID {
+			excludeRoot = false
+		} else {
+			folderIDs = append(folderIDs, *p.FolderID)
+		}
 	}
 
-	// List workspace files
-	result, err := i.executorStorageManager.ListWorkspaceFiles(ctx, domain.ListWorkspaceFilesParams{
+	listParams := domain.ListWorkspaceFilesParams{
 		WorkspaceID: i.workspaceID,
-		FolderID:    p.FolderID,
-		Cursor:      "",
+		FolderIDs:   folderIDs,
 		Limit:       limit,
-	})
+		ExcludeRoot: excludeRoot,
+	}
+
+	if p.FromFileID != nil && *p.FromFileID != "" {
+		listParams.Cursor = *p.FromFileID
+	}
+
+	result, err := i.executorStorageManager.ListWorkspaceFiles(ctx, listParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list workspace files: %w", err)
 	}
 
-	// Convert to domain items
 	var items []domain.Item
+
 	for _, file := range result.Files {
-		// Get FileItem using execution storage manager
 		fileItem, err := i.executorStorageManager.GetExecutionFileAsFileItem(ctx, domain.GetExecutionFileParams{
 			WorkspaceID: i.workspaceID,
 			UploadID:    file.UploadID,
@@ -285,13 +300,13 @@ func (i *StorageIntegration) Peek(ctx context.Context, params domain.PeekParams)
 
 // PeekFiles - Browse files in workspace
 type PeekFilesParams struct {
-	WorkspaceID string  `json:"workspace_id"`
-	FolderID    *string `json:"folder_id,omitempty"`
-	Limit       int     `json:"limit,omitempty"`
+	FolderID *string `json:"folder_id,omitempty"`
+	Limit    int     `json:"limit,omitempty"`
 }
 
 func (i *StorageIntegration) PeekFiles(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	var peekParams PeekFilesParams
+
 	if len(params.PayloadJSON) > 0 {
 		if err := json.Unmarshal(params.PayloadJSON, &peekParams); err != nil {
 			return domain.PeekResult{}, fmt.Errorf("failed to unmarshal peek params: %w", err)
@@ -299,19 +314,34 @@ func (i *StorageIntegration) PeekFiles(ctx context.Context, params domain.PeekPa
 	}
 
 	workspaceID := params.WorkspaceID
+
 	if workspaceID == "" {
-		workspaceID = i.workspaceID
+		return domain.PeekResult{}, fmt.Errorf("workspace_id is required")
 	}
 
 	if peekParams.Limit == 0 {
 		peekParams.Limit = 20
 	}
 
+	var folderIDs []string
+
+	excludeRoot := true
+	if peekParams.FolderID != nil {
+		folderID := *peekParams.FolderID
+
+		if folderID == HomeFolderID {
+			excludeRoot = false
+		} else {
+			folderIDs = append(folderIDs, folderID)
+		}
+	}
+
 	result, err := i.executorStorageManager.ListWorkspaceFiles(ctx, domain.ListWorkspaceFilesParams{
 		WorkspaceID: workspaceID,
-		FolderID:    peekParams.FolderID,
+		FolderIDs:   folderIDs,
 		Cursor:      params.Pagination.Cursor,
 		Limit:       peekParams.Limit,
+		ExcludeRoot: excludeRoot,
 	})
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to list workspace files: %w", err)
@@ -319,6 +349,7 @@ func (i *StorageIntegration) PeekFiles(ctx context.Context, params domain.PeekPa
 
 	// Convert to peek result items
 	var items []domain.PeekResultItem
+
 	for _, file := range result.Files {
 		items = append(items, domain.PeekResultItem{
 			Key:     file.UploadID,
@@ -338,7 +369,6 @@ func (i *StorageIntegration) PeekFiles(ctx context.Context, params domain.PeekPa
 	return peekResult, nil
 }
 
-// PeekFolders - Browse folders in workspace
 type PeekFoldersParams struct {
 	WorkspaceID    string  `json:"workspace_id"`
 	ParentFolderID *string `json:"parent_folder_id,omitempty"`
@@ -367,8 +397,16 @@ func (i *StorageIntegration) PeekFolders(ctx context.Context, params domain.Peek
 		return domain.PeekResult{}, fmt.Errorf("failed to list folders: %w", err)
 	}
 
-	// Convert to peek result items
 	var items []domain.PeekResultItem
+
+	rootFolderItem := domain.PeekResultItem{
+		Key:     HomeFolderID,
+		Value:   HomeFolderID,
+		Content: "Home",
+	}
+
+	items = append(items, rootFolderItem)
+
 	for _, folder := range result.Folders {
 		items = append(items, domain.PeekResultItem{
 			Key:     folder.ID,
