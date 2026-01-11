@@ -25,16 +25,6 @@ var (
 				SupportedContexts: []domain.ActionUsageContext{
 					domain.UsageContextWorkflow,
 				},
-				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-					domain.UsageContextWorkflow: {
-						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input"},
-						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Output"},
-						},
-					},
-				},
 				Properties: []domain.NodeProperty{
 					{
 						Key:                 "field_path",

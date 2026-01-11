@@ -106,7 +106,6 @@ func NewS3Integration(ctx context.Context, deps S3IntegrationDependencies) (*S3I
 
 	peekFuncs := map[domain.IntegrationPeekableType]domain.PeekFunc{
 		S3IntegrationPeekable_Buckets: integration.PeekBuckets,
-		S3IntegrationPeekable_Objects: integration.PeekObjects,
 		S3IntegrationPeekable_Regions: integration.PeekRegions,
 	}
 
@@ -350,6 +349,10 @@ func (i *S3Integration) CopyObject(ctx context.Context, params domain.Integratio
 		return nil, err
 	}
 
+	if p.DestinationKey == "" {
+		p.DestinationKey = p.SourceKey
+	}
+
 	sourcePath := fmt.Sprintf("%s/%s", p.SourceBucket, p.SourceKey)
 
 	result, err := i.s3Client.CopyObject(&s3.CopyObjectInput{
@@ -391,8 +394,9 @@ func (i *S3Integration) GetObjectInfo(ctx context.Context, params domain.Integra
 
 // Create Bucket
 type CreateBucketParams struct {
-	Bucket string `json:"bucket"`
-	ACL    string `json:"acl"`
+	Bucket            string `json:"bucket"`
+	ObjectLockEnabled bool   `json:"object_lock_enabled"`
+	ObjectOwnership   string `json:"object_ownership"`
 }
 
 func (i *S3Integration) CreateBucket(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -407,8 +411,12 @@ func (i *S3Integration) CreateBucket(ctx context.Context, params domain.Integrat
 		Bucket: aws.String(p.Bucket),
 	}
 
-	if p.ACL != "" {
-		createBucketInput.ACL = aws.String(p.ACL)
+	if p.ObjectLockEnabled {
+		createBucketInput.ObjectLockEnabledForBucket = aws.Bool(p.ObjectLockEnabled)
+	}
+
+	if p.ObjectOwnership != "" {
+		createBucketInput.ObjectOwnership = aws.String(p.ObjectOwnership)
 	}
 
 	result, err := i.s3Client.CreateBucket(createBucketInput)
@@ -461,60 +469,6 @@ func (i *S3Integration) PeekBuckets(ctx context.Context, params domain.PeekParam
 	return domain.PeekResult{
 		Result: items,
 	}, nil
-}
-
-type PeekObjectsParams struct {
-	Bucket string `json:"bucket"`
-	Prefix string `json:"prefix"`
-}
-
-func (i *S3Integration) PeekObjects(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	var p PeekObjectsParams
-	if err := json.Unmarshal(params.PayloadJSON, &p); err != nil {
-		return domain.PeekResult{}, err
-	}
-
-	limit := params.GetLimitWithMax(20, 1000)
-	pageToken := params.Pagination.Cursor
-
-	input := &s3.ListObjectsV2Input{
-		Bucket:    aws.String(p.Bucket),
-		Prefix:    aws.String(p.Prefix),
-		Delimiter: aws.String("/"),
-		MaxKeys:   aws.Int64(int64(limit)),
-	}
-
-	if pageToken != "" {
-		input.ContinuationToken = aws.String(pageToken)
-	}
-
-	result, err := i.s3Client.ListObjectsV2(input)
-	if err != nil {
-		return domain.PeekResult{}, err
-	}
-
-	var items []domain.PeekResultItem
-	for _, obj := range result.Contents {
-		items = append(items, domain.PeekResultItem{
-			Key:     *obj.Key,
-			Value:   *obj.Key,
-			Content: *obj.Key,
-		})
-	}
-
-	peekResult := domain.PeekResult{
-		Result: items,
-	}
-
-	if result.NextContinuationToken != nil {
-		peekResult.Pagination.NextCursor = *result.NextContinuationToken
-	}
-
-	if result.IsTruncated != nil {
-		peekResult.Pagination.HasMore = *result.IsTruncated
-	}
-
-	return peekResult, nil
 }
 
 func (i *S3Integration) PeekRegions(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {

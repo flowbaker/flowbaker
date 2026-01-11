@@ -16,10 +16,8 @@ const (
 )
 
 const (
-	S3IntegrationPeekable_Buckets  = "buckets"
-	S3IntegrationPeekable_Objects  = "objects"
-	S3IntegrationPeekable_Prefixes = "prefixes"
-	S3IntegrationPeekable_Regions  = "regions"
+	S3IntegrationPeekable_Buckets = "buckets"
+	S3IntegrationPeekable_Regions = "regions"
 )
 
 var (
@@ -119,22 +117,12 @@ var (
 						PeekableType: S3IntegrationPeekable_Buckets,
 					},
 					{
-						Key:                    "key",
-						Name:                   "Object Key",
-						Description:            "The key (path) of the object to download",
-						Required:               true,
-						Type:                   domain.NodePropertyType_String,
-						Peekable:               true,
-						PeekableType:           S3IntegrationPeekable_Objects,
-						Dependent:              []string{"bucket"},
-						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						PeekableDependentProperties: []domain.PeekableDependentProperty{
-							{
-								PropertyKey: "bucket",
-								ValueKey:    "bucket",
-							},
-						},
+						Key:         "key",
+						Name:        "Object Key",
+						Description: "The key (path) of the object to download",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Dependent:   []string{"bucket"},
 					},
 				},
 			},
@@ -154,22 +142,13 @@ var (
 						PeekableType: S3IntegrationPeekable_Buckets,
 					},
 					{
-						Key:                    "key",
-						Name:                   "Object Key",
-						Description:            "The key (path) of the object to delete",
-						Required:               true,
-						Type:                   domain.NodePropertyType_String,
-						Peekable:               true,
-						PeekableType:           S3IntegrationPeekable_Objects,
-						Dependent:              []string{"bucket"},
-						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						PeekableDependentProperties: []domain.PeekableDependentProperty{
-							{
-								PropertyKey: "bucket",
-								ValueKey:    "bucket",
-							},
-						},
+						Key:         "key",
+						Name:        "Object Key",
+						Description: "The key (path) of the object to delete",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Peekable:    true,
+						Dependent:   []string{"bucket"},
 					},
 				},
 			},
@@ -283,22 +262,12 @@ var (
 						PeekableType: S3IntegrationPeekable_Buckets,
 					},
 					{
-						Key:                    "source_key",
-						Name:                   "Source Object Key",
-						Description:            "The key (path) of the source object",
-						Required:               true,
-						Type:                   domain.NodePropertyType_String,
-						Peekable:               true,
-						PeekableType:           S3IntegrationPeekable_Objects,
-						Dependent:              []string{"source_bucket"},
-						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						PeekableDependentProperties: []domain.PeekableDependentProperty{
-							{
-								PropertyKey: "source_bucket",
-								ValueKey:    "bucket",
-							},
-						},
+						Key:         "source_key",
+						Name:        "Source Object Key",
+						Description: "The key (path) of the source object",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Dependent:   []string{"source_bucket"},
 					},
 					{
 						Key:          "destination_bucket",
@@ -312,8 +281,8 @@ var (
 					{
 						Key:         "destination_key",
 						Name:        "Destination Object Key",
-						Description: "The key (path) for the copied object",
-						Required:    true,
+						Description: "The key (path) for the copied object. If not provided, the source key will be used.",
+						Required:    false,
 						Type:        domain.NodePropertyType_String,
 					},
 				},
@@ -334,22 +303,13 @@ var (
 						PeekableType: S3IntegrationPeekable_Buckets,
 					},
 					{
-						Key:                    "key",
-						Name:                   "Object Key",
-						Description:            "The key (path) of the object",
-						Required:               true,
-						Type:                   domain.NodePropertyType_String,
-						Peekable:               true,
-						PeekableType:           S3IntegrationPeekable_Objects,
-						Dependent:              []string{"bucket"},
-						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						PeekableDependentProperties: []domain.PeekableDependentProperty{
-							{
-								PropertyKey: "bucket",
-								ValueKey:    "bucket",
-							},
-						},
+						Key:         "key",
+						Name:        "Object Key",
+						Description: "The key (path) of the object",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Peekable:    true,
+						Dependent:   []string{"bucket"},
 					},
 				},
 			},
@@ -367,29 +327,32 @@ var (
 						Type:        domain.NodePropertyType_String,
 					},
 					{
-						Key:         "acl",
-						Name:        "Bucket ACL",
-						Description: "The canned ACL to apply to the bucket",
+						Key:         "object_ownership",
+						Name:        "Object Ownership",
+						Description: "Control who owns objects uploaded to the bucket",
 						Required:    false,
 						Type:        domain.NodePropertyType_String,
 						Options: []domain.NodePropertyOption{
 							{
-								Label: "Private",
-								Value: "private",
+								Label: "Bucket Owner Enforced (ACLs disabled)",
+								Value: "BucketOwnerEnforced",
 							},
 							{
-								Label: "Public Read",
-								Value: "public-read",
+								Label: "Bucket Owner Preferred",
+								Value: "BucketOwnerPreferred",
 							},
 							{
-								Label: "Public Read Write",
-								Value: "public-read-write",
-							},
-							{
-								Label: "Authenticated Read",
-								Value: "authenticated-read",
+								Label: "Object Writer",
+								Value: "ObjectWriter",
 							},
 						},
+					},
+					{
+						Key:         "object_lock_enabled",
+						Name:        "Object Lock Enabled",
+						Description: "Enable S3 Object Lock for immutable object storage",
+						Required:    false,
+						Type:        domain.NodePropertyType_Boolean,
 					},
 				},
 			},
