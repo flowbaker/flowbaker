@@ -217,10 +217,7 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 		OnMemorySaveFailed:      hooksManager.OnMemorySaveFailed,
 	}
 
-	replier, err := e.ResolveReplier(ctx, executionContext.WorkspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve replier: %w", err)
-	}
+	replier, _ := e.ResolveReplier(ctx, executionContext.WorkspaceID)
 
 	err = e.OnTypingStarted(ctx, replier)
 	if err != nil {
@@ -250,6 +247,8 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 		log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
 		return nil, fmt.Errorf("failed to chat with agent: %w", err)
 	}
+
+	isStreamEnabled := replier == nil
 
 	wg := sync.WaitGroup{}
 
@@ -289,11 +288,12 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 					streamEvent.UserID = *executionContext.UserID
 				}
 
-				err = executionObserver.NotifyStream(ctx, streamEvent)
-				if err != nil {
-					log.Error().Str("err", err.Error()).Msg("failed to notify stream event")
+				if isStreamEnabled {
+					err = executionObserver.NotifyStream(ctx, streamEvent)
+					if err != nil {
+						log.Error().Str("err", err.Error()).Msg("failed to notify stream event")
+					}
 				}
-
 			case err := <-result.ErrChan:
 				if err != nil {
 					log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
@@ -342,15 +342,52 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 }
 
 func (e *AIAgentExecutor) ResolveReplier(ctx context.Context, workspaceID string) (domain.IntegrationChatReplier, error) {
+	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("workflow execution context not found")
+	}
+
+	triggerNode := executionContext.TriggerNode
+
+	availableIntegrationTypes := map[domain.IntegrationType]struct{}{
+		domain.IntegrationType_Slack: {},
+	}
+
+	_, exists := availableIntegrationTypes[triggerNode.IntegrationType]
+	if !exists {
+		return nil, fmt.Errorf("trigger node integration type %s is not available", triggerNode.IntegrationType)
+	}
+
+	integration, err := e.executorIntegrationManager.GetIntegration(ctx, domain.IntegrationType(triggerNode.IntegrationType))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get integration for type %s: %w", triggerNode.IntegrationType, err)
+	}
+
+	isCredentialRequired := len(integration.CredentialProperties) > 0 && !integration.IsCredentialOptional
+
+	credentialID, exists := triggerNode.IntegrationSettings["credential_id"]
+	if !exists {
+		if isCredentialRequired {
+			return nil, fmt.Errorf("credential is required for tool %s %s, but not provided", integration.Name)
+		}
+
+		credentialID = ""
+	}
+
+	credentialIDString, ok := credentialID.(string)
+	if !ok {
+		return nil, fmt.Errorf("credential_id is not a string in trigger node %s", triggerNode.ID)
+	}
+
 	creator, err := e.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
-		IntegrationType: domain.IntegrationType_Slack,
+		IntegrationType: triggerNode.IntegrationType,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to select integration creator: %w", err)
 	}
 
 	executor, err := creator.CreateIntegration(ctx, domain.CreateIntegrationParams{
-		CredentialID: "d5ikrr9jfe6kfq2s29t0",
+		CredentialID: credentialIDString,
 		WorkspaceID:  workspaceID,
 	})
 	if err != nil {
