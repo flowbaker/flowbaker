@@ -107,6 +107,16 @@ func (i Integration) GetActionByType(actionType IntegrationActionType) (Integrat
 	return IntegrationAction{}, false
 }
 
+func (i Integration) GetTriggerByType(triggerType IntegrationTriggerEventType) (IntegrationTrigger, bool) {
+	for _, trigger := range i.Triggers {
+		if trigger.EventType == triggerType {
+			return trigger, true
+		}
+	}
+
+	return IntegrationTrigger{}, false
+}
+
 type IntegrationTrigger struct {
 	ID                            string                                `json:"id" bson:"id"`
 	EventType                     IntegrationTriggerEventType           `json:"event_type" bson:"event_type"`

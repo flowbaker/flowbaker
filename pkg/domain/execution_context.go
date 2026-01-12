@@ -12,6 +12,7 @@ type WorkflowExecutionContext struct {
 	WorkflowID          string
 	WorkflowExecutionID string
 	EnableEvents        bool
+	InputPayload        Payload
 	ResponsePayload     Payload
 	ResponseHeaders     map[string][]string
 	ResponseStatusCode  int
@@ -19,6 +20,7 @@ type WorkflowExecutionContext struct {
 	IsReExecution       bool
 	IsFromErrorTrigger  bool
 	IsTesting           bool
+	TriggerNode         WorkflowNode
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {
@@ -35,6 +37,7 @@ func (c *WorkflowExecutionContext) SetResponseStatusCode(statusCode int) {
 
 type NewContextWithWorkflowExecutionContextParams struct {
 	UserID              *string
+	InputPayload        Payload
 	WorkspaceID         string
 	WorkflowID          string
 	WorkflowExecutionID string
@@ -43,11 +46,13 @@ type NewContextWithWorkflowExecutionContextParams struct {
 	IsReExecution       bool
 	IsFromErrorTrigger  bool
 	IsTesting           bool
+	TriggerNode         WorkflowNode
 }
 
 func NewContextWithWorkflowExecutionContext(ctx context.Context, params NewContextWithWorkflowExecutionContextParams) context.Context {
 	workflowExecutionContext := &WorkflowExecutionContext{
 		UserID:              params.UserID,
+		InputPayload:        params.InputPayload,
 		WorkspaceID:         params.WorkspaceID,
 		WorkflowID:          params.WorkflowID,
 		WorkflowExecutionID: params.WorkflowExecutionID,
@@ -59,6 +64,7 @@ func NewContextWithWorkflowExecutionContext(ctx context.Context, params NewConte
 		IsReExecution:       params.IsReExecution,
 		IsFromErrorTrigger:  params.IsFromErrorTrigger,
 		IsTesting:           params.IsTesting,
+		TriggerNode:         params.TriggerNode,
 	}
 
 	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)

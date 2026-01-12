@@ -190,9 +190,15 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 
 	isErrorTrigger := w.IsErrorTrigger(nodeID)
 
+	triggerNode, exists := w.workflow.GetNodeByID(nodeID)
+	if !exists {
+		return ExecutionResult{}, fmt.Errorf("node %s not found in workflow", nodeID)
+	}
+
 	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
 		UserID:              w.userID,
+		InputPayload:        payload,
 		WorkspaceID:         workspaceID,
 		WorkflowID:          w.workflow.ID,
 		WorkflowExecutionID: w.executionID,
@@ -200,6 +206,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		Observer:            w.observer,
 		IsFromErrorTrigger:  isErrorTrigger,
 		IsTesting:           w.IsTestingWorkflow,
+		TriggerNode:         triggerNode,
 	})
 
 	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)

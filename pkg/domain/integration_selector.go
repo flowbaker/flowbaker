@@ -43,6 +43,11 @@ type HTTPOauthClientProvider interface {
 	GetHTTPOAuthClient(credential *OAuthAccountWithSensitiveData) (*http.Client, error)
 }
 
+type IntegrationChatReplier interface {
+	OnTypingStarted(ctx context.Context) error
+	Reply(ctx context.Context, message string) error
+}
+
 type SelectIntegrationParams struct {
 	IntegrationType IntegrationType
 }

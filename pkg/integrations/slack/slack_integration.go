@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 
 	"github.com/flowbaker/flowbaker/internal/managers"
 
@@ -214,16 +215,26 @@ func (i *SlackIntegration) Peek(ctx context.Context, params domain.PeekParams) (
 func (i *SlackIntegration) PeekChannels(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 200)
 
+	cursor := params.Pagination.Cursor
+
 	channels, nextCursor, err := i.slackClient.GetConversationsContext(ctx, &slack.GetConversationsParameters{
 		Types:  []string{"public_channel"},
 		Limit:  limit,
-		Cursor: params.Pagination.Cursor,
+		Cursor: cursor,
 	})
 	if err != nil {
 		return domain.PeekResult{}, err
 	}
 
-	var results []domain.PeekResultItem
+	results := []domain.PeekResultItem{}
+
+	if cursor == "" {
+		results = append(results, domain.PeekResultItem{
+			Key:     "im",
+			Value:   "im",
+			Content: "Private messages with the bot",
+		})
+	}
 
 	for _, channel := range channels {
 		results = append(results, domain.PeekResultItem{
@@ -242,4 +253,103 @@ func (i *SlackIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 	}
 
 	return result, nil
+}
+
+type SlackMessageReceivedEvent struct {
+	Token       string `json:"token"`
+	Type        string `json:"type"`
+	SlackTeamID string `json:"team_id"`
+	SlackUserID string `json:"user_id"`
+	Event       struct {
+		Type    string `json:"type"`
+		Channel string `json:"channel"`
+		User    string `json:"user"`
+		Text    string `json:"text"`
+		Ts      string `json:"ts"`
+	} `json:"event"`
+}
+
+func NewSlackMessageReceivedEventFromPayload(payload domain.Payload) (SlackMessageReceivedEvent, error) {
+	inputItems, err := payload.ToItems()
+	if err != nil {
+		return SlackMessageReceivedEvent{}, fmt.Errorf("failed to convert input payload to items: %w", err)
+	}
+
+	if len(inputItems) == 0 {
+		return SlackMessageReceivedEvent{}, fmt.Errorf("no input items found")
+	}
+
+	item := inputItems[0]
+
+	itemRaw, err := json.Marshal(item)
+	if err != nil {
+		return SlackMessageReceivedEvent{}, fmt.Errorf("failed to marshal item: %w", err)
+	}
+
+	slackEvent := SlackMessageReceivedEvent{}
+
+	err = json.Unmarshal(itemRaw, &slackEvent)
+	if err != nil {
+		return SlackMessageReceivedEvent{}, fmt.Errorf("failed to unmarshal slack event: %w", err)
+	}
+
+	return slackEvent, nil
+}
+
+func (i *SlackIntegration) Reply(ctx context.Context, message string) error {
+	log.Info().Str("message", message).Msg("Sending message to Slack")
+
+	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return fmt.Errorf("execution context not found")
+	}
+
+	inputPayload := executionContext.InputPayload
+
+	slackEvent, err := NewSlackMessageReceivedEventFromPayload(inputPayload)
+	if err != nil {
+		return fmt.Errorf("failed to create slack event from payload: %w", err)
+	}
+
+	channelID := slackEvent.Event.Channel
+
+	_, _, err = i.slackClient.PostMessageContext(ctx, channelID, slack.MsgOptionText(message, false))
+	if err != nil {
+		return fmt.Errorf("failed to send message to channel %s: %w", channelID, err)
+	}
+
+	return nil
+}
+
+func (i *SlackIntegration) OnTypingStarted(ctx context.Context) error {
+	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return fmt.Errorf("execution context not found")
+	}
+
+	inputPayload := executionContext.InputPayload
+
+	slackEvent, err := NewSlackMessageReceivedEventFromPayload(inputPayload)
+	if err != nil {
+		return fmt.Errorf("failed to create slack event from payload: %w", err)
+	}
+
+	channelID := slackEvent.Event.Channel
+
+	typingMessages := []string{
+		"💭 Thinking...",
+		"✨ Working on it...",
+		"🤔 Let me see...",
+		"⏳ One moment...",
+		"✍️ Writing...",
+	}
+
+	randomMessage := typingMessages[rand.Intn(len(typingMessages))]
+
+	_, _, err = i.slackClient.PostMessageContext(ctx, channelID, slack.MsgOptionText(randomMessage, false))
+	if err != nil {
+		return fmt.Errorf("failed to send typing message to channel %s: %w", channelID, err)
+	}
+
+	return nil
 }
