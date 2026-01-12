@@ -114,6 +114,7 @@ type Workflow struct {
 	AuthorUserID     string                   `json:"author_user_id"`
 	Slug             string                   `json:"slug"`
 	Nodes            []WorkflowNode           `json:"nodes"`
+	Loops            []WorkflowLoop           `json:"loops"`
 	LastUpdatedAt    int64                    `json:"last_updated_at"`
 	ActivationStatus WorkflowActivationStatus `json:"activation_status"`
 }
@@ -162,6 +163,13 @@ type NodeInput struct {
 type Settings struct {
 	ReturnErrorAsItem    bool `json:"return_error_as_item"`
 	ContainPreviousItems bool `json:"contain_previous_items"`
+}
+
+type WorkflowLoop struct {
+	ID        int      `json:"id"`
+	Threshold int      `json:"threshold"`
+	EdgeIDs   []string `json:"edge_ids"`
+	NodeIDs   []string `json:"node_ids"`
 }
 
 // PollingEventRequest represents a request to handle a polling event

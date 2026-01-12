@@ -31,6 +31,7 @@ type Workflow struct {
 	WorkspaceID      string
 	AuthorUserID     string
 	Nodes            []WorkflowNode
+	Loops            []WorkflowLoop
 	LastUpdatedAt    time.Time
 	ActivationStatus WorkflowActivationStatus
 	DeletedAt        *time.Time
@@ -128,6 +129,13 @@ func (n *WorkflowNode) GetInputByID(inputID string) (NodeInput, bool) {
 	}
 
 	return NodeInput{}, false
+}
+
+type WorkflowLoop struct {
+	ID        int
+	Threshold int
+	EdgeIDs   []string
+	NodeIDs   []string
 }
 
 type NodeInput struct {
