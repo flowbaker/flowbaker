@@ -858,7 +858,7 @@ var (
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 1,
 							MaxItems: 100,
-							ItemType: domain.NodePropertyType_String,
+							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
 								{
 									Key:              "member",
@@ -873,7 +873,7 @@ var (
 									Name:             "Score",
 									Description:      "The score of the member",
 									Required:         true,
-									Type:             domain.NodePropertyType_String,
+									Type:             domain.NodePropertyType_Number,
 									ExpressionChoice: true,
 								},
 							},
