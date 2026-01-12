@@ -10,7 +10,6 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
-	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
 )
 
@@ -166,13 +165,9 @@ func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.Integrat
 		allItems = append(allItems, items...)
 	}
 
-	log.Info().Interface("all_items", allItems).Msg("All items")
-
 	outputs := []domain.Item{}
 
 	for _, item := range allItems {
-		log.Info().Interface("item", item).Msg("Item")
-
 		p := GetMessageParams{}
 
 		err := i.binder.BindToStruct(ctx, item, &p, input.IntegrationParams.Settings)
@@ -297,8 +292,6 @@ func NewSlackMessageReceivedEventFromPayload(payload domain.Payload) (SlackMessa
 }
 
 func (i *SlackIntegration) Reply(ctx context.Context, message string) error {
-	log.Info().Str("message", message).Msg("Sending message to Slack")
-
 	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
 	if !ok {
 		return fmt.Errorf("execution context not found")
