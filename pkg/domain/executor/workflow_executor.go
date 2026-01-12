@@ -193,6 +193,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
 		UserID:              w.userID,
+		InputPayload:        payload,
 		WorkspaceID:         workspaceID,
 		WorkflowID:          w.workflow.ID,
 		WorkflowExecutionID: w.executionID,

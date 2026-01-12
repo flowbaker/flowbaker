@@ -217,6 +217,16 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 		OnMemorySaveFailed:      hooksManager.OnMemorySaveFailed,
 	}
 
+	replier, err := e.ResolveReplier(ctx, executionContext.WorkspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve replier: %w", err)
+	}
+
+	err = e.OnTypingStarted(ctx, replier)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start typing: %w", err)
+	}
+
 	a, err := agent.New(
 		agent.WithModel(llm.LLM),
 		agent.WithSystemPrompt(executeParams.SystemPrompt),
@@ -321,9 +331,54 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 		"output": maxStep.Content,
 	}
 
+	err = e.HandleReply(ctx, replier, maxStep)
+	if err != nil {
+		return nil, fmt.Errorf("failed to handle reply: %w", err)
+	}
+
 	outputItems = append(outputItems, resultItem)
 
 	return outputItems, nil
+}
+
+func (e *AIAgentExecutor) ResolveReplier(ctx context.Context, workspaceID string) (domain.IntegrationChatReplier, error) {
+	creator, err := e.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
+		IntegrationType: domain.IntegrationType_Slack,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to select integration creator: %w", err)
+	}
+
+	executor, err := creator.CreateIntegration(ctx, domain.CreateIntegrationParams{
+		CredentialID: "d5ikrr9jfe6kfq2s29t0",
+		WorkspaceID:  workspaceID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create integration executor: %w", err)
+	}
+
+	replier, ok := executor.(domain.IntegrationChatReplier)
+	if ok {
+		return replier, nil
+	}
+
+	return nil, nil
+}
+
+func (e *AIAgentExecutor) OnTypingStarted(ctx context.Context, replier domain.IntegrationChatReplier) error {
+	if replier == nil {
+		return nil
+	}
+
+	return replier.OnTypingStarted(ctx)
+}
+
+func (e *AIAgentExecutor) HandleReply(ctx context.Context, replier domain.IntegrationChatReplier, step *agent.Step) error {
+	if replier == nil {
+		return nil
+	}
+
+	return replier.Reply(ctx, step.Content)
 }
 
 type AgentSettings struct {
