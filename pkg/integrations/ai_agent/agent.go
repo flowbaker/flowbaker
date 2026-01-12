@@ -368,7 +368,7 @@ func (e *AIAgentExecutor) ResolveReplier(ctx context.Context, workspaceID string
 	credentialID, exists := triggerNode.IntegrationSettings["credential_id"]
 	if !exists {
 		if isCredentialRequired {
-			return nil, fmt.Errorf("credential is required for tool %s %s, but not provided", integration.Name)
+			return nil, fmt.Errorf("credential is required for trigger %s, but not provided", integration.Name)
 		}
 
 		credentialID = ""
