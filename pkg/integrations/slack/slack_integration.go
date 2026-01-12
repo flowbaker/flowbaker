@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 
 	"github.com/flowbaker/flowbaker/internal/managers"
 
@@ -214,16 +215,26 @@ func (i *SlackIntegration) Peek(ctx context.Context, params domain.PeekParams) (
 func (i *SlackIntegration) PeekChannels(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 200)
 
+	cursor := params.Pagination.Cursor
+
 	channels, nextCursor, err := i.slackClient.GetConversationsContext(ctx, &slack.GetConversationsParameters{
 		Types:  []string{"public_channel"},
 		Limit:  limit,
-		Cursor: params.Pagination.Cursor,
+		Cursor: cursor,
 	})
 	if err != nil {
 		return domain.PeekResult{}, err
 	}
 
-	var results []domain.PeekResultItem
+	results := []domain.PeekResultItem{}
+
+	if cursor == "" {
+		results = append(results, domain.PeekResultItem{
+			Key:     "im",
+			Value:   "im",
+			Content: "Private messages with the bot",
+		})
+	}
 
 	for _, channel := range channels {
 		results = append(results, domain.PeekResultItem{
@@ -325,7 +336,17 @@ func (i *SlackIntegration) OnTypingStarted(ctx context.Context) error {
 
 	channelID := slackEvent.Event.Channel
 
-	_, _, err = i.slackClient.PostMessageContext(ctx, channelID, slack.MsgOptionText("typing...", false))
+	typingMessages := []string{
+		"💭 Thinking...",
+		"✨ Working on it...",
+		"🤔 Let me see...",
+		"⏳ One moment...",
+		"✍️ Writing...",
+	}
+
+	randomMessage := typingMessages[rand.Intn(len(typingMessages))]
+
+	_, _, err = i.slackClient.PostMessageContext(ctx, channelID, slack.MsgOptionText(randomMessage, false))
 	if err != nil {
 		return fmt.Errorf("failed to send typing message to channel %s: %w", channelID, err)
 	}
