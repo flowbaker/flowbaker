@@ -256,11 +256,12 @@ type SlackMessageReceivedEvent struct {
 	SlackTeamID string `json:"team_id"`
 	SlackUserID string `json:"user_id"`
 	Event       struct {
-		Type    string `json:"type"`
-		Channel string `json:"channel"`
-		User    string `json:"user"`
-		Text    string `json:"text"`
-		Ts      string `json:"ts"`
+		Type     string `json:"type"`
+		Channel  string `json:"channel"`
+		User     string `json:"user"`
+		Text     string `json:"text"`
+		Ts       string `json:"ts"`
+		ThreadTs string `json:"thread_ts"`
 	} `json:"event"`
 }
 
@@ -306,7 +307,15 @@ func (i *SlackIntegration) Reply(ctx context.Context, message string) error {
 
 	channelID := slackEvent.Event.Channel
 
-	_, _, err = i.slackClient.PostMessageContext(ctx, channelID, slack.MsgOptionText(message, false))
+	options := []slack.MsgOption{
+		slack.MsgOptionText(message, false),
+	}
+
+	if slackEvent.Event.ThreadTs != "" {
+		options = append(options, slack.MsgOptionTS(slackEvent.Event.ThreadTs))
+	}
+
+	_, _, err = i.slackClient.PostMessageContext(ctx, channelID, options...)
 	if err != nil {
 		return fmt.Errorf("failed to send message to channel %s: %w", channelID, err)
 	}
