@@ -348,7 +348,15 @@ func (i *SlackIntegration) OnTypingStarted(ctx context.Context) error {
 
 	randomMessage := typingMessages[rand.Intn(len(typingMessages))]
 
-	_, _, err = i.slackClient.PostMessageContext(ctx, channelID, slack.MsgOptionText(randomMessage, false))
+	options := []slack.MsgOption{
+		slack.MsgOptionText(randomMessage, false),
+	}
+
+	if slackEvent.Event.ThreadTs != "" {
+		options = append(options, slack.MsgOptionTS(slackEvent.Event.ThreadTs))
+	}
+
+	_, _, err = i.slackClient.PostMessageContext(ctx, channelID, options...)
 	if err != nil {
 		return fmt.Errorf("failed to send typing message to channel %s: %w", channelID, err)
 	}
