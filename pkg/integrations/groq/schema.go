@@ -4,10 +4,6 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
-const (
-	GroqIntegrationActionType_Prompt = "prompt"
-)
-
 var (
 	GroqSchema = domain.Integration{
 		ID:          domain.IntegrationType_Groq,
@@ -23,43 +19,6 @@ var (
 			},
 		},
 		Actions: []domain.IntegrationAction{
-			{
-				ID:          "prompt",
-				Name:        "Send Prompt",
-				Description: "Send a prompt to Groq and get a response",
-				ActionType:  GroqIntegrationActionType_Prompt,
-				Properties: []domain.NodeProperty{
-					{
-						Key:         "model",
-						Name:        "Model",
-						Description: "The Groq model to use for generation",
-						Required:    true,
-						Type:        domain.NodePropertyType_String,
-						Options:     modelOptions,
-					},
-					{
-						Key:         "prompt",
-						Name:        "Prompt",
-						Description: "The main prompt to send to Groq",
-						Required:    true,
-						Type:        domain.NodePropertyType_Text,
-					},
-					{
-						Key:         "system_prompt",
-						Name:        "System Prompt",
-						Description: "Optional system prompt to set the model's behavior",
-						Required:    false,
-						Type:        domain.NodePropertyType_Text,
-					},
-					{
-						Key:         "max_tokens",
-						Name:        "Max Tokens",
-						Description: "Maximum number of tokens to generate. If not specified, defaults to 1024.",
-						Required:    false,
-						Type:        domain.NodePropertyType_Integer,
-					},
-				},
-			},
 			{
 				ID:          "ai_agent_chat",
 				Name:        "AI Agent Chat",

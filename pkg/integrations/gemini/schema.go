@@ -4,10 +4,6 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
-const (
-	GeminiIntegrationActionType_Prompt = "prompt"
-)
-
 var (
 	GeminiSchema = domain.Integration{
 		ID:          domain.IntegrationType_Gemini,
@@ -23,43 +19,6 @@ var (
 			},
 		},
 		Actions: []domain.IntegrationAction{
-			{
-				ID:          "prompt",
-				Name:        "Send Prompt",
-				Description: "Send a prompt to Gemini AI and get a response",
-				ActionType:  GeminiIntegrationActionType_Prompt,
-				Properties: []domain.NodeProperty{
-					{
-						Key:         "model",
-						Name:        "Model",
-						Description: "The Gemini model to use for generation",
-						Required:    true,
-						Type:        domain.NodePropertyType_String,
-						Options:     modelOptions,
-					},
-					{
-						Key:         "prompt",
-						Name:        "Prompt",
-						Description: "The main prompt to send to Gemini",
-						Required:    true,
-						Type:        domain.NodePropertyType_Text,
-					},
-					{
-						Key:         "system_prompt",
-						Name:        "System Prompt",
-						Description: "Optional system prompt to set Gemini's behavior",
-						Required:    false,
-						Type:        domain.NodePropertyType_Text,
-					},
-					{
-						Key:         "max_tokens",
-						Name:        "Max Tokens",
-						Description: "Maximum number of tokens to generate. If not specified, defaults to 1024.",
-						Required:    false,
-						Type:        domain.NodePropertyType_Integer,
-					},
-				},
-			},
 			{
 				ID:          "ai_agent_chat",
 				Name:        "AI Agent Chat",
