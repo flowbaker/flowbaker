@@ -87,22 +87,6 @@ func (c *GithubIntegrationCreator) CreateIntegration(ctx context.Context, p doma
 	})
 }
 
-// GithubIntegration implements the domain.IntegrationExecutor interface for GitHub.
-// It handles the execution of specific actions (defined in schema.go) like creating issues,
-// fetching files, etc., and provides data for UI elements via peek functions.
-//
-// Note on Triggers:
-// The triggering of flows based on GitHub events (e.g., push, issues) is primarily managed
-// by FlowBaker's core event dispatching system. The `GithubSchema` in `schema.go` defines
-// a universal trigger (`IntegrationEventType_GithubUniversalTrigger`) that allows users to
-// select multiple GitHub event types. The dispatching system is responsible for:
-//  1. Receiving webhook events from GitHub.
-//  2. Matching these events against the `selected_events` configured for the universal trigger
-//     in a flow.
-//  3. Evaluating any `event_filters` specified in the trigger configuration.
-//
-// This GithubIntegration's `Execute` method is called when an *action* within a flow
-// is run, not directly for trigger event dispatch.
 type GithubIntegration struct {
 	githubClient *github.Client
 
@@ -119,7 +103,6 @@ type GithubIntegrationDependencies struct {
 
 	ParameterBinder  domain.IntegrationParameterBinder
 	CredentialGetter domain.CredentialGetter[domain.OAuthAccountSensitiveData]
-	// Add other repo/service dependencies here
 }
 
 func NewGithubIntegration(ctx context.Context, deps GithubIntegrationDependencies) (*GithubIntegration, error) {
@@ -190,8 +173,6 @@ func (i *GithubIntegration) Execute(ctx context.Context, params domain.Integrati
 	return i.actionManager.Run(ctx, params.ActionType, params)
 }
 
-// parseOwnerRepo extracts owner and repository name from repository_id parameter
-// Supports formats: "owner/repo" or just "repo" (uses authenticated user as owner)
 func (i *GithubIntegration) parseOwnerRepo(ctx context.Context, repoID string) (string, string, error) {
 	ownerRepo := strings.Split(repoID, "/")
 	if len(ownerRepo) == 2 {
@@ -215,18 +196,6 @@ func (i *GithubIntegration) Peek(ctx context.Context, params domain.PeekParams) 
 	return peekFunc(ctx, params)
 }
 
-// Example of how to use commonLogicForAllActions
-// Define Params struct for each action if needed
-// type CreateFileParams struct {
-// 	Owner      string `json:"owner"`
-// 	Repo       string `json:"repo"`
-// 	Path       string `json:"path"`
-// 	Message    string `json:"message"`
-// 	Content    []byte `json:"content"` // Base64 encoded
-// 	Branch     string `json:"branch,omitempty"`
-// }
-
-// File Actions
 func (i *GithubIntegration) CreateFile(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
 	params := CreateFileParams{}
 	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
@@ -238,7 +207,6 @@ func (i *GithubIntegration) CreateFile(ctx context.Context, input domain.Integra
 		return nil, err
 	}
 
-	// Content is now plain text, convert directly to bytes for the GitHub library.
 	contentBytes := []byte(params.Content)
 
 	opts := &github.RepositoryContentFileOptions{
@@ -287,7 +255,7 @@ func (i *GithubIntegration) DeleteFile(ctx context.Context, input domain.Integra
 		return nil, fmt.Errorf("failed to delete file %s in %s/%s: %w", params.Path, owner, repoName, err)
 	}
 
-	return resp, nil // Returns *RepositoryContentResponse
+	return resp, nil
 }
 
 func (i *GithubIntegration) EditFile(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -308,9 +276,6 @@ func (i *GithubIntegration) EditFile(ctx context.Context, input domain.Integrati
 		return nil, fmt.Errorf("message (commit message) is required to update a file")
 	}
 	if params.Content == "" {
-		// It's valid to update a file to be empty, so this check might be too strict.
-		// However, if content is truly optional for an update, the API might require other fields or handling.
-		// For now, keeping it as required for an update action to provide new content.
 		return nil, fmt.Errorf("content is required to update a file")
 	}
 	if params.SHA == nil || *params.SHA == "" {
@@ -332,7 +297,7 @@ func (i *GithubIntegration) EditFile(ctx context.Context, input domain.Integrati
 		return nil, fmt.Errorf("failed to update file %s in %s/%s: %w", params.Path, owner, repoName, err)
 	}
 
-	return content, nil // Returns *RepositoryContentResponse
+	return content, nil
 }
 
 func (i *GithubIntegration) GetFile(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -354,19 +319,15 @@ func (i *GithubIntegration) GetFile(ctx context.Context, input domain.Integratio
 		opts = &github.RepositoryContentGetOptions{Ref: *params.Ref}
 	}
 
-	// GetContents returns fileContent, directoryContent, resp, err
-	// We are interested in fileContent for GetFile.
 	fileContent, _, _, err := i.githubClient.Repositories.GetContents(ctx, owner, repoName, params.Path, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file %s from %s/%s: %w", params.Path, owner, repoName, err)
 	}
 	if fileContent == nil {
-		// This means the path is likely a directory or does not exist.
-		// The GetContents API returns (nil, directoryContents, resp, err) if it's a directory.
 		return nil, fmt.Errorf("path %s in %s/%s is a directory or does not exist as a file", params.Path, owner, repoName)
 	}
 
-	return fileContent, nil // Returns *github.RepositoryContent if it's a file
+	return fileContent, nil
 }
 
 func (i *GithubIntegration) ListFiles(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
@@ -379,21 +340,16 @@ func (i *GithubIntegration) ListFiles(ctx context.Context, input domain.Integrat
 	if err != nil {
 		return nil, err
 	}
-	// Path is optional for ListFiles, if empty, it lists the root directory.
 
 	var opts *github.RepositoryContentGetOptions
 	if params.Ref != nil && *params.Ref != "" {
 		opts = &github.RepositoryContentGetOptions{Ref: *params.Ref}
 	}
 
-	// GetContents returns fileContent, directoryContent, resp, err
-	// We are interested in directoryContent for ListFiles.
 	_, dirContents, _, err := i.githubClient.Repositories.GetContents(ctx, owner, repoName, params.Path, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files/directories at path '%s' in %s/%s: %w", params.Path, owner, repoName, err)
 	}
-	// If dirContent is nil, it could mean the path was a file, or the directory is empty (or non-existent and not an error the API threw)
-	// For ListFiles, we want to return nil if the path is a file or an empty/non-existent directory that didn't error.
 
 	items := make([]domain.Item, 0)
 
@@ -404,7 +360,6 @@ func (i *GithubIntegration) ListFiles(ctx context.Context, input domain.Integrat
 	return items, nil
 }
 
-// Organization Actions
 func (i *GithubIntegration) OrgGetRepositories(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
 	params := OrgGetRepositoriesParams{}
 	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
@@ -415,13 +370,11 @@ func (i *GithubIntegration) OrgGetRepositories(ctx context.Context, input domain
 		return nil, fmt.Errorf("organization name (org) is required")
 	}
 
-	// Set limit with default value
 	limit := 30
 	if params.Limit != nil && *params.Limit > 0 && *params.Limit <= 100 {
 		limit = *params.Limit
 	}
 
-	// Set page with default value
 	page := 1
 	if params.Page != nil && *params.Page > 0 {
 		page = *params.Page
@@ -444,14 +397,13 @@ func (i *GithubIntegration) OrgGetRepositories(ctx context.Context, input domain
 	if params.Direction != nil && *params.Direction != "" {
 		opts.Direction = *params.Direction
 	} else {
-		if opts.Sort == "created" || opts.Sort == "updated" || opts.Sort == "pushed" { // These default to desc
+		if opts.Sort == "created" || opts.Sort == "updated" || opts.Sort == "pushed" {
 			opts.Direction = "desc"
-		} else { // full_name defaults to asc
+		} else {
 			opts.Direction = "asc"
 		}
 	}
 
-	// Get only the requested number of repositories (single page)
 	repos, _, err := i.githubClient.Repositories.ListByOrg(ctx, params.Org, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list repositories for organization %s: %w", params.Org, err)
@@ -466,7 +418,6 @@ func (i *GithubIntegration) OrgGetRepositories(ctx context.Context, input domain
 	return items, nil
 }
 
-// Release Actions
 func (i *GithubIntegration) CreateRelease(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
 	params := CreateReleaseParams{}
 	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
@@ -678,28 +629,20 @@ func (i *GithubIntegration) GetRepositoryIssues(ctx context.Context, input domai
 	if params.Milestone != nil && *params.Milestone != "" {
 		opts.Milestone = *params.Milestone
 	}
-	// Don't set default milestone filter - let GitHub use its default
 	if params.State != nil && *params.State != "" {
 		opts.State = *params.State
 	} else {
-		opts.State = "all" // Changed from "open" to "all" to show both open and closed issues by default
+		opts.State = "all"
 	}
 	if params.Assignee != nil && *params.Assignee != "" {
-		// GitHub API treats "*" as "any assignee" but sometimes doesn't work as expected
-		// If user selects "*" (any), don't set the assignee filter at all
 		if *params.Assignee != "*" {
 			opts.Assignee = *params.Assignee
 		}
-		// If "*" is selected, leave opts.Assignee empty to get all issues regardless of assignee
 	}
-	// Don't set default assignee filter - let GitHub use its default
 	if params.Creator != nil && *params.Creator != "" {
-		// GitHub API treats "*" as "any creator" but sometimes doesn't work as expected
-		// If user selects "*" (any), don't set the creator filter at all
 		if *params.Creator != "*" {
 			opts.Creator = *params.Creator
 		}
-		// If "*" is selected, leave opts.Creator empty to get all issues regardless of creator
 	}
 	if params.Mentioned != nil && *params.Mentioned != "" {
 		opts.Mentioned = *params.Mentioned
@@ -792,13 +735,11 @@ func (i *GithubIntegration) GetRepositoryPRs(ctx context.Context, input domain.I
 		return nil, err
 	}
 
-	// Set limit with default value
 	limit := 30
 	if params.Limit != nil && *params.Limit > 0 && *params.Limit <= 100 {
 		limit = *params.Limit
 	}
 
-	// Set page with default value
 	page := 1
 	if params.Page != nil && *params.Page > 0 {
 		page = *params.Page
@@ -893,9 +834,9 @@ func (i *GithubIntegration) ListRepositoryReferrers(ctx context.Context, input d
 	return items, nil
 }
 
-// Review Actions
 func (i *GithubIntegration) CreateReview(ctx context.Context, input domain.IntegrationInput, item domain.Item) (domain.Item, error) {
 	params := CreateReviewParams{}
+
 	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
 		return nil, fmt.Errorf("failed to bind parameters: %w", err)
 	}
@@ -908,12 +849,13 @@ func (i *GithubIntegration) CreateReview(ctx context.Context, input domain.Integ
 	if params.PullNumber == 0 {
 		return nil, fmt.Errorf("pull_number is required to create a review")
 	}
-	// Body is required if event is COMMENT, or if event is not provided.
+
 	if (params.Event == nil || *params.Event == "COMMENT") && (params.Body == nil || *params.Body == "") {
 		return nil, fmt.Errorf("body is required when event is COMMENT or not specified")
 	}
 
 	var comments []*github.DraftReviewComment
+
 	if params.Comments != nil {
 		comments = *params.Comments
 	}
@@ -1029,20 +971,17 @@ func (i *GithubIntegration) UpdateReview(ctx context.Context, input domain.Integ
 	return review, nil
 }
 
-// User Actions
 func (i *GithubIntegration) UserGetRepositories(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
 	params := UserGetRepositoriesParams{}
 	if err := i.binder.BindToStruct(ctx, item, &params, input.IntegrationParams.Settings); err != nil {
 		return nil, fmt.Errorf("failed to bind parameters: %w", err)
 	}
 
-	// Set limit with default value
 	limit := 30
 	if params.Limit != nil && *params.Limit > 0 && *params.Limit <= 100 {
 		limit = *params.Limit
 	}
 
-	// Set page with default value
 	page := 1
 	if params.Page != nil && *params.Page > 0 {
 		page = *params.Page
@@ -1080,7 +1019,6 @@ func (i *GithubIntegration) UserGetRepositories(ctx context.Context, input domai
 		}
 	}
 
-	// Empty string for user lists repositories for the authenticated user.
 	repos, _, err := i.githubClient.Repositories.List(ctx, "", opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list repositories for authenticated user: %w", err)
@@ -1353,11 +1291,9 @@ func (i *GithubIntegration) LockIssue(ctx context.Context, input domain.Integrat
 		"message": fmt.Sprintf("Successfully locked issue #%d in %s/%s", params.IssueNumber, owner, repoName),
 	}
 
-	// Lock doesn't return the issue object, just a response.
 	return result, nil
 }
 
-// --- Placeholder Peek Implementations ---
 func (i *GithubIntegration) PeekRepositories(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 100)
 	offset := params.Pagination.Offset
@@ -1481,7 +1417,6 @@ func (i *GithubIntegration) PeekUsers(ctx context.Context, params domain.PeekPar
 }
 
 func (i *GithubIntegration) PeekBranches(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	// Parse PayloadJSON to get repository_id
 	var payload map[string]interface{}
 	if len(params.PayloadJSON) > 0 {
 		if err := json.Unmarshal(params.PayloadJSON, &payload); err != nil {
@@ -1489,7 +1424,6 @@ func (i *GithubIntegration) PeekBranches(ctx context.Context, params domain.Peek
 		}
 	}
 
-	// Try to get repository_id from different sources
 	var repositoryIDStr string
 
 	// First try from payload
