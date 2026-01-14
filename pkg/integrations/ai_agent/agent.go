@@ -120,9 +120,10 @@ const (
 )
 
 type ExecuteParams struct {
-	Prompt       string `json:"prompt,omitempty"`
-	SystemPrompt string `json:"system_prompt,omitempty"`
-	MaxSteps     int    `json:"max_steps,omitempty"`
+	Prompt              string `json:"prompt,omitempty"`
+	SystemPrompt        string `json:"system_prompt,omitempty"`
+	MaxSteps            int    `json:"max_steps,omitempty"`
+	RecentMessagesLimit int    `json:"recent_messages_limit,omitempty"`
 }
 
 const InputHandleIDFormat = "input-%s-%d"
@@ -230,6 +231,7 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 		agent.WithMemory(memory.Memory),
 		agent.WithTools(tools...),
 		agent.WithMaxIterations(maxSteps),
+		agent.WithConversationHistoryLimit(executeParams.RecentMessagesLimit),
 		agent.WithCancelContext(ctx),
 		agent.WithHooks(hooks),
 	)
