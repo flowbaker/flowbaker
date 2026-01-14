@@ -332,9 +332,27 @@ func (s *Store) GetConversation(ctx context.Context, filter memory.Filter) (type
 		return types.Conversation{}, fmt.Errorf("failed to decode conversation: %w", err)
 	}
 
-	opts := options.Find().SetSort(bson.D{{Key: "order", Value: 1}})
+	// Build message filter
+	messageFilter := bson.M{"conversation_id": conv.ID}
 
-	cursor, err := s.messagesColl.Find(ctx, bson.M{"conversation_id": conv.ID}, opts)
+	// Add cursor filter if "before" is specified
+	if filter.Before != nil {
+		messageFilter["order"] = bson.M{"$lt": *filter.Before}
+	}
+
+	// Build find options
+	opts := options.Find()
+
+	if filter.Limit > 0 {
+		// Sort DESC to get newest messages first when paginating
+		opts.SetSort(bson.D{{Key: "order", Value: -1}})
+		opts.SetLimit(int64(filter.Limit))
+	} else {
+		// No pagination - get all messages in chronological order
+		opts.SetSort(bson.D{{Key: "order", Value: 1}})
+	}
+
+	cursor, err := s.messagesColl.Find(ctx, messageFilter, opts)
 	if err != nil {
 		return types.Conversation{}, fmt.Errorf("failed to find messages: %w", err)
 	}
@@ -344,6 +362,13 @@ func (s *Store) GetConversation(ctx context.Context, filter memory.Filter) (type
 
 	if err := cursor.All(ctx, &msgs); err != nil {
 		return types.Conversation{}, fmt.Errorf("failed to decode messages: %w", err)
+	}
+
+	// If we sorted DESC for pagination, reverse to chronological order
+	if filter.Limit > 0 {
+		for i, j := 0, len(msgs)-1; i < j; i, j = i+1, j-1 {
+			msgs[i], msgs[j] = msgs[j], msgs[i]
+		}
 	}
 
 	messages := make([]types.Message, len(msgs))

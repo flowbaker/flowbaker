@@ -105,6 +105,8 @@ func (m *Memory) GetConversation(ctx context.Context, filter memory.Filter) (typ
 	req := &flowbaker.GetAgentConversationRequest{
 		WorkspaceID: m.workspaceID,
 		SessionID:   filter.SessionID,
+		Limit:       filter.Limit,
+		Before:      filter.Before,
 	}
 
 	resp, err := m.client.GetAgentConversation(ctx, req)

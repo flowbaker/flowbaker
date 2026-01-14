@@ -538,11 +538,15 @@ type SaveAgentConversationResponse struct {
 type GetAgentConversationRequest struct {
 	WorkspaceID string `json:"workspace_id"`
 	SessionID   string `json:"session_id,omitempty"`
+	Limit       int    `json:"limit,omitempty"`  // Number of messages to return (0 = all)
+	Before      *int   `json:"before,omitempty"` // Get messages with order < this value (cursor-based pagination)
 }
 
 // GetAgentConversationsResponse represents the response from getting agent conversations
 type GetAgentConversationResponse struct {
 	Conversation AgentConversation `json:"conversation"`
+	HasMore      bool              `json:"has_more"`
+	NextCursor   *int              `json:"next_cursor,omitempty"`
 }
 
 // DeleteOldAgentConversationsRequest represents the request to delete old agent conversations
