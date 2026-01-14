@@ -461,19 +461,6 @@ type WorkflowStatesQueryResponse struct {
 	} `json:"team"`
 }
 
-func toMap(v any) (map[string]any, error) {
-	data, err := json.Marshal(v)
-	if err != nil {
-		return nil, err
-	}
-	var result map[string]any
-	err = json.Unmarshal(data, &result)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 type linearTransport struct {
 	apiKey    string
 	transport http.RoundTripper
@@ -635,7 +622,7 @@ func (i *LinearIntegration) CreateIssue(ctx context.Context, params domain.Integ
 		return nil, fmt.Errorf("failed to create Linear issue: no issue returned")
 	}
 
-	return toMap(response.IssueCreate.Issue)
+	return response.IssueCreate.Issue, nil
 }
 
 type DeleteIssueParams struct {
@@ -699,7 +686,7 @@ func (i *LinearIntegration) GetIssue(ctx context.Context, params domain.Integrat
 		return nil, fmt.Errorf("issue with ID %s not found", p.IssueID)
 	}
 
-	return toMap(response.Issue)
+	return response.Issue, nil
 }
 
 type GetManyIssuesParams struct {
@@ -757,11 +744,7 @@ func (i *LinearIntegration) GetManyIssues(ctx context.Context, params domain.Int
 
 	items := make([]domain.Item, len(response.Issues.Nodes))
 	for idx, node := range response.Issues.Nodes {
-		itemMap, err := toMap(node)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert issue to map: %w", err)
-		}
-		items[idx] = itemMap
+		items[idx] = node
 	}
 
 	return items, nil
@@ -839,7 +822,7 @@ func (i *LinearIntegration) UpdateIssue(ctx context.Context, params domain.Integ
 		return nil, fmt.Errorf("failed to update Linear issue: no issue returned")
 	}
 
-	return toMap(response.IssueUpdate.Issue)
+	return response.IssueUpdate.Issue, nil
 }
 
 type AddCommentParams struct {
@@ -876,7 +859,7 @@ func (i *LinearIntegration) AddComment(ctx context.Context, params domain.Integr
 		return nil, fmt.Errorf("failed to add comment: no comment returned")
 	}
 
-	return toMap(response.CommentCreate.Comment)
+	return response.CommentCreate.Comment, nil
 }
 
 type AddLinkParams struct {
@@ -919,7 +902,7 @@ func (i *LinearIntegration) AddLink(ctx context.Context, params domain.Integrati
 		return nil, fmt.Errorf("failed to add link: no attachment returned")
 	}
 
-	return toMap(response.AttachmentLinkURL.Attachment)
+	return response.AttachmentLinkURL.Attachment, nil
 }
 
 func (i *LinearIntegration) PeekTeams(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
