@@ -261,17 +261,19 @@ const (
 		}
 	}`
 
-	issueLabelsQuery = `
-	query IssueLabels($first: Int!, $after: String) {
-		issueLabels(first: $first, after: $after) {
-			nodes {
-				id
-				name
-				color
-			}
-			pageInfo {
-				hasNextPage
-				endCursor
+	teamLabelsQuery = `
+	query TeamLabels($teamId: String!, $first: Int!, $after: String) {
+		team(id: $teamId) {
+			labels(first: $first, after: $after) {
+				nodes {
+					id
+					name
+					color
+				}
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
 		}
 	}`
@@ -446,10 +448,12 @@ type UsersQueryResponse struct {
 }
 
 type LabelsQueryResponse struct {
-	IssueLabels struct {
-		Nodes    []LabelNode `json:"nodes"`
-		PageInfo PageInfo    `json:"pageInfo"`
-	} `json:"issueLabels"`
+	Team struct {
+		Labels struct {
+			Nodes    []LabelNode `json:"nodes"`
+			PageInfo PageInfo    `json:"pageInfo"`
+		} `json:"labels"`
+	} `json:"team"`
 }
 
 type WorkflowStatesQueryResponse struct {
@@ -1003,25 +1007,42 @@ func (i *LinearIntegration) PeekUsers(ctx context.Context, p domain.PeekParams) 
 	}, nil
 }
 
+type PeekLabelsParams struct {
+	TeamID string `json:"team_id"`
+}
+
 func (i *LinearIntegration) PeekLabels(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 100)
 	cursor := p.Pagination.Cursor
 
+	params := PeekLabelsParams{}
+	if len(p.PayloadJSON) > 0 {
+		err := json.Unmarshal(p.PayloadJSON, &params)
+		if err != nil {
+			return domain.PeekResult{}, fmt.Errorf("failed to unmarshal peek labels params: %w", err)
+		}
+	}
+
+	if params.TeamID == "" {
+		return domain.PeekResult{}, fmt.Errorf("team_id is required to peek labels")
+	}
+
 	variables := map[string]interface{}{
-		"first": limit,
+		"teamId": params.TeamID,
+		"first":  limit,
 	}
 	if cursor != "" {
 		variables["after"] = cursor
 	}
 
 	var response LabelsQueryResponse
-	err := i.graphqlClient.Exec(ctx, issueLabelsQuery, &response, variables)
+	err := i.graphqlClient.Exec(ctx, teamLabelsQuery, &response, variables)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to fetch Linear labels via GraphQL: %w", err)
 	}
 
 	var results []domain.PeekResultItem
-	for _, label := range response.IssueLabels.Nodes {
+	for _, label := range response.Team.Labels.Nodes {
 		results = append(results, domain.PeekResultItem{
 			Key:     label.ID,
 			Value:   label.ID,
@@ -1032,8 +1053,8 @@ func (i *LinearIntegration) PeekLabels(ctx context.Context, p domain.PeekParams)
 	return domain.PeekResult{
 		Result: results,
 		Pagination: domain.PaginationMetadata{
-			NextCursor: response.IssueLabels.PageInfo.EndCursor,
-			HasMore:    response.IssueLabels.PageInfo.HasNextPage,
+			NextCursor: response.Team.Labels.PageInfo.EndCursor,
+			HasMore:    response.Team.Labels.PageInfo.HasNextPage,
 		},
 	}, nil
 }
