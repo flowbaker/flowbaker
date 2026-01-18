@@ -15,6 +15,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/integrations/dropbox"
 	"github.com/flowbaker/flowbaker/pkg/integrations/rawfiletoitem"
 	githubintegration "github.com/flowbaker/flowbaker/pkg/integrations/github"
+	gitlabintegration "github.com/flowbaker/flowbaker/pkg/integrations/gitlab"
 	"github.com/flowbaker/flowbaker/pkg/integrations/google/gmail"
 	googledrive "github.com/flowbaker/flowbaker/pkg/integrations/google/google_drive"
 	googlesheets "github.com/flowbaker/flowbaker/pkg/integrations/google/google_sheets"
@@ -160,6 +161,11 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 		IntegrationType:     domain.IntegrationType_Github,
 		NewCreator:          githubintegration.NewGithubIntegrationCreator,
 		NewConnectionTester: githubintegration.NewGitHubConnectionTester,
+	},
+	{
+		IntegrationType:     domain.IntegrationType_Gitlab,
+		NewCreator:          gitlabintegration.NewGitlabIntegrationCreator,
+		NewConnectionTester: gitlabintegration.NewGitLabConnectionTester,
 	},
 	{
 		IntegrationType:     domain.IntegrationType_Teams,
