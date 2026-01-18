@@ -155,6 +155,7 @@ var (
 						Description: "One or more labels to attach to the issue.",
 						Required:    false,
 						Type:        domain.NodePropertyType_Array,
+						Dependent:   []string{"team_id"},
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
 							ItemProperties: []domain.NodeProperty{
@@ -166,6 +167,12 @@ var (
 									Peekable:               true,
 									PeekableType:           LinearIntegrationPeekable_Labels,
 									PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+									PeekableDependentProperties: []domain.PeekableDependentProperty{
+										{
+											PropertyKey: "team_id",
+											ValueKey:    "team_id",
+										},
+									},
 								},
 							},
 						},
@@ -237,9 +244,10 @@ var (
 					{
 						Key:         "label_ids",
 						Name:        "Filter by Labels",
-						Description: "Optionally filter issues by one or more labels.",
+						Description: "Optionally filter issues by one or more labels. Requires team selection first.",
 						Required:    false,
 						Type:        domain.NodePropertyType_Array,
+						Dependent:   []string{"team_id"},
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
 							ItemProperties: []domain.NodeProperty{
@@ -251,6 +259,12 @@ var (
 									Peekable:               true,
 									PeekableType:           LinearIntegrationPeekable_Labels,
 									PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+									PeekableDependentProperties: []domain.PeekableDependentProperty{
+										{
+											PropertyKey: "team_id",
+											ValueKey:    "team_id",
+										},
+									},
 								},
 							},
 						},
@@ -334,9 +348,10 @@ var (
 					{
 						Key:         "label_ids",
 						Name:        "New Labels",
-						Description: "Replace existing labels with new ones. Leave empty to remove all labels.",
+						Description: "Replace existing labels with new ones. Leave empty to remove all labels. Requires team selection first.",
 						Required:    false,
 						Type:        domain.NodePropertyType_Array,
+						Dependent:   []string{"team_id"},
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_String,
 							ItemProperties: []domain.NodeProperty{
@@ -348,6 +363,12 @@ var (
 									Peekable:               true,
 									PeekableType:           LinearIntegrationPeekable_Labels,
 									PeekablePaginationType: domain.PeekablePaginationType_Cursor,
+									PeekableDependentProperties: []domain.PeekableDependentProperty{
+										{
+											PropertyKey: "team_id",
+											ValueKey:    "team_id",
+										},
+									},
 								},
 							},
 						},
