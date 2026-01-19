@@ -142,50 +142,43 @@ func (p *Provider) Generate(ctx context.Context, req provider.GenerateRequest) (
 	return response, nil
 }
 
-// Stream implements the Stream method of the LanguageModel interface
-func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-chan types.StreamEvent, <-chan error) {
+func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (*provider.ProviderStream, error) {
+	config := &genai.GenerateContentConfig{
+		MaxOutputTokens: p.RequestSettings.MaxOutputTokens,
+	}
+
+	if p.RequestSettings.Temperature > 0 {
+		config.Temperature = genai.Ptr(p.RequestSettings.Temperature)
+	}
+	if p.RequestSettings.TopP > 0 {
+		config.TopP = genai.Ptr(p.RequestSettings.TopP)
+	}
+	if p.RequestSettings.TopK > 0 {
+		config.TopK = genai.Ptr(p.RequestSettings.TopK)
+	}
+	if len(p.RequestSettings.StopSequences) > 0 {
+		config.StopSequences = p.RequestSettings.StopSequences
+	}
+
+	if req.System != "" {
+		config.SystemInstruction = &genai.Content{
+			Parts: []*genai.Part{genai.NewPartFromText(req.System)},
+		}
+	}
+
+	tools := p.convertTools(req.Tools)
+	if len(tools) > 0 {
+		config.Tools = tools
+	}
+
+	contents := p.convertMessages(req.Messages)
+
 	eventChan := make(chan types.StreamEvent, 100)
-	errChan := make(chan error, 1)
+	ps := provider.NewProviderStream(eventChan)
 
 	go func() {
 		defer close(eventChan)
-		defer close(errChan)
 
-		// Set generation config
-		config := &genai.GenerateContentConfig{
-			MaxOutputTokens: p.RequestSettings.MaxOutputTokens,
-		}
-
-		if p.RequestSettings.Temperature > 0 {
-			config.Temperature = genai.Ptr(p.RequestSettings.Temperature)
-		}
-		if p.RequestSettings.TopP > 0 {
-			config.TopP = genai.Ptr(p.RequestSettings.TopP)
-		}
-		if p.RequestSettings.TopK > 0 {
-			config.TopK = genai.Ptr(p.RequestSettings.TopK)
-		}
-		if len(p.RequestSettings.StopSequences) > 0 {
-			config.StopSequences = p.RequestSettings.StopSequences
-		}
-
-		// Set system instruction if provided
-		if req.System != "" {
-			config.SystemInstruction = &genai.Content{
-				Parts: []*genai.Part{genai.NewPartFromText(req.System)},
-			}
-		}
-
-		// Convert tools if provided
-		tools := p.convertTools(req.Tools)
-		if len(tools) > 0 {
-			config.Tools = tools
-		}
-
-		// Convert messages
-		contents := p.convertMessages(req.Messages)
-
-		// Track state for building complete response
 		var fullText string
 		var totalUsage types.Usage
 		streamStarted := false
@@ -199,13 +192,11 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 				break
 			}
 
-			// Send stream start event on first chunk
 			if !streamStarted {
 				eventChan <- types.NewStreamStartEvent(p.RequestSettings.Model, uuid.New().String(), "")
 				streamStarted = true
 			}
 
-			// Update usage if available
 			if resp.UsageMetadata != nil {
 				totalUsage = types.Usage{
 					PromptTokens:     int(resp.UsageMetadata.PromptTokenCount),
@@ -217,27 +208,23 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 				}
 			}
 
-			// Process candidates
 			for _, candidate := range resp.Candidates {
 				if candidate.Content == nil {
 					continue
 				}
 
 				for _, part := range candidate.Content.Parts {
-					// Handle text content
 					if part.Text != "" {
 						fullText += part.Text
 						eventChan <- types.NewTextDeltaEvent(part.Text, 0)
 					}
 
-					// Handle function calls (Gemini sends complete function calls, not deltas)
 					if part.FunctionCall != nil {
 						toolCall := types.ToolCall{
 							ID:        uuid.New().String(),
 							Name:      part.FunctionCall.Name,
 							Arguments: part.FunctionCall.Args,
 						}
-						// Store ThoughtSignature in metadata (required for Gemini 3 models)
 						if len(part.ThoughtSignature) > 0 {
 							toolCall.Metadata = map[string]any{
 								"thought_signature": part.ThoughtSignature,
@@ -245,40 +232,28 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 						}
 						toolCalls = append(toolCalls, toolCall)
 
-						// Send tool call start and complete events
 						eventChan <- types.NewToolCallStartEvent(toolCall.ID, toolCall.Name, toolCallIndex)
 						eventChan <- types.NewToolCallCompleteEvent(toolCall, toolCallIndex)
 						toolCallIndex++
 					}
 				}
-
-				// Send finish reason if available
-				// Note: We defer sending finish reason until the end of streaming
-				// because Gemini sends FinishReasonStop even when there are tool calls,
-				// and we need to check if any tool calls were collected first
 			}
 		}
 
-		// If stream never started, send start event
 		if !streamStarted {
 			eventChan <- types.NewStreamStartEvent(p.RequestSettings.Model, "", "")
 		}
 
-		// Send error if one occurred
 		if streamErr != nil {
-			errChan <- streamErr
+			ps.SetError(streamErr)
 		}
 
-		// Send completion events
 		if fullText != "" {
 			eventChan <- types.NewTextCompleteEvent(fullText)
 		}
 
-		// Send usage event
 		eventChan <- types.NewUsageEvent(totalUsage)
 
-		// Determine the correct finish reason
-		// Gemini sends FinishReasonStop even with tool calls, so we need to override
 		finishReason := types.FinishReasonStop
 		if streamErr != nil {
 			finishReason = types.FinishReasonError
@@ -286,14 +261,11 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 			finishReason = types.FinishReasonToolCalls
 		}
 
-		// Send the finish reason event (deferred from streaming to ensure correct value)
 		eventChan <- types.NewFinishReasonEvent(finishReason)
-
-		// Send stream end event - ALWAYS send this to prevent hangs
 		eventChan <- types.NewStreamEndEvent(finishReason, totalUsage)
 	}()
 
-	return eventChan, errChan
+	return ps, nil
 }
 
 // ID returns the model identifier

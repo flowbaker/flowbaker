@@ -7,6 +7,7 @@ import (
 
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider"
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
+	"github.com/rs/zerolog/log"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -98,6 +99,7 @@ func (p *Provider) Generate(ctx context.Context, req provider.GenerateRequest) (
 
 	resp, err := p.client.CreateChatCompletion(ctx, chatReq)
 	if err != nil {
+		log.Error().Err(err).Str("model", p.RequestSettings.Model).Msg("openai api error")
 		return nil, fmt.Errorf("openai api error: %w", err)
 	}
 
@@ -138,51 +140,48 @@ func (p *Provider) Generate(ctx context.Context, req provider.GenerateRequest) (
 	return response, nil
 }
 
-// Stream implements the Stream method of the LanguageModel interface
-func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-chan types.StreamEvent, <-chan error) {
+func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (*provider.ProviderStream, error) {
+	messages := p.convertMessages(req.Messages, req.System)
+	tools := p.convertTools(req.Tools)
+
+	chatReq := openai.ChatCompletionRequest{
+		Model:    p.RequestSettings.Model,
+		Messages: messages,
+		Stream:   true,
+		StreamOptions: &openai.StreamOptions{
+			IncludeUsage: true,
+		},
+		Verbosity:        p.RequestSettings.Verbosity,
+		ReasoningEffort:  p.RequestSettings.ReasoningEffort,
+		Temperature:      p.RequestSettings.Temperature,
+		TopP:             p.RequestSettings.TopP,
+		FrequencyPenalty: p.RequestSettings.FrequencyPenalty,
+		PresencePenalty:  p.RequestSettings.PresencePenalty,
+		Stop:             p.RequestSettings.Stop,
+		Tools:            tools,
+	}
+
+	if p.RequestSettings.MaxTokens > 0 {
+		if isMaxCompletionTokensModel(p.RequestSettings.Model) {
+			chatReq.MaxCompletionTokens = p.RequestSettings.MaxTokens
+		} else {
+			chatReq.MaxTokens = p.RequestSettings.MaxTokens
+		}
+	}
+
+	stream, err := p.client.CreateChatCompletionStream(ctx, chatReq)
+	if err != nil {
+		log.Error().Err(err).Str("model", p.RequestSettings.Model).Msg("openai stream error")
+		return nil, fmt.Errorf("openai stream error: %w", err)
+	}
+
 	eventChan := make(chan types.StreamEvent, 100)
-	errChan := make(chan error, 1)
+	ps := provider.NewProviderStream(eventChan)
 
 	go func() {
 		defer close(eventChan)
-		defer close(errChan)
-
-		messages := p.convertMessages(req.Messages, req.System)
-		tools := p.convertTools(req.Tools)
-
-		chatReq := openai.ChatCompletionRequest{
-			Model:    p.RequestSettings.Model,
-			Messages: messages,
-			Stream:   true,
-			StreamOptions: &openai.StreamOptions{
-				IncludeUsage: true,
-			},
-			Verbosity:        p.RequestSettings.Verbosity,
-			ReasoningEffort:  p.RequestSettings.ReasoningEffort,
-			Temperature:      p.RequestSettings.Temperature,
-			TopP:             p.RequestSettings.TopP,
-			FrequencyPenalty: p.RequestSettings.FrequencyPenalty,
-			PresencePenalty:  p.RequestSettings.PresencePenalty,
-			Stop:             p.RequestSettings.Stop,
-			Tools:            tools,
-		}
-
-		if p.RequestSettings.MaxTokens > 0 {
-			if isMaxCompletionTokensModel(p.RequestSettings.Model) {
-				chatReq.MaxCompletionTokens = p.RequestSettings.MaxTokens
-			} else {
-				chatReq.MaxTokens = p.RequestSettings.MaxTokens
-			}
-		}
-
-		stream, err := p.client.CreateChatCompletionStream(ctx, chatReq)
-		if err != nil {
-			errChan <- fmt.Errorf("openai stream error: %w", err)
-			return
-		}
 		defer stream.Close()
 
-		// Track state for building complete tool calls
 		toolCallsMap := make(map[int]*toolCallBuilder)
 		var totalUsage types.Usage
 		var fullText string
@@ -194,14 +193,12 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 			response, err := stream.Recv()
 			if err != nil {
 				if err.Error() == "EOF" {
-					// Stream completed normally
 					break
 				}
-				errChan <- fmt.Errorf("stream recv error: %w", err)
+				ps.SetError(fmt.Errorf("stream recv error: %w", err))
 				return
 			}
 
-			// Send stream start event on first chunk
 			if !streamStarted {
 				modelID = response.Model
 				systemFingerprint = response.SystemFingerprint
@@ -209,8 +206,6 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 				streamStarted = true
 			}
 
-			// Handle usage (comes in a special chunk with empty choices array)
-			// This must be checked BEFORE checking choices length
 			if response.Usage != nil {
 				usage := types.Usage{
 					PromptTokens:     response.Usage.PromptTokens,
@@ -218,7 +213,6 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 					TotalTokens:      response.Usage.TotalTokens,
 				}
 
-				// Handle optional fields that may be nil
 				if response.Usage.CompletionTokensDetails != nil {
 					usage.ReasoningTokens = response.Usage.CompletionTokensDetails.ReasoningTokens
 				}
@@ -227,11 +221,9 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 				}
 
 				totalUsage = usage
-				// Emit usage event immediately
 				eventChan <- types.NewUsageEvent(totalUsage)
 			}
 
-			// Skip chunks with no choices (like the usage-only chunk)
 			if len(response.Choices) == 0 {
 				continue
 			}
@@ -239,13 +231,11 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 			choice := response.Choices[0]
 			delta := choice.Delta
 
-			// Handle text content
 			if delta.Content != "" {
 				fullText += delta.Content
 				eventChan <- types.NewTextDeltaEvent(delta.Content, choice.Index)
 			}
 
-			// Handle tool calls
 			if len(delta.ToolCalls) > 0 {
 				for _, tc := range delta.ToolCalls {
 					if tc.Index == nil {
@@ -253,7 +243,6 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 					}
 					index := *tc.Index
 					if _, exists := toolCallsMap[index]; !exists {
-						// New tool call
 						toolCallsMap[index] = &toolCallBuilder{
 							id:        tc.ID,
 							name:      tc.Function.Name,
@@ -264,7 +253,6 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 						}
 					}
 
-					// Accumulate arguments
 					if tc.Function.Arguments != "" {
 						toolCallsMap[index].arguments += tc.Function.Arguments
 						eventChan <- types.NewToolCallDeltaEvent(
@@ -276,18 +264,15 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 				}
 			}
 
-			// Handle finish reason
 			if choice.FinishReason != "" {
 				eventChan <- types.NewFinishReasonEvent(string(choice.FinishReason))
 			}
 		}
 
-		// Send completion events
 		if fullText != "" {
 			eventChan <- types.NewTextCompleteEvent(fullText)
 		}
 
-		// Send complete tool calls
 		for index, builder := range toolCallsMap {
 			var args map[string]any
 			if builder.arguments != "" {
@@ -301,11 +286,10 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 			eventChan <- types.NewToolCallCompleteEvent(toolCall, index)
 		}
 
-		// Send stream end event (usage already sent during stream if available)
 		eventChan <- types.NewStreamEndEvent("stop", totalUsage)
 	}()
 
-	return eventChan, errChan
+	return ps, nil
 }
 
 // Helper type for building tool calls from deltas
@@ -414,6 +398,8 @@ var maxCompletionTokensModels = map[string]bool{
 	"o1-preview": true, "o1-preview-2024-09-12": true,
 	"o3": true, "o3-mini": true,
 	"gpt-5": true, "gpt-5-mini": true, "gpt-5-nano": true,
+	"gpt-5-chat-latest":   true,
+	"gpt-5.2-chat-latest": true,
 }
 
 func isMaxCompletionTokensModel(model string) bool {

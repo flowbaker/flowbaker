@@ -261,6 +261,9 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 				return
 			case event, ok := <-result.EventChan:
 				if !ok {
+					if err := result.Err(); err != nil {
+						log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
+					}
 					return
 				}
 				eventType := string(event.GetType())
@@ -296,11 +299,6 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 						log.Error().Str("err", err.Error()).Msg("failed to notify stream event")
 					}
 				}
-			case err := <-result.ErrChan:
-				if err != nil {
-					log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
-				}
-				return
 			}
 		}
 	})

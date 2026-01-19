@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"sync"
 
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/types"
 )
@@ -11,8 +12,10 @@ type LanguageModel interface {
 	// Generate produces a complete response (blocking)
 	Generate(ctx context.Context, req GenerateRequest) (*types.GenerateResponse, error)
 
-	// Stream produces a streaming response via channel
-	Stream(ctx context.Context, req GenerateRequest) (<-chan types.StreamEvent, <-chan error)
+	// Stream creates a streaming request.
+	// Returns error immediately if request fails to start (auth, bad params, etc.)
+	// Only streaming errors go through ProviderStream.Err()
+	Stream(ctx context.Context, req GenerateRequest) (*ProviderStream, error)
 
 	// ID returns the unique identifier for this model
 	ID() string
@@ -21,6 +24,38 @@ type LanguageModel interface {
 	Capabilities() Capabilities
 
 	ProviderName() string
+}
+
+// ProviderStream represents an active streaming response from a provider.
+// Events are received through the Events channel.
+// After the Events channel closes, call Err() to check for streaming errors.
+type ProviderStream struct {
+	Events <-chan types.StreamEvent
+
+	mu  sync.RWMutex
+	err error
+}
+
+// NewProviderStream creates a new ProviderStream with the given events channel.
+func NewProviderStream(events <-chan types.StreamEvent) *ProviderStream {
+	return &ProviderStream{
+		Events: events,
+	}
+}
+
+// SetError sets the streaming error (thread-safe).
+func (s *ProviderStream) SetError(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.err = err
+}
+
+// Err returns any error that occurred during streaming.
+// Should be called after Events channel closes.
+func (s *ProviderStream) Err() error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.err
 }
 
 // GenerateRequest contains all parameters for generating text
@@ -33,32 +68,6 @@ type GenerateRequest struct {
 
 	// Tools is a list of tools available to the model
 	Tools []types.Tool `json:"tools,omitempty"`
-
-	/*
-		 	// Temperature controls randomness (0.0 to 2.0)
-			Temperature float32 `json:"temperature,omitempty"`
-
-			// MaxTokens is the maximum number of tokens to generate
-			MaxTokens int `json:"max_tokens,omitempty"`
-
-			// TopP controls nucleus sampling
-			TopP float32 `json:"top_p,omitempty"`
-
-			// TopK limits sampling to top K tokens
-			TopK int `json:"top_k,omitempty"`
-
-			// FrequencyPenalty reduces likelihood of repeating tokens
-			FrequencyPenalty float32 `json:"frequency_penalty,omitempty"`
-
-			// PresencePenalty reduces likelihood of repeating topics
-			PresencePenalty float32 `json:"presence_penalty,omitempty"`
-
-			// Seed for deterministic generation (if supported)
-			Seed *int64 `json:"seed,omitempty"`
-
-			// Stop sequences where generation should stop
-			Stop []string `json:"stop,omitempty"`
-	*/
 }
 
 // Capabilities describes what a model can do
