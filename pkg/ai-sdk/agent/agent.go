@@ -381,9 +381,17 @@ func (a *Agent) IncrementStepNumber() {
 }
 
 func (a *Agent) OnError(err error) {
-	a.eventChan <- types.NewStreamErrorEvent(err, "", err.Error(), false)
+	select {
+	case a.eventChan <- types.NewStreamErrorEvent(err, "", err.Error(), false):
+	default:
+		// Channel full, skip event - consumer will still see error when channels close
+	}
 
-	a.errChan <- err
+	select {
+	case a.errChan <- err:
+	default:
+		// Already has an error, skip
+	}
 
 	if a.hooks.OnGenerationFailed != nil {
 		currentStep, ok := a.GetCurrentStep()
