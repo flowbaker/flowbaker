@@ -329,9 +329,31 @@ func (s *Store) GetConversation(ctx context.Context, filter memory.Filter) (type
 	}
 
 	msgKey := s.msgKey(conv.ID)
-	msgResults, err := s.client.ZRange(ctx, msgKey, 0, -1).Result()
-	if err != nil {
-		return types.Conversation{}, fmt.Errorf("failed to get messages: %w", err)
+
+	var msgResults []string
+
+	if filter.Limit > 0 {
+		// With pagination: use ZRevRangeByScore to get newest messages first
+		maxScore := "+inf"
+		if filter.Before != nil {
+			// Exclusive upper bound: messages with order < before
+			maxScore = fmt.Sprintf("(%d", *filter.Before)
+		}
+
+		msgResults, err = s.client.ZRevRangeByScore(ctx, msgKey, &redis.ZRangeBy{
+			Min:   "-inf",
+			Max:   maxScore,
+			Count: int64(filter.Limit),
+		}).Result()
+		if err != nil {
+			return types.Conversation{}, fmt.Errorf("failed to get messages: %w", err)
+		}
+	} else {
+		// No pagination: get all messages in chronological order
+		msgResults, err = s.client.ZRange(ctx, msgKey, 0, -1).Result()
+		if err != nil {
+			return types.Conversation{}, fmt.Errorf("failed to get messages: %w", err)
+		}
 	}
 
 	messages := make([]types.Message, len(msgResults))
@@ -341,6 +363,13 @@ func (s *Store) GetConversation(ctx context.Context, filter memory.Filter) (type
 			return types.Conversation{}, fmt.Errorf("failed to unmarshal message: %w", err)
 		}
 		messages[i] = msg.toTypes()
+	}
+
+	// If we used ZRevRangeByScore for pagination, reverse to chronological order
+	if filter.Limit > 0 {
+		for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+			messages[i], messages[j] = messages[j], messages[i]
+		}
 	}
 
 	return conv.toTypes(messages), nil

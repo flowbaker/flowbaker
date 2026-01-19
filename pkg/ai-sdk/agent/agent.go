@@ -483,6 +483,7 @@ func (a *Agent) GetTool(toolName string) (tool.Tool, bool) {
 func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 	conversation, err := a.GetConversation(ctx, memory.Filter{
 		SessionID: req.SessionID,
+		Limit:     a.ConversationHistory,
 	})
 	if err != nil {
 		return err

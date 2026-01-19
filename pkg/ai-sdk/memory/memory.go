@@ -14,6 +14,8 @@ type Store interface {
 type Filter struct {
 	SessionID string `json:"session_id,omitempty"`
 	UserID    string `json:"user_id,omitempty"`
+	Limit     int    `json:"limit,omitempty"`  // Number of messages to return (0 = all)
+	Before    *int   `json:"before,omitempty"` // Get messages with order < this value (cursor-based pagination)
 }
 
 type NoOpMemoryStore struct {
