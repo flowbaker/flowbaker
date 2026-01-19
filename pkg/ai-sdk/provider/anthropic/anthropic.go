@@ -128,59 +128,50 @@ func (p *Provider) Generate(ctx context.Context, req provider.GenerateRequest) (
 	return response, nil
 }
 
-// Stream implements the Stream method of the LanguageModel interface
-func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-chan types.StreamEvent, <-chan error) {
+func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (*provider.ProviderStream, error) {
+	messages := p.convertMessages(req.Messages)
+	tools := p.convertTools(req.Tools)
+
+	messageParams := anthropic.MessageNewParams{
+		Model:     anthropic.Model(p.RequestSettings.Model),
+		MaxTokens: p.RequestSettings.MaxTokens,
+		Messages:  messages,
+	}
+
+	if req.System != "" {
+		messageParams.System = []anthropic.TextBlockParam{{
+			Text: req.System,
+		}}
+	}
+
+	if p.RequestSettings.Temperature > 0 {
+		messageParams.Temperature = anthropic.Float(p.RequestSettings.Temperature)
+	}
+
+	if p.RequestSettings.TopP > 0 {
+		messageParams.TopP = anthropic.Float(p.RequestSettings.TopP)
+	}
+
+	if p.RequestSettings.TopK > 0 {
+		messageParams.TopK = anthropic.Int(p.RequestSettings.TopK)
+	}
+
+	if len(p.RequestSettings.Stop) > 0 {
+		messageParams.StopSequences = p.RequestSettings.Stop
+	}
+
+	if len(tools) > 0 {
+		messageParams.Tools = tools
+	}
+
 	eventChan := make(chan types.StreamEvent, 100)
-	errChan := make(chan error, 1)
+	ps := provider.NewProviderStream(eventChan)
 
 	go func() {
 		defer close(eventChan)
-		defer close(errChan)
-
-		messages := p.convertMessages(req.Messages)
-		tools := p.convertTools(req.Tools)
-
-		messageParams := anthropic.MessageNewParams{
-			Model:     anthropic.Model(p.RequestSettings.Model),
-			MaxTokens: p.RequestSettings.MaxTokens,
-			Messages:  messages,
-		}
-
-		// Add system prompt if provided
-		if req.System != "" {
-			messageParams.System = []anthropic.TextBlockParam{{
-				Text: req.System,
-			}}
-		}
-
-		// Add temperature if set
-		if p.RequestSettings.Temperature > 0 {
-			messageParams.Temperature = anthropic.Float(p.RequestSettings.Temperature)
-		}
-
-		// Add TopP if set
-		if p.RequestSettings.TopP > 0 {
-			messageParams.TopP = anthropic.Float(p.RequestSettings.TopP)
-		}
-
-		// Add TopK if set
-		if p.RequestSettings.TopK > 0 {
-			messageParams.TopK = anthropic.Int(p.RequestSettings.TopK)
-		}
-
-		// Add stop sequences if set
-		if len(p.RequestSettings.Stop) > 0 {
-			messageParams.StopSequences = p.RequestSettings.Stop
-		}
-
-		// Add tools if provided
-		if len(tools) > 0 {
-			messageParams.Tools = tools
-		}
 
 		stream := p.client.Messages.NewStreaming(ctx, messageParams)
 
-		// Track state for building complete response
 		var fullText string
 		var modelID string
 		toolCallsMap := make(map[int]*toolCallBuilder)
@@ -196,7 +187,6 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 				eventChan <- types.NewStreamStartEvent(modelID, e.Message.ID, "")
 				streamStarted = true
 
-				// Initialize usage from message start
 				totalUsage = types.Usage{
 					PromptTokens:      int(e.Message.Usage.InputTokens),
 					CachedInputTokens: int(e.Message.Usage.CacheReadInputTokens),
@@ -226,7 +216,6 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 				}
 
 			case anthropic.ContentBlockStopEvent:
-				// Check if this was a tool use block
 				if builder, ok := toolCallsMap[int(e.Index)]; ok {
 					var args map[string]any
 					if builder.arguments != "" {
@@ -247,35 +236,31 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (<-
 				eventChan <- types.NewUsageEvent(totalUsage)
 
 			case anthropic.MessageStopEvent:
-				// Stream completed
 			}
 		}
 
 		if err := stream.Err(); err != nil {
-			errChan <- fmt.Errorf("stream error: %w", err)
+			ps.SetError(fmt.Errorf("stream error: %w", err))
 			return
 		}
 
-		// Send completion events
 		if fullText != "" {
 			eventChan <- types.NewTextCompleteEvent(fullText)
 		}
 
-		// Send stream end event
 		finishReason := "stop"
 		if len(toolCallsMap) > 0 {
 			finishReason = "tool_calls"
 		}
 
 		if !streamStarted {
-			// If stream never started, still send end event
 			eventChan <- types.NewStreamStartEvent(p.RequestSettings.Model, "", "")
 		}
 
 		eventChan <- types.NewStreamEndEvent(finishReason, totalUsage)
 	}()
 
-	return eventChan, errChan
+	return ps, nil
 }
 
 // Helper type for building tool calls from deltas
