@@ -80,6 +80,7 @@ const (
 	IntegrationType_ChatTrigger          IntegrationType = "chat_trigger"
 	IntegrationType_Groq                 IntegrationType = "groq"
 	IntegrationType_Gitlab               IntegrationType = "gitlab"
+	IntegrationType_Snowflake            IntegrationType = "snowflake"
 )
 
 type Integration struct {
