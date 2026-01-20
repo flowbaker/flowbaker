@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/flowbaker/flowbaker/internal/managers"
@@ -15,6 +16,22 @@ import (
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/youmark/pkcs8"
 )
+
+var identifierRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
+// validateIdentifier checks that an identifier only contains safe characters
+func validateIdentifier(id string) error {
+	if !identifierRegex.MatchString(id) {
+		return fmt.Errorf("invalid identifier %q: must start with letter/underscore and contain only alphanumeric/underscore", id)
+	}
+	return nil
+}
+
+// quoteIdentifier safely quotes an identifier for Snowflake SQL
+func quoteIdentifier(id string) string {
+	escaped := strings.ReplaceAll(id, `"`, `""`)
+	return `"` + escaped + `"`
+}
 
 const (
 	IntegrationActionType_ExecuteQuery domain.IntegrationActionType = "execute_query"
@@ -279,6 +296,17 @@ func (i *SnowflakeIntegration) Insert(ctx context.Context, params domain.Integra
 		return nil, err
 	}
 
+	// Validate identifiers to prevent SQL injection
+	if err := validateIdentifier(p.Database); err != nil {
+		return nil, fmt.Errorf("invalid database: %w", err)
+	}
+	if err := validateIdentifier(p.Schema); err != nil {
+		return nil, fmt.Errorf("invalid schema: %w", err)
+	}
+	if err := validateIdentifier(p.Table); err != nil {
+		return nil, fmt.Errorf("invalid table: %w", err)
+	}
+
 	var data map[string]any
 	if err := json.Unmarshal([]byte(p.Data), &data); err != nil {
 		return nil, fmt.Errorf("failed to parse data JSON: %w", err)
@@ -288,19 +316,17 @@ func (i *SnowflakeIntegration) Insert(ctx context.Context, params domain.Integra
 	placeholders := make([]string, 0, len(data))
 	values := make([]any, 0, len(data))
 
-	idx := 1
 	for col, val := range data {
-		columns = append(columns, col)
-		placeholders = append(placeholders, fmt.Sprintf("?"))
+		columns = append(columns, quoteIdentifier(col))
+		placeholders = append(placeholders, "?")
 		values = append(values, val)
-		idx++
 	}
 
 	query := fmt.Sprintf(
 		"INSERT INTO %s.%s.%s (%s) VALUES (%s)",
-		p.Database,
-		p.Schema,
-		p.Table,
+		quoteIdentifier(p.Database),
+		quoteIdentifier(p.Schema),
+		quoteIdentifier(p.Table),
 		strings.Join(columns, ", "),
 		strings.Join(placeholders, ", "),
 	)
@@ -321,12 +347,32 @@ func (i *SnowflakeIntegration) Insert(ctx context.Context, params domain.Integra
 	}, nil
 }
 
+type UpdateCondition struct {
+	Column   string `json:"column"`
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
+}
+
 type UpdateParams struct {
-	Database  string `json:"database"`
-	Schema    string `json:"schema"`
-	Table     string `json:"table"`
-	Data      string `json:"data"`
-	Condition string `json:"condition"`
+	Database   string            `json:"database"`
+	Schema     string            `json:"schema"`
+	Table      string            `json:"table"`
+	Data       string            `json:"data"`
+	Conditions []UpdateCondition `json:"conditions"`
+}
+
+// validOperators defines the allowed SQL operators for WHERE conditions
+var validOperators = map[string]bool{
+	"=":           true,
+	"!=":          true,
+	">":           true,
+	"<":           true,
+	">=":          true,
+	"<=":          true,
+	"LIKE":        true,
+	"NOT LIKE":    true,
+	"IS NULL":     true,
+	"IS NOT NULL": true,
 }
 
 func (i *SnowflakeIntegration) Update(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -337,26 +383,62 @@ func (i *SnowflakeIntegration) Update(ctx context.Context, params domain.Integra
 		return nil, err
 	}
 
+	// Validate identifiers to prevent SQL injection
+	if err := validateIdentifier(p.Database); err != nil {
+		return nil, fmt.Errorf("invalid database: %w", err)
+	}
+	if err := validateIdentifier(p.Schema); err != nil {
+		return nil, fmt.Errorf("invalid schema: %w", err)
+	}
+	if err := validateIdentifier(p.Table); err != nil {
+		return nil, fmt.Errorf("invalid table: %w", err)
+	}
+
+	// Validate conditions
+	if len(p.Conditions) == 0 {
+		return nil, fmt.Errorf("at least one condition is required")
+	}
+
+	for idx, cond := range p.Conditions {
+		if err := validateIdentifier(cond.Column); err != nil {
+			return nil, fmt.Errorf("invalid column in condition %d: %w", idx+1, err)
+		}
+		if !validOperators[cond.Operator] {
+			return nil, fmt.Errorf("invalid operator in condition %d: %q", idx+1, cond.Operator)
+		}
+	}
+
 	var data map[string]any
 	if err := json.Unmarshal([]byte(p.Data), &data); err != nil {
 		return nil, fmt.Errorf("failed to parse data JSON: %w", err)
 	}
 
 	setClauses := make([]string, 0, len(data))
-	values := make([]any, 0, len(data))
+	values := make([]any, 0, len(data)+len(p.Conditions))
 
 	for col, val := range data {
-		setClauses = append(setClauses, fmt.Sprintf("%s = ?", col))
+		setClauses = append(setClauses, fmt.Sprintf("%s = ?", quoteIdentifier(col)))
 		values = append(values, val)
+	}
+
+	// Build WHERE clause from conditions
+	whereClauses := make([]string, 0, len(p.Conditions))
+	for _, cond := range p.Conditions {
+		if cond.Operator == "IS NULL" || cond.Operator == "IS NOT NULL" {
+			whereClauses = append(whereClauses, fmt.Sprintf("%s %s", quoteIdentifier(cond.Column), cond.Operator))
+		} else {
+			whereClauses = append(whereClauses, fmt.Sprintf("%s %s ?", quoteIdentifier(cond.Column), cond.Operator))
+			values = append(values, cond.Value)
+		}
 	}
 
 	query := fmt.Sprintf(
 		"UPDATE %s.%s.%s SET %s WHERE %s",
-		p.Database,
-		p.Schema,
-		p.Table,
+		quoteIdentifier(p.Database),
+		quoteIdentifier(p.Schema),
+		quoteIdentifier(p.Table),
 		strings.Join(setClauses, ", "),
-		p.Condition,
+		strings.Join(whereClauses, " AND "),
 	)
 
 	result, err := i.db.ExecContext(ctx, query, values...)
@@ -447,7 +529,11 @@ func (i *SnowflakeIntegration) PeekSchemas(ctx context.Context, p domain.PeekPar
 		return domain.PeekResult{}, err
 	}
 
-	query := fmt.Sprintf("SHOW SCHEMAS IN DATABASE %s", params.Database)
+	if err := validateIdentifier(params.Database); err != nil {
+		return domain.PeekResult{}, fmt.Errorf("invalid database: %w", err)
+	}
+
+	query := fmt.Sprintf("SHOW SCHEMAS IN DATABASE %s", quoteIdentifier(params.Database))
 	rows, err := i.db.QueryContext(ctx, query)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to list schemas: %w", err)
@@ -511,7 +597,14 @@ func (i *SnowflakeIntegration) PeekTables(ctx context.Context, p domain.PeekPara
 		return domain.PeekResult{}, err
 	}
 
-	query := fmt.Sprintf("SHOW TABLES IN %s.%s", params.Database, params.Schema)
+	if err := validateIdentifier(params.Database); err != nil {
+		return domain.PeekResult{}, fmt.Errorf("invalid database: %w", err)
+	}
+	if err := validateIdentifier(params.Schema); err != nil {
+		return domain.PeekResult{}, fmt.Errorf("invalid schema: %w", err)
+	}
+
+	query := fmt.Sprintf("SHOW TABLES IN %s.%s", quoteIdentifier(params.Database), quoteIdentifier(params.Schema))
 	rows, err := i.db.QueryContext(ctx, query)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to list tables: %w", err)
