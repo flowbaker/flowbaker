@@ -136,51 +136,13 @@ var (
 				Description: "Insert data into a Snowflake table",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "database",
-						Name:             "Database",
-						Description:      "The database name",
+						Key:              "table",
+						Name:             "Table",
+						Description:      "The table name (uses database/schema from credential)",
 						Required:         true,
 						Type:             domain.NodePropertyType_String,
 						Peekable:         true,
-						PeekableType:     SnowflakePeekable_Databases,
-						ExpressionChoice: true,
-					},
-					{
-						Key:          "schema",
-						Name:         "Schema",
-						Description:  "The schema name",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: SnowflakePeekable_Schemas,
-						Dependent:    []string{"database"},
-						PeekableDependentProperties: []domain.PeekableDependentProperty{
-							{
-								PropertyKey: "database",
-								ValueKey:    "database",
-							},
-						},
-						ExpressionChoice: true,
-					},
-					{
-						Key:          "table",
-						Name:         "Table",
-						Description:  "The table name",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: SnowflakePeekable_Tables,
-						Dependent:    []string{"database", "schema"},
-						PeekableDependentProperties: []domain.PeekableDependentProperty{
-							{
-								PropertyKey: "database",
-								ValueKey:    "database",
-							},
-							{
-								PropertyKey: "schema",
-								ValueKey:    "schema",
-							},
-						},
+						PeekableType:     SnowflakePeekable_Tables,
 						ExpressionChoice: true,
 					},
 					{
@@ -202,51 +164,13 @@ var (
 				Description: "Update data in a Snowflake table",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "database",
-						Name:             "Database",
-						Description:      "The database name",
+						Key:              "table",
+						Name:             "Table",
+						Description:      "The table name (uses database/schema from credential)",
 						Required:         true,
 						Type:             domain.NodePropertyType_String,
 						Peekable:         true,
-						PeekableType:     SnowflakePeekable_Databases,
-						ExpressionChoice: true,
-					},
-					{
-						Key:          "schema",
-						Name:         "Schema",
-						Description:  "The schema name",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: SnowflakePeekable_Schemas,
-						Dependent:    []string{"database"},
-						PeekableDependentProperties: []domain.PeekableDependentProperty{
-							{
-								PropertyKey: "database",
-								ValueKey:    "database",
-							},
-						},
-						ExpressionChoice: true,
-					},
-					{
-						Key:          "table",
-						Name:         "Table",
-						Description:  "The table name",
-						Required:     true,
-						Type:         domain.NodePropertyType_String,
-						Peekable:     true,
-						PeekableType: SnowflakePeekable_Tables,
-						Dependent:    []string{"database", "schema"},
-						PeekableDependentProperties: []domain.PeekableDependentProperty{
-							{
-								PropertyKey: "database",
-								ValueKey:    "database",
-							},
-							{
-								PropertyKey: "schema",
-								ValueKey:    "schema",
-							},
-						},
+						PeekableType:     SnowflakePeekable_Tables,
 						ExpressionChoice: true,
 					},
 					{

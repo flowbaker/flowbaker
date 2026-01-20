@@ -282,10 +282,8 @@ func (i *SnowflakeIntegration) ExecuteQuery(ctx context.Context, params domain.I
 }
 
 type InsertParams struct {
-	Database string `json:"database"`
-	Schema   string `json:"schema"`
-	Table    string `json:"table"`
-	Data     string `json:"data"`
+	Table string `json:"table"`
+	Data  string `json:"data"`
 }
 
 func (i *SnowflakeIntegration) Insert(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -296,13 +294,7 @@ func (i *SnowflakeIntegration) Insert(ctx context.Context, params domain.Integra
 		return nil, err
 	}
 
-	// Validate identifiers to prevent SQL injection
-	if err := validateIdentifier(p.Database); err != nil {
-		return nil, fmt.Errorf("invalid database: %w", err)
-	}
-	if err := validateIdentifier(p.Schema); err != nil {
-		return nil, fmt.Errorf("invalid schema: %w", err)
-	}
+	// Validate table identifier to prevent SQL injection
 	if err := validateIdentifier(p.Table); err != nil {
 		return nil, fmt.Errorf("invalid table: %w", err)
 	}
@@ -323,9 +315,7 @@ func (i *SnowflakeIntegration) Insert(ctx context.Context, params domain.Integra
 	}
 
 	query := fmt.Sprintf(
-		"INSERT INTO %s.%s.%s (%s) VALUES (%s)",
-		quoteIdentifier(p.Database),
-		quoteIdentifier(p.Schema),
+		"INSERT INTO %s (%s) VALUES (%s)",
 		quoteIdentifier(p.Table),
 		strings.Join(columns, ", "),
 		strings.Join(placeholders, ", "),
@@ -354,8 +344,6 @@ type UpdateCondition struct {
 }
 
 type UpdateParams struct {
-	Database   string            `json:"database"`
-	Schema     string            `json:"schema"`
 	Table      string            `json:"table"`
 	Data       string            `json:"data"`
 	Conditions []UpdateCondition `json:"conditions"`
@@ -383,13 +371,7 @@ func (i *SnowflakeIntegration) Update(ctx context.Context, params domain.Integra
 		return nil, err
 	}
 
-	// Validate identifiers to prevent SQL injection
-	if err := validateIdentifier(p.Database); err != nil {
-		return nil, fmt.Errorf("invalid database: %w", err)
-	}
-	if err := validateIdentifier(p.Schema); err != nil {
-		return nil, fmt.Errorf("invalid schema: %w", err)
-	}
+	// Validate table identifier to prevent SQL injection
 	if err := validateIdentifier(p.Table); err != nil {
 		return nil, fmt.Errorf("invalid table: %w", err)
 	}
@@ -433,9 +415,7 @@ func (i *SnowflakeIntegration) Update(ctx context.Context, params domain.Integra
 	}
 
 	query := fmt.Sprintf(
-		"UPDATE %s.%s.%s SET %s WHERE %s",
-		quoteIdentifier(p.Database),
-		quoteIdentifier(p.Schema),
+		"UPDATE %s SET %s WHERE %s",
 		quoteIdentifier(p.Table),
 		strings.Join(setClauses, ", "),
 		strings.Join(whereClauses, " AND "),
@@ -585,27 +565,9 @@ func (i *SnowflakeIntegration) PeekSchemas(ctx context.Context, p domain.PeekPar
 	}, nil
 }
 
-type PeekTablesParams struct {
-	Database string `json:"database"`
-	Schema   string `json:"schema"`
-}
-
 func (i *SnowflakeIntegration) PeekTables(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
-	var params PeekTablesParams
-
-	if err := json.Unmarshal(p.PayloadJSON, &params); err != nil {
-		return domain.PeekResult{}, err
-	}
-
-	if err := validateIdentifier(params.Database); err != nil {
-		return domain.PeekResult{}, fmt.Errorf("invalid database: %w", err)
-	}
-	if err := validateIdentifier(params.Schema); err != nil {
-		return domain.PeekResult{}, fmt.Errorf("invalid schema: %w", err)
-	}
-
-	query := fmt.Sprintf("SHOW TABLES IN %s.%s", quoteIdentifier(params.Database), quoteIdentifier(params.Schema))
-	rows, err := i.db.QueryContext(ctx, query)
+	// Uses connection's default database/schema from credential
+	rows, err := i.db.QueryContext(ctx, "SHOW TABLES")
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to list tables: %w", err)
 	}
