@@ -36,7 +36,7 @@ var (
 							{Type: domain.NodeHandleTypeDefault, Text: "Input 2", Index: 1, UsageContext: domain.UsageContextWorkflow},
 						},
 						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output", Index: 3, UsageContext: domain.UsageContextWorkflow},
+							{Type: domain.NodeHandleTypeDefault, Text: "Output", Index: 0, UsageContext: domain.UsageContextWorkflow},
 						},
 					},
 				},

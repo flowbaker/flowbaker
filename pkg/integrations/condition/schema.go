@@ -132,8 +132,8 @@ var (
 							{Index: 0, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input", UsageContext: domain.UsageContextWorkflow},
 						},
 						Output: []domain.NodeHandle{
-							{Index: 1, Type: domain.NodeHandleTypeSuccess, Text: "True", UsageContext: domain.UsageContextWorkflow},
-							{Index: 2, Type: domain.NodeHandleTypeDestructive, Text: "False", UsageContext: domain.UsageContextWorkflow},
+							{Index: 0, Type: domain.NodeHandleTypeSuccess, Text: "True", UsageContext: domain.UsageContextWorkflow},
+							{Index: 1, Type: domain.NodeHandleTypeDestructive, Text: "False", UsageContext: domain.UsageContextWorkflow},
 						},
 					},
 				},
