@@ -254,6 +254,8 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 			if errNotify != nil {
 				log.Error().Err(errNotify).Str("workflow_id", w.workflow.ID).Msg("executor: failed to notify node failed event")
 			}
+
+			break
 		}
 
 		if w.executionCountByNodeID[execution.NodeID] > MaxExecutionCount {
@@ -375,8 +377,6 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 		if err != nil {
 			return ExecuteNodeResult{}, err
 		}
-
-		return ExecuteNodeResult{}, err
 	}
 
 	nodeExecutionEndedAt := time.Now()
