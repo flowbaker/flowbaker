@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"strings"
 
 	"github.com/flowbaker/flowbaker/internal/managers"
 
@@ -14,8 +15,10 @@ import (
 )
 
 const (
-	SlackIntegrationActionType_SendMessage domain.IntegrationActionType = "send_message"
-	SlackIntegrationActionType_GetMessage  domain.IntegrationActionType = "get_message"
+	SlackIntegrationActionType_SendMessage  domain.IntegrationActionType = "send_message"
+	SlackIntegrationActionType_GetMessage   domain.IntegrationActionType = "get_message"
+	SlackIntegrationActionType_AddReaction  domain.IntegrationActionType = "add_reaction"
+	SlackIntegrationActionType_GetMessages  domain.IntegrationActionType = "get_messages"
 
 	SlackIntegrationPeekable_Channels domain.IntegrationPeekableType = "channels"
 )
@@ -63,6 +66,8 @@ func NewSlackIntegration(ctx context.Context, deps SlackIntegrationDependencies)
 	actionFuncs := map[domain.IntegrationActionType]func(ctx context.Context, p domain.IntegrationInput) (domain.IntegrationOutput, error){
 		SlackIntegrationActionType_SendMessage: integration.SendMessage,
 		SlackIntegrationActionType_GetMessage:  integration.GetMessage,
+		SlackIntegrationActionType_AddReaction: integration.AddReaction,
+		SlackIntegrationActionType_GetMessages: integration.GetMessages,
 	}
 
 	peekFuncs := map[domain.IntegrationPeekableType]func(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error){
@@ -153,6 +158,26 @@ type GetMessageParams struct {
 	MessageID string `json:"message_id"`
 }
 
+type AddReactionParams struct {
+	ChannelID string `json:"channel_id"`
+	Timestamp string `json:"timestamp"`
+	Emoji     string `json:"emoji"`
+}
+
+type AddReactionOutputItem struct {
+	ChannelID string `json:"channel_id"`
+	Timestamp string `json:"timestamp"`
+	Emoji     string `json:"emoji"`
+	Success   bool   `json:"success"`
+}
+
+type GetMessagesParams struct {
+	ChannelID string `json:"channel_id"`
+	Limit     int    `json:"limit"`
+	Cursor    string `json:"cursor"`
+}
+
+
 func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	itemsByInputID, err := input.GetItemsByInputID()
 	if err != nil {
@@ -184,6 +209,119 @@ func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.Integrat
 		}
 
 		outputs = append(outputs, message)
+	}
+
+	resultJSON, err := json.Marshal(outputs)
+	if err != nil {
+		return domain.IntegrationOutput{}, err
+	}
+
+	return domain.IntegrationOutput{
+		ResultJSONByOutputID: []domain.Payload{
+			resultJSON,
+		},
+	}, nil
+}
+
+func (i *SlackIntegration) AddReaction(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
+	itemsByInputID, err := input.GetItemsByInputID()
+	if err != nil {
+		return domain.IntegrationOutput{}, err
+	}
+
+	allItems := []domain.Item{}
+
+	for _, items := range itemsByInputID {
+		allItems = append(allItems, items...)
+	}
+
+	outputs := []domain.Item{}
+
+	for _, item := range allItems {
+		p := AddReactionParams{}
+
+		err := i.binder.BindToStruct(ctx, item, &p, input.IntegrationParams.Settings)
+		if err != nil {
+			return domain.IntegrationOutput{}, err
+		}
+
+		// Normalize emoji by stripping colons (e.g., :thumbsup: -> thumbsup)
+		emoji := strings.Trim(p.Emoji, ":")
+
+		err = i.slackClient.AddReactionContext(ctx, emoji, slack.ItemRef{
+			Channel:   p.ChannelID,
+			Timestamp: p.Timestamp,
+		})
+		if err != nil {
+			// Handle "already_reacted" as success
+			if slackErr, ok := err.(slack.SlackErrorResponse); ok && slackErr.Err == "already_reacted" {
+				// Already reacted, treat as success
+			} else {
+				return domain.IntegrationOutput{}, fmt.Errorf("failed to add reaction to message in channel %s: %w", p.ChannelID, err)
+			}
+		}
+
+		outputs = append(outputs, AddReactionOutputItem{
+			ChannelID: p.ChannelID,
+			Timestamp: p.Timestamp,
+			Emoji:     emoji,
+			Success:   true,
+		})
+	}
+
+	resultJSON, err := json.Marshal(outputs)
+	if err != nil {
+		return domain.IntegrationOutput{}, err
+	}
+
+	return domain.IntegrationOutput{
+		ResultJSONByOutputID: []domain.Payload{
+			resultJSON,
+		},
+	}, nil
+}
+
+func (i *SlackIntegration) GetMessages(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
+	itemsByInputID, err := input.GetItemsByInputID()
+	if err != nil {
+		return domain.IntegrationOutput{}, err
+	}
+
+	allItems := []domain.Item{}
+
+	for _, items := range itemsByInputID {
+		allItems = append(allItems, items...)
+	}
+
+	outputs := []domain.Item{}
+
+	for _, item := range allItems {
+		p := GetMessagesParams{}
+
+		err := i.binder.BindToStruct(ctx, item, &p, input.IntegrationParams.Settings)
+		if err != nil {
+			return domain.IntegrationOutput{}, err
+		}
+
+		// Default limit to 100, cap at 1000 (Slack API max)
+		limit := p.Limit
+		if limit <= 0 {
+			limit = 100
+		}
+		if limit > 1000 {
+			limit = 1000
+		}
+
+		history, err := i.slackClient.GetConversationHistoryContext(ctx, &slack.GetConversationHistoryParameters{
+			ChannelID: p.ChannelID,
+			Limit:     limit,
+			Cursor:    p.Cursor,
+		})
+		if err != nil {
+			return domain.IntegrationOutput{}, fmt.Errorf("failed to get messages from channel %s: %w", p.ChannelID, err)
+		}
+
+		outputs = append(outputs, history)
 	}
 
 	resultJSON, err := json.Marshal(outputs)
