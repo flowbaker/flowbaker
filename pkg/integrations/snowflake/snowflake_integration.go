@@ -37,6 +37,7 @@ const (
 	IntegrationActionType_ExecuteQuery domain.IntegrationActionType = "execute_query"
 	IntegrationActionType_Insert       domain.IntegrationActionType = "insert"
 	IntegrationActionType_Update       domain.IntegrationActionType = "update"
+	IntegrationActionType_Select       domain.IntegrationActionType = "select"
 )
 
 const (
@@ -188,7 +189,8 @@ func NewSnowflakeIntegration(ctx context.Context, deps SnowflakeIntegrationDepen
 	integration.actionManager.
 		AddPerItemMulti(IntegrationActionType_ExecuteQuery, integration.ExecuteQuery).
 		AddPerItem(IntegrationActionType_Insert, integration.Insert).
-		AddPerItem(IntegrationActionType_Update, integration.Update)
+		AddPerItem(IntegrationActionType_Update, integration.Update).
+		AddPerItemMulti(IntegrationActionType_Select, integration.Select)
 
 	integration.peekFuncs = map[domain.IntegrationPeekableType]func(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error){
 		SnowflakePeekable_Databases: integration.PeekDatabases,
@@ -281,9 +283,14 @@ func (i *SnowflakeIntegration) ExecuteQuery(ctx context.Context, params domain.I
 	return results, nil
 }
 
+type ColumnMapping struct {
+	Column string `json:"column"`
+	Value  any    `json:"value"`
+}
+
 type InsertParams struct {
-	Table string `json:"table"`
-	Data  string `json:"data"`
+	Table   string          `json:"table"`
+	Columns []ColumnMapping `json:"columns"`
 }
 
 func (i *SnowflakeIntegration) Insert(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -299,19 +306,21 @@ func (i *SnowflakeIntegration) Insert(ctx context.Context, params domain.Integra
 		return nil, fmt.Errorf("invalid table: %w", err)
 	}
 
-	var data map[string]any
-	if err := json.Unmarshal([]byte(p.Data), &data); err != nil {
-		return nil, fmt.Errorf("failed to parse data JSON: %w", err)
+	if len(p.Columns) == 0 {
+		return nil, fmt.Errorf("at least one column mapping is required")
 	}
 
-	columns := make([]string, 0, len(data))
-	placeholders := make([]string, 0, len(data))
-	values := make([]any, 0, len(data))
+	columns := make([]string, 0, len(p.Columns))
+	placeholders := make([]string, 0, len(p.Columns))
+	values := make([]any, 0, len(p.Columns))
 
-	for col, val := range data {
-		columns = append(columns, quoteIdentifier(col))
+	for idx, col := range p.Columns {
+		if err := validateIdentifier(col.Column); err != nil {
+			return nil, fmt.Errorf("invalid column name in mapping %d: %w", idx+1, err)
+		}
+		columns = append(columns, quoteIdentifier(col.Column))
 		placeholders = append(placeholders, "?")
-		values = append(values, val)
+		values = append(values, col.Value)
 	}
 
 	query := fmt.Sprintf(
@@ -345,7 +354,7 @@ type UpdateCondition struct {
 
 type UpdateParams struct {
 	Table      string            `json:"table"`
-	Data       string            `json:"data"`
+	Columns    []ColumnMapping   `json:"columns"`
 	Conditions []UpdateCondition `json:"conditions"`
 }
 
@@ -376,6 +385,10 @@ func (i *SnowflakeIntegration) Update(ctx context.Context, params domain.Integra
 		return nil, fmt.Errorf("invalid table: %w", err)
 	}
 
+	if len(p.Columns) == 0 {
+		return nil, fmt.Errorf("at least one column mapping is required")
+	}
+
 	// Validate conditions
 	if len(p.Conditions) == 0 {
 		return nil, fmt.Errorf("at least one condition is required")
@@ -390,17 +403,15 @@ func (i *SnowflakeIntegration) Update(ctx context.Context, params domain.Integra
 		}
 	}
 
-	var data map[string]any
-	if err := json.Unmarshal([]byte(p.Data), &data); err != nil {
-		return nil, fmt.Errorf("failed to parse data JSON: %w", err)
-	}
+	setClauses := make([]string, 0, len(p.Columns))
+	values := make([]any, 0, len(p.Columns)+len(p.Conditions))
 
-	setClauses := make([]string, 0, len(data))
-	values := make([]any, 0, len(data)+len(p.Conditions))
-
-	for col, val := range data {
-		setClauses = append(setClauses, fmt.Sprintf("%s = ?", quoteIdentifier(col)))
-		values = append(values, val)
+	for idx, col := range p.Columns {
+		if err := validateIdentifier(col.Column); err != nil {
+			return nil, fmt.Errorf("invalid column name in mapping %d: %w", idx+1, err)
+		}
+		setClauses = append(setClauses, fmt.Sprintf("%s = ?", quoteIdentifier(col.Column)))
+		values = append(values, col.Value)
 	}
 
 	// Build WHERE clause from conditions
@@ -435,6 +446,113 @@ func (i *SnowflakeIntegration) Update(ctx context.Context, params domain.Integra
 		"success":       true,
 		"rows_affected": rowsAffected,
 	}, nil
+}
+
+type SelectColumn struct {
+	Column string `json:"column"`
+}
+
+type SelectParams struct {
+	Table      string            `json:"table"`
+	Columns    []SelectColumn    `json:"columns"`
+	Conditions []UpdateCondition `json:"conditions"`
+	Limit      *int              `json:"limit"`
+}
+
+func (i *SnowflakeIntegration) Select(ctx context.Context, params domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
+	var p SelectParams
+
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateIdentifier(p.Table); err != nil {
+		return nil, fmt.Errorf("invalid table: %w", err)
+	}
+
+	var columnList string
+	if len(p.Columns) == 0 {
+		columnList = "*"
+	} else {
+		cols := make([]string, len(p.Columns))
+		for idx, col := range p.Columns {
+			if err := validateIdentifier(col.Column); err != nil {
+				return nil, fmt.Errorf("invalid column %d: %w", idx+1, err)
+			}
+			cols[idx] = quoteIdentifier(col.Column)
+		}
+		columnList = strings.Join(cols, ", ")
+	}
+
+	query := fmt.Sprintf("SELECT %s FROM %s", columnList, quoteIdentifier(p.Table))
+	values := make([]any, 0)
+
+	if len(p.Conditions) > 0 {
+		whereClauses := make([]string, 0, len(p.Conditions))
+		for idx, cond := range p.Conditions {
+			if err := validateIdentifier(cond.Column); err != nil {
+				return nil, fmt.Errorf("invalid column in condition %d: %w", idx+1, err)
+			}
+			if !validOperators[cond.Operator] {
+				return nil, fmt.Errorf("invalid operator in condition %d: %q", idx+1, cond.Operator)
+			}
+			if cond.Operator == "IS NULL" || cond.Operator == "IS NOT NULL" {
+				whereClauses = append(whereClauses, fmt.Sprintf("%s %s", quoteIdentifier(cond.Column), cond.Operator))
+			} else {
+				whereClauses = append(whereClauses, fmt.Sprintf("%s %s ?", quoteIdentifier(cond.Column), cond.Operator))
+				values = append(values, cond.Value)
+			}
+		}
+		query += " WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	if p.Limit != nil && *p.Limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", *p.Limit)
+	}
+
+	rows, err := i.db.QueryContext(ctx, query, values...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute select: %w", err)
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get columns: %w", err)
+	}
+
+	var results []domain.Item
+
+	for rows.Next() {
+		rowValues := make([]any, len(columns))
+		valuePtrs := make([]any, len(columns))
+		for idx := range columns {
+			valuePtrs[idx] = &rowValues[idx]
+		}
+
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		row := make(map[string]any)
+		for idx, col := range columns {
+			val := rowValues[idx]
+			if b, ok := val.([]byte); ok {
+				row[col] = string(b)
+			} else {
+				row[col] = val
+			}
+		}
+
+		results = append(results, row)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	return results, nil
 }
 
 func (i *SnowflakeIntegration) Peek(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
