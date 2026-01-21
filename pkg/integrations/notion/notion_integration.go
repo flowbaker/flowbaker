@@ -274,6 +274,7 @@ func (i *NotionIntegration) GetDatabase(ctx context.Context, input domain.Integr
 }
 
 type GetManyDatabasesParams struct {
+	Query       *string `json:"query,omitempty"`
 	StartCursor *string `json:"start_cursor,omitempty"`
 	PageSize    *int    `json:"page_size,omitempty"`
 }
@@ -292,6 +293,9 @@ func (i *NotionIntegration) GetManyDatabases(ctx context.Context, input domain.I
 		"page_size": 100,
 	}
 
+	if params.Query != nil && *params.Query != "" {
+		reqBody["query"] = *params.Query
+	}
 	if params.StartCursor != nil && *params.StartCursor != "" {
 		reqBody["start_cursor"] = *params.StartCursor
 	}
