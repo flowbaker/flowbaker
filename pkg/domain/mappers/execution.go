@@ -160,14 +160,6 @@ func ExecutorWorkflowToDomain(w *executortypes.Workflow) domain.Workflow {
 		nodes[i] = ExecutorWorkflowNodeToDomain(node)
 	}
 
-	loops := []domain.WorkflowLoop{}
-	if len(w.Loops) > 0 {
-		loops = make([]domain.WorkflowLoop, len(w.Loops))
-		for i, loop := range w.Loops {
-			loops[i] = ExecutorWorkflowLoopToDomain(loop)
-		}
-	}
-
 	return domain.Workflow{
 		ID:               w.ID,
 		Name:             w.Name,
@@ -176,7 +168,6 @@ func ExecutorWorkflowToDomain(w *executortypes.Workflow) domain.Workflow {
 		WorkspaceID:      w.WorkspaceID,
 		AuthorUserID:     w.AuthorUserID,
 		Nodes:            nodes,
-		Loops:            loops,
 		LastUpdatedAt:    time.Unix(w.LastUpdatedAt, 0),
 		ActivationStatus: domain.WorkflowActivationStatus(w.ActivationStatus),
 	}
@@ -200,9 +191,10 @@ func ExecutorWorkflowNodeToDomain(n executortypes.WorkflowNode) domain.WorkflowN
 		Type:                domain.NodeType(n.Type),
 		IntegrationType:     domain.IntegrationType(n.IntegrationType),
 		IntegrationSettings: n.IntegrationSettings,
-		Settings: domain.Settings{
-			ReturnErrorAsItem:    n.Settings.ReturnErrorAsItem,
-			ContainPreviousItems: n.Settings.ContainPreviousItems,
+		Settings: domain.NodeSettings{
+			ReturnErrorAsItem:       n.Settings.ReturnErrorAsItem,
+			OverwriteExecutionLimit: n.Settings.OverwriteExecutionLimit,
+			ExecutionLimit:          n.Settings.ExecutionLimit,
 		},
 		ExpressionSelectedProperties: n.ExpressionSelectedProperties,
 		ProvidedByAgent:              n.ProvidedByAgent,
@@ -222,16 +214,6 @@ func ExecutorWorkflowNodeToDomain(n executortypes.WorkflowNode) domain.WorkflowN
 	}
 }
 
-// ExecutorWorkflowLoopToDomain converts an executor WorkflowLoop to domain.WorkflowLoop
-func ExecutorWorkflowLoopToDomain(l executortypes.WorkflowLoop) domain.WorkflowLoop {
-	return domain.WorkflowLoop{
-		ID:        l.ID,
-		Threshold: l.Threshold,
-		EdgeIDs:   l.EdgeIDs,
-		NodeIDs:   l.NodeIDs,
-	}
-}
-
 // ExecutorWorkflowTypeToDomain converts an executor WorkflowType to domain.WorkflowType
 func ExecutorWorkflowTypeToDomain(wt executortypes.WorkflowType) domain.WorkflowType {
 	switch wt {
@@ -246,11 +228,6 @@ func ExecutorWorkflowTypeToDomain(wt executortypes.WorkflowType) domain.Workflow
 
 // DomainWorkflowToExecutor converts a domain.Workflow to executor.Workflow
 func DomainWorkflowToExecutor(w domain.Workflow) executortypes.Workflow {
-	loops := make([]executortypes.WorkflowLoop, len(w.Loops))
-	for i, loop := range w.Loops {
-		loops[i] = DomainWorkflowLoopToExecutor(loop)
-	}
-
 	return executortypes.Workflow{
 		ID:               w.ID,
 		Name:             w.Name,
@@ -258,7 +235,6 @@ func DomainWorkflowToExecutor(w domain.Workflow) executortypes.Workflow {
 		WorkspaceID:      w.WorkspaceID,
 		AuthorUserID:     w.AuthorUserID,
 		Slug:             w.Slug,
-		Loops:            loops,
 		LastUpdatedAt:    w.LastUpdatedAt.Unix(),
 		ActivationStatus: executortypes.WorkflowActivationStatus(w.ActivationStatus),
 		Nodes:            DomainWorkflowNodesToExecutor(w.Nodes),
@@ -283,9 +259,10 @@ func DomainWorkflowNodesToExecutor(nodes []domain.WorkflowNode) []executortypes.
 			Type:                executortypes.NodeType(node.Type),
 			IntegrationType:     executortypes.IntegrationType(node.IntegrationType),
 			IntegrationSettings: node.IntegrationSettings,
-			Settings: executortypes.Settings{
-				ReturnErrorAsItem:    node.Settings.ReturnErrorAsItem,
-				ContainPreviousItems: node.Settings.ContainPreviousItems,
+			Settings: executortypes.NodeSettings{
+				ReturnErrorAsItem:       node.Settings.ReturnErrorAsItem,
+				OverwriteExecutionLimit: node.Settings.OverwriteExecutionLimit,
+				ExecutionLimit:          node.Settings.ExecutionLimit,
 			},
 			ExpressionSelectedProperties: node.ExpressionSelectedProperties,
 			ProvidedByAgent:              node.ProvidedByAgent,
@@ -303,16 +280,6 @@ func DomainWorkflowNodesToExecutor(nodes []domain.WorkflowNode) []executortypes.
 		}
 	}
 	return executorNodes
-}
-
-// DomainWorkflowLoopToExecutor converts a domain.WorkflowLoop to executortypes.WorkflowLoop
-func DomainWorkflowLoopToExecutor(l domain.WorkflowLoop) executortypes.WorkflowLoop {
-	return executortypes.WorkflowLoop{
-		ID:        l.ID,
-		Threshold: l.Threshold,
-		EdgeIDs:   l.EdgeIDs,
-		NodeIDs:   l.NodeIDs,
-	}
 }
 
 // DomainWorkflowTypeToExecutor converts a domain.WorkflowType to executortypes.WorkflowType

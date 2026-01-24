@@ -74,7 +74,6 @@ type WorkflowExecutor struct {
 
 	nodesByEventName       map[string][]domain.WorkflowNode
 	executionCountByNodeID map[string]int
-	nodeMaxExecutionCount  map[string]int
 
 	mutex sync.Mutex
 
@@ -107,31 +106,6 @@ type WorkflowExecutorDeps struct {
 	IsTestingWorkflow     bool
 	ExecutorClient        flowbaker.ClientInterface
 	OrderedEventPublisher domain.EventPublisher
-}
-
-func calculateNodeMaxExecutionCount(workflow domain.Workflow) map[string]int {
-	nodeMaxCount := make(map[string]int)
-
-	for _, node := range workflow.Nodes {
-		totalThreshold := 0
-		loopCount := 0
-
-		for _, loop := range workflow.Loops {
-			for _, loopNodeID := range loop.NodeIDs {
-				if loopNodeID == node.ID {
-					totalThreshold += loop.Threshold
-					loopCount++
-					break
-				}
-			}
-		}
-
-		if loopCount > 0 {
-			nodeMaxCount[node.ID] = totalThreshold
-		}
-	}
-
-	return nodeMaxCount
 }
 
 func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
@@ -181,8 +155,6 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 	observer.Subscribe(eventBroadcaster)
 	observer.SubscribeStream(streamBroadcaster)
 
-	nodeMaxExecutionCount := calculateNodeMaxExecutionCount(deps.Workflow)
-
 	return WorkflowExecutor{
 		executionID:                deps.ExecutionID,
 		userID:                     deps.UserID,
@@ -193,7 +165,6 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		nodesByEventName:           nodesByEventName,
 		integrationSelector:        deps.Selector,
 		executionCountByNodeID:     map[string]int{},
-		nodeMaxExecutionCount:      nodeMaxExecutionCount,
 		enableEvents:               deps.EnableEvents,
 		enableStreaming:            deps.EnableStreaming,
 		IsTestingWorkflow:          deps.IsTestingWorkflow,
@@ -210,7 +181,7 @@ const (
 	InputHandleFormat  = "input-%s-%d"
 	OutputHandleFormat = "output-%s-%d"
 
-	MaxExecutionCount = 1000
+	DefaultNodeExecutionLimit = 1000
 )
 
 func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload domain.Payload) (ExecutionResult, error) {
@@ -278,9 +249,14 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 			}
 		}
 
-		if w.executionCountByNodeID[execution.NodeID] > MaxExecutionCount {
-			log.Error().Msgf("node %s executed more than %d times", execution.NodeID, MaxExecutionCount)
-			break
+		node, exists := w.workflow.GetNodeByID(execution.NodeID)
+		if exists {
+			limit := w.getNodeExecutionLimit(node)
+			if w.executionCountByNodeID[execution.NodeID] >= limit {
+				log.Error().Msgf("node %s executed more than %d times (limit reached)", execution.NodeID, limit)
+				// return edilip edilmeyecegini tartis
+				return ExecutionResult{}, fmt.Errorf("node %s executed more than %d times (limit reached)", execution.NodeID, limit)
+			}
 		}
 
 		if len(w.executionQueue) == 0 && len(w.waitingExecutionTasks) > 0 {
@@ -369,10 +345,6 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	}
 
 	nodeID = node.ID
-
-	if loopErr := w.CheckLoopDetection(nodeID); loopErr != nil {
-		return ExecuteNodeResult{}, nil
-	}
 
 	w.mutex.Lock()
 	executionCount := w.executionCountByNodeID[nodeID]
@@ -821,27 +793,14 @@ func (w *WorkflowExecutor) IsErrorTrigger(nodeID string) bool {
 	return node.Type == domain.NodeTypeTrigger && node.TriggerNodeOpts.EventType == "on_error"
 }
 
-func (w *WorkflowExecutor) CheckLoopDetection(nodeID string) error {
-	maxCount, hasLimit := w.nodeMaxExecutionCount[nodeID]
-	if !hasLimit {
-		return nil
+func (w *WorkflowExecutor) getNodeExecutionLimit(node domain.WorkflowNode) int {
+	if node.Settings.OverwriteExecutionLimit && node.Settings.ExecutionLimit > 0 {
+		return node.Settings.ExecutionLimit
 	}
 
-	w.mutex.Lock()
-	currentCount := w.executionCountByNodeID[nodeID]
-	w.mutex.Unlock()
-
-	log.Info().Msgf("Current count: %d, max count: %d", currentCount, maxCount)
-	if currentCount >= maxCount {
-		err := fmt.Errorf(
-			"loop detected: node %s executed %d times, max allowed is %d",
-			nodeID,
-			currentCount,
-			maxCount,
-		)
-		log.Error().Err(err).Msg("Node execution threshold exceeded")
-		return err
+	if w.workflow.Settings.NodeExecutionLimit > 0 {
+		return w.workflow.Settings.NodeExecutionLimit
 	}
 
-	return nil
+	return DefaultNodeExecutionLimit
 }

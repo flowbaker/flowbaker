@@ -31,10 +31,14 @@ type Workflow struct {
 	WorkspaceID      string
 	AuthorUserID     string
 	Nodes            []WorkflowNode
-	Loops            []WorkflowLoop
+	Settings         WorkflowSettings
 	LastUpdatedAt    time.Time
 	ActivationStatus WorkflowActivationStatus
 	DeletedAt        *time.Time
+}
+
+type WorkflowSettings struct {
+	NodeExecutionLimit int
 }
 
 func (w Workflow) IsActive() bool {
@@ -102,7 +106,7 @@ type WorkflowNode struct {
 	SubscribedEvents             []string
 	Positions                    NodePositions
 	IntegrationSettings          map[string]any
-	Settings                     Settings
+	Settings                     NodeSettings
 	ExpressionSelectedProperties []string
 	ProvidedByAgent              []string
 	Inputs                       []NodeInput
@@ -131,21 +135,15 @@ func (n *WorkflowNode) GetInputByID(inputID string) (NodeInput, bool) {
 	return NodeInput{}, false
 }
 
-type WorkflowLoop struct {
-	ID        int
-	Threshold int
-	EdgeIDs   []string
-	NodeIDs   []string
-}
-
 type NodeInput struct {
 	InputID          string
 	SubscribedEvents []string
 }
 
-type Settings struct {
-	ReturnErrorAsItem    bool
-	ContainPreviousItems bool
+type NodeSettings struct {
+	ReturnErrorAsItem       bool
+	OverwriteExecutionLimit bool
+	ExecutionLimit          int
 }
 
 type NodePositions struct {
