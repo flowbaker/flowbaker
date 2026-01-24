@@ -378,12 +378,35 @@ func (s *Store) GetConversation(ctx context.Context, filter memory.Filter) (type
 		}
 	}
 
-	selectMsgSQL := fmt.Sprintf(`
-		SELECT conversation_id, role, msg_order, content, tool_calls, tool_results, timestamp, metadata, created_at
-		FROM %s WHERE conversation_id = $1 ORDER BY msg_order
-	`, s.msgTable())
+	// Build message query with pagination support
+	var selectMsgSQL string
+	var args []any
 
-	rows, err := s.conn.Query(ctx, selectMsgSQL, conv.ID)
+	if filter.Limit > 0 {
+		// With pagination: sort DESC to get newest first, then reverse
+		if filter.Before != nil {
+			selectMsgSQL = fmt.Sprintf(`
+				SELECT conversation_id, role, msg_order, content, tool_calls, tool_results, timestamp, metadata, created_at
+				FROM %s WHERE conversation_id = $1 AND msg_order < $2 ORDER BY msg_order DESC LIMIT $3
+			`, s.msgTable())
+			args = []any{conv.ID, *filter.Before, filter.Limit}
+		} else {
+			selectMsgSQL = fmt.Sprintf(`
+				SELECT conversation_id, role, msg_order, content, tool_calls, tool_results, timestamp, metadata, created_at
+				FROM %s WHERE conversation_id = $1 ORDER BY msg_order DESC LIMIT $2
+			`, s.msgTable())
+			args = []any{conv.ID, filter.Limit}
+		}
+	} else {
+		// No pagination: get all messages in chronological order
+		selectMsgSQL = fmt.Sprintf(`
+			SELECT conversation_id, role, msg_order, content, tool_calls, tool_results, timestamp, metadata, created_at
+			FROM %s WHERE conversation_id = $1 ORDER BY msg_order
+		`, s.msgTable())
+		args = []any{conv.ID}
+	}
+
+	rows, err := s.conn.Query(ctx, selectMsgSQL, args...)
 	if err != nil {
 		return types.Conversation{}, fmt.Errorf("failed to get messages: %w", err)
 	}
@@ -437,6 +460,13 @@ func (s *Store) GetConversation(ctx context.Context, filter memory.Filter) (type
 
 	if err := rows.Err(); err != nil {
 		return types.Conversation{}, fmt.Errorf("failed to iterate messages: %w", err)
+	}
+
+	// If we sorted DESC for pagination, reverse to chronological order
+	if filter.Limit > 0 {
+		for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+			messages[i], messages[j] = messages[j], messages[i]
+		}
 	}
 
 	return conv.toTypes(messages), nil

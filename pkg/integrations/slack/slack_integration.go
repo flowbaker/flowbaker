@@ -4,18 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"strings"
 
 	"github.com/flowbaker/flowbaker/internal/managers"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 
-	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
 )
 
 const (
-	SlackIntegrationActionType_SendMessage domain.IntegrationActionType = "send_message"
-	SlackIntegrationActionType_GetMessage  domain.IntegrationActionType = "get_message"
+	SlackIntegrationActionType_SendMessage  domain.IntegrationActionType = "send_message"
+	SlackIntegrationActionType_GetMessage   domain.IntegrationActionType = "get_message"
+	SlackIntegrationActionType_AddReaction  domain.IntegrationActionType = "add_reaction"
+	SlackIntegrationActionType_GetMessages  domain.IntegrationActionType = "get_messages"
 
 	SlackIntegrationPeekable_Channels domain.IntegrationPeekableType = "channels"
 )
@@ -63,6 +66,8 @@ func NewSlackIntegration(ctx context.Context, deps SlackIntegrationDependencies)
 	actionFuncs := map[domain.IntegrationActionType]func(ctx context.Context, p domain.IntegrationInput) (domain.IntegrationOutput, error){
 		SlackIntegrationActionType_SendMessage: integration.SendMessage,
 		SlackIntegrationActionType_GetMessage:  integration.GetMessage,
+		SlackIntegrationActionType_AddReaction: integration.AddReaction,
+		SlackIntegrationActionType_GetMessages: integration.GetMessages,
 	}
 
 	peekFuncs := map[domain.IntegrationPeekableType]func(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error){
@@ -153,6 +158,26 @@ type GetMessageParams struct {
 	MessageID string `json:"message_id"`
 }
 
+type AddReactionParams struct {
+	ChannelID string `json:"channel_id"`
+	Timestamp string `json:"timestamp"`
+	Emoji     string `json:"emoji"`
+}
+
+type AddReactionOutputItem struct {
+	ChannelID string `json:"channel_id"`
+	Timestamp string `json:"timestamp"`
+	Emoji     string `json:"emoji"`
+	Success   bool   `json:"success"`
+}
+
+type GetMessagesParams struct {
+	ChannelID string `json:"channel_id"`
+	Limit     int    `json:"limit"`
+	Cursor    string `json:"cursor"`
+}
+
+
 func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	itemsByInputID, err := input.GetItemsByInputID()
 	if err != nil {
@@ -165,13 +190,9 @@ func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.Integrat
 		allItems = append(allItems, items...)
 	}
 
-	log.Info().Interface("all_items", allItems).Msg("All items")
-
 	outputs := []domain.Item{}
 
 	for _, item := range allItems {
-		log.Info().Interface("item", item).Msg("Item")
-
 		p := GetMessageParams{}
 
 		err := i.binder.BindToStruct(ctx, item, &p, input.IntegrationParams.Settings)
@@ -202,6 +223,119 @@ func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.Integrat
 	}, nil
 }
 
+func (i *SlackIntegration) AddReaction(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
+	itemsByInputID, err := input.GetItemsByInputID()
+	if err != nil {
+		return domain.IntegrationOutput{}, err
+	}
+
+	allItems := []domain.Item{}
+
+	for _, items := range itemsByInputID {
+		allItems = append(allItems, items...)
+	}
+
+	outputs := []domain.Item{}
+
+	for _, item := range allItems {
+		p := AddReactionParams{}
+
+		err := i.binder.BindToStruct(ctx, item, &p, input.IntegrationParams.Settings)
+		if err != nil {
+			return domain.IntegrationOutput{}, err
+		}
+
+		// Normalize emoji by stripping colons (e.g., :thumbsup: -> thumbsup)
+		emoji := strings.Trim(p.Emoji, ":")
+
+		err = i.slackClient.AddReactionContext(ctx, emoji, slack.ItemRef{
+			Channel:   p.ChannelID,
+			Timestamp: p.Timestamp,
+		})
+		if err != nil {
+			// Handle "already_reacted" as success
+			if slackErr, ok := err.(slack.SlackErrorResponse); ok && slackErr.Err == "already_reacted" {
+				// Already reacted, treat as success
+			} else {
+				return domain.IntegrationOutput{}, fmt.Errorf("failed to add reaction to message in channel %s: %w", p.ChannelID, err)
+			}
+		}
+
+		outputs = append(outputs, AddReactionOutputItem{
+			ChannelID: p.ChannelID,
+			Timestamp: p.Timestamp,
+			Emoji:     emoji,
+			Success:   true,
+		})
+	}
+
+	resultJSON, err := json.Marshal(outputs)
+	if err != nil {
+		return domain.IntegrationOutput{}, err
+	}
+
+	return domain.IntegrationOutput{
+		ResultJSONByOutputID: []domain.Payload{
+			resultJSON,
+		},
+	}, nil
+}
+
+func (i *SlackIntegration) GetMessages(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
+	itemsByInputID, err := input.GetItemsByInputID()
+	if err != nil {
+		return domain.IntegrationOutput{}, err
+	}
+
+	allItems := []domain.Item{}
+
+	for _, items := range itemsByInputID {
+		allItems = append(allItems, items...)
+	}
+
+	outputs := []domain.Item{}
+
+	for _, item := range allItems {
+		p := GetMessagesParams{}
+
+		err := i.binder.BindToStruct(ctx, item, &p, input.IntegrationParams.Settings)
+		if err != nil {
+			return domain.IntegrationOutput{}, err
+		}
+
+		// Default limit to 100, cap at 1000 (Slack API max)
+		limit := p.Limit
+		if limit <= 0 {
+			limit = 100
+		}
+		if limit > 1000 {
+			limit = 1000
+		}
+
+		history, err := i.slackClient.GetConversationHistoryContext(ctx, &slack.GetConversationHistoryParameters{
+			ChannelID: p.ChannelID,
+			Limit:     limit,
+			Cursor:    p.Cursor,
+		})
+		if err != nil {
+			return domain.IntegrationOutput{}, fmt.Errorf("failed to get messages from channel %s: %w", p.ChannelID, err)
+		}
+
+		outputs = append(outputs, history)
+	}
+
+	resultJSON, err := json.Marshal(outputs)
+	if err != nil {
+		return domain.IntegrationOutput{}, err
+	}
+
+	return domain.IntegrationOutput{
+		ResultJSONByOutputID: []domain.Payload{
+			resultJSON,
+		},
+	}, nil
+}
+
 func (i *SlackIntegration) Peek(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	peekFunc, ok := i.peekFuncs[params.PeekableType]
 	if !ok {
@@ -214,16 +348,26 @@ func (i *SlackIntegration) Peek(ctx context.Context, params domain.PeekParams) (
 func (i *SlackIntegration) PeekChannels(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
 	limit := params.GetLimitWithMax(20, 200)
 
+	cursor := params.Pagination.Cursor
+
 	channels, nextCursor, err := i.slackClient.GetConversationsContext(ctx, &slack.GetConversationsParameters{
 		Types:  []string{"public_channel"},
 		Limit:  limit,
-		Cursor: params.Pagination.Cursor,
+		Cursor: cursor,
 	})
 	if err != nil {
 		return domain.PeekResult{}, err
 	}
 
-	var results []domain.PeekResultItem
+	results := []domain.PeekResultItem{}
+
+	if cursor == "" {
+		results = append(results, domain.PeekResultItem{
+			Key:     "im",
+			Value:   "im",
+			Content: "Private messages with the bot",
+		})
+	}
 
 	for _, channel := range channels {
 		results = append(results, domain.PeekResultItem{
@@ -242,4 +386,118 @@ func (i *SlackIntegration) PeekChannels(ctx context.Context, params domain.PeekP
 	}
 
 	return result, nil
+}
+
+type SlackMessageReceivedEvent struct {
+	Token       string `json:"token"`
+	Type        string `json:"type"`
+	SlackTeamID string `json:"team_id"`
+	SlackUserID string `json:"user_id"`
+	Event       struct {
+		Type     string `json:"type"`
+		Channel  string `json:"channel"`
+		User     string `json:"user"`
+		Text     string `json:"text"`
+		Ts       string `json:"ts"`
+		ThreadTs string `json:"thread_ts"`
+	} `json:"event"`
+}
+
+func NewSlackMessageReceivedEventFromPayload(payload domain.Payload) (SlackMessageReceivedEvent, error) {
+	inputItems, err := payload.ToItems()
+	if err != nil {
+		return SlackMessageReceivedEvent{}, fmt.Errorf("failed to convert input payload to items: %w", err)
+	}
+
+	if len(inputItems) == 0 {
+		return SlackMessageReceivedEvent{}, fmt.Errorf("no input items found")
+	}
+
+	item := inputItems[0]
+
+	itemRaw, err := json.Marshal(item)
+	if err != nil {
+		return SlackMessageReceivedEvent{}, fmt.Errorf("failed to marshal item: %w", err)
+	}
+
+	slackEvent := SlackMessageReceivedEvent{}
+
+	err = json.Unmarshal(itemRaw, &slackEvent)
+	if err != nil {
+		return SlackMessageReceivedEvent{}, fmt.Errorf("failed to unmarshal slack event: %w", err)
+	}
+
+	return slackEvent, nil
+}
+
+func (i *SlackIntegration) Reply(ctx context.Context, message string) error {
+	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return fmt.Errorf("execution context not found")
+	}
+
+	inputPayload := executionContext.InputPayload
+
+	slackEvent, err := NewSlackMessageReceivedEventFromPayload(inputPayload)
+	if err != nil {
+		return fmt.Errorf("failed to create slack event from payload: %w", err)
+	}
+
+	channelID := slackEvent.Event.Channel
+
+	options := []slack.MsgOption{
+		slack.MsgOptionText(message, false),
+	}
+
+	if slackEvent.Event.ThreadTs != "" {
+		options = append(options, slack.MsgOptionTS(slackEvent.Event.ThreadTs))
+	}
+
+	_, _, err = i.slackClient.PostMessageContext(ctx, channelID, options...)
+	if err != nil {
+		return fmt.Errorf("failed to send message to channel %s: %w", channelID, err)
+	}
+
+	return nil
+}
+
+func (i *SlackIntegration) OnTypingStarted(ctx context.Context) error {
+	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return fmt.Errorf("execution context not found")
+	}
+
+	inputPayload := executionContext.InputPayload
+
+	slackEvent, err := NewSlackMessageReceivedEventFromPayload(inputPayload)
+	if err != nil {
+		return fmt.Errorf("failed to create slack event from payload: %w", err)
+	}
+
+	channelID := slackEvent.Event.Channel
+
+	typingMessages := []string{
+		"💭 Thinking...",
+		"✨ Working on it...",
+		"🤔 Let me see...",
+		"⏳ One moment...",
+		"✍️ Writing...",
+	}
+
+	randomMessage := typingMessages[rand.Intn(len(typingMessages))]
+
+	options := []slack.MsgOption{
+		slack.MsgOptionText(randomMessage, false),
+	}
+
+	if slackEvent.Event.ThreadTs != "" {
+		options = append(options, slack.MsgOptionTS(slackEvent.Event.ThreadTs))
+	}
+
+	_, _, err = i.slackClient.PostMessageContext(ctx, channelID, options...)
+	if err != nil {
+		return fmt.Errorf("failed to send typing message to channel %s: %w", channelID, err)
+	}
+
+	return nil
 }

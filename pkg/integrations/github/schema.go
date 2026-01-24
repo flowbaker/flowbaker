@@ -1142,7 +1142,7 @@ var (
 						Name:        "Pull Request Number",
 						Description: "The number of the pull request",
 						Required:    true,
-						Type:        domain.NodePropertyType_String,
+						Type:        domain.NodePropertyType_Integer,
 					},
 					{
 						Key:         "event",

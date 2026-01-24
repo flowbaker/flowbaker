@@ -1551,6 +1551,15 @@ func (c *Client) GetAgentConversation(ctx context.Context, req *GetAgentConversa
 
 	queryParams := url.Values{}
 	queryParams.Add("session_id", req.SessionID)
+
+	// Add pagination parameters
+	if req.Limit > 0 {
+		queryParams.Add("limit", strconv.Itoa(req.Limit))
+	}
+	if req.Before != nil {
+		queryParams.Add("before", strconv.Itoa(*req.Before))
+	}
+
 	queryString := queryParams.Encode()
 
 	url := fmt.Sprintf("%s?%s", path, queryString)

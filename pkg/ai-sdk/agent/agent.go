@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/memory"
@@ -32,8 +33,10 @@ type Agent struct {
 	cancelContext context.Context
 
 	eventChan chan types.StreamEvent
-	errChan   chan error
 	doneChan  chan struct{}
+
+	mu  sync.RWMutex
+	err error
 
 	hooks Hooks
 }
@@ -56,7 +59,6 @@ type Hooks struct {
 func New(opts ...Option) (*Agent, error) {
 	agent := &Agent{
 		eventChan: make(chan types.StreamEvent),
-		errChan:   make(chan error),
 		doneChan:  make(chan struct{}),
 	}
 
@@ -95,8 +97,18 @@ type ChatRequest struct {
 
 type ChatStream struct {
 	EventChan <-chan types.StreamEvent
-	ErrChan   <-chan error
-	done      chan struct{}
+	done      <-chan struct{}
+
+	errFn func() error
+}
+
+func (s *ChatStream) Err() error {
+	return s.errFn()
+}
+
+func (s *ChatStream) Wait() error {
+	<-s.done
+	return s.Err()
 }
 
 func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
@@ -125,21 +137,25 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
 
 			conversation := a.conversation
 
-			req := provider.GenerateRequest{
+			genReq := provider.GenerateRequest{
 				Messages: conversation.Messages,
 				System:   a.SystemPrompt,
 				Tools:    tools,
 			}
 
-			a.OnBeforeGenerate(&req)
+			a.OnBeforeGenerate(&genReq)
 
-			events, errs := a.Model.Stream(a.cancelContext, req)
+			providerStream, err := a.Model.Stream(a.cancelContext, genReq)
+			if err != nil {
+				a.OnError(err)
+				return
+			}
 
-			for event := range events {
+			for event := range providerStream.Events {
 				a.OnEvent(event)
 			}
 
-			if err := <-errs; err != nil {
+			if err := providerStream.Err(); err != nil {
 				a.OnError(err)
 				return
 			}
@@ -166,8 +182,8 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
 
 	return ChatStream{
 		EventChan: a.eventChan,
-		ErrChan:   a.errChan,
 		done:      a.doneChan,
+		errFn:     a.getError,
 	}, nil
 }
 
@@ -178,7 +194,7 @@ type ChatSyncResult struct {
 }
 
 func (a *Agent) ChatSync(ctx context.Context, req ChatRequest) (ChatSyncResult, error) {
-	_, err := a.Chat(ctx, req)
+	stream, err := a.Chat(ctx, req)
 	if err != nil {
 		return ChatSyncResult{}, err
 	}
@@ -186,18 +202,17 @@ func (a *Agent) ChatSync(ctx context.Context, req ChatRequest) (ChatSyncResult, 
 loop:
 	for {
 		select {
-		case err := <-a.errChan:
-			if err == nil {
-				continue
-			}
-
-			return ChatSyncResult{}, err
 		case <-ctx.Done():
 			return ChatSyncResult{}, ctx.Err()
-		case <-a.eventChan:
-		case <-a.doneChan:
-			break loop
+		case _, ok := <-stream.EventChan:
+			if !ok {
+				break loop
+			}
 		}
+	}
+
+	if err := stream.Err(); err != nil {
+		return ChatSyncResult{}, err
 	}
 
 	return ChatSyncResult{
@@ -380,10 +395,25 @@ func (a *Agent) IncrementStepNumber() {
 	a.currentStepNumber++
 }
 
-func (a *Agent) OnError(err error) {
-	a.eventChan <- types.NewStreamErrorEvent(err, "", err.Error(), false)
+func (a *Agent) setError(err error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.err = err
+}
 
-	a.errChan <- err
+func (a *Agent) getError() error {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.err
+}
+
+func (a *Agent) OnError(err error) {
+	a.setError(err)
+
+	select {
+	case a.eventChan <- types.NewStreamErrorEvent(err, "", err.Error(), false):
+	default:
+	}
 
 	if a.hooks.OnGenerationFailed != nil {
 		currentStep, ok := a.GetCurrentStep()
@@ -397,7 +427,6 @@ func (a *Agent) OnError(err error) {
 
 func (a *Agent) Cleanup() {
 	close(a.eventChan)
-	close(a.errChan)
 	close(a.doneChan)
 }
 
@@ -483,6 +512,7 @@ func (a *Agent) GetTool(toolName string) (tool.Tool, bool) {
 func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 	conversation, err := a.GetConversation(ctx, memory.Filter{
 		SessionID: req.SessionID,
+		Limit:     a.ConversationHistory,
 	})
 	if err != nil {
 		return err

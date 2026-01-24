@@ -325,11 +325,12 @@ func (g *GoogleSheetsIntegration) PeekColumns(ctx context.Context, p domain.Peek
 
 	header := headerResp.Values[0]
 	var columns []domain.PeekResultItem
-	for _, cell := range header {
+	for i, cell := range header {
 		cellStr := fmt.Sprintf("%v", cell)
+		colLetter := columnNumberToLetter(i + 1)
 		columns = append(columns, domain.PeekResultItem{
-			Key:     cellStr,
-			Value:   cellStr,
+			Key:     colLetter,
+			Value:   colLetter,
 			Content: cellStr,
 		})
 	}
@@ -410,6 +411,18 @@ func columnNumberToLetter(n int) string {
 		remainder := n % 26
 		result = string(rune('A'+remainder)) + result
 		n = n / 26
+	}
+	return result
+}
+
+func columnLetterToNumber(col string) int {
+	col = strings.ToUpper(col)
+	result := 0
+	for _, char := range col {
+		if char < 'A' || char > 'Z' {
+			return 0 // Invalid column letter
+		}
+		result = result*26 + int(char-'A') + 1
 	}
 	return result
 }
@@ -828,11 +841,16 @@ func (g *GoogleSheetsIntegration) DeleteWorksheet(ctx context.Context, input dom
 	return domain.Item(result), nil
 }
 
+type LookupCondition struct {
+	Column string `json:"column"`
+	Value  string `json:"value"`
+}
+
 type SearchWorksheetParams struct {
-	SpreadsheetID string `json:"spreadsheet_id"`
-	WorksheetID   string `json:"worksheet_id"`
-	LookupColumn  string `json:"column_id"`
-	LookupValue   string `json:"value"`
+	SpreadsheetID string            `json:"spreadsheet_id"`
+	WorksheetID   string            `json:"worksheet_id"`
+	Conditions    []LookupCondition `json:"conditions"`
+	MatchType     string            `json:"match_type"` // "and" or "or"
 }
 
 func (g *GoogleSheetsIntegration) FindRows(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
@@ -841,9 +859,17 @@ func (g *GoogleSheetsIntegration) FindRows(ctx context.Context, input domain.Int
 		return nil, err
 	}
 
+	if p.MatchType == "" {
+		p.MatchType = "and"
+	}
+
+	if len(p.Conditions) == 0 {
+		return nil, fmt.Errorf("at least one condition is required")
+	}
+
 	ss, err := g.sheetsService.Spreadsheets.Get(p.SpreadsheetID).Context(ctx).Do()
 	if err != nil {
-		log.Error().Err(err).Str("spreadsheet_id", p.SpreadsheetID).Msg("DEBUG: FindRows: Failed to get spreadsheet metadata")
+		log.Error().Err(err).Str("spreadsheet_id", p.SpreadsheetID).Msg("FindRows: Failed to get spreadsheet metadata")
 		return nil, fmt.Errorf("failed to get spreadsheet metadata: %w", err)
 	}
 
@@ -885,31 +911,101 @@ func (g *GoogleSheetsIntegration) FindRows(ctx context.Context, input domain.Int
 	}
 
 	header = dataResp.Values[0]
-	var colIndex int = -1
-	for i, cell := range header {
-		if fmt.Sprintf("%v", cell) == p.LookupColumn {
-			colIndex = i
-			break
-		}
-	}
-	if colIndex == -1 {
-		return nil, fmt.Errorf("lookup column '%s' not found in header", p.LookupColumn)
+	headerNames := toStringSlice(header)
+
+	colIndices, err := resolveColumnIndices(p.Conditions, headerNames)
+	if err != nil {
+		return nil, err
 	}
 
 	var items []domain.Item
 	for _, row := range dataResp.Values[1:] {
-		if colIndex < len(row) && fmt.Sprintf("%v", row[colIndex]) == p.LookupValue {
-			result := map[string]interface{}{
-				"spreadsheet_id": p.SpreadsheetID,
-				"worksheet_id":   p.WorksheetID,
-				"sheet_title":    sheetTitle,
-				"lookup_column":  p.LookupColumn,
-				"lookup_value":   p.LookupValue,
-				"matching_row":   row,
-			}
-			items = append(items, domain.Item(result))
+		if matchesConditions(row, p.Conditions, colIndices, p.MatchType) {
+			items = append(items, rowToItem(row, headerNames))
 		}
 	}
 
 	return items, nil
+}
+
+func resolveColumnIndices(conditions []LookupCondition, headerNames []string) ([]int, error) {
+	indices := make([]int, len(conditions))
+
+	for i, cond := range conditions {
+		idx := findColumnIndex(cond.Column, headerNames)
+		if idx == -1 {
+			return nil, fmt.Errorf("lookup column '%s' not found in header", cond.Column)
+		}
+		indices[i] = idx
+	}
+
+	return indices, nil
+}
+
+func findColumnIndex(column string, headerNames []string) int {
+	if idx := columnLetterToNumber(column) - 1; idx >= 0 && idx < len(headerNames) {
+		return idx
+	}
+
+	for i, name := range headerNames {
+		if name == column {
+			return i
+		}
+	}
+
+	return -1
+}
+
+func toStringSlice(cells []interface{}) []string {
+	result := make([]string, len(cells))
+	for i, cell := range cells {
+		result[i] = fmt.Sprintf("%v", cell)
+	}
+	return result
+}
+
+func rowToItem(row []interface{}, headerNames []string) domain.Item {
+	result := make(map[string]interface{})
+	for i, cell := range row {
+		if i < len(headerNames) {
+			key := headerNames[i]
+			if key == "" {
+				key = columnNumberToLetter(i + 1)
+			}
+			result[key] = fmt.Sprintf("%v", cell)
+		}
+	}
+	return domain.Item(result)
+}
+
+func matchesConditions(row []interface{}, conditions []LookupCondition, colIndices []int, matchType string) bool {
+	if matchType == "or" {
+		return matchesAny(row, conditions, colIndices)
+	}
+	return matchesAll(row, conditions, colIndices)
+}
+
+func matchesAny(row []interface{}, conditions []LookupCondition, colIndices []int) bool {
+	for i, cond := range conditions {
+		if cellMatches(row, colIndices[i], cond.Value) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesAll(row []interface{}, conditions []LookupCondition, colIndices []int) bool {
+	for i, cond := range conditions {
+		if !cellMatches(row, colIndices[i], cond.Value) {
+			return false
+		}
+	}
+	return true
+}
+
+func cellMatches(row []interface{}, colIndex int, value string) bool {
+	if colIndex >= len(row) {
+		return false
+	}
+	return fmt.Sprintf("%v", row[colIndex]) == value
 }

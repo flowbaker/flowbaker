@@ -52,6 +52,19 @@ var (
 							Step:    1,
 						},
 					},
+					{
+						Key:         "recent_messages_limit",
+						Name:        "Recent Messages Limit",
+						Description: "Number of recent messages to load. (0 = all)",
+						Type:        domain.NodePropertyType_Number,
+						Placeholder: "0",
+						Help:        "Limits context size by loading only the last N messages.",
+						NumberOpts: &domain.NumberPropertyOptions{
+							Min:     0,
+							Default: 0,
+							Step:    1,
+						},
+					},
 				},
 				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
 					domain.UsageContextWorkflow: {

@@ -8,11 +8,8 @@ import (
 	"strconv"
 
 	"github.com/flowbaker/flowbaker/internal/managers"
-
 	"github.com/flowbaker/flowbaker/pkg/domain"
-
 	"github.com/hasura/go-graphql-client"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -21,6 +18,8 @@ const (
 	IntegrationActionType_GetIssue      domain.IntegrationActionType = "get_issue"
 	IntegrationActionType_GetManyIssues domain.IntegrationActionType = "get_many_issues"
 	IntegrationActionType_UpdateIssue   domain.IntegrationActionType = "update_issue"
+	IntegrationActionType_AddComment    domain.IntegrationActionType = "add_comment"
+	IntegrationActionType_AddLink       domain.IntegrationActionType = "add_link"
 )
 
 const (
@@ -33,15 +32,17 @@ const (
 
 const (
 	issueCreateMutation = `
-	mutation IssueCreate($title: String!, $description: String, $teamId: String!, $priority: Int, $assigneeId: String, $labelIds: [String!]) {
+	mutation IssueCreate($title: String!, $description: String, $teamId: String!, $priority: Int, $assigneeId: String, $labelIds: [String!], $stateId: String) {
 		issueCreate(input: {
 			title: $title,
 			description: $description,
 			teamId: $teamId,
 			priority: $priority,
 			assigneeId: $assigneeId,
-			labelIds: $labelIds
+			labelIds: $labelIds,
+			stateId: $stateId
 		}) {
+			success
 			issue {
 				id
 				title
@@ -50,19 +51,23 @@ const (
 				team {
 					id
 					name
+					key
 				}
 				state {
 					id
 					name
+					type
 				}
 				assignee {
 					id
 					name
+					email
 				}
 				labels {
 					nodes {
 						id
 						name
+						color
 					}
 				}
 			}
@@ -86,20 +91,41 @@ const (
 			team {
 				id
 				name
+				key
 			}
 			state {
 				id
 				name
+				type
 			}
 			assignee {
 				id
 				name
+				email
 			}
 			labels {
 				nodes {
 					id
+					name
+					color
+				}
+			}
+			comments {
+				nodes {
+					id
+					body
+					createdAt
+					user {
+						id
 						name
 					}
+				}
+			}
+			attachments {
+				nodes {
+					id
+					title
+					url
 				}
 			}
 		}
@@ -116,19 +142,23 @@ const (
 				team {
 					id
 					name
+					key
 				}
 				state {
 					id
 					name
+					type
 				}
 				assignee {
 					id
 					name
+					email
 				}
 				labels {
 					nodes {
 						id
 						name
+						color
 					}
 				}
 			}
@@ -138,6 +168,7 @@ const (
 	issueUpdateMutation = `
 	mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) {
 		issueUpdate(id: $id, input: $input) {
+			success
 			issue {
 				id
 				title
@@ -146,21 +177,56 @@ const (
 				team {
 					id
 					name
+					key
 				}
 				state {
 					id
 					name
+					type
 				}
 				assignee {
 					id
 					name
+					email
 				}
 				labels {
 					nodes {
 						id
 						name
+						color
 					}
 				}
+			}
+		}
+	}`
+
+	commentCreateMutation = `
+	mutation CommentCreate($issueId: String!, $body: String!) {
+		commentCreate(input: {
+			issueId: $issueId,
+			body: $body
+		}) {
+			success
+			comment {
+				id
+				body
+				createdAt
+				user {
+					id
+					name
+				}
+			}
+		}
+	}`
+
+	attachmentLinkURLMutation = `
+	mutation AttachmentLinkURL($issueId: String!, $url: String!, $title: String) {
+		attachmentLinkURL(issueId: $issueId, url: $url, title: $title) {
+			success
+			attachment {
+				id
+				title
+				url
 			}
 		}
 	}`
@@ -171,6 +237,7 @@ const (
 			nodes {
 				id
 				name
+				key
 			}
 			pageInfo {
 				hasNextPage
@@ -194,35 +261,225 @@ const (
 		}
 	}`
 
-	issueLabelsQuery = `
-	query IssueLabels($first: Int!, $after: String) {
-		issueLabels(first: $first, after: $after) {
-			nodes {
-				id
-				name
-			}
-			pageInfo {
-				hasNextPage
-				endCursor
+	teamLabelsQuery = `
+	query TeamLabels($teamId: String!, $first: Int!, $after: String) {
+		team(id: $teamId) {
+			labels(first: $first, after: $after) {
+				nodes {
+					id
+					name
+					color
+				}
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
 		}
 	}`
 
 	workflowStatesQuery = `
 	query WorkflowStates($teamId: String!, $first: Int!, $after: String) {
-		workflowStates(filter: { team: { id: { eq: $teamId } } }, first: $first, after: $after) {
-			nodes {
-				id
-				name
-				type
-			}
-			pageInfo {
-				hasNextPage
-				endCursor
+		team(id: $teamId) {
+			states(first: $first, after: $after) {
+				nodes {
+					id
+					name
+					type
+				}
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
 		}
 	}`
 )
+
+type TeamNode struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Key  string `json:"key"`
+}
+
+type StateNode struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+type AssigneeNode struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+type LabelNode struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+type CommentNode struct {
+	ID        string `json:"id"`
+	Body      string `json:"body"`
+	CreatedAt string `json:"createdAt"`
+	User      *struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"user"`
+}
+
+type AttachmentNode struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
+type PageInfo struct {
+	HasNextPage bool   `json:"hasNextPage"`
+	EndCursor   string `json:"endCursor"`
+}
+
+type LinearIssueResponse struct {
+	ID          string        `json:"id"`
+	Title       string        `json:"title"`
+	Description *string       `json:"description"`
+	URL         string        `json:"url"`
+	Team        *TeamNode     `json:"team"`
+	State       *StateNode    `json:"state"`
+	Assignee    *AssigneeNode `json:"assignee"`
+	Labels      struct {
+		Nodes []LabelNode `json:"nodes"`
+	} `json:"labels"`
+}
+
+type LinearIssueDetailResponse struct {
+	ID          string        `json:"id"`
+	Title       string        `json:"title"`
+	Description *string       `json:"description"`
+	URL         string        `json:"url"`
+	Team        *TeamNode     `json:"team"`
+	State       *StateNode    `json:"state"`
+	Assignee    *AssigneeNode `json:"assignee"`
+	Labels      struct {
+		Nodes []LabelNode `json:"nodes"`
+	} `json:"labels"`
+	Comments struct {
+		Nodes []CommentNode `json:"nodes"`
+	} `json:"comments"`
+	Attachments struct {
+		Nodes []AttachmentNode `json:"nodes"`
+	} `json:"attachments"`
+}
+
+type LinearCommentResponse struct {
+	ID        string `json:"id"`
+	Body      string `json:"body"`
+	CreatedAt string `json:"createdAt"`
+	User      *struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"user"`
+}
+
+type LinearAttachmentResponse struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
+type IssueCreateResponse struct {
+	IssueCreate struct {
+		Success bool                 `json:"success"`
+		Issue   *LinearIssueResponse `json:"issue"`
+	} `json:"issueCreate"`
+}
+
+type IssueDeleteResponse struct {
+	IssueDelete struct {
+		Success bool `json:"success"`
+	} `json:"issueDelete"`
+}
+
+type IssueQueryResponse struct {
+	Issue *LinearIssueDetailResponse `json:"issue"`
+}
+
+type IssuesQueryResponse struct {
+	Issues struct {
+		Nodes []LinearIssueResponse `json:"nodes"`
+	} `json:"issues"`
+}
+
+type IssueUpdateResponse struct {
+	IssueUpdate struct {
+		Success bool                 `json:"success"`
+		Issue   *LinearIssueResponse `json:"issue"`
+	} `json:"issueUpdate"`
+}
+
+type CommentCreateResponse struct {
+	CommentCreate struct {
+		Success bool                   `json:"success"`
+		Comment *LinearCommentResponse `json:"comment"`
+	} `json:"commentCreate"`
+}
+
+type AttachmentLinkURLResponse struct {
+	AttachmentLinkURL struct {
+		Success    bool                      `json:"success"`
+		Attachment *LinearAttachmentResponse `json:"attachment"`
+	} `json:"attachmentLinkURL"`
+}
+
+type TeamsQueryResponse struct {
+	Teams struct {
+		Nodes    []TeamNode `json:"nodes"`
+		PageInfo PageInfo   `json:"pageInfo"`
+	} `json:"teams"`
+}
+
+type UsersQueryResponse struct {
+	Users struct {
+		Nodes    []AssigneeNode `json:"nodes"`
+		PageInfo PageInfo       `json:"pageInfo"`
+	} `json:"users"`
+}
+
+type LabelsQueryResponse struct {
+	Team struct {
+		Labels struct {
+			Nodes    []LabelNode `json:"nodes"`
+			PageInfo PageInfo    `json:"pageInfo"`
+		} `json:"labels"`
+	} `json:"team"`
+}
+
+type WorkflowStatesQueryResponse struct {
+	Team struct {
+		States struct {
+			Nodes    []StateNode `json:"nodes"`
+			PageInfo PageInfo    `json:"pageInfo"`
+		} `json:"states"`
+	} `json:"team"`
+}
+
+type linearTransport struct {
+	apiKey    string
+	transport http.RoundTripper
+}
+
+func (t *linearTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("Authorization", t.apiKey)
+	return t.transport.RoundTrip(req)
+}
+
+type LinearIntegrationDependencies struct {
+	ParameterBinder  domain.IntegrationParameterBinder
+	CredentialID     string
+	CredentialGetter domain.CredentialGetter[domain.OAuthAccountSensitiveData]
+}
 
 type LinearIntegrationCreator struct {
 	credentialGetter domain.CredentialGetter[domain.OAuthAccountSensitiveData]
@@ -247,27 +504,9 @@ func (c *LinearIntegrationCreator) CreateIntegration(ctx context.Context, p doma
 type LinearIntegration struct {
 	credentialGetter domain.CredentialGetter[domain.OAuthAccountSensitiveData]
 	binder           domain.IntegrationParameterBinder
-
-	graphqlClient *graphql.Client
-
-	actionManager *domain.IntegrationActionManager
-	peekFuncs     map[domain.IntegrationPeekableType]func(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error)
-}
-
-type linearTransport struct {
-	apiKey    string
-	transport http.RoundTripper
-}
-
-func (t *linearTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Set("Authorization", t.apiKey)
-	return t.transport.RoundTrip(req)
-}
-
-type LinearIntegrationDependencies struct {
-	ParameterBinder  domain.IntegrationParameterBinder
-	CredentialID     string
-	CredentialGetter domain.CredentialGetter[domain.OAuthAccountSensitiveData]
+	graphqlClient    *graphql.Client
+	actionManager    *domain.IntegrationActionManager
+	peekFuncs        map[domain.IntegrationPeekableType]func(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error)
 }
 
 func NewLinearIntegration(ctx context.Context, deps LinearIntegrationDependencies) (*LinearIntegration, error) {
@@ -282,28 +521,26 @@ func NewLinearIntegration(ctx context.Context, deps LinearIntegrationDependencie
 		AddPerItem(IntegrationActionType_DeleteIssue, integration.DeleteIssue).
 		AddPerItem(IntegrationActionType_GetIssue, integration.GetIssue).
 		AddPerItemMulti(IntegrationActionType_GetManyIssues, integration.GetManyIssues).
-		AddPerItem(IntegrationActionType_UpdateIssue, integration.UpdateIssue)
+		AddPerItem(IntegrationActionType_UpdateIssue, integration.UpdateIssue).
+		AddPerItem(IntegrationActionType_AddComment, integration.AddComment).
+		AddPerItem(IntegrationActionType_AddLink, integration.AddLink)
 
-	peekFuncs := map[domain.IntegrationPeekableType]func(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error){
-		LinearIntegrationPeekable_Teams:         integration.PeekTeams,
-		LinearIntegrationPeekable_Priorities:    integration.PeekPriorities,
-		LinearIntegrationPeekable_Users:         integration.PeekUsers,
-		LinearIntegrationPeekable_Labels:        integration.PeekLabels,
-		LinearIntegrationPeekable_States:        integration.PeekWorkflowStates,
-		LinearIntegrationPeekable_ResourceTypes: integration.PeekResourceTypes,
+	integration.peekFuncs = map[domain.IntegrationPeekableType]func(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error){
+		LinearIntegrationPeekable_Teams:      integration.PeekTeams,
+		LinearIntegrationPeekable_Priorities: integration.PeekPriorities,
+		LinearIntegrationPeekable_Users:      integration.PeekUsers,
+		LinearIntegrationPeekable_Labels:     integration.PeekLabels,
+		LinearIntegrationPeekable_States:     integration.PeekWorkflowStates,
 	}
-	integration.peekFuncs = peekFuncs
 
 	tokens, err := deps.CredentialGetter.GetDecryptedCredential(ctx, deps.CredentialID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Linear credential: %w", err)
 	}
 
-	accessToken := tokens.AccessToken
-
 	httpClient := &http.Client{
 		Transport: &linearTransport{
-			apiKey:    "Bearer " + accessToken,
+			apiKey:    "Bearer " + tokens.AccessToken,
 			transport: http.DefaultTransport,
 		},
 	}
@@ -317,14 +554,22 @@ func (i *LinearIntegration) Execute(ctx context.Context, params domain.Integrati
 	return i.actionManager.Run(ctx, params.ActionType, params)
 }
 
+func (i *LinearIntegration) Peek(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
+	peekFunc, ok := i.peekFuncs[params.PeekableType]
+	if !ok {
+		return domain.PeekResult{}, fmt.Errorf("peek function not found for type: %s", params.PeekableType)
+	}
+	return peekFunc(ctx, params)
+}
+
 type CreateIssueParams struct {
-	CredentialID string   `json:"credential_id"`
-	Title        string   `json:"title"`
-	Description  string   `json:"description"`
-	TeamID       string   `json:"team_id"`
-	PriorityID   string   `json:"priority_id"`
-	AssigneeID   string   `json:"assignee_id"`
-	LabelIDs     []string `json:"label_ids"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	TeamID      string   `json:"team_id"`
+	PriorityID  string   `json:"priority_id"`
+	AssigneeID  string   `json:"assignee_id"`
+	LabelIDs    []string `json:"label_ids"`
+	StateID     string   `json:"state_id"`
 }
 
 func (i *LinearIntegration) CreateIssue(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
@@ -333,40 +578,14 @@ func (i *LinearIntegration) CreateIssue(ctx context.Context, params domain.Integ
 	if err != nil {
 		return nil, fmt.Errorf("failed to bind parameters for CreateIssue: %w", err)
 	}
+
 	if p.Title == "" {
 		return nil, fmt.Errorf("issue title cannot be empty")
 	}
 	if p.TeamID == "" {
 		return nil, fmt.Errorf("team ID cannot be empty")
 	}
-	var mutationResponse struct {
-		IssueCreate struct {
-			Issue struct {
-				ID          string  `json:"id"`
-				Title       string  `json:"title"`
-				Description *string `json:"description"`
-				URL         string  `json:"url"`
-				Team        struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"team"`
-				State struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"state"`
-				Assignee *struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"assignee"`
-				Labels struct {
-					Nodes []struct {
-						ID   string `json:"id"`
-						Name string `json:"name"`
-					} `json:"nodes"`
-				} `json:"labels"`
-			} `json:"issue"`
-		} `json:"issueCreate"`
-	}
+
 	vars := map[string]interface{}{
 		"title":       p.Title,
 		"description": (*string)(nil),
@@ -374,7 +593,9 @@ func (i *LinearIntegration) CreateIssue(ctx context.Context, params domain.Integ
 		"priority":    (*int)(nil),
 		"assigneeId":  (*string)(nil),
 		"labelIds":    []string{},
+		"stateId":     (*string)(nil),
 	}
+
 	if p.Description != "" {
 		vars["description"] = p.Description
 	}
@@ -391,11 +612,21 @@ func (i *LinearIntegration) CreateIssue(ctx context.Context, params domain.Integ
 	if len(p.LabelIDs) > 0 {
 		vars["labelIds"] = p.LabelIDs
 	}
-	err = i.graphqlClient.Exec(ctx, issueCreateMutation, &mutationResponse, vars)
+	if p.StateID != "" {
+		vars["stateId"] = p.StateID
+	}
+
+	var response IssueCreateResponse
+	err = i.graphqlClient.Exec(ctx, issueCreateMutation, &response, vars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Linear issue via GraphQL: %w", err)
 	}
-	return mutationResponse.IssueCreate.Issue, nil
+
+	if response.IssueCreate.Issue == nil {
+		return nil, fmt.Errorf("failed to create Linear issue: no issue returned")
+	}
+
+	return response.IssueCreate.Issue, nil
 }
 
 type DeleteIssueParams struct {
@@ -408,24 +639,25 @@ func (i *LinearIntegration) DeleteIssue(ctx context.Context, params domain.Integ
 	if err != nil {
 		return nil, fmt.Errorf("failed to bind parameters for DeleteIssue: %w", err)
 	}
+
 	if p.IssueID == "" {
 		return nil, fmt.Errorf("issue ID cannot be empty for deletion")
 	}
-	var mutationResponse struct {
-		IssueDelete struct {
-			Success bool `json:"success"`
-		} `json:"issueDelete"`
-	}
+
 	vars := map[string]interface{}{
 		"id": p.IssueID,
 	}
-	err = i.graphqlClient.Exec(ctx, issueDeleteMutation, &mutationResponse, vars)
+
+	var response IssueDeleteResponse
+	err = i.graphqlClient.Exec(ctx, issueDeleteMutation, &response, vars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete Linear issue via GraphQL: %w", err)
 	}
-	if !mutationResponse.IssueDelete.Success {
+
+	if !response.IssueDelete.Success {
 		return nil, fmt.Errorf("Linear API reported unsuccessful deletion for issue ID: %s", p.IssueID)
 	}
+
 	return map[string]interface{}{"success": true, "deleted_issue_id": p.IssueID}, nil
 }
 
@@ -439,47 +671,26 @@ func (i *LinearIntegration) GetIssue(ctx context.Context, params domain.Integrat
 	if err != nil {
 		return nil, fmt.Errorf("failed to bind parameters for GetIssue: %w", err)
 	}
+
 	if p.IssueID == "" {
 		return nil, fmt.Errorf("issue ID cannot be empty for retrieval")
 	}
-	var queryResponse struct {
-		Issue struct {
-			ID          string  `json:"id"`
-			Title       string  `json:"title"`
-			Description *string `json:"description"`
-			URL         string  `json:"url"`
-			Team        struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"team"`
-			State struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"state"`
-			Assignee *struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"assignee"`
-			Labels struct {
-				Nodes []struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"nodes"`
-			} `json:"labels"`
-		} `json:"issue"`
-	}
+
 	vars := map[string]interface{}{
 		"id": p.IssueID,
 	}
-	log.Info().Msgf("Attempting to get Linear issue with ID: %s", p.IssueID)
-	err = i.graphqlClient.Exec(ctx, issueQuery, &queryResponse, vars)
+
+	var response IssueQueryResponse
+	err = i.graphqlClient.Exec(ctx, issueQuery, &response, vars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Linear issue via GraphQL: %w", err)
 	}
-	if queryResponse.Issue.ID == "" {
+
+	if response.Issue == nil || response.Issue.ID == "" {
 		return nil, fmt.Errorf("issue with ID %s not found", p.IssueID)
 	}
-	return queryResponse.Issue, nil
+
+	return response.Issue, nil
 }
 
 type GetManyIssuesParams struct {
@@ -496,6 +707,7 @@ func (i *LinearIntegration) GetManyIssues(ctx context.Context, params domain.Int
 	if err != nil {
 		return nil, fmt.Errorf("failed to bind parameters for GetManyIssues: %w", err)
 	}
+
 	issueFilter := make(map[string]interface{})
 	if p.TeamID != "" {
 		issueFilter["team"] = map[string]interface{}{
@@ -517,34 +729,7 @@ func (i *LinearIntegration) GetManyIssues(ctx context.Context, params domain.Int
 	if p.Query != "" {
 		issueFilter["title"] = map[string]interface{}{"containsIgnoreCase": p.Query}
 	}
-	var queryResponse struct {
-		Issues struct {
-			Nodes []struct {
-				ID          string  `json:"id"`
-				Title       string  `json:"title"`
-				Description *string `json:"description"`
-				URL         string  `json:"url"`
-				Team        struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"team"`
-				State struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"state"`
-				Assignee *struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"assignee"`
-				Labels struct {
-					Nodes []struct {
-						ID   string `json:"id"`
-						Name string `json:"name"`
-					} `json:"nodes"`
-				} `json:"labels"`
-			} `json:"nodes"`
-		} `json:"issues"`
-	}
+
 	vars := make(map[string]interface{})
 	if len(issueFilter) > 0 {
 		vars["filter"] = issueFilter
@@ -554,15 +739,18 @@ func (i *LinearIntegration) GetManyIssues(ctx context.Context, params domain.Int
 	} else {
 		vars["first"] = 50
 	}
-	log.Info().Msgf("Attempting to get many Linear issues with filter: %+v", issueFilter)
-	err = i.graphqlClient.Exec(ctx, issuesQuery, &queryResponse, vars)
+
+	var response IssuesQueryResponse
+	err = i.graphqlClient.Exec(ctx, issuesQuery, &response, vars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get many Linear issues via GraphQL: %w", err)
 	}
-	items := make([]domain.Item, len(queryResponse.Issues.Nodes))
-	for idx, node := range queryResponse.Issues.Nodes {
+
+	items := make([]domain.Item, len(response.Issues.Nodes))
+	for idx, node := range response.Issues.Nodes {
 		items[idx] = node
 	}
+
 	return items, nil
 }
 
@@ -583,9 +771,11 @@ func (i *LinearIntegration) UpdateIssue(ctx context.Context, params domain.Integ
 	if err != nil {
 		return nil, fmt.Errorf("failed to bind parameters for UpdateIssue: %w", err)
 	}
+
 	if p.IssueID == "" {
 		return nil, fmt.Errorf("issue ID cannot be empty for update")
 	}
+
 	updateInput := make(map[string]interface{})
 	if p.Title != "" {
 		updateInput["title"] = p.Title
@@ -616,73 +806,112 @@ func (i *LinearIntegration) UpdateIssue(ctx context.Context, params domain.Integ
 	if p.StateID != "" {
 		updateInput["stateId"] = p.StateID
 	}
+
 	if len(updateInput) == 0 {
 		return nil, fmt.Errorf("no update parameters provided for issue ID: %s", p.IssueID)
 	}
-	var mutationResponse struct {
-		IssueUpdate struct {
-			Issue struct {
-				ID          string  `json:"id"`
-				Title       string  `json:"title"`
-				Description *string `json:"description"`
-				URL         string  `json:"url"`
-				Team        struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"team"`
-				State struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"state"`
-				Assignee *struct {
-					ID   string `json:"id"`
-					Name string `json:"name"`
-				} `json:"assignee"`
-				Labels struct {
-					Nodes []struct {
-						ID   string `json:"id"`
-						Name string `json:"name"`
-					} `json:"nodes"`
-				} `json:"labels"`
-			} `json:"issue"`
-		} `json:"issueUpdate"`
-	}
+
 	vars := map[string]interface{}{
 		"id":    p.IssueID,
 		"input": updateInput,
 	}
-	err = i.graphqlClient.Exec(ctx, issueUpdateMutation, &mutationResponse, vars)
+
+	var response IssueUpdateResponse
+	err = i.graphqlClient.Exec(ctx, issueUpdateMutation, &response, vars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update Linear issue via GraphQL: %w", err)
 	}
-	return mutationResponse.IssueUpdate.Issue, nil
-}
 
-func (i *LinearIntegration) Peek(ctx context.Context, params domain.PeekParams) (domain.PeekResult, error) {
-	peekFunc, ok := i.peekFuncs[params.PeekableType]
-	if !ok {
-		return domain.PeekResult{}, fmt.Errorf("peek function not found for type: %s", params.PeekableType)
+	if response.IssueUpdate.Issue == nil {
+		return nil, fmt.Errorf("failed to update Linear issue: no issue returned")
 	}
 
-	return peekFunc(ctx, params)
+	return response.IssueUpdate.Issue, nil
+}
+
+type AddCommentParams struct {
+	IssueID string `json:"issue_id"`
+	Body    string `json:"body"`
+}
+
+func (i *LinearIntegration) AddComment(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	p := AddCommentParams{}
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bind parameters for AddComment: %w", err)
+	}
+
+	if p.IssueID == "" {
+		return nil, fmt.Errorf("issue ID cannot be empty for adding comment")
+	}
+	if p.Body == "" {
+		return nil, fmt.Errorf("comment body cannot be empty")
+	}
+
+	vars := map[string]interface{}{
+		"issueId": p.IssueID,
+		"body":    p.Body,
+	}
+
+	var response CommentCreateResponse
+	err = i.graphqlClient.Exec(ctx, commentCreateMutation, &response, vars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add comment to Linear issue via GraphQL: %w", err)
+	}
+
+	if response.CommentCreate.Comment == nil {
+		return nil, fmt.Errorf("failed to add comment: no comment returned")
+	}
+
+	return response.CommentCreate.Comment, nil
+}
+
+type AddLinkParams struct {
+	IssueID string `json:"issue_id"`
+	URL     string `json:"url"`
+	Title   string `json:"title"`
+}
+
+func (i *LinearIntegration) AddLink(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	p := AddLinkParams{}
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bind parameters for AddLink: %w", err)
+	}
+
+	if p.IssueID == "" {
+		return nil, fmt.Errorf("issue ID cannot be empty for adding link")
+	}
+	if p.URL == "" {
+		return nil, fmt.Errorf("URL cannot be empty")
+	}
+
+	vars := map[string]interface{}{
+		"issueId": p.IssueID,
+		"url":     p.URL,
+		"title":   (*string)(nil),
+	}
+
+	if p.Title != "" {
+		vars["title"] = p.Title
+	}
+
+	var response AttachmentLinkURLResponse
+	err = i.graphqlClient.Exec(ctx, attachmentLinkURLMutation, &response, vars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add link to Linear issue via GraphQL: %w", err)
+	}
+
+	if response.AttachmentLinkURL.Attachment == nil {
+		return nil, fmt.Errorf("failed to add link: no attachment returned")
+	}
+
+	return response.AttachmentLinkURL.Attachment, nil
 }
 
 func (i *LinearIntegration) PeekTeams(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
 	limit := p.GetLimitWithMax(20, 100)
 	cursor := p.Pagination.Cursor
-
-	var queryResponse struct {
-		Teams struct {
-			Nodes []struct {
-				ID   string
-				Name string
-			} `json:"nodes"`
-			PageInfo struct {
-				HasNextPage bool   `json:"hasNextPage"`
-				EndCursor   string `json:"endCursor"`
-			} `json:"pageInfo"`
-		} `json:"teams"`
-	}
 
 	variables := map[string]interface{}{
 		"first": limit,
@@ -691,13 +920,14 @@ func (i *LinearIntegration) PeekTeams(ctx context.Context, p domain.PeekParams) 
 		variables["after"] = cursor
 	}
 
-	err := i.graphqlClient.Exec(ctx, teamsQuery, &queryResponse, variables)
+	var response TeamsQueryResponse
+	err := i.graphqlClient.Exec(ctx, teamsQuery, &response, variables)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to fetch Linear teams via GraphQL: %w", err)
 	}
 
 	var results []domain.PeekResultItem
-	for _, team := range queryResponse.Teams.Nodes {
+	for _, team := range response.Teams.Nodes {
 		results = append(results, domain.PeekResultItem{
 			Key:     team.ID,
 			Value:   team.ID,
@@ -705,18 +935,13 @@ func (i *LinearIntegration) PeekTeams(ctx context.Context, p domain.PeekParams) 
 		})
 	}
 
-	hasMore := queryResponse.Teams.PageInfo.HasNextPage
-	nextCursor := queryResponse.Teams.PageInfo.EndCursor
-
-	result := domain.PeekResult{
+	return domain.PeekResult{
 		Result: results,
 		Pagination: domain.PaginationMetadata{
-			NextCursor:  nextCursor,
-			HasMore: hasMore,
+			NextCursor: response.Teams.PageInfo.EndCursor,
+			HasMore:    response.Teams.PageInfo.HasNextPage,
 		},
-	}
-
-	return result, nil
+	}, nil
 }
 
 func (i *LinearIntegration) PeekPriorities(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
@@ -744,23 +969,8 @@ func (i *LinearIntegration) PeekPriorities(ctx context.Context, p domain.PeekPar
 }
 
 func (i *LinearIntegration) PeekUsers(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
-
 	limit := p.GetLimitWithMax(20, 100)
 	cursor := p.Pagination.Cursor
-
-	var queryResponse struct {
-		Users struct {
-			Nodes []struct {
-				ID    string
-				Name  string
-				Email string
-			} `json:"nodes"`
-			PageInfo struct {
-				HasNextPage bool   `json:"hasNextPage"`
-				EndCursor   string `json:"endCursor"`
-			} `json:"pageInfo"`
-		} `json:"users"`
-	}
 
 	variables := map[string]interface{}{
 		"first": limit,
@@ -769,13 +979,14 @@ func (i *LinearIntegration) PeekUsers(ctx context.Context, p domain.PeekParams) 
 		variables["after"] = cursor
 	}
 
-	err := i.graphqlClient.Exec(ctx, usersQuery, &queryResponse, variables)
+	var response UsersQueryResponse
+	err := i.graphqlClient.Exec(ctx, usersQuery, &response, variables)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to fetch Linear users: %w", err)
 	}
 
 	var results []domain.PeekResultItem
-	for _, user := range queryResponse.Users.Nodes {
+	for _, user := range response.Users.Nodes {
 		content := user.Name
 		if user.Email != "" {
 			content = fmt.Sprintf("%s (%s)", user.Name, user.Email)
@@ -787,52 +998,51 @@ func (i *LinearIntegration) PeekUsers(ctx context.Context, p domain.PeekParams) 
 		})
 	}
 
-	hasMore := queryResponse.Users.PageInfo.HasNextPage
-	nextCursor := queryResponse.Users.PageInfo.EndCursor
-
-	result := domain.PeekResult{
+	return domain.PeekResult{
 		Result: results,
 		Pagination: domain.PaginationMetadata{
-			NextCursor:  nextCursor,
-			HasMore: hasMore,
+			NextCursor: response.Users.PageInfo.EndCursor,
+			HasMore:    response.Users.PageInfo.HasNextPage,
 		},
-	}
+	}, nil
+}
 
-	return result, nil
+type PeekLabelsParams struct {
+	TeamID string `json:"team_id"`
 }
 
 func (i *LinearIntegration) PeekLabels(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
-
 	limit := p.GetLimitWithMax(20, 100)
 	cursor := p.Pagination.Cursor
 
-	var queryResponse struct {
-		IssueLabels struct {
-			Nodes []struct {
-				ID   string
-				Name string
-			} `json:"nodes"`
-			PageInfo struct {
-				HasNextPage bool   `json:"hasNextPage"`
-				EndCursor   string `json:"endCursor"`
-			} `json:"pageInfo"`
-		} `json:"issueLabels"`
+	params := PeekLabelsParams{}
+	if len(p.PayloadJSON) > 0 {
+		err := json.Unmarshal(p.PayloadJSON, &params)
+		if err != nil {
+			return domain.PeekResult{}, fmt.Errorf("failed to unmarshal peek labels params: %w", err)
+		}
+	}
+
+	if params.TeamID == "" {
+		return domain.PeekResult{}, fmt.Errorf("team_id is required to peek labels")
 	}
 
 	variables := map[string]interface{}{
-		"first": limit,
+		"teamId": params.TeamID,
+		"first":  limit,
 	}
 	if cursor != "" {
 		variables["after"] = cursor
 	}
 
-	err := i.graphqlClient.Exec(ctx, issueLabelsQuery, &queryResponse, variables)
+	var response LabelsQueryResponse
+	err := i.graphqlClient.Exec(ctx, teamLabelsQuery, &response, variables)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to fetch Linear labels via GraphQL: %w", err)
 	}
 
 	var results []domain.PeekResultItem
-	for _, label := range queryResponse.IssueLabels.Nodes {
+	for _, label := range response.Team.Labels.Nodes {
 		results = append(results, domain.PeekResultItem{
 			Key:     label.ID,
 			Value:   label.ID,
@@ -840,18 +1050,13 @@ func (i *LinearIntegration) PeekLabels(ctx context.Context, p domain.PeekParams)
 		})
 	}
 
-	hasMore := queryResponse.IssueLabels.PageInfo.HasNextPage
-	nextCursor := queryResponse.IssueLabels.PageInfo.EndCursor
-
-	result := domain.PeekResult{
+	return domain.PeekResult{
 		Result: results,
 		Pagination: domain.PaginationMetadata{
-			NextCursor:  nextCursor,
-			HasMore: hasMore,
+			NextCursor: response.Team.Labels.PageInfo.EndCursor,
+			HasMore:    response.Team.Labels.PageInfo.HasNextPage,
 		},
-	}
-
-	return result, nil
+	}, nil
 }
 
 type PeekWorkflowStatesParams struct {
@@ -874,20 +1079,6 @@ func (i *LinearIntegration) PeekWorkflowStates(ctx context.Context, p domain.Pee
 		return domain.PeekResult{}, fmt.Errorf("team_id is required to peek workflow states")
 	}
 
-	var queryResponse struct {
-		WorkflowStates struct {
-			Nodes []struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-				Type string `json:"type"`
-			} `json:"nodes"`
-			PageInfo struct {
-				HasNextPage bool   `json:"hasNextPage"`
-				EndCursor   string `json:"endCursor"`
-			} `json:"pageInfo"`
-		} `json:"workflowStates"`
-	}
-
 	vars := map[string]interface{}{
 		"teamId": params.TeamID,
 		"first":  limit,
@@ -896,13 +1087,14 @@ func (i *LinearIntegration) PeekWorkflowStates(ctx context.Context, p domain.Pee
 		vars["after"] = cursor
 	}
 
-	err := i.graphqlClient.Exec(ctx, workflowStatesQuery, &queryResponse, vars)
+	var response WorkflowStatesQueryResponse
+	err := i.graphqlClient.Exec(ctx, workflowStatesQuery, &response, vars)
 	if err != nil {
 		return domain.PeekResult{}, fmt.Errorf("failed to fetch Linear workflow states via GraphQL: %w", err)
 	}
 
 	var results []domain.PeekResultItem
-	for _, state := range queryResponse.WorkflowStates.Nodes {
+	for _, state := range response.Team.States.Nodes {
 		results = append(results, domain.PeekResultItem{
 			Key:     state.ID,
 			Value:   state.ID,
@@ -910,39 +1102,11 @@ func (i *LinearIntegration) PeekWorkflowStates(ctx context.Context, p domain.Pee
 		})
 	}
 
-	hasMore := queryResponse.WorkflowStates.PageInfo.HasNextPage
-	nextCursor := queryResponse.WorkflowStates.PageInfo.EndCursor
-
-	result := domain.PeekResult{
+	return domain.PeekResult{
 		Result: results,
 		Pagination: domain.PaginationMetadata{
-			NextCursor:  nextCursor,
-			HasMore: hasMore,
+			NextCursor: response.Team.States.PageInfo.EndCursor,
+			HasMore:    response.Team.States.PageInfo.HasNextPage,
 		},
-	}
-
-	return result, nil
-}
-
-func (i *LinearIntegration) PeekResourceTypes(ctx context.Context, p domain.PeekParams) (domain.PeekResult, error) {
-	types := []struct {
-		Key   string
-		Label string
-	}{
-		{"Issue", "Issue"},
-		{"Comment", "Comment"},
-		{"Cycle", "Cycle"},
-		{"IssueLabel", "Issue Label"},
-		{"Reaction", "Reaction"},
-		{"Project", "Project"},
-	}
-	var results []domain.PeekResultItem
-	for _, t := range types {
-		results = append(results, domain.PeekResultItem{
-			Key:     t.Key,
-			Value:   t.Key,
-			Content: t.Label,
-		})
-	}
-	return domain.PeekResult{Result: results}, nil
+	}, nil
 }

@@ -120,9 +120,10 @@ const (
 )
 
 type ExecuteParams struct {
-	Prompt       string `json:"prompt,omitempty"`
-	SystemPrompt string `json:"system_prompt,omitempty"`
-	MaxSteps     int    `json:"max_steps,omitempty"`
+	Prompt              string `json:"prompt,omitempty"`
+	SystemPrompt        string `json:"system_prompt,omitempty"`
+	MaxSteps            int    `json:"max_steps,omitempty"`
+	RecentMessagesLimit int    `json:"recent_messages_limit,omitempty"`
 }
 
 const InputHandleIDFormat = "input-%s-%d"
@@ -217,12 +218,20 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 		OnMemorySaveFailed:      hooksManager.OnMemorySaveFailed,
 	}
 
+	replier, _ := e.ResolveReplier(ctx, executionContext.WorkspaceID)
+
+	err = e.OnTypingStarted(ctx, replier)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start typing: %w", err)
+	}
+
 	a, err := agent.New(
 		agent.WithModel(llm.LLM),
 		agent.WithSystemPrompt(executeParams.SystemPrompt),
 		agent.WithMemory(memory.Memory),
 		agent.WithTools(tools...),
 		agent.WithMaxIterations(maxSteps),
+		agent.WithConversationHistoryLimit(executeParams.RecentMessagesLimit),
 		agent.WithCancelContext(ctx),
 		agent.WithHooks(hooks),
 	)
@@ -241,6 +250,8 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 		return nil, fmt.Errorf("failed to chat with agent: %w", err)
 	}
 
+	isStreamEnabled := replier == nil
+
 	wg := sync.WaitGroup{}
 
 	wg.Go(func() {
@@ -250,6 +261,9 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 				return
 			case event, ok := <-result.EventChan:
 				if !ok {
+					if err := result.Err(); err != nil {
+						log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
+					}
 					return
 				}
 				eventType := string(event.GetType())
@@ -279,16 +293,12 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 					streamEvent.UserID = *executionContext.UserID
 				}
 
-				err = executionObserver.NotifyStream(ctx, streamEvent)
-				if err != nil {
-					log.Error().Str("err", err.Error()).Msg("failed to notify stream event")
+				if isStreamEnabled {
+					err = executionObserver.NotifyStream(ctx, streamEvent)
+					if err != nil {
+						log.Error().Str("err", err.Error()).Msg("failed to notify stream event")
+					}
 				}
-
-			case err := <-result.ErrChan:
-				if err != nil {
-					log.Error().Str("err", err.Error()).Msg("failed to chat with agent")
-				}
-				return
 			}
 		}
 	})
@@ -321,9 +331,91 @@ func (e *AIAgentExecutor) ExecuteAgent(ctx context.Context, params domain.Integr
 		"output": maxStep.Content,
 	}
 
+	err = e.HandleReply(ctx, replier, maxStep)
+	if err != nil {
+		return nil, fmt.Errorf("failed to handle reply: %w", err)
+	}
+
 	outputItems = append(outputItems, resultItem)
 
 	return outputItems, nil
+}
+
+func (e *AIAgentExecutor) ResolveReplier(ctx context.Context, workspaceID string) (domain.IntegrationChatReplier, error) {
+	executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return nil, fmt.Errorf("workflow execution context not found")
+	}
+
+	triggerNode := executionContext.TriggerNode
+
+	availableIntegrationTypes := map[domain.IntegrationType]struct{}{
+		domain.IntegrationType_Slack: {},
+	}
+
+	_, exists := availableIntegrationTypes[triggerNode.IntegrationType]
+	if !exists {
+		return nil, fmt.Errorf("trigger node integration type %s is not available", triggerNode.IntegrationType)
+	}
+
+	integration, err := e.executorIntegrationManager.GetIntegration(ctx, domain.IntegrationType(triggerNode.IntegrationType))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get integration for type %s: %w", triggerNode.IntegrationType, err)
+	}
+
+	isCredentialRequired := len(integration.CredentialProperties) > 0 && !integration.IsCredentialOptional
+
+	credentialID, exists := triggerNode.IntegrationSettings["credential_id"]
+	if !exists {
+		if isCredentialRequired {
+			return nil, fmt.Errorf("credential is required for trigger %s, but not provided", integration.Name)
+		}
+
+		credentialID = ""
+	}
+
+	credentialIDString, ok := credentialID.(string)
+	if !ok {
+		return nil, fmt.Errorf("credential_id is not a string in trigger node %s", triggerNode.ID)
+	}
+
+	creator, err := e.integrationSelector.SelectCreator(ctx, domain.SelectIntegrationParams{
+		IntegrationType: triggerNode.IntegrationType,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to select integration creator: %w", err)
+	}
+
+	executor, err := creator.CreateIntegration(ctx, domain.CreateIntegrationParams{
+		CredentialID: credentialIDString,
+		WorkspaceID:  workspaceID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create integration executor: %w", err)
+	}
+
+	replier, ok := executor.(domain.IntegrationChatReplier)
+	if ok {
+		return replier, nil
+	}
+
+	return nil, nil
+}
+
+func (e *AIAgentExecutor) OnTypingStarted(ctx context.Context, replier domain.IntegrationChatReplier) error {
+	if replier == nil {
+		return nil
+	}
+
+	return replier.OnTypingStarted(ctx)
+}
+
+func (e *AIAgentExecutor) HandleReply(ctx context.Context, replier domain.IntegrationChatReplier, step *agent.Step) error {
+	if replier == nil {
+		return nil
+	}
+
+	return replier.Reply(ctx, step.Content)
 }
 
 type AgentSettings struct {

@@ -74,13 +74,6 @@ var (
 						Options:     modelOptions,
 					},
 					{
-						Key:         "system_prompt",
-						Name:        "System Prompt",
-						Description: "The system prompt for the AI agent",
-						Required:    false,
-						Type:        domain.NodePropertyType_Text,
-					},
-					{
 						Key:         "temperature",
 						Name:        "Temperature",
 						Description: "Controls randomness in the output. Higher values make output more random",

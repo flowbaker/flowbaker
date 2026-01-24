@@ -32,11 +32,11 @@ var (
 				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
 					domain.UsageContextWorkflow: {
 						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 1"},
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 2"},
+							{Type: domain.NodeHandleTypeDefault, Text: "Input 1", Index: 0, UsageContext: domain.UsageContextWorkflow},
+							{Type: domain.NodeHandleTypeDefault, Text: "Input 2", Index: 1, UsageContext: domain.UsageContextWorkflow},
 						},
 						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
+							{Type: domain.NodeHandleTypeDefault, Text: "Output", Index: 0, UsageContext: domain.UsageContextWorkflow},
 						},
 					},
 				},

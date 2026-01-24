@@ -79,6 +79,7 @@ const (
 	IntegrationType_Toolset              IntegrationType = "toolset"
 	IntegrationType_ChatTrigger          IntegrationType = "chat_trigger"
 	IntegrationType_Groq                 IntegrationType = "groq"
+	IntegrationType_Gitlab               IntegrationType = "gitlab"
 )
 
 type Integration struct {
@@ -105,6 +106,16 @@ func (i Integration) GetActionByType(actionType IntegrationActionType) (Integrat
 	}
 
 	return IntegrationAction{}, false
+}
+
+func (i Integration) GetTriggerByType(triggerType IntegrationTriggerEventType) (IntegrationTrigger, bool) {
+	for _, trigger := range i.Triggers {
+		if trigger.EventType == triggerType {
+			return trigger, true
+		}
+	}
+
+	return IntegrationTrigger{}, false
 }
 
 type IntegrationTrigger struct {
