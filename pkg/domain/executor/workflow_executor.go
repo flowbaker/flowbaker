@@ -264,7 +264,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 			log.Info().Msgf("Node execution count: %d, limit: %d", w.executionCountByNodeID[execution.NodeID], limit)
 			if w.executionCountByNodeID[execution.NodeID] >= limit {
 				log.Error().Msgf("node %s executed more than %d times (limit reached)", execution.NodeID, limit)
-				// return edilip edilmeyecegini tartis
 				break
 			}
 		}

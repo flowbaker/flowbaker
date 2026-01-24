@@ -168,6 +168,9 @@ func ExecutorWorkflowToDomain(w *executortypes.Workflow) domain.Workflow {
 		WorkspaceID:      w.WorkspaceID,
 		AuthorUserID:     w.AuthorUserID,
 		Nodes:            nodes,
+		Settings: domain.WorkflowSettings{
+			NodeExecutionLimit: w.Settings.NodeExecutionLimit,
+		},
 		LastUpdatedAt:    time.Unix(w.LastUpdatedAt, 0),
 		ActivationStatus: domain.WorkflowActivationStatus(w.ActivationStatus),
 	}
@@ -235,6 +238,9 @@ func DomainWorkflowToExecutor(w domain.Workflow) executortypes.Workflow {
 		WorkspaceID:      w.WorkspaceID,
 		AuthorUserID:     w.AuthorUserID,
 		Slug:             w.Slug,
+		Settings: executortypes.WorkflowSettings{
+			NodeExecutionLimit: w.Settings.NodeExecutionLimit,
+		},
 		LastUpdatedAt:    w.LastUpdatedAt.Unix(),
 		ActivationStatus: executortypes.WorkflowActivationStatus(w.ActivationStatus),
 		Nodes:            DomainWorkflowNodesToExecutor(w.Nodes),

@@ -114,8 +114,13 @@ type Workflow struct {
 	AuthorUserID     string                   `json:"author_user_id"`
 	Slug             string                   `json:"slug"`
 	Nodes            []WorkflowNode           `json:"nodes"`
+	Settings         WorkflowSettings         `json:"settings"`
 	LastUpdatedAt    int64                    `json:"last_updated_at"`
 	ActivationStatus WorkflowActivationStatus `json:"activation_status"`
+}
+
+type WorkflowSettings struct {
+	NodeExecutionLimit int `json:"node_execution_limit"`
 }
 
 type NodeType string
