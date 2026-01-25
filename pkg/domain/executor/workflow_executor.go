@@ -237,6 +237,15 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 
 		executionCount++
 
+		node, exists := w.workflow.GetNodeByID(execution.NodeID)
+		if exists {
+			limit := w.getNodeExecutionLimit(node)
+			log.Info().Msgf("Node execution count: %d, limit: %d", w.executionCountByNodeID[execution.NodeID], limit)
+			if w.executionCountByNodeID[execution.NodeID] >= limit {
+				log.Error().Msgf("node %s executed more than %d times (limit reached)", execution.NodeID, limit)
+				break
+			}
+		}
 		_, err := w.ExecuteNode(ctx, ExecuteNodeParams{
 			Task:           execution,
 			ExecutionOrder: int64(executionCount),
@@ -256,16 +265,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 			}
 
 			break
-		}
-
-		node, exists := w.workflow.GetNodeByID(execution.NodeID)
-		if exists {
-			limit := w.getNodeExecutionLimit(node)
-			log.Info().Msgf("Node execution count: %d, limit: %d", w.executionCountByNodeID[execution.NodeID], limit)
-			if w.executionCountByNodeID[execution.NodeID] >= limit {
-				log.Error().Msgf("node %s executed more than %d times (limit reached)", execution.NodeID, limit)
-				break
-			}
 		}
 
 		if len(w.executionQueue) == 0 && len(w.waitingExecutionTasks) > 0 {
