@@ -170,13 +170,6 @@ type NodeSettings struct {
 	ExecutionLimit          int  `json:"execution_limit"`
 }
 
-type WorkflowLoop struct {
-	ID        int      `json:"id"`
-	Threshold int      `json:"threshold"`
-	EdgeIDs   []string `json:"edge_ids"`
-	NodeIDs   []string `json:"node_ids"`
-}
-
 // PollingEventRequest represents a request to handle a polling event
 type PollingEventRequest struct {
 	IntegrationType IntegrationType `json:"integration_type"`
