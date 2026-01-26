@@ -181,7 +181,7 @@ const (
 	InputHandleFormat  = "input-%s-%d"
 	OutputHandleFormat = "output-%s-%d"
 
-	MaxExecutionCount = 1000
+	DefaultNodeExecutionLimit = 1000
 )
 
 func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload domain.Payload) (ExecutionResult, error) {
@@ -237,6 +237,14 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 
 		executionCount++
 
+		node, exists := w.workflow.GetNodeByID(execution.NodeID)
+		if exists {
+			limit := w.getNodeExecutionLimit(node)
+			if w.executionCountByNodeID[execution.NodeID] >= limit {
+				log.Error().Msgf("node %s executed more than %d times (limit reached)", execution.NodeID, limit)
+				break
+			}
+		}
 		_, err := w.ExecuteNode(ctx, ExecuteNodeParams{
 			Task:           execution,
 			ExecutionOrder: int64(executionCount),
@@ -255,11 +263,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 				log.Error().Err(errNotify).Str("workflow_id", w.workflow.ID).Msg("executor: failed to notify node failed event")
 			}
 
-			break
-		}
-
-		if w.executionCountByNodeID[execution.NodeID] > MaxExecutionCount {
-			log.Error().Msgf("node %s executed more than %d times", execution.NodeID, MaxExecutionCount)
 			break
 		}
 
@@ -340,16 +343,6 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	executionOrder := p.ExecutionOrder
 	propagate := p.Propagate
 
-	nodeExecutionStartedAt := time.Now()
-
-	err := w.observer.Notify(ctx, NodeExecutionStartedEvent{
-		NodeID:    execution.NodeID,
-		Timestamp: nodeExecutionStartedAt,
-	})
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to notify node execution started")
-	}
-
 	var result NodeExecutionResult
 	var nodeID string
 
@@ -359,6 +352,21 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	}
 
 	nodeID = node.ID
+
+	w.mutex.Lock()
+	executionCount := w.executionCountByNodeID[nodeID]
+	w.executionCountByNodeID[nodeID] = executionCount + 1
+	w.mutex.Unlock()
+
+	nodeExecutionStartedAt := time.Now()
+
+	err := w.observer.Notify(ctx, NodeExecutionStartedEvent{
+		NodeID:    execution.NodeID,
+		Timestamp: nodeExecutionStartedAt,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to notify node execution started")
+	}
 
 	switch node.Type {
 	case domain.NodeTypeAction:
@@ -490,11 +498,6 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 	if err != nil {
 		return NodeExecutionResult{}, err
 	}
-
-	w.mutex.Lock()
-	executionCount := w.executionCountByNodeID[node.ID]
-	w.executionCountByNodeID[node.ID] = executionCount + 1
-	w.mutex.Unlock()
 
 	payloadByInputID := execution.PayloadByInputID.ToPayloadByInputID()
 
@@ -793,4 +796,16 @@ func (w *WorkflowExecutor) IsErrorTrigger(nodeID string) bool {
 	}
 
 	return node.Type == domain.NodeTypeTrigger && node.TriggerNodeOpts.EventType == "on_error"
+}
+
+func (w *WorkflowExecutor) getNodeExecutionLimit(node domain.WorkflowNode) int {
+	if node.Settings.OverwriteExecutionLimit && node.Settings.ExecutionLimit > 0 {
+		return node.Settings.ExecutionLimit
+	}
+
+	if w.workflow.Settings.NodeExecutionLimit > 0 {
+		return w.workflow.Settings.NodeExecutionLimit
+	}
+
+	return DefaultNodeExecutionLimit
 }
