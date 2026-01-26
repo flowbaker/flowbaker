@@ -685,7 +685,9 @@ func (i *GitlabIntegration) UserGetRepositories(ctx context.Context, input domai
 		return nil, fmt.Errorf("failed to bind parameters: %w", err)
 	}
 
-	opts := &gitlab.ListProjectsOptions{}
+	opts := &gitlab.ListProjectsOptions{
+		Membership: gitlab.Ptr(true),
+	}
 
 	if params.Visibility != "" {
 		opts.Visibility = gitlab.Ptr(gitlab.VisibilityValue(params.Visibility))
