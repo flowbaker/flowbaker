@@ -39,6 +39,7 @@ const (
 const (
 	PropertySyntaxDialectType_PostgreSQL = "postgresql"
 	PropertySyntaxDialectType_MongoDB    = "mongodb"
+	PropertySyntaxDialectType_Snowflake  = "snowflake"
 )
 
 type DragAndDropBehavior string
