@@ -419,13 +419,6 @@ var (
 				EventType:   IntegrationEventType_NotionUniversalTrigger,
 				Properties: []domain.NodeProperty{
 					{
-						Key:         "verification_token",
-						Name:        "Verification Token (Recommended)",
-						Description: "Enter the verification token from your Notion integration settings. Strongly recommended for production to verify webhook authenticity.",
-						Required:    false,
-						Type:        domain.NodePropertyType_String,
-					},
-					{
 						Key:          "database_id",
 						Name:         "Database ID (Optional)",
 						Description:  "The database to monitor for changes. Leave empty to monitor all accessible resources.",
