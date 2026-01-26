@@ -210,8 +210,8 @@ var (
 					{
 						Key:         "ref",
 						Name:        "Reference",
-						Description: "Branch name, tag, or commit SHA. Defaults to default branch.",
-						Required:    false,
+						Description: "Branch name, tag, or commit SHA",
+						Required:    true,
 						Type:        domain.NodePropertyType_String,
 					},
 				},
