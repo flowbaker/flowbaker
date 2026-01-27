@@ -59,8 +59,9 @@ type Condition struct {
 }
 
 type ConditionParams struct {
-	Conditions        []Condition       `json:"conditions"`
-	ConditionRelation ConditionRelation `json:"relation_type"`
+	Conditions            []Condition       `json:"conditions"`
+	ConditionRelation     ConditionRelation `json:"relation_type"`
+	ReturnConditionResult bool              `json:"return_condition_result"`
 }
 
 type ConditionRelation string
@@ -151,13 +152,14 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		enhancedItem[k] = v
 	}
 
-	ifElseResult := IfElseResult{
-		OutputIndex: outputIndex,
-		Value1:      p.Conditions,
-		Value2:      p.Conditions,
+	if p.ReturnConditionResult {
+		ifElseResult := IfElseResult{
+			OutputIndex: outputIndex,
+			Value1:      p.Conditions,
+			Value2:      p.Conditions,
+		}
+		enhancedItem["__if_else_result__"] = ifElseResult
 	}
-
-	enhancedItem["__if_else_result__"] = ifElseResult
 
 	return domain.RoutableOutput{
 		Item:        enhancedItem,
