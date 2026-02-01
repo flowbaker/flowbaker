@@ -587,7 +587,7 @@ var (
 						Key:         "return_condition_result",
 						Name:        "Return Condition Result",
 						Description: "Whether to return the condition result",
-						Required:    true,
+						Required:    false,
 						Type:        domain.NodePropertyType_Boolean,
 					},
 				},
