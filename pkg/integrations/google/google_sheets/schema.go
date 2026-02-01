@@ -221,7 +221,7 @@ var (
 					},
 					{
 						Key:          "worksheet_id",
-						Name:         "WorkSheet",
+						Name:         "Worksheet",
 						Description:  "The ID of the worksheet to copy",
 						Required:     true,
 						Type:         domain.NodePropertyType_String,
@@ -275,7 +275,7 @@ var (
 					},
 					{
 						Key:          "worksheet_id",
-						Name:         "WorkSheet",
+						Name:         "Worksheet",
 						Description:  "The ID of the worksheet to delete",
 						Required:     true,
 						Type:         domain.NodePropertyType_String,
@@ -293,10 +293,10 @@ var (
 				},
 			},
 			{
-				ID:          "find_rows",
-				Name:        "Find Rows",
-				ActionType:  IntegrationActionType_FindRows,
-				Description: "Find Rows by Column",
+				ID:          "get_rows",
+				Name:        "Get Rows",
+				ActionType:  IntegrationActionType_GetRows,
+				Description: "Get rows from a worksheet, optionally filtered by conditions",
 				Properties: []domain.NodeProperty{
 					{
 						Key:                    "spreadsheet_id",
@@ -311,7 +311,7 @@ var (
 					},
 					{
 						Key:          "worksheet_id",
-						Name:         "WorkSheet",
+						Name:         "Worksheet",
 						Description:  "The ID of the worksheet",
 						Required:     true,
 						Type:         domain.NodePropertyType_String,
@@ -330,7 +330,7 @@ var (
 						Key:         "match_type",
 						Name:        "Match Type",
 						Description: "How to match multiple conditions",
-						Required:    true,
+						Required:    false,
 						Type:        domain.NodePropertyType_String,
 						Options: []domain.NodePropertyOption{
 							{Label: "AND - All conditions must match", Value: "and"},
@@ -340,8 +340,8 @@ var (
 					{
 						Key:         "conditions",
 						Name:        "Conditions",
-						Description: "Search conditions (column and value pairs)",
-						Required:    true,
+						Description: "Search conditions (column and value pairs). If empty, all rows are returned.",
+						Required:    false,
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							ItemType: domain.NodePropertyType_Map,

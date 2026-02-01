@@ -29,7 +29,7 @@ const (
 	IntegrationActionType_CopySpreadSheet domain.IntegrationActionType = "copy_spread_sheet"
 	IntegrationActionType_CopyWorkSheet   domain.IntegrationActionType = "copy_work_sheet"
 	IntegrationActionType_DeleteWorkSheet domain.IntegrationActionType = "delete_work_sheet"
-	IntegrationActionType_FindRows        domain.IntegrationActionType = "find_rows"
+	IntegrationActionType_GetRows         domain.IntegrationActionType = "get_rows"
 )
 
 const (
@@ -116,7 +116,7 @@ func NewGoogleSheetsIntegration(ctx context.Context, deps GoogleSheetsIntegratio
 		AddPerItem(IntegrationActionType_CopySpreadSheet, integration.CopySpreadsheet).
 		AddPerItem(IntegrationActionType_CopyWorkSheet, integration.CopyWorksheet).
 		AddPerItem(IntegrationActionType_DeleteWorkSheet, integration.DeleteWorksheet).
-		AddPerItemMulti(IntegrationActionType_FindRows, integration.FindRows)
+		AddPerItemMulti(IntegrationActionType_GetRows, integration.GetRows)
 
 	integration.actionManager = actionManager
 
@@ -853,7 +853,7 @@ type SearchWorksheetParams struct {
 	MatchType     string            `json:"match_type"` // "and" or "or"
 }
 
-func (g *GoogleSheetsIntegration) FindRows(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
+func (g *GoogleSheetsIntegration) GetRows(ctx context.Context, input domain.IntegrationInput, item domain.Item) ([]domain.Item, error) {
 	var p SearchWorksheetParams
 	if err := g.binder.BindToStruct(ctx, item, &p, input.IntegrationParams.Settings); err != nil {
 		return nil, err
@@ -863,13 +863,9 @@ func (g *GoogleSheetsIntegration) FindRows(ctx context.Context, input domain.Int
 		p.MatchType = "and"
 	}
 
-	if len(p.Conditions) == 0 {
-		return nil, fmt.Errorf("at least one condition is required")
-	}
-
 	ss, err := g.sheetsService.Spreadsheets.Get(p.SpreadsheetID).Context(ctx).Do()
 	if err != nil {
-		log.Error().Err(err).Str("spreadsheet_id", p.SpreadsheetID).Msg("FindRows: Failed to get spreadsheet metadata")
+		log.Error().Err(err).Str("spreadsheet_id", p.SpreadsheetID).Msg("GetRows: Failed to get spreadsheet metadata")
 		return nil, fmt.Errorf("failed to get spreadsheet metadata: %w", err)
 	}
 
@@ -912,6 +908,15 @@ func (g *GoogleSheetsIntegration) FindRows(ctx context.Context, input domain.Int
 
 	header = dataResp.Values[0]
 	headerNames := toStringSlice(header)
+
+	// If no conditions provided, return all rows
+	if len(p.Conditions) == 0 {
+		var items []domain.Item
+		for _, row := range dataResp.Values[1:] {
+			items = append(items, rowToItem(row, headerNames))
+		}
+		return items, nil
+	}
 
 	colIndices, err := resolveColumnIndices(p.Conditions, headerNames)
 	if err != nil {
