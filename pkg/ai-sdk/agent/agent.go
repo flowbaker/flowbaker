@@ -80,6 +80,13 @@ func New(opts ...Option) (*Agent, error) {
 				agent.eventChan <- event
 			})
 		}
+		if adder, ok := t.(tool.ToolAdderTool); ok {
+			adder.SetToolAdder(func(newTool tool.Tool) {
+				agent.mu.Lock()
+				agent.Tools = append(agent.Tools, newTool)
+				agent.mu.Unlock()
+			})
+		}
 	}
 
 	if agent.Memory == nil {
@@ -112,6 +119,7 @@ func (s *ChatStream) Wait() error {
 }
 
 func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
+
 	err := a.SetupConversation(ctx, req)
 	if err != nil {
 		return ChatStream{}, err
@@ -119,6 +127,16 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
 
 	go func() {
 		defer a.Cleanup()
+
+		defer func() {
+			finishReason := a.FinishReason
+			if finishReason == "" {
+				finishReason = "stop"
+			}
+			a.eventChan <- types.NewAgentEndedEvent(a.TotalUsage, finishReason)
+		}()
+
+		a.eventChan <- types.NewAgentStartedEvent(req.SessionID)
 
 		for a.currentStepNumber < a.MaxIterations {
 			if a.CanFinish() {
@@ -253,7 +271,9 @@ func (a *Agent) OnStepComplete() {
 }
 
 func (a *Agent) OnComplete() {
-	a.eventChan <- types.NewStreamEndEvent("stop", a.TotalUsage)
+	// agent-ended is now emitted via defer in Chat() to ensure it's always sent
+	// This method is kept for any additional completion logic if needed
+	a.FinishReason = "stop"
 }
 
 type Step struct {
@@ -409,6 +429,7 @@ func (a *Agent) getError() error {
 
 func (a *Agent) OnError(err error) {
 	a.setError(err)
+	a.FinishReason = types.FinishReasonError
 
 	select {
 	case a.eventChan <- types.NewStreamErrorEvent(err, "", err.Error(), false):
@@ -518,12 +539,14 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 		return err
 	}
 
-	if conversation.IsInterrupted() {
+	if conversation.IsInterrupted() && len(req.ToolResults) > 0 {
 		conversation.Messages = append(conversation.Messages, types.Message{
 			Role:        types.RoleTool,
 			ToolResults: req.ToolResults,
 			Timestamp:   time.Now(),
 		})
+
+		conversation.Status = types.StatusActive
 
 		err = a.SaveConversation(ctx, conversation)
 		if err != nil {

@@ -400,6 +400,7 @@ var maxCompletionTokensModels = map[string]bool{
 	"gpt-5": true, "gpt-5-mini": true, "gpt-5-nano": true,
 	"gpt-5-chat-latest":   true,
 	"gpt-5.2-chat-latest": true,
+	"gpt-5.2":             true,
 }
 
 func isMaxCompletionTokensModel(model string) bool {
