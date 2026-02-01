@@ -247,9 +247,25 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any) (
 		if resp.StatusCode >= 500 {
 			body, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
+
+			errorMsg := fmt.Sprintf("server error: %d", resp.StatusCode)
+
+			var errorResponse struct {
+				Error   string `json:"error"`
+				Message string `json:"message"`
+			}
+
+			if json.Unmarshal(body, &errorResponse) == nil {
+				if errorResponse.Error != "" {
+					errorMsg = errorResponse.Error
+				} else if errorResponse.Message != "" {
+					errorMsg = errorResponse.Message
+				}
+			}
+
 			lastErr = &Error{
 				StatusCode: resp.StatusCode,
-				Message:    fmt.Sprintf("server error: %d", resp.StatusCode),
+				Message:    errorMsg,
 				Body:       string(body),
 				RequestID:  resp.Header.Get("X-Request-ID"),
 			}
