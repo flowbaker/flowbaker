@@ -290,6 +290,8 @@ func (c *ExecutorController) PeekData(ctx fiber.Ctx) error {
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to peek data")
 
+		ctx.Status(fiber.StatusInternalServerError)
+
 		return ctx.JSON(executortypes.PeekDataResponse{
 			Success: false,
 			Error:   err.Error(),
