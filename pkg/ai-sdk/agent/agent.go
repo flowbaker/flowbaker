@@ -558,6 +558,30 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 		return nil
 	}
 
+	if conversation.IsInterrupted() && req.Prompt != "" {
+		pendingToolCalls := a.getPendingToolCalls(conversation)
+
+		if len(pendingToolCalls) > 0 {
+			skippedResults := make([]types.ToolResult, 0, len(pendingToolCalls))
+
+			for _, tc := range pendingToolCalls {
+				skippedResults = append(skippedResults, types.ToolResult{
+					ToolCallID: tc.ID,
+					Content:    `{"skipped": true, "reason": "User sent a new message instead of responding to the input request"}`,
+					IsError:    false,
+				})
+			}
+
+			conversation.Messages = append(conversation.Messages, types.Message{
+				Role:        types.RoleTool,
+				ToolResults: skippedResults,
+				Timestamp:   time.Now(),
+			})
+		}
+
+		conversation.Status = types.StatusActive
+	}
+
 	if req.Prompt != "" {
 		conversation.Messages = append(conversation.Messages, types.Message{
 			Role:      types.RoleUser,
@@ -567,6 +591,18 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 	}
 
 	a.conversation = &conversation
+
+	return nil
+}
+
+func (a *Agent) getPendingToolCalls(conversation types.Conversation) []types.ToolCall {
+	for i := len(conversation.Messages) - 1; i >= 0; i-- {
+		msg := conversation.Messages[i]
+
+		if msg.Role == types.RoleAssistant && len(msg.ToolCalls) > 0 {
+			return msg.ToolCalls
+		}
+	}
 
 	return nil
 }
