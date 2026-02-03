@@ -114,8 +114,13 @@ type Workflow struct {
 	AuthorUserID     string                   `json:"author_user_id"`
 	Slug             string                   `json:"slug"`
 	Nodes            []WorkflowNode           `json:"nodes"`
+	Settings         WorkflowSettings         `json:"settings"`
 	LastUpdatedAt    int64                    `json:"last_updated_at"`
 	ActivationStatus WorkflowActivationStatus `json:"activation_status"`
+}
+
+type WorkflowSettings struct {
+	NodeExecutionLimit int `json:"node_execution_limit"`
 }
 
 type NodeType string
@@ -133,7 +138,7 @@ type WorkflowNode struct {
 	Type                         NodeType        `json:"type"`
 	IntegrationType              IntegrationType `json:"integration_type"`
 	IntegrationSettings          map[string]any  `json:"integration_settings"`
-	Settings                     Settings        `json:"common_settings"`
+	Settings                     NodeSettings    `json:"common_settings"`
 	ExpressionSelectedProperties []string        `json:"expression_selected_properties"`
 	ProvidedByAgent              []string        `json:"provided_by_agent"`
 	XPosition                    float64         `json:"x_position"`
@@ -159,9 +164,10 @@ type NodeInput struct {
 	SubscribedEvents []string `json:"subscribed_events"`
 }
 
-type Settings struct {
-	ReturnErrorAsItem    bool `json:"return_error_as_item"`
-	ContainPreviousItems bool `json:"contain_previous_items"`
+type NodeSettings struct {
+	ReturnErrorAsItem       bool `json:"return_error_as_item"`
+	OverwriteExecutionLimit bool `json:"overwrite_execution_limit"`
+	ExecutionLimit          int  `json:"execution_limit"`
 }
 
 // PollingEventRequest represents a request to handle a polling event
