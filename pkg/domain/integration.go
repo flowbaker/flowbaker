@@ -13,6 +13,23 @@ var (
 	ErrIntegrationNotFound = errors.New("integration not found")
 )
 
+// Context key for passing accessible outputs to expression evaluator
+type accessibleOutputsKey struct{}
+
+// WithAccessibleOutputs adds accessible outputs to the context
+func WithAccessibleOutputs(ctx context.Context, outputs map[string][]Item) context.Context {
+	return context.WithValue(ctx, accessibleOutputsKey{}, outputs)
+}
+
+// GetAccessibleOutputs retrieves accessible outputs from the context
+func GetAccessibleOutputs(ctx context.Context) map[string][]Item {
+	if outputs, ok := ctx.Value(accessibleOutputsKey{}).(map[string][]Item); ok {
+		return outputs
+	}
+
+	return nil
+}
+
 type IntegrationType string
 type IntegrationActionType string
 type IntegrationTriggerEventType string
@@ -202,6 +219,7 @@ type IntegrationInput struct {
 	IntegrationParams IntegrationParams
 	ActionType        IntegrationActionType
 	Workflow          *Workflow
+	AccessibleOutputs map[string][]Item // nodeID -> items (outputs from upstream nodes)
 }
 
 func (i IntegrationInput) GetItemsByInputID() (map[string][]Item, error) {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flowbaker/flowbaker/pkg/domain"
 	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo"
 	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 	"github.com/rs/zerolog"
@@ -230,9 +231,22 @@ func (b *KangarooBinder) bindSlice(ctx context.Context, item any, s []any) ([]an
 
 // evaluateExpression evaluates a Kangaroo expression using the local runtime
 func (b *KangarooBinder) evaluateExpression(ctx context.Context, item any, expression string) (any, error) {
+	var itemsMap map[string]interface{}
+	if accessibleOutputs := domain.GetAccessibleOutputs(ctx); accessibleOutputs != nil {
+		itemsMap = make(map[string]interface{})
+		for nodeID, items := range accessibleOutputs {
+			itemsList := make([]interface{}, len(items))
+			for i, nodeItem := range items {
+				itemsList[i] = nodeItem
+			}
+			itemsMap[nodeID] = itemsList
+		}
+	}
+
 	// Create execution context
 	context := &types.ExpressionContext{
-		Item: item,
+		Item:  item,
+		Items: itemsMap,
 	}
 
 	// Evaluate expression directly

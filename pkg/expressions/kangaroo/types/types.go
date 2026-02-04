@@ -18,6 +18,9 @@ type ExpressionContext struct {
 	// Primary data item being processed
 	Item interface{} `json:"item,omitempty"`
 
+	// Items contains outputs from upstream nodes, accessible via items["nodeID"]
+	Items map[string]interface{} `json:"items,omitempty"`
+
 	// Variables for arrow function parameters in array operations
 	Variables map[string]interface{} `json:"variables,omitempty"`
 }

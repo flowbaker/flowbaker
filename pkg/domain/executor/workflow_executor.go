@@ -75,6 +75,10 @@ type WorkflowExecutor struct {
 	nodesByEventName       map[string][]domain.WorkflowNode
 	executionCountByNodeID map[string]int
 
+	// Expression context: stores outputs from all executed nodes
+	outputsByNodeID   map[string][]domain.Item // nodeID -> output items
+	upstreamNodesByID map[string][]string      // nodeID -> list of upstream ancestor nodeIDs
+
 	mutex sync.Mutex
 
 	userID *string // Optional, Only filled in testing workflows
@@ -155,6 +159,8 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 	observer.Subscribe(eventBroadcaster)
 	observer.SubscribeStream(streamBroadcaster)
 
+	upstreamNodesByID := calculateUpstreamNodes(deps.Workflow)
+
 	return WorkflowExecutor{
 		executionID:                deps.ExecutionID,
 		userID:                     deps.UserID,
@@ -165,6 +171,8 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		nodesByEventName:           nodesByEventName,
 		integrationSelector:        deps.Selector,
 		executionCountByNodeID:     map[string]int{},
+		outputsByNodeID:            map[string][]domain.Item{},
+		upstreamNodesByID:          upstreamNodesByID,
 		enableEvents:               deps.EnableEvents,
 		enableStreaming:            deps.EnableStreaming,
 		IsTestingWorkflow:          deps.IsTestingWorkflow,
@@ -420,6 +428,12 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	itemsByOutputID := result.Output.ToItemsByOutputID(nodeID)
 	itemsByInputID := execution.PayloadByInputID.ToItemsByInputID()
 
+	allOutputItems := []domain.Item{}
+	for _, nodeItems := range itemsByOutputID {
+		allOutputItems = append(allOutputItems, nodeItems.Items...)
+	}
+	w.saveNodeOutput(nodeID, allOutputItems)
+
 	err = w.observer.Notify(ctx, NodeExecutionCompletedEvent{
 		NodeID:                     nodeID,
 		SourceNodePayloadByInputID: execution.PayloadByInputID,
@@ -501,10 +515,15 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 
 	payloadByInputID := execution.PayloadByInputID.ToPayloadByInputID()
 
-	output, err := integrationExecutor.Execute(ctx, domain.IntegrationInput{
-		NodeID:           node.ID,
-		PayloadByInputID: payloadByInputID,
-		Workflow:         &w.workflow,
+	accessibleOutputs := w.getAccessibleOutputs(node.ID)
+
+	ctxWithOutputs := domain.WithAccessibleOutputs(ctx, accessibleOutputs)
+
+	output, err := integrationExecutor.Execute(ctxWithOutputs, domain.IntegrationInput{
+		NodeID:            node.ID,
+		PayloadByInputID:  payloadByInputID,
+		Workflow:          &w.workflow,
+		AccessibleOutputs: accessibleOutputs,
 		IntegrationParams: domain.IntegrationParams{
 			Settings: node.IntegrationSettings,
 		},
@@ -808,4 +827,90 @@ func (w *WorkflowExecutor) getNodeExecutionLimit(node domain.WorkflowNode) int {
 	}
 
 	return DefaultNodeExecutionLimit
+}
+
+func calculateUpstreamNodes(workflow domain.Workflow) map[string][]string {
+	result := make(map[string][]string)
+
+	for _, node := range workflow.Nodes {
+		visited := make(map[string]bool)
+		ancestors := []string{}
+
+		findUpstreamNodes(node.ID, workflow, visited, &ancestors)
+
+		result[node.ID] = ancestors
+	}
+
+	return result
+}
+
+func findUpstreamNodes(nodeID string, workflow domain.Workflow, visited map[string]bool, ancestors *[]string) {
+	node, exists := workflow.GetNodeByID(nodeID)
+	if !exists {
+		return
+	}
+
+	for _, input := range node.Inputs {
+		for _, subscribedEvent := range input.SubscribedEvents {
+			sourceNodeID := extractNodeIDFromOutputID(subscribedEvent)
+			if sourceNodeID == "" {
+				continue
+			}
+
+			if !visited[sourceNodeID] {
+				visited[sourceNodeID] = true
+				*ancestors = append(*ancestors, sourceNodeID)
+
+				// Recursively find upstream nodes
+				findUpstreamNodes(sourceNodeID, workflow, visited, ancestors)
+			}
+		}
+	}
+}
+
+func extractNodeIDFromOutputID(outputID string) string {
+	if len(outputID) < 8 || outputID[:7] != "output-" {
+		return ""
+	}
+
+	lastDashIdx := -1
+	for i := len(outputID) - 1; i >= 7; i-- {
+		if outputID[i] == '-' {
+			lastDashIdx = i
+			break
+		}
+	}
+
+	if lastDashIdx <= 7 {
+		return ""
+	}
+
+	return outputID[7:lastDashIdx]
+}
+
+func (w *WorkflowExecutor) getAccessibleOutputs(nodeID string) map[string][]domain.Item {
+	accessibleOutputs := make(map[string][]domain.Item)
+
+	upstreamNodes, exists := w.upstreamNodesByID[nodeID]
+	if !exists {
+		return accessibleOutputs
+	}
+
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	for _, upstreamNodeID := range upstreamNodes {
+		if items, ok := w.outputsByNodeID[upstreamNodeID]; ok {
+			accessibleOutputs[upstreamNodeID] = items
+		}
+	}
+
+	return accessibleOutputs
+}
+
+func (w *WorkflowExecutor) saveNodeOutput(nodeID string, items []domain.Item) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	w.outputsByNodeID[nodeID] = items
 }
