@@ -231,22 +231,22 @@ func (b *KangarooBinder) bindSlice(ctx context.Context, item any, s []any) ([]an
 
 // evaluateExpression evaluates a Kangaroo expression using the local runtime
 func (b *KangarooBinder) evaluateExpression(ctx context.Context, item any, expression string) (any, error) {
-	var itemsMap map[string]interface{}
+	var outputsMap map[string]interface{}
 	if accessibleOutputs := domain.GetAccessibleOutputs(ctx); accessibleOutputs != nil {
-		itemsMap = make(map[string]interface{})
+		outputsMap = make(map[string]interface{})
 		for nodeID, items := range accessibleOutputs {
 			itemsList := make([]interface{}, len(items))
 			for i, nodeItem := range items {
 				itemsList[i] = nodeItem
 			}
-			itemsMap[nodeID] = itemsList
+			outputsMap[nodeID] = itemsList
 		}
 	}
 
 	// Create execution context
 	context := &types.ExpressionContext{
-		Item:  item,
-		Items: itemsMap,
+		Item:    item,
+		Outputs: outputsMap,
 	}
 
 	// Evaluate expression directly
