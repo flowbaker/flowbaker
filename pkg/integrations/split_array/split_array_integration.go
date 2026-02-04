@@ -65,7 +65,18 @@ func (i *SplitArrayIntegration) SplitArray(ctx context.Context, params domain.In
 	}
 
 	if p.FieldPath == "" {
-		return nil, fmt.Errorf("field_path cannot be empty")
+		arr, ok := item.([]any)
+		if !ok {
+			return nil, fmt.Errorf("item is not an array, got %T", item)
+		}
+
+		items := make([]domain.Item, 0, len(arr))
+
+		for _, element := range arr {
+			items = append(items, element)
+		}
+
+		return items, nil
 	}
 
 	value, err := i.fieldParser.GetValue(item, p.FieldPath)
