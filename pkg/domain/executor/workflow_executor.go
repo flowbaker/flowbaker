@@ -76,8 +76,8 @@ type WorkflowExecutor struct {
 	executionCountByNodeID map[string]int
 
 	// Expression context: stores outputs from all executed nodes
-	outputsByNodeID   map[string][]domain.Item // nodeID -> output items
-	upstreamNodesByID map[string][]string      // nodeID -> list of upstream ancestor nodeIDs
+	outputsByNodeID   map[string][][]domain.Item // nodeID -> outputs -> items (grouped by output index)
+	upstreamNodesByID map[string][]string        // nodeID -> list of upstream ancestor nodeIDs
 
 	mutex sync.Mutex
 
@@ -171,7 +171,7 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		nodesByEventName:           nodesByEventName,
 		integrationSelector:        deps.Selector,
 		executionCountByNodeID:     map[string]int{},
-		outputsByNodeID:            map[string][]domain.Item{},
+		outputsByNodeID:            map[string][][]domain.Item{},
 		upstreamNodesByID:          upstreamNodesByID,
 		enableEvents:               deps.EnableEvents,
 		enableStreaming:            deps.EnableStreaming,
@@ -428,11 +428,18 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	itemsByOutputID := result.Output.ToItemsByOutputID(nodeID)
 	itemsByInputID := execution.PayloadByInputID.ToItemsByInputID()
 
-	allOutputItems := []domain.Item{}
-	for _, nodeItems := range itemsByOutputID {
-		allOutputItems = append(allOutputItems, nodeItems.Items...)
+	// Group outputs by output index instead of flattening
+	outputsGrouped := make([][]domain.Item, len(result.Output.ResultJSONByOutputID))
+	for outputIndex, payload := range result.Output.ResultJSONByOutputID {
+		items, err := payload.ToItems()
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to convert payload to items for output %d", outputIndex)
+			outputsGrouped[outputIndex] = []domain.Item{}
+			continue
+		}
+		outputsGrouped[outputIndex] = items
 	}
-	w.saveNodeOutput(nodeID, allOutputItems)
+	w.saveNodeOutput(nodeID, outputsGrouped)
 
 	err = w.observer.Notify(ctx, NodeExecutionCompletedEvent{
 		NodeID:                     nodeID,
@@ -888,8 +895,8 @@ func extractNodeIDFromOutputID(outputID string) string {
 	return outputID[7:lastDashIdx]
 }
 
-func (w *WorkflowExecutor) getAccessibleOutputs(nodeID string) map[string][]domain.Item {
-	accessibleOutputs := make(map[string][]domain.Item)
+func (w *WorkflowExecutor) getAccessibleOutputs(nodeID string) map[string][][]domain.Item {
+	accessibleOutputs := make(map[string][][]domain.Item)
 
 	upstreamNodes, exists := w.upstreamNodesByID[nodeID]
 	if !exists {
@@ -900,17 +907,17 @@ func (w *WorkflowExecutor) getAccessibleOutputs(nodeID string) map[string][]doma
 	defer w.mutex.Unlock()
 
 	for _, upstreamNodeID := range upstreamNodes {
-		if items, ok := w.outputsByNodeID[upstreamNodeID]; ok {
-			accessibleOutputs[upstreamNodeID] = items
+		if outputs, ok := w.outputsByNodeID[upstreamNodeID]; ok {
+			accessibleOutputs[upstreamNodeID] = outputs
 		}
 	}
 
 	return accessibleOutputs
 }
 
-func (w *WorkflowExecutor) saveNodeOutput(nodeID string, items []domain.Item) {
+func (w *WorkflowExecutor) saveNodeOutput(nodeID string, outputs [][]domain.Item) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	w.outputsByNodeID[nodeID] = items
+	w.outputsByNodeID[nodeID] = outputs
 }

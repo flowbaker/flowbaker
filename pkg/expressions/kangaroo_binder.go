@@ -234,12 +234,17 @@ func (b *KangarooBinder) evaluateExpression(ctx context.Context, item any, expre
 	var outputsMap map[string]interface{}
 	if accessibleOutputs := domain.GetAccessibleOutputs(ctx); accessibleOutputs != nil {
 		outputsMap = make(map[string]interface{})
-		for nodeID, items := range accessibleOutputs {
-			itemsList := make([]interface{}, len(items))
-			for i, nodeItem := range items {
-				itemsList[i] = nodeItem
+		for nodeID, outputsArray := range accessibleOutputs {
+			// Convert [][]domain.Item to [][]interface{}
+			outputsList := make([]interface{}, len(outputsArray))
+			for outputIdx, items := range outputsArray {
+				itemsList := make([]interface{}, len(items))
+				for itemIdx, item := range items {
+					itemsList[itemIdx] = item
+				}
+				outputsList[outputIdx] = itemsList
 			}
-			outputsMap[nodeID] = itemsList
+			outputsMap[nodeID] = outputsList
 		}
 	}
 

@@ -17,13 +17,13 @@ var (
 type accessibleOutputsKey struct{}
 
 // WithAccessibleOutputs adds accessible outputs to the context
-func WithAccessibleOutputs(ctx context.Context, outputs map[string][]Item) context.Context {
+func WithAccessibleOutputs(ctx context.Context, outputs map[string][][]Item) context.Context {
 	return context.WithValue(ctx, accessibleOutputsKey{}, outputs)
 }
 
 // GetAccessibleOutputs retrieves accessible outputs from the context
-func GetAccessibleOutputs(ctx context.Context) map[string][]Item {
-	if outputs, ok := ctx.Value(accessibleOutputsKey{}).(map[string][]Item); ok {
+func GetAccessibleOutputs(ctx context.Context) map[string][][]Item {
+	if outputs, ok := ctx.Value(accessibleOutputsKey{}).(map[string][][]Item); ok {
 		return outputs
 	}
 
@@ -219,7 +219,7 @@ type IntegrationInput struct {
 	IntegrationParams IntegrationParams
 	ActionType        IntegrationActionType
 	Workflow          *Workflow
-	AccessibleOutputs map[string][]Item // nodeID -> items (outputs from upstream nodes)
+	AccessibleOutputs map[string][][]Item // nodeID -> outputs -> items (outputs from upstream nodes grouped by output index)
 }
 
 func (i IntegrationInput) GetItemsByInputID() (map[string][]Item, error) {
