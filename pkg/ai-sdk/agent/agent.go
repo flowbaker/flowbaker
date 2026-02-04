@@ -457,21 +457,37 @@ func (a *Agent) HandleToolCalls(ctx context.Context) {
 		return
 	}
 
-	toolResults := []types.ToolResult{}
+	var toolCallsToExecute []types.ToolCall
 
 	for _, toolCall := range currentStep.ToolCalls {
-		if a.IsHumanInterventionToolCall(toolCall) {
-			continue
+		if !a.IsHumanInterventionToolCall(toolCall) {
+			toolCallsToExecute = append(toolCallsToExecute, toolCall)
 		}
-
-		toolResult, err := a.HandleToolCall(ctx, currentStep, toolCall)
-		if err != nil {
-			a.OnError(err)
-			return
-		}
-
-		toolResults = append(toolResults, toolResult)
 	}
+
+	toolResults := make([]types.ToolResult, len(toolCallsToExecute))
+
+	var wg sync.WaitGroup
+
+	for i, tc := range toolCallsToExecute {
+		wg.Add(1)
+
+		go func(index int, toolCall types.ToolCall) {
+			defer wg.Done()
+
+			toolResult, err := a.HandleToolCall(ctx, currentStep, toolCall)
+			if err != nil {
+				toolResults[index] = types.ToolResult{
+					ToolCallID: toolCall.ID,
+					Content:    fmt.Sprintf("Error: %v", err),
+					IsError:    true,
+				}
+			}
+
+			toolResults[index] = toolResult
+		}(i, tc)
+	}
+	wg.Wait()
 
 	currentStep.ToolResults = toolResults
 
