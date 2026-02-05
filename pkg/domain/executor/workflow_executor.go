@@ -428,18 +428,17 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	itemsByOutputID := result.Output.ToItemsByOutputID(nodeID)
 	itemsByInputID := execution.PayloadByInputID.ToItemsByInputID()
 
-	// Group outputs by output index instead of flattening
-	outputsGrouped := make([][]domain.Item, len(result.Output.ResultJSONByOutputID))
+	outputs := make([][]domain.Item, len(result.Output.ResultJSONByOutputID))
 	for outputIndex, payload := range result.Output.ResultJSONByOutputID {
 		items, err := payload.ToItems()
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to convert payload to items for output %d", outputIndex)
-			outputsGrouped[outputIndex] = []domain.Item{}
+			outputs[outputIndex] = []domain.Item{}
 			continue
 		}
-		outputsGrouped[outputIndex] = items
+		outputs[outputIndex] = items
 	}
-	w.saveNodeOutput(nodeID, outputsGrouped)
+	w.saveNodeOutput(nodeID, outputs)
 
 	err = w.observer.Notify(ctx, NodeExecutionCompletedEvent{
 		NodeID:                     nodeID,

@@ -235,16 +235,26 @@ func (b *KangarooBinder) evaluateExpression(ctx context.Context, item any, expre
 	if accessibleOutputs := domain.GetAccessibleOutputs(ctx); accessibleOutputs != nil {
 		outputsMap = make(map[string]interface{})
 		for nodeID, outputsArray := range accessibleOutputs {
-			// Convert [][]domain.Item to [][]interface{}
 			outputsList := make([]interface{}, len(outputsArray))
 			for outputIdx, items := range outputsArray {
 				itemsList := make([]interface{}, len(items))
-				for itemIdx, item := range items {
-					itemsList[itemIdx] = item
+				for itemIdx, singleItem := range items {
+					itemsList[itemIdx] = singleItem
 				}
 				outputsList[outputIdx] = itemsList
 			}
 			outputsMap[nodeID] = outputsList
+		}
+
+		for nodeID, outputsArray := range accessibleOutputs {
+			for outputIdx, items := range outputsArray {
+				for itemIdx, singleItem := range items {
+					b.logger.Debug().
+						Str("path", fmt.Sprintf("outputs[%s][%d][%d]", nodeID, outputIdx, itemIdx)).
+						Interface("item", singleItem).
+						Msg("outputs path -> item")
+				}
+			}
 		}
 	}
 
