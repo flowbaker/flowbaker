@@ -21,6 +21,8 @@ type WorkflowExecutionContext struct {
 	IsFromErrorTrigger  bool
 	IsTesting           bool
 	TriggerNode         WorkflowNode
+
+	ExecutedOutputs map[string][][]Item // node id - output index - item
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {
@@ -65,6 +67,7 @@ func NewContextWithWorkflowExecutionContext(ctx context.Context, params NewConte
 		IsFromErrorTrigger:  params.IsFromErrorTrigger,
 		IsTesting:           params.IsTesting,
 		TriggerNode:         params.TriggerNode,
+		ExecutedOutputs:     nil,
 	}
 
 	return context.WithValue(ctx, WorkflowExecutionContextKey{}, workflowExecutionContext)
