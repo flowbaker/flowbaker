@@ -23,6 +23,7 @@ type UserInputTool interface {
 type EventEmittingTool interface {
 	Tool
 	SetEventEmitter(emitter func(types.StreamEvent))
+	HasEventEmitter() bool
 }
 
 // ToolAdderTool is an optional interface that tools can implement

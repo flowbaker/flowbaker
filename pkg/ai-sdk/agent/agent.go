@@ -76,9 +76,11 @@ func New(opts ...Option) (*Agent, error) {
 
 	for _, t := range agent.Tools {
 		if emitter, ok := t.(tool.EventEmittingTool); ok {
-			emitter.SetEventEmitter(func(event types.StreamEvent) {
-				agent.eventChan <- event
-			})
+			if !emitter.HasEventEmitter() {
+				emitter.SetEventEmitter(func(event types.StreamEvent) {
+					agent.eventChan <- event
+				})
+			}
 		}
 		if adder, ok := t.(tool.ToolAdderTool); ok {
 			adder.SetToolAdder(func(newTool tool.Tool) {
