@@ -230,17 +230,24 @@ func (b *KangarooBinder) bindSlice(ctx context.Context, item any, s []any) ([]an
 
 // evaluateExpression evaluates a Kangaroo expression using the local runtime
 func (b *KangarooBinder) evaluateExpression(ctx context.Context, item any, expression string) (any, error) {
-	// Create execution context
-	context := &types.ExpressionContext{
-		Item: item,
+	exprCtx := &types.ExpressionContext{Item: item}
+	if m, ok := item.(map[string]any); ok {
+		if out, has := m["outputs"]; has {
+			if outMap, ok := out.(map[string]interface{}); ok {
+				exprCtx.Outputs = outMap
+			}
+		}
 	}
+
+	fmt.Printf("expression: %s\n", expression)
+	fmt.Printf("context: %v\n", exprCtx)
 
 	// Evaluate expression directly
 	if b.evaluator == nil {
 		b.logger.Error().Msg("CRITICAL: KangarooBinder evaluator is nil")
 		return nil, fmt.Errorf("kangaroo evaluator is nil")
 	}
-	result, err := b.evaluator.Evaluate(expression, context)
+	result, err := b.evaluator.Evaluate(expression, exprCtx)
 	if err != nil {
 		b.logger.Warn().
 			Err(err).
@@ -248,6 +255,8 @@ func (b *KangarooBinder) evaluateExpression(ctx context.Context, item any, expre
 			Msg("Kangaroo expression evaluation failed")
 		return nil, fmt.Errorf("evaluation error: %w", err)
 	}
+
+	fmt.Printf("result: %v\n", result.Value)
 
 	if !result.Success {
 		b.logger.Warn().

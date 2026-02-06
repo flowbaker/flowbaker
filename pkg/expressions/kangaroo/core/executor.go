@@ -250,6 +250,11 @@ func (e *ASTExecutor) executeIdentifier(node *ast.Identifier, context *types.Exp
 		switch name {
 		case "item":
 			return context.Item, nil
+		case "outputs":
+			if context.Outputs != nil {
+				return context.Outputs, nil
+			}
+			return nil, nil
 		default:
 			if context.Variables != nil {
 				if value, exists := context.Variables[name]; exists {

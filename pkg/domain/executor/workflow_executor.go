@@ -167,6 +167,7 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		nodesByEventName:           nodesByEventName,
 		integrationSelector:        deps.Selector,
 		executionCountByNodeID:     map[string]int{},
+		executedOutputs:            map[string][][]domain.Item{},
 		enableEvents:               deps.EnableEvents,
 		enableStreaming:            deps.EnableStreaming,
 		IsTestingWorkflow:          deps.IsTestingWorkflow,
@@ -222,8 +223,10 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		return ExecutionResult{}, err
 	}
 
-	for _, item := range items {
-		w.AddExecutedOutputs(nodeID, 0, item)
+	if len(items) > 0 {
+		for _, item := range items {
+			w.AddExecutedOutputs(nodeID, 0, item)
+		}
 	}
 
 	// Queue trigger node as first execution task
@@ -739,6 +742,10 @@ func (w *WorkflowExecutor) MarkNodeAsExecuted(nodeID string) {
 func (w *WorkflowExecutor) AddExecutedOutputs(nodeID string, outputIndex int, item domain.Item) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
+
+	if w.executedOutputs == nil {
+		w.executedOutputs = map[string][][]domain.Item{}
+	}
 
 	if _, exists := w.executedOutputs[nodeID]; !exists {
 		w.executedOutputs[nodeID] = [][]domain.Item{}

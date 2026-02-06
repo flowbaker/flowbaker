@@ -176,6 +176,73 @@ func (m *IntegrationActionManager) Run(ctx context.Context, actionType Integrati
 	return actionFunc(ctx, params)
 }
 
+// buildOutputsMapForIndex builds outputs map for expression access: outputs["node-id"].item / .items
+// previousItems: nodeID -> outputIndex -> items. Uses output index 0 per node.
+// currentIndex is the loop index; modulo is applied so previous node's items cycle when current has more.
+func buildOutputsMapForIndex(previousItems map[string][][]Item, currentIndex int) map[string]any {
+	if previousItems == nil {
+		return nil
+	}
+	out := make(map[string]any, len(previousItems))
+	for nodeID, byOutput := range previousItems {
+		if len(byOutput) == 0 {
+			continue
+		}
+		items := byOutput[0]
+		itemsAny := make([]any, len(items))
+		for i, it := range items {
+			itemsAny[i] = it
+		}
+		var itemAtModulo any
+		if len(items) > 0 {
+			itemAtModulo = items[currentIndex%len(items)]
+		}
+		out[nodeID] = map[string]any{
+			"item":  itemAtModulo,
+			"items": itemsAny,
+		}
+	}
+	return out
+}
+
+// itemToMap converts item (any) to map[string]any so we can add "outputs". Preserves existing keys.
+func itemToMap(item any) (map[string]any, error) {
+	if item == nil {
+		return map[string]any{}, nil
+	}
+	if m, ok := item.(map[string]any); ok {
+		return m, nil
+	}
+	data, err := json.Marshal(item)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]any
+	if err := json.Unmarshal(data, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// enrichItemWithOutputs merges current item with outputs so expressions can use item.* and outputs["node-id"].item
+func enrichItemWithOutputs(item any, outputsMap map[string]any) (any, error) {
+	m, err := itemToMap(item)
+	if err != nil {
+		return nil, err
+	}
+	if len(m) == 0 && outputsMap == nil {
+		return item, nil
+	}
+	enriched := make(map[string]any, len(m)+1)
+	for k, v := range m {
+		enriched[k] = v
+	}
+	if outputsMap != nil {
+		enriched["outputs"] = outputsMap
+	}
+	return enriched, nil
+}
+
 func (m *IntegrationActionManager) RunPerItem(ctx context.Context, actionType IntegrationActionType, params IntegrationInput) (IntegrationOutput, error) {
 	actionFuncPerItem, ok := m.GetPerItem(actionType)
 	if !ok {
@@ -187,6 +254,17 @@ func (m *IntegrationActionManager) RunPerItem(ctx context.Context, actionType In
 		return IntegrationOutput{}, err
 	}
 
+	log.Info().Msgf("items by input ID: %v", itemsByInputID)
+
+	executionContext, ok := GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return IntegrationOutput{}, fmt.Errorf("workflow execution context not found")
+	}
+
+	previousItems := executionContext.ExecutedOutputs
+
+	log.Info().Msgf("previous items: %v", previousItems)
+
 	allItems := make([]any, 0)
 
 	for _, items := range itemsByInputID {
@@ -195,10 +273,17 @@ func (m *IntegrationActionManager) RunPerItem(ctx context.Context, actionType In
 		}
 	}
 
+	log.Info().Msgf("all items: %v", allItems)
+
 	outputs := make([]Item, 0)
 
-	for _, item := range allItems {
-		output, err := actionFuncPerItem(ctx, params, item)
+	for i, item := range allItems {
+		outputsMap := buildOutputsMapForIndex(previousItems, i)
+		enrichedItem, err := enrichItemWithOutputs(item, outputsMap)
+		if err != nil {
+			return IntegrationOutput{}, fmt.Errorf("enrich item at index %d: %w", i, err)
+		}
+		output, err := actionFuncPerItem(ctx, params, enrichedItem)
 		if err != nil {
 			return IntegrationOutput{}, err
 		}
@@ -245,7 +330,17 @@ func (m *IntegrationActionManager) RunPerItemMulti(ctx context.Context, actionTy
 		return IntegrationOutput{}, err
 	}
 
+	executionContext, ok := GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return IntegrationOutput{}, fmt.Errorf("workflow execution context not found")
+	}
+
+	previousItems := executionContext.ExecutedOutputs
+
+	log.Info().Msgf("previous items: %v", previousItems)
 	allItems := make([]any, 0)
+
+	log.Info().Msgf("items by input ID: %v", itemsByInputID)
 
 	for _, items := range itemsByInputID {
 		for _, item := range items {
@@ -253,10 +348,17 @@ func (m *IntegrationActionManager) RunPerItemMulti(ctx context.Context, actionTy
 		}
 	}
 
+	log.Info().Msgf("all items: %v", allItems)
+
 	outputs := make([]Item, 0)
 
-	for _, item := range allItems {
-		outputItems, err := actionFuncPerItemMulti(ctx, params, item)
+	for i, item := range allItems {
+		outputsMap := buildOutputsMapForIndex(previousItems, i)
+		enrichedItem, err := enrichItemWithOutputs(item, outputsMap)
+		if err != nil {
+			return IntegrationOutput{}, fmt.Errorf("enrich item at index %d: %w", i, err)
+		}
+		outputItems, err := actionFuncPerItemMulti(ctx, params, enrichedItem)
 		if err != nil {
 			return IntegrationOutput{}, err
 		}
