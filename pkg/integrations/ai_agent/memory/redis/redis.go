@@ -59,6 +59,7 @@ type toolCall struct {
 	ID        string         `json:"id"`
 	Name      string         `json:"name"`
 	Arguments map[string]any `json:"arguments"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 }
 
 type toolResult struct {
@@ -99,6 +100,7 @@ func messageFromTypes(m types.Message, order int) message {
 			ID:        tc.ID,
 			Name:      tc.Name,
 			Arguments: tc.Arguments,
+			Metadata:  tc.Metadata,
 		}
 	}
 
@@ -131,6 +133,7 @@ func (m message) toTypes() types.Message {
 			ID:        tc.ID,
 			Name:      tc.Name,
 			Arguments: tc.Arguments,
+			Metadata:  tc.Metadata,
 		}
 	}
 

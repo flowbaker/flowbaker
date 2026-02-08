@@ -60,6 +60,7 @@ type toolCall struct {
 	ID        string         `bson:"id"`
 	Name      string         `bson:"name"`
 	Arguments map[string]any `bson:"arguments"`
+	Metadata  map[string]any `bson:"metadata,omitempty"`
 }
 
 type toolResult struct {
@@ -100,6 +101,7 @@ func messageFromTypes(m types.Message, order int) message {
 			ID:        tc.ID,
 			Name:      tc.Name,
 			Arguments: tc.Arguments,
+			Metadata:  tc.Metadata,
 		}
 	}
 
@@ -132,6 +134,7 @@ func (m message) toTypes() types.Message {
 			ID:        tc.ID,
 			Name:      tc.Name,
 			Arguments: tc.Arguments,
+			Metadata:  tc.Metadata,
 		}
 	}
 

@@ -481,6 +481,7 @@ func (a *Agent) HandleToolCalls(ctx context.Context) {
 			if err != nil {
 				toolResults[index] = types.ToolResult{
 					ToolCallID: toolCall.ID,
+					ToolName:   toolCall.Name,
 					Content:    fmt.Sprintf("Error: %v", err),
 					IsError:    true,
 				}
@@ -517,6 +518,7 @@ func (a *Agent) HandleToolCall(ctx context.Context, step *Step, toolCall types.T
 
 	toolResult := types.ToolResult{
 		ToolCallID: toolCall.ID,
+		ToolName:   toolCall.Name,
 		Content:    content,
 		IsError:    err != nil,
 	}
@@ -558,6 +560,18 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 	}
 
 	if conversation.IsInterrupted() && len(req.ToolResults) > 0 {
+		pendingToolCalls := a.getPendingToolCalls(conversation)
+		for i, tr := range req.ToolResults {
+			if tr.ToolName == "" {
+				for _, tc := range pendingToolCalls {
+					if tc.ID == tr.ToolCallID {
+						req.ToolResults[i].ToolName = tc.Name
+						break
+					}
+				}
+			}
+		}
+
 		conversation.Messages = append(conversation.Messages, types.Message{
 			Role:        types.RoleTool,
 			ToolResults: req.ToolResults,
@@ -585,6 +599,7 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 			for _, tc := range pendingToolCalls {
 				skippedResults = append(skippedResults, types.ToolResult{
 					ToolCallID: tc.ID,
+					ToolName:   tc.Name,
 					Content:    `{"skipped": true, "reason": "User sent a new message instead of responding to the input request"}`,
 					IsError:    false,
 				})

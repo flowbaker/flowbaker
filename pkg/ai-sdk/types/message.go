@@ -35,6 +35,7 @@ type ToolCall struct {
 // ToolResult represents the result of a tool call
 type ToolResult struct {
 	ToolCallID string `json:"tool_call_id"`
+	ToolName   string `json:"tool_name"`
 	Content    string `json:"content"`
 	IsError    bool   `json:"is_error,omitempty"`
 }
