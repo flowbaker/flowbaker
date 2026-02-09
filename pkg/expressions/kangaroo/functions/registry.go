@@ -1096,7 +1096,7 @@ func (r *DefaultFunctionRegistry) registerWorkflowFunctions() {
 				// args[0] = outputs map (injected by executor from ExpressionContext)
 				// args[1] = nodeId (string)
 				// args[2] = outputIndex (number, optional)
-				outputsMap, ok := args[0].(map[string]interface{})
+				outputsMap, ok := args[0].(map[string]any)
 				if !ok || outputsMap == nil {
 					return nil, nil
 				}
@@ -1107,7 +1107,7 @@ func (r *DefaultFunctionRegistry) registerWorkflowFunctions() {
 					return nil, nil
 				}
 
-				outputsArray, ok := nodeOutputs.([]interface{})
+				outputsArray, ok := nodeOutputs.([]any)
 				if !ok {
 					return nil, nil
 				}
@@ -1117,29 +1117,49 @@ func (r *DefaultFunctionRegistry) registerWorkflowFunctions() {
 					if outputIndex < 0 || outputIndex >= len(outputsArray) {
 						return nil, nil
 					}
-					return outputsArray[outputIndex], nil
-				}
 
-				// No outputIndex: merge all outputs' items
-				var allItems []interface{}
-				var currentItem interface{}
-				for _, out := range outputsArray {
-					outMap, ok := out.(map[string]interface{})
+					output, ok := outputsArray[outputIndex].(map[string]any)
 					if !ok {
-						continue
+						return nil, nil
 					}
-					if items, ok := outMap["items"].([]interface{}); ok {
-						allItems = append(allItems, items...)
+
+					allItems, ok := output["items"]
+					if !ok {
+						return nil, nil
 					}
-					if item := outMap["item"]; item != nil {
-						currentItem = item
+					currentItem := output["item"]
+					if currentItem == nil {
+						return nil, nil
 					}
+
+					return map[string]any{
+						"item":  currentItem,
+						"items": allItems,
+					}, nil
 				}
 
-				return map[string]interface{}{
-					"item":  currentItem,
-					"items": allItems,
-				}, nil
+				if len(args) == 2 {
+					var allItems []any
+					var currentItem any
+					for _, out := range outputsArray {
+						outMap, ok := out.(map[string]any)
+						if !ok {
+							continue
+						}
+						if items, ok := outMap["items"].([]any); ok {
+							allItems = append(allItems, items...)
+						}
+						if item, ok := outMap["item"]; ok {
+							currentItem = item
+						}
+					}
+					return map[string]any{
+						"item":  currentItem,
+						"items": allItems,
+					}, nil
+				}
+
+				return nil, nil
 			},
 		},
 		{
