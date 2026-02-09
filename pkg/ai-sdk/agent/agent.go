@@ -75,20 +75,7 @@ func New(opts ...Option) (*Agent, error) {
 	}
 
 	for _, t := range agent.Tools {
-		if emitter, ok := t.(tool.EventEmittingTool); ok {
-			if !emitter.HasEventEmitter() {
-				emitter.SetEventEmitter(func(event types.StreamEvent) {
-					agent.eventChan <- event
-				})
-			}
-		}
-		if adder, ok := t.(tool.ToolAdderTool); ok {
-			adder.SetToolAdder(func(newTool tool.Tool) {
-				agent.mu.Lock()
-				agent.Tools = append(agent.Tools, newTool)
-				agent.mu.Unlock()
-			})
-		}
+		agent.setupTool(t)
 	}
 
 	if agent.Memory == nil {
@@ -96,6 +83,24 @@ func New(opts ...Option) (*Agent, error) {
 	}
 
 	return agent, nil
+}
+
+func (a *Agent) setupTool(t tool.Tool) {
+	if emitter, ok := t.(tool.EventEmittingTool); ok {
+		if !emitter.HasEventEmitter() {
+			emitter.SetEventEmitter(func(event types.StreamEvent) {
+				a.eventChan <- event
+			})
+		}
+	}
+	if adder, ok := t.(tool.ToolAdderTool); ok {
+		adder.SetToolAdder(func(newTool tool.Tool) {
+			a.setupTool(newTool)
+			a.mu.Lock()
+			a.Tools = append(a.Tools, newTool)
+			a.mu.Unlock()
+		})
+	}
 }
 
 type ChatRequest struct {
@@ -485,9 +490,9 @@ func (a *Agent) HandleToolCalls(ctx context.Context) {
 					Content:    fmt.Sprintf("Error: %v", err),
 					IsError:    true,
 				}
+			} else {
+				toolResults[index] = toolResult
 			}
-
-			toolResults[index] = toolResult
 		}(i, tc)
 	}
 	wg.Wait()
