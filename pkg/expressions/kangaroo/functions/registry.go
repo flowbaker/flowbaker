@@ -1141,15 +1141,15 @@ func (r *DefaultFunctionRegistry) registerWorkflowFunctions() {
 				if len(args) == 2 {
 					var allItems []any
 					var currentItem any
-					for _, out := range outputsArray {
-						outMap, ok := out.(map[string]any)
+					for _, output := range outputsArray {
+						outputMap, ok := output.(map[string]any)
 						if !ok {
 							continue
 						}
-						if items, ok := outMap["items"].([]any); ok {
+						if items, ok := outputMap["items"].([]any); ok {
 							allItems = append(allItems, items...)
 						}
-						if item, ok := outMap["item"]; ok {
+						if item, ok := outputMap["item"]; ok {
 							currentItem = item
 						}
 					}
