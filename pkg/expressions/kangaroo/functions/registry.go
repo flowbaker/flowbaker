@@ -1097,14 +1097,14 @@ func (r *DefaultFunctionRegistry) registerWorkflowFunctions() {
 	workflowFunctions := []*types.SafeFunction{
 		{
 			Name:        "$outputs",
-			Description: "Access outputs from previous nodes. Usage: $outputs(nodeId, outputIndex).item / .items. The outputs map is injected by the executor as a hidden first argument.",
+			Description: "Access outputs from previous nodes. $outputs(nodeId) merges all output items, $outputs(nodeId, outputIndex) targets a specific output. Returns {item, items}.",
 			Category:    types.CategoryWorkflow,
-			MinArgs:     3,
+			MinArgs:     2,
 			MaxArgs:     3,
 			Fn: func(args ...interface{}) (interface{}, error) {
 				// args[0] = outputs map (injected by executor from ExpressionContext)
 				// args[1] = nodeId (string)
-				// args[2] = outputIndex (number)
+				// args[2] = outputIndex (number, optional)
 				outputsMap, ok := args[0].(map[string]interface{})
 				if !ok || outputsMap == nil {
 					return nil, nil
@@ -1121,12 +1121,34 @@ func (r *DefaultFunctionRegistry) registerWorkflowFunctions() {
 					return nil, nil
 				}
 
-				outputIndex := r.converter.ToInt(args[2])
-				if outputIndex < 0 || outputIndex >= len(outputsArray) {
-					return nil, nil
+				if len(args) > 2 {
+					outputIndex := r.converter.ToInt(args[2])
+					if outputIndex < 0 || outputIndex >= len(outputsArray) {
+						return nil, nil
+					}
+					return outputsArray[outputIndex], nil
 				}
 
-				return outputsArray[outputIndex], nil
+				// No outputIndex: merge all outputs' items
+				var allItems []interface{}
+				var currentItem interface{}
+				for _, out := range outputsArray {
+					outMap, ok := out.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					if items, ok := outMap["items"].([]interface{}); ok {
+						allItems = append(allItems, items...)
+					}
+					if item := outMap["item"]; item != nil {
+						currentItem = item
+					}
+				}
+
+				return map[string]interface{}{
+					"item":  currentItem,
+					"items": allItems,
+				}, nil
 			},
 		},
 		{
