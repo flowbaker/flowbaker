@@ -178,15 +178,6 @@ func (r *DefaultFunctionRegistry) registerDefaultFunctions() {
 	r.registerAggregateFunctions()
 }
 
-func (r *DefaultFunctionRegistry) registerCustomFunctions(options *types.EvaluatorOptions) {
-	if options == nil {
-		return
-	}
-	for _, fn := range options.CustomFunctions {
-		r.Register(&fn)
-	}
-}
-
 // registerStringFunctions registers string manipulation functions
 func (r *DefaultFunctionRegistry) registerStringFunctions() {
 	stringFunctions := []*types.SafeFunction{
