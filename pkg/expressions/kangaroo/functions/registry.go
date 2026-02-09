@@ -1112,7 +1112,28 @@ func (r *DefaultFunctionRegistry) registerWorkflowFunctions() {
 					return nil, nil
 				}
 
-				if len(args) > 2 {
+				if len(args) == 2 {
+					var allItems []any
+					var currentItem any
+					for _, output := range outputsArray {
+						outputMap, ok := output.(map[string]any)
+						if !ok {
+							return nil, nil
+						}
+						if items, ok := outputMap["items"].([]any); ok {
+							allItems = append(allItems, items...)
+						}
+						if item, ok := outputMap["item"]; ok {
+							currentItem = item
+						}
+					}
+					return map[string]any{
+						"item":  currentItem,
+						"items": allItems,
+					}, nil
+				}
+
+				if len(args) == 3 {
 					outputIndex := r.converter.ToInt(args[2])
 					if outputIndex < 0 || outputIndex >= len(outputsArray) {
 						return nil, nil
@@ -1132,27 +1153,6 @@ func (r *DefaultFunctionRegistry) registerWorkflowFunctions() {
 						return nil, nil
 					}
 
-					return map[string]any{
-						"item":  currentItem,
-						"items": allItems,
-					}, nil
-				}
-
-				if len(args) == 2 {
-					var allItems []any
-					var currentItem any
-					for _, output := range outputsArray {
-						outputMap, ok := output.(map[string]any)
-						if !ok {
-							continue
-						}
-						if items, ok := outputMap["items"].([]any); ok {
-							allItems = append(allItems, items...)
-						}
-						if item, ok := outputMap["item"]; ok {
-							currentItem = item
-						}
-					}
 					return map[string]any{
 						"item":  currentItem,
 						"items": allItems,
