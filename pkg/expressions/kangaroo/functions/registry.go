@@ -178,6 +178,15 @@ func (r *DefaultFunctionRegistry) registerDefaultFunctions() {
 	r.registerAggregateFunctions()
 }
 
+func (r *DefaultFunctionRegistry) registerCustomFunctions(options *types.EvaluatorOptions) {
+	if options == nil {
+		return
+	}
+	for _, fn := range options.CustomFunctions {
+		r.Register(&fn)
+	}
+}
+
 // registerStringFunctions registers string manipulation functions
 func (r *DefaultFunctionRegistry) registerStringFunctions() {
 	stringFunctions := []*types.SafeFunction{
@@ -1086,6 +1095,40 @@ func (r *DefaultFunctionRegistry) registerJsonFunctions() {
 // registerWorkflowFunctions registers workflow-specific functions
 func (r *DefaultFunctionRegistry) registerWorkflowFunctions() {
 	workflowFunctions := []*types.SafeFunction{
+		{
+			Name:        "$outputs",
+			Description: "Access outputs from previous nodes. Usage: $outputs(nodeId, outputIndex).item / .items. The outputs map is injected by the executor as a hidden first argument.",
+			Category:    types.CategoryWorkflow,
+			MinArgs:     3,
+			MaxArgs:     3,
+			Fn: func(args ...interface{}) (interface{}, error) {
+				// args[0] = outputs map (injected by executor from ExpressionContext)
+				// args[1] = nodeId (string)
+				// args[2] = outputIndex (number)
+				outputsMap, ok := args[0].(map[string]interface{})
+				if !ok || outputsMap == nil {
+					return nil, nil
+				}
+
+				nodeID := r.converter.ToString(args[1])
+				nodeOutputs, exists := outputsMap[nodeID]
+				if !exists {
+					return nil, nil
+				}
+
+				outputsArray, ok := nodeOutputs.([]interface{})
+				if !ok {
+					return nil, nil
+				}
+
+				outputIndex := r.converter.ToInt(args[2])
+				if outputIndex < 0 || outputIndex >= len(outputsArray) {
+					return nil, nil
+				}
+
+				return outputsArray[outputIndex], nil
+			},
+		},
 		{
 			Name:        "isEmpty",
 			Description: "Check if value is empty",

@@ -22,7 +22,8 @@ type WorkflowExecutionContext struct {
 	IsTesting           bool
 	TriggerNode         WorkflowNode
 
-	ExecutedOutputs map[string][][]Item // node id - output index - item
+	ExecutedOutputs  map[string][][]Item // node id - output index - items
+	CurrentItemIndex int                 // current loop index for per-item execution
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {

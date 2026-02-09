@@ -635,6 +635,15 @@ func (e *ASTExecutor) executeFunction(name string, args []interface{}, context *
 		return nil, fmt.Errorf("function '%s' is not defined", name)
 	}
 
+	// Inject context.Outputs as hidden first arg for $outputs
+	if name == "$outputs" && context != nil {
+		outputsData := interface{}(nil)
+		if context.Outputs != nil {
+			outputsData = context.Outputs
+		}
+		args = append([]interface{}{outputsData}, args...)
+	}
+
 	if err := e.validateFunctionCall(fn, args, false); err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flowbaker/flowbaker/pkg/domain"
 	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo"
 	"github.com/flowbaker/flowbaker/pkg/expressions/kangaroo/types"
 	"github.com/rs/zerolog"
@@ -228,21 +229,53 @@ func (b *KangarooBinder) bindSlice(ctx context.Context, item any, s []any) ([]an
 	return result, nil
 }
 
-// evaluateExpression evaluates a Kangaroo expression using the local runtime
-func (b *KangarooBinder) evaluateExpression(ctx context.Context, item any, expression string) (any, error) {
-	exprCtx := &types.ExpressionContext{Item: item}
-	if m, ok := item.(map[string]any); ok {
-		if out, has := m["outputs"]; has {
-			if outMap, ok := out.(map[string]interface{}); ok {
-				exprCtx.Outputs = outMap
-			}
-		}
+// buildOutputsFromContext reads ExecutedOutputs and CurrentItemIndex from the
+// workflow execution context and builds the outputs map with modulo applied.
+// Structure: outputs["node-id"] → []{ "item": modulo'd item, "items": full slice }
+func buildOutputsFromContext(ctx context.Context) map[string]interface{} {
+	execCtx, ok := domain.GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return nil
+	}
+	executedOutputs := execCtx.ExecutedOutputs
+	currentIndex := execCtx.CurrentItemIndex
+
+	if executedOutputs == nil {
+		return nil
 	}
 
-	fmt.Printf("expression: %s\n", expression)
-	fmt.Printf("context: %v\n", exprCtx)
+	out := make(map[string]interface{}, len(executedOutputs))
+	for nodeID, byOutput := range executedOutputs {
+		if len(byOutput) == 0 {
+			continue
+		}
+		outputsArray := make([]interface{}, len(byOutput))
+		for outputIdx, items := range byOutput {
+			itemsAny := make([]interface{}, len(items))
+			for i, it := range items {
+				itemsAny[i] = it
+			}
+			var itemAtModulo interface{}
+			if len(items) > 0 {
+				itemAtModulo = items[currentIndex%len(items)]
+			}
+			outputsArray[outputIdx] = map[string]interface{}{
+				"item":  itemAtModulo,
+				"items": itemsAny,
+			}
+		}
+		out[nodeID] = outputsArray
+	}
+	return out
+}
 
-	// Evaluate expression directly
+// evaluateExpression evaluates a Kangaroo expression using the local runtime
+func (b *KangarooBinder) evaluateExpression(ctx context.Context, item any, expression string) (any, error) {
+	exprCtx := &types.ExpressionContext{
+		Item:    item,
+		Outputs: buildOutputsFromContext(ctx),
+	}
+
 	if b.evaluator == nil {
 		b.logger.Error().Msg("CRITICAL: KangarooBinder evaluator is nil")
 		return nil, fmt.Errorf("kangaroo evaluator is nil")
