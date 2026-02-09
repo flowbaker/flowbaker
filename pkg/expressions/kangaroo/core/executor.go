@@ -630,14 +630,7 @@ func (e *ASTExecutor) executeFunction(name string, args []interface{}, context *
 		return nil, fmt.Errorf("function '%s' is not defined", name)
 	}
 
-	// Inject context.Outputs as hidden first arg for $outputs
-	if name == "$outputs" && context != nil {
-		outputsData := interface{}(nil)
-		if context.Outputs != nil {
-			outputsData = context.Outputs
-		}
-		args = append([]interface{}{outputsData}, args...)
-	}
+	args = e.injectContextArgs(name, args, context)
 
 	if err := e.validateFunctionCall(fn, args, false); err != nil {
 		return nil, err
@@ -789,6 +782,24 @@ func (e *ASTExecutor) categorizeError(err error) string {
 		return types.ErrorTypeSyntax
 	} else {
 		return types.ErrorTypeRuntime
+	}
+}
+
+// injectContextArgs prepends context data as hidden arguments for functions that need it.
+func (e *ASTExecutor) injectContextArgs(name string, args []interface{}, context *types.ExpressionContext) []interface{} {
+	if context == nil {
+		return args
+	}
+	switch name {
+	case "$outputs":
+		var outputsData interface{}
+		if context.Outputs != nil {
+			outputsData = context.Outputs
+		}
+
+		return append([]interface{}{outputsData}, args...)
+	default:
+		return args
 	}
 }
 
