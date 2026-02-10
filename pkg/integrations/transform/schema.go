@@ -17,144 +17,82 @@ const (
 var (
 	Schema = schema
 
+	twoInputOneOutputHandles = map[domain.ActionUsageContext]domain.ContextHandles{
+		domain.UsageContextWorkflow: {
+			Input: []domain.NodeHandle{
+				{Type: domain.NodeHandleTypeDefault, Text: "Input 1", Index: 0, UsageContext: domain.UsageContextWorkflow},
+				{Type: domain.NodeHandleTypeDefault, Text: "Input 2", Index: 1, UsageContext: domain.UsageContextWorkflow},
+			},
+			Output: []domain.NodeHandle{
+				{Type: domain.NodeHandleTypeDefault, Text: "Output", Index: 0, UsageContext: domain.UsageContextWorkflow},
+			},
+		},
+	}
+
 	schema domain.Integration = domain.Integration{
 		ID:          domain.IntegrationType_Transform,
 		Name:        "Transform",
 		Description: "Transform node to merge multiple input streams into a single output stream",
 		Actions: []domain.IntegrationAction{
 			{
-				ID:         string(IntegrationActionType_InnerJoin),
-				Name:       "Merge Matching Items",
-				ActionType: IntegrationActionType_InnerJoin,
-				SupportedContexts: []domain.ActionUsageContext{
-					domain.UsageContextWorkflow,
-				},
-				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-					domain.UsageContextWorkflow: {
-						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 1", Index: 0, UsageContext: domain.UsageContextWorkflow},
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 2", Index: 1, UsageContext: domain.UsageContextWorkflow},
-						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output", Index: 0, UsageContext: domain.UsageContextWorkflow},
-						},
-					},
-				},
-				Properties:  commonProperties,
-				Description: "Merge items that match",
+				ID:                string(IntegrationActionType_InnerJoin),
+				Name:              "Merge Matching Items",
+				ActionType:        IntegrationActionType_InnerJoin,
+				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow},
+				HandlesByContext:   twoInputOneOutputHandles,
+				Properties:        commonProperties,
+				Description:       "Merge items that match",
 			},
 			{
-				ID:         string(IntegrationActionType_OuterJoin),
-				Name:       "Merge and Keep Unmatched",
-				ActionType: IntegrationActionType_OuterJoin,
-				SupportedContexts: []domain.ActionUsageContext{
-					domain.UsageContextWorkflow,
-				},
-				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-					domain.UsageContextWorkflow: {
-						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 1"},
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 2"},
-						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
-						},
-					},
-				},
-				Properties:  commonProperties,
-				Description: "Merge items that match, and keep items that do not match",
+				ID:                string(IntegrationActionType_OuterJoin),
+				Name:              "Merge and Keep Unmatched",
+				ActionType:        IntegrationActionType_OuterJoin,
+				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow},
+				HandlesByContext:   twoInputOneOutputHandles,
+				Properties:        commonProperties,
+				Description:       "Merge items that match, and keep items that do not match",
 			},
 			{
-				ID:         string(IntegrationActionType_LeftJoin),
-				Name:       "Merge and Keep Left",
-				ActionType: IntegrationActionType_LeftJoin,
-				SupportedContexts: []domain.ActionUsageContext{
-					domain.UsageContextWorkflow,
-				},
-				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-					domain.UsageContextWorkflow: {
-						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 1"},
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 2"},
-						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
-						},
-					},
-				},
-				Properties:  commonProperties,
-				Description: "Merge items that match, and keep left items that do not match",
+				ID:                string(IntegrationActionType_LeftJoin),
+				Name:              "Merge and Keep Left",
+				ActionType:        IntegrationActionType_LeftJoin,
+				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow},
+				HandlesByContext:   twoInputOneOutputHandles,
+				Properties:        commonProperties,
+				Description:       "Merge items that match, and keep left items that do not match",
 			},
 			{
-				ID:         string(IntegrationActionType_RightJoin),
-				Name:       "Merge and Keep Right",
-				ActionType: IntegrationActionType_RightJoin,
-				SupportedContexts: []domain.ActionUsageContext{
-					domain.UsageContextWorkflow,
-				},
-				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-					domain.UsageContextWorkflow: {
-						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 1"},
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 2"},
-						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
-						},
-					},
-				},
-				Properties:  commonProperties,
-				Description: "Merge items that match, and keep right items that do not match",
+				ID:                string(IntegrationActionType_RightJoin),
+				Name:              "Merge and Keep Right",
+				ActionType:        IntegrationActionType_RightJoin,
+				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow},
+				HandlesByContext:   twoInputOneOutputHandles,
+				Properties:        commonProperties,
+				Description:       "Merge items that match, and keep right items that do not match",
 			},
 			{
-				ID:         string(IntegrationActionType_ExcludeMatching),
-				Name:       "Exclude Matching Items",
-				ActionType: IntegrationActionType_ExcludeMatching,
-				SupportedContexts: []domain.ActionUsageContext{
-					domain.UsageContextWorkflow,
-				},
-				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-					domain.UsageContextWorkflow: {
-						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 1"},
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 2"},
-						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
-						},
-					},
-				},
-				Properties:  commonProperties[:1],
-				Description: "Exclude items that match, keeping only items that do not match",
+				ID:                string(IntegrationActionType_ExcludeMatching),
+				Name:              "Exclude Matching Items",
+				ActionType:        IntegrationActionType_ExcludeMatching,
+				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow},
+				HandlesByContext:   twoInputOneOutputHandles,
+				Properties:        commonProperties[:1],
+				Description:       "Exclude items that match, keeping only items that do not match",
 			},
 			{
-				ID:         string(IntegrationActionType_Append),
-				Name:       "Append All",
-				ActionType: IntegrationActionType_Append,
-				SupportedContexts: []domain.ActionUsageContext{
-					domain.UsageContextWorkflow,
-				},
-				Properties: []domain.NodeProperty{},
-				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-					domain.UsageContextWorkflow: {
-						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 1"},
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 2"},
-						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
-						},
-					},
-				},
-				Description: "Merges two input streams into a single output stream",
+				ID:                string(IntegrationActionType_Append),
+				Name:              "Append All",
+				ActionType:        IntegrationActionType_Append,
+				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow},
+				Properties:        []domain.NodeProperty{},
+				HandlesByContext:   twoInputOneOutputHandles,
+				Description:       "Merges two input streams into a single output stream",
 			},
 			{
-				ID:         string(IntegrationActionType_MergeByOrder),
-				Name:       "Merge by Order",
-				ActionType: IntegrationActionType_MergeByOrder,
-				SupportedContexts: []domain.ActionUsageContext{
-					domain.UsageContextWorkflow,
-				},
+				ID:                string(IntegrationActionType_MergeByOrder),
+				Name:              "Merge by Order",
+				ActionType:        IntegrationActionType_MergeByOrder,
+				SupportedContexts: []domain.ActionUsageContext{domain.UsageContextWorkflow},
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "unmatched_items",
@@ -173,18 +111,8 @@ var (
 						Type:        domain.NodePropertyType_Boolean,
 					},
 				},
-				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
-					domain.UsageContextWorkflow: {
-						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 1"},
-							{Type: domain.NodeHandleTypeDefault, Text: "Input 2"},
-						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
-						},
-					},
-				},
-				Description: "Merges items from two inputs by their order (index position)",
+				HandlesByContext: twoInputOneOutputHandles,
+				Description:      "Merges items from two inputs by their order (index position)",
 			},
 		},
 	}
