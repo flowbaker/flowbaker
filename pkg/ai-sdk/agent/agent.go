@@ -101,6 +101,14 @@ func (a *Agent) setupTool(t tool.Tool) {
 			a.mu.Unlock()
 		})
 	}
+	if userInputTool, ok := t.(tool.UserInputTool); ok {
+		a.mu.Lock()
+		if a.UserInputTools == nil {
+			a.UserInputTools = make(map[string]tool.UserInputTool)
+		}
+		a.UserInputTools[t.Name()] = userInputTool
+		a.mu.Unlock()
+	}
 }
 
 type ChatRequest struct {
