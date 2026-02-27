@@ -229,16 +229,35 @@ func (b *KangarooBinder) bindSlice(ctx context.Context, item any, s []any) ([]an
 	return result, nil
 }
 
-// buildOutputsFromContext reads ExecutedOutputs and CurrentItemIndex from the
+// buildOutputsFromContext reads executed outputs and CurrentItemIndex from the
 // workflow execution context and builds the outputs map with modulo applied.
 // Structure: outputs["node-id"] → []{ "item": modulo'd item, "items": full slice }
-func buildOutputsFromContext(ctx context.Context) map[string]interface{} {
+func buildOutputsFromContext(ctx context.Context, log zerolog.Logger) map[string]interface{} {
 	execCtx, ok := domain.GetWorkflowExecutionContext(ctx)
 	if !ok {
+		log.Debug().Msg("buildOutputsFromContext: WorkflowExecutionContext not found in context")
 		return nil
 	}
-	executedOutputs := execCtx.ExecutedOutputs
+
+	var executedOutputs map[string][][]domain.Item
+	if execCtx.ExecutedOutputsProvider != nil {
+		executedOutputs = execCtx.ExecutedOutputsProvider()
+	} else {
+		log.Debug().Msg("buildOutputsFromContext: ExecutedOutputsProvider is nil")
+		return nil
+	}
 	currentIndex := execCtx.CurrentItemIndex
+
+	outputNodeCount := 0
+	if executedOutputs != nil {
+		outputNodeCount = len(executedOutputs)
+	}
+	log.Debug().
+		Bool("execCtx_found", true).
+		Bool("executedOutputs_nil", executedOutputs == nil).
+		Int("currentIndex", currentIndex).
+		Int("output_nodes", outputNodeCount).
+		Msg("buildOutputsFromContext")
 
 	if executedOutputs == nil {
 		return nil
@@ -273,7 +292,7 @@ func buildOutputsFromContext(ctx context.Context) map[string]interface{} {
 func (b *KangarooBinder) evaluateExpression(ctx context.Context, item any, expression string) (any, error) {
 	exprCtx := &types.ExpressionContext{
 		Item:    item,
-		Outputs: buildOutputsFromContext(ctx),
+		Outputs: buildOutputsFromContext(ctx, b.logger),
 	}
 
 	if b.evaluator == nil {

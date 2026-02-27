@@ -75,8 +75,6 @@ type WorkflowExecutor struct {
 	nodesByEventName       map[string][]domain.WorkflowNode
 	executionCountByNodeID map[string]int
 
-	executedOutputs map[string][][]domain.Item // node id - output index - item
-
 	mutex sync.Mutex
 
 	userID *string // Optional, Only filled in testing workflows
@@ -163,12 +161,11 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		workflow:                   deps.Workflow,
 		waitingExecutionTasks:      []WaitingExecutionTask{},
 		executionQueue:             []NodeExecutionTask{},
-		executedNodes:              map[string]struct{}{},
-		nodesByEventName:           nodesByEventName,
-		integrationSelector:        deps.Selector,
-		executionCountByNodeID:     map[string]int{},
-		executedOutputs:            map[string][][]domain.Item{},
-		enableEvents:               deps.EnableEvents,
+		executedNodes:          map[string]struct{}{},
+		nodesByEventName:       nodesByEventName,
+		integrationSelector:    deps.Selector,
+		executionCountByNodeID: map[string]int{},
+		enableEvents:           deps.EnableEvents,
 		enableStreaming:            deps.EnableStreaming,
 		IsTestingWorkflow:          deps.IsTestingWorkflow,
 		WorkflowExecutionStartedAt: time.Now(),
@@ -213,20 +210,16 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	})
 
 	if execCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok {
-		execCtx.ExecutedOutputs = w.executedOutputs
+		execCtx.ExecutedOutputsProvider = func() map[string][][]domain.Item {
+			return buildExecutedOutputsFromHistory(w.historyRecorder.GetHistoryEntries())
+		}
 	}
 
 	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
 
-	items, err := payload.ToItems()
+	_, err := payload.ToItems()
 	if err != nil {
 		return ExecutionResult{}, err
-	}
-
-	if len(items) > 0 {
-		for _, item := range items {
-			w.AddExecutedOutputs(nodeID, 0, item)
-		}
 	}
 
 	// Queue trigger node as first execution task
@@ -436,18 +429,6 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	w.MarkNodeAsExecuted(nodeID)
 
 	itemsByOutputID := result.Output.ToItemsByOutputID(nodeID)
-
-	for outputIndex, payload := range result.Output.ResultJSONByOutputID {
-		items, err := payload.ToItems()
-		if err != nil {
-			return ExecuteNodeResult{}, err
-		}
-
-		for _, item := range items {
-			w.AddExecutedOutputs(nodeID, outputIndex, item)
-		}
-	}
-
 	itemsByInputID := execution.PayloadByInputID.ToItemsByInputID()
 
 	err = w.observer.Notify(ctx, NodeExecutionCompletedEvent{
@@ -737,27 +718,6 @@ func (w *WorkflowExecutor) MarkNodeAsExecuted(nodeID string) {
 	defer w.mutex.Unlock()
 
 	w.executedNodes[nodeID] = struct{}{}
-}
-
-func (w *WorkflowExecutor) AddExecutedOutputs(nodeID string, outputIndex int, item domain.Item) {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-
-	if w.executedOutputs == nil {
-		w.executedOutputs = map[string][][]domain.Item{}
-	}
-
-	if _, exists := w.executedOutputs[nodeID]; !exists {
-		w.executedOutputs[nodeID] = [][]domain.Item{}
-	}
-
-	itemsByOutputIndex := w.executedOutputs[nodeID]
-	for len(itemsByOutputIndex) <= outputIndex {
-		itemsByOutputIndex = append(itemsByOutputIndex, []domain.Item{})
-	}
-
-	itemsByOutputIndex[outputIndex] = append(itemsByOutputIndex[outputIndex], item)
-	w.executedOutputs[nodeID] = itemsByOutputIndex
 }
 
 func (w *WorkflowExecutor) IsNodeExecuted(nodeID string) bool {
