@@ -263,7 +263,7 @@ func buildOutputsFromContext(ctx context.Context, log zerolog.Logger) map[string
 		return nil
 	}
 
-	out := make(map[string]interface{}, len(executedOutputs))
+	outputs := make(map[string]interface{}, len(executedOutputs))
 	for nodeID, byOutput := range executedOutputs {
 		if len(byOutput) == 0 {
 			continue
@@ -283,9 +283,9 @@ func buildOutputsFromContext(ctx context.Context, log zerolog.Logger) map[string
 				"items": itemsAny,
 			}
 		}
-		out[nodeID] = outputsArray
+		outputs[nodeID] = outputsArray
 	}
-	return out
+	return outputs
 }
 
 // evaluateExpression evaluates a Kangaroo expression using the local runtime
