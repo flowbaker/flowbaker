@@ -126,6 +126,7 @@ func (c *ExecutorController) RerunNode(ctx fiber.Ctx) error {
 		NodeID:             req.NodeID,
 		NodeExecutionEntry: mappers.FlowbakerNodeExecutionEntryToDomain(req.NodeExecutionEntry),
 		Workflow:           mappers.ExecutorWorkflowToDomain(&req.Workflow),
+		ExecutedOutputs:    mappers.FlowbakerExecutedOutputsToDomain(req.ExecutedOutputs),
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to rerun node")

@@ -151,6 +151,25 @@ func FlowbakerNodeExecutionEntriesToDomain(entries []flowbaker.NodeExecutionEntr
 	return result
 }
 
+// FlowbakerExecutedOutputsToDomain converts flowbaker executed outputs to domain format
+func FlowbakerExecutedOutputsToDomain(out map[string][][]flowbaker.Item) map[string][][]domain.Item {
+	if out == nil {
+		return nil
+	}
+	result := make(map[string][][]domain.Item, len(out))
+	for nodeID, byOutput := range out {
+		conv := make([][]domain.Item, len(byOutput))
+		for i, items := range byOutput {
+			conv[i] = make([]domain.Item, len(items))
+			for j, item := range items {
+				conv[i][j] = domain.Item(item)
+			}
+		}
+		result[nodeID] = conv
+	}
+	return result
+}
+
 // --- Executor Types Mappings ---
 
 // ExecutorWorkflowToDomain converts an executor Workflow to domain.Workflow
@@ -161,13 +180,13 @@ func ExecutorWorkflowToDomain(w *executortypes.Workflow) domain.Workflow {
 	}
 
 	return domain.Workflow{
-		ID:               w.ID,
-		Name:             w.Name,
-		Description:      w.Description,
-		Slug:             w.Slug,
-		WorkspaceID:      w.WorkspaceID,
-		AuthorUserID:     w.AuthorUserID,
-		Nodes:            nodes,
+		ID:           w.ID,
+		Name:         w.Name,
+		Description:  w.Description,
+		Slug:         w.Slug,
+		WorkspaceID:  w.WorkspaceID,
+		AuthorUserID: w.AuthorUserID,
+		Nodes:        nodes,
 		Settings: domain.WorkflowSettings{
 			NodeExecutionLimit: w.Settings.NodeExecutionLimit,
 		},
@@ -232,12 +251,12 @@ func ExecutorWorkflowTypeToDomain(wt executortypes.WorkflowType) domain.Workflow
 // DomainWorkflowToExecutor converts a domain.Workflow to executor.Workflow
 func DomainWorkflowToExecutor(w domain.Workflow) executortypes.Workflow {
 	return executortypes.Workflow{
-		ID:               w.ID,
-		Name:             w.Name,
-		Description:      w.Description,
-		WorkspaceID:      w.WorkspaceID,
-		AuthorUserID:     w.AuthorUserID,
-		Slug:             w.Slug,
+		ID:           w.ID,
+		Name:         w.Name,
+		Description:  w.Description,
+		WorkspaceID:  w.WorkspaceID,
+		AuthorUserID: w.AuthorUserID,
+		Slug:         w.Slug,
 		Settings: executortypes.WorkflowSettings{
 			NodeExecutionLimit: w.Settings.NodeExecutionLimit,
 		},
