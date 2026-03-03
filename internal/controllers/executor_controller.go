@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"context"
+
 	executortypes "github.com/flowbaker/flowbaker/pkg/clients/flowbaker-executor"
 
 	"github.com/flowbaker/flowbaker/pkg/domain/executor"
@@ -120,13 +122,20 @@ func (c *ExecutorController) RerunNode(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 
-	result, err := c.executorService.RerunNode(ctx.RequestCtx(), executor.RerunNodeParams{
+	var reqCtx context.Context = ctx.RequestCtx()
+	if req.ExecutedOutputs != nil {
+		converted := mappers.FlowbakerExecutedOutputsToDomain(req.ExecutedOutputs)
+		reqCtx = context.WithValue(reqCtx, domain.WorkflowExecutionContextKey{}, &domain.WorkflowExecutionContext{
+			ExecutedOutputsProvider: func() map[string][][]domain.Item { return converted },
+		})
+	}
+
+	result, err := c.executorService.RerunNode(reqCtx, executor.RerunNodeParams{
 		ExecutionID:        req.ExecutionID,
 		WorkspaceID:        workspaceID,
 		NodeID:             req.NodeID,
 		NodeExecutionEntry: mappers.FlowbakerNodeExecutionEntryToDomain(req.NodeExecutionEntry),
 		Workflow:           mappers.ExecutorWorkflowToDomain(&req.Workflow),
-		ExecutedOutputs:    mappers.FlowbakerExecutedOutputsToDomain(req.ExecutedOutputs),
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to rerun node")

@@ -333,7 +333,6 @@ type RerunNodeParams struct {
 	NodeID             string
 	NodeExecutionEntry domain.NodeExecutionEntry
 	Workflow           domain.Workflow
-	ExecutedOutputs    map[string][][]domain.Item
 }
 
 func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNodeParams) (ExecutionResult, error) {
@@ -350,6 +349,11 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		return ExecutionResult{}, err
 	}
 
+	var existingProvider func() map[string][][]domain.Item
+	if parentCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok && parentCtx.ExecutedOutputsProvider != nil {
+		existingProvider = parentCtx.ExecutedOutputsProvider
+	}
+
 	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
 		WorkspaceID:         params.WorkspaceID,
@@ -360,10 +364,9 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		IsReExecution:       true,
 	})
 
-	if execCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok && params.ExecutedOutputs != nil {
-		outputs := params.ExecutedOutputs
-		execCtx.ExecutedOutputsProvider = func() map[string][][]domain.Item {
-			return outputs
+	if existingProvider != nil {
+		if execCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok {
+			execCtx.ExecutedOutputsProvider = existingProvider
 		}
 	}
 
