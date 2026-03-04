@@ -7,6 +7,16 @@ import (
 
 type ExecutedOutputs map[string][][]Item
 
+func NewExecutedOutputsProvider(outputs ExecutedOutputs) func() ExecutedOutputs {
+	return func() ExecutedOutputs { return outputs }
+}
+
+func NewExecutedOutputsProviderFromEntries(getEntries func() []NodeExecutionEntry, excludeNodeID string) func() ExecutedOutputs {
+	return func() ExecutedOutputs {
+		return BuildExecutedOutputs(getEntries(), excludeNodeID)
+	}
+}
+
 func BuildExecutedOutputs(entries []NodeExecutionEntry, currentNodeID string) ExecutedOutputs {
 	out := make(ExecutedOutputs)
 	for _, entry := range entries {

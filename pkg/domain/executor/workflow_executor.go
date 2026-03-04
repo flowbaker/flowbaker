@@ -161,11 +161,11 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		workflow:                   deps.Workflow,
 		waitingExecutionTasks:      []WaitingExecutionTask{},
 		executionQueue:             []NodeExecutionTask{},
-		executedNodes:          map[string]struct{}{},
-		nodesByEventName:       nodesByEventName,
-		integrationSelector:    deps.Selector,
-		executionCountByNodeID: map[string]int{},
-		enableEvents:           deps.EnableEvents,
+		executedNodes:              map[string]struct{}{},
+		nodesByEventName:           nodesByEventName,
+		integrationSelector:        deps.Selector,
+		executionCountByNodeID:     map[string]int{},
+		enableEvents:               deps.EnableEvents,
 		enableStreaming:            deps.EnableStreaming,
 		IsTestingWorkflow:          deps.IsTestingWorkflow,
 		WorkflowExecutionStartedAt: time.Now(),
@@ -210,9 +210,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	})
 
 	if execCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok {
-		execCtx.ExecutedOutputsProvider = func() domain.ExecutedOutputs {
-			return domain.BuildExecutedOutputs(w.historyRecorder.GetHistoryEntries(), nodeID)
-		}
+		execCtx.ExecutedOutputsProvider = domain.NewExecutedOutputsProviderFromEntries(w.historyRecorder.GetHistoryEntries, nodeID)
 	}
 
 	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
