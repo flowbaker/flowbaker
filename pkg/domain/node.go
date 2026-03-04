@@ -96,6 +96,9 @@ type NodeProperty struct {
 	Help        string `json:"help,omitempty"`        // Extended help text
 	RegexKey    string `json:"regex_key,omitempty"`   // Key for regex validation
 
+	// Default value
+	Default any `json:"default,omitempty"` // Default value for this property
+
 	// Options based on type
 	Options                 []NodePropertyOption         `json:"options,omitempty"`                   // For selectable options
 	MultipleOpts            []MultipleNodePropertyOption `json:"multiple_opts,omitempty"`             // For multiple selectable options

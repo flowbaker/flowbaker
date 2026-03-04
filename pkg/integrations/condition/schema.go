@@ -603,11 +603,9 @@ var (
 				HandlesByContext: map[domain.ActionUsageContext]domain.ContextHandles{
 					domain.UsageContextWorkflow: {
 						Input: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input"},
+							{Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionTop, Text: "Input", Index: 0, UsageContext: domain.UsageContextWorkflow},
 						},
-						Output: []domain.NodeHandle{
-							{Type: domain.NodeHandleTypeDefault, Text: "Output"},
-						},
+						Output: []domain.NodeHandle{},
 					},
 				},
 				Properties: []domain.NodeProperty{
