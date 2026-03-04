@@ -1,61 +1,9 @@
 package domain
 
 import (
-	"context"
 	"strconv"
 	"strings"
-
-	"github.com/rs/zerolog/log"
 )
-
-type ExecutionHistoryProvider interface {
-	GetExecutionHistory(ctx context.Context, executionID string) (*ExecutionHistoryForOutputs, error)
-}
-
-type ExecutionHistoryForOutputs struct {
-	NodeExecutions []NodeExecutionEntry
-}
-
-type NewExecutedOutputsContextParams struct {
-	ExecutionHistoryProvider ExecutionHistoryProvider
-	ExecutionID              string
-	CurrentNodeID            string
-}
-
-func NewExecutedOutputsContext(ctx context.Context, params NewExecutedOutputsContextParams) context.Context {
-	outputs, err := BuildExecutedOutputsFromHistory(ctx, BuildExecutedOutputsParams{
-		ExecutionHistoryProvider: params.ExecutionHistoryProvider,
-		ExecutionID:              params.ExecutionID,
-		CurrentNodeID:            params.CurrentNodeID,
-	})
-	if err != nil || outputs == nil {
-		log.Error().Err(err).Msg("Failed to build executed outputs")
-		return ctx
-	}
-
-	execCtx := &WorkflowExecutionContext{
-		ExecutedOutputsProvider: func() map[string][][]Item { return outputs },
-	}
-
-	return context.WithValue(ctx, WorkflowExecutionContextKey{}, execCtx)
-}
-
-type BuildExecutedOutputsParams struct {
-	ExecutionHistoryProvider ExecutionHistoryProvider
-	ExecutionID              string
-	CurrentNodeID            string
-}
-
-func BuildExecutedOutputsFromHistory(ctx context.Context, params BuildExecutedOutputsParams) (map[string][][]Item, error) {
-	history, err := params.ExecutionHistoryProvider.GetExecutionHistory(ctx, params.ExecutionID)
-	if err != nil {
-		return nil, err
-	}
-	if history == nil {
-		return nil, nil
-	}
-	return BuildExecutedOutputs(history.NodeExecutions, params.CurrentNodeID), nil
-}
 
 func BuildExecutedOutputs(entries []NodeExecutionEntry, currentNodeID string) map[string][][]Item {
 	out := make(map[string][][]Item)
