@@ -3,50 +3,12 @@ package executor
 import (
 	"context"
 	"encoding/json"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
 )
-
-func buildExecutedOutputsFromHistory(entries []domain.NodeExecutionEntry) map[string][][]domain.Item {
-	out := make(map[string][][]domain.Item)
-	for _, entry := range entries {
-		if entry.EventType != domain.NodeExecuted {
-			continue
-		}
-		for outputID, nodeItems := range entry.ItemsByOutputID {
-			nodeID := nodeItems.FromNodeID
-			outputIndex := parseOutputIndex(outputID)
-			if outputIndex < 0 {
-				continue
-			}
-			if _, exists := out[nodeID]; !exists {
-				out[nodeID] = [][]domain.Item{}
-			}
-			for len(out[nodeID]) <= outputIndex {
-				out[nodeID] = append(out[nodeID], []domain.Item{})
-			}
-			out[nodeID][outputIndex] = append(out[nodeID][outputIndex], nodeItems.Items...)
-		}
-	}
-	return out
-}
-
-func parseOutputIndex(outputID string) int {
-	lastDash := strings.LastIndex(outputID, "-")
-	if lastDash < 0 {
-		return -1
-	}
-	idx, err := strconv.Atoi(outputID[lastDash+1:])
-	if err != nil {
-		return -1
-	}
-	return idx
-}
 
 // HistoryRecorder records node execution history
 type HistoryRecorder struct {

@@ -23,7 +23,7 @@ type NewExecutedOutputsContextParams struct {
 }
 
 func NewExecutedOutputsContext(ctx context.Context, params NewExecutedOutputsContextParams) context.Context {
-	outputs, err := BuildExecutedOutputs(ctx, BuildExecutedOutputsParams{
+	outputs, err := BuildExecutedOutputsFromHistory(ctx, BuildExecutedOutputsParams{
 		ExecutionHistoryProvider: params.ExecutionHistoryProvider,
 		ExecutionID:              params.ExecutionID,
 		CurrentNodeID:            params.CurrentNodeID,
@@ -46,7 +46,7 @@ type BuildExecutedOutputsParams struct {
 	CurrentNodeID            string
 }
 
-func BuildExecutedOutputs(ctx context.Context, params BuildExecutedOutputsParams) (map[string][][]Item, error) {
+func BuildExecutedOutputsFromHistory(ctx context.Context, params BuildExecutedOutputsParams) (map[string][][]Item, error) {
 	history, err := params.ExecutionHistoryProvider.GetExecutionHistory(ctx, params.ExecutionID)
 	if err != nil {
 		return nil, err
@@ -54,12 +54,16 @@ func BuildExecutedOutputs(ctx context.Context, params BuildExecutedOutputsParams
 	if history == nil {
 		return nil, nil
 	}
+	return BuildExecutedOutputs(history.NodeExecutions, params.CurrentNodeID), nil
+}
+
+func BuildExecutedOutputs(entries []NodeExecutionEntry, currentNodeID string) map[string][][]Item {
 	out := make(map[string][][]Item)
-	for _, entry := range history.NodeExecutions {
+	for _, entry := range entries {
 		if entry.EventType != NodeExecuted {
 			continue
 		}
-		if params.CurrentNodeID != "" && entry.NodeID == params.CurrentNodeID {
+		if currentNodeID != "" && entry.NodeID == currentNodeID {
 			continue
 		}
 		for outputID, nodeItems := range entry.ItemsByOutputID {
@@ -77,7 +81,7 @@ func BuildExecutedOutputs(ctx context.Context, params BuildExecutedOutputsParams
 			out[nodeID][outputIndex] = append(out[nodeID][outputIndex], nodeItems.Items...)
 		}
 	}
-	return out, nil
+	return out
 }
 
 func parseOutputIndexFromOutputID(outputID string) int {

@@ -211,7 +211,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 
 	if execCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok {
 		execCtx.ExecutedOutputsProvider = func() map[string][][]domain.Item {
-			return buildExecutedOutputsFromHistory(w.historyRecorder.GetHistoryEntries())
+			return domain.BuildExecutedOutputs(w.historyRecorder.GetHistoryEntries(), nodeID)
 		}
 	}
 
