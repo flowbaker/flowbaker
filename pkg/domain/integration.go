@@ -81,6 +81,7 @@ const (
 	IntegrationType_Groq                 IntegrationType = "groq"
 	IntegrationType_Gitlab               IntegrationType = "gitlab"
 	IntegrationType_Snowflake            IntegrationType = "snowflake"
+	IntegrationType_InputTrigger         IntegrationType = "input_trigger"
 )
 
 type Integration struct {

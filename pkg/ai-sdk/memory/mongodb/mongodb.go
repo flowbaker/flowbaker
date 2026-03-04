@@ -91,20 +91,22 @@ func (s *Store) SaveConversation(ctx context.Context, conversation types.Convers
 	}
 	conversation.UpdatedAt = now
 
+	doc := conversationFromTypes(&conversation)
+
 	// Use upsert to handle both insert and update
 	filter := bson.M{
-		"id": conversation.ID,
+		"id": doc.ID,
 	}
 
 	update := bson.M{
 		"$set": bson.M{
-			"session_id": conversation.SessionID,
-			"user_id":    conversation.UserID,
-			"messages":   conversation.Messages,
-			"created_at": conversation.CreatedAt,
-			"updated_at": conversation.UpdatedAt,
-			"status":     conversation.Status,
-			"metadata":   conversation.Metadata,
+			"session_id": doc.SessionID,
+			"user_id":    doc.UserID,
+			"messages":   doc.Messages,
+			"created_at": doc.CreatedAt,
+			"updated_at": doc.UpdatedAt,
+			"status":     doc.Status,
+			"metadata":   doc.Metadata,
 		},
 	}
 
@@ -142,7 +144,7 @@ func (s *Store) GetConversation(ctx context.Context, filter memory.Filter) (type
 				Metadata:  map[string]any{},
 			}
 
-			_, err := s.collection.InsertOne(ctx, newConversation)
+			_, err := s.collection.InsertOne(ctx, conversationFromTypes(&newConversation))
 			if err != nil {
 				return types.Conversation{}, fmt.Errorf("failed to insert new conversation: %w", err)
 			}
@@ -153,11 +155,167 @@ func (s *Store) GetConversation(ctx context.Context, filter memory.Filter) (type
 		return types.Conversation{}, fmt.Errorf("failed to find conversation: %w", result.Err())
 	}
 
-	var conversation types.Conversation
+	var doc conversationBson
 
-	if err := result.Decode(&conversation); err != nil {
+	if err := result.Decode(&doc); err != nil {
 		return types.Conversation{}, fmt.Errorf("failed to decode conversation: %w", err)
 	}
 
-	return conversation, nil
+	return doc.toTypes(), nil
+}
+
+// --- BSON types ---
+
+type conversationBson struct {
+	ID        string                 `bson:"id"`
+	SessionID string                 `bson:"session_id"`
+	UserID    string                 `bson:"user_id,omitempty"`
+	Messages  []messageBson          `bson:"messages"`
+	CreatedAt time.Time              `bson:"created_at"`
+	UpdatedAt time.Time              `bson:"updated_at"`
+	Status    string                 `bson:"status"`
+	Metadata  map[string]interface{} `bson:"metadata,omitempty"`
+}
+
+func (c *conversationBson) toTypes() types.Conversation {
+	messages := make([]types.Message, len(c.Messages))
+	for i, m := range c.Messages {
+		messages[i] = m.toTypes()
+	}
+
+	return types.Conversation{
+		ID:        c.ID,
+		SessionID: c.SessionID,
+		UserID:    c.UserID,
+		Messages:  messages,
+		CreatedAt: c.CreatedAt,
+		UpdatedAt: c.UpdatedAt,
+		Status:    types.ConversationStatus(c.Status),
+		Metadata:  c.Metadata,
+	}
+}
+
+func conversationFromTypes(c *types.Conversation) conversationBson {
+	messages := make([]messageBson, len(c.Messages))
+	for i, m := range c.Messages {
+		messages[i] = messageFromTypes(&m)
+	}
+
+	return conversationBson{
+		ID:        c.ID,
+		SessionID: c.SessionID,
+		UserID:    c.UserID,
+		Messages:  messages,
+		CreatedAt: c.CreatedAt,
+		UpdatedAt: c.UpdatedAt,
+		Status:    string(c.Status),
+		Metadata:  c.Metadata,
+	}
+}
+
+type messageBson struct {
+	ConversationID string           `bson:"conversation_id,omitempty"`
+	Role           string           `bson:"role"`
+	Content        string           `bson:"content"`
+	ToolCalls      []toolCallBson   `bson:"tool_calls,omitempty"`
+	ToolResults    []toolResultBson `bson:"tool_results,omitempty"`
+	Timestamp      time.Time        `bson:"timestamp"`
+	Metadata       map[string]any   `bson:"metadata,omitempty"`
+	CreatedAt      time.Time        `bson:"created_at"`
+}
+
+func (m *messageBson) toTypes() types.Message {
+	toolCalls := make([]types.ToolCall, len(m.ToolCalls))
+	for i, tc := range m.ToolCalls {
+		toolCalls[i] = tc.toTypes()
+	}
+
+	toolResults := make([]types.ToolResult, len(m.ToolResults))
+	for i, tr := range m.ToolResults {
+		toolResults[i] = tr.toTypes()
+	}
+
+	return types.Message{
+		ConversationID: m.ConversationID,
+		Role:           types.MessageRole(m.Role),
+		Content:        m.Content,
+		ToolCalls:      toolCalls,
+		ToolResults:    toolResults,
+		Timestamp:      m.Timestamp,
+		Metadata:       m.Metadata,
+		CreatedAt:      m.CreatedAt,
+	}
+}
+
+func messageFromTypes(m *types.Message) messageBson {
+	toolCalls := make([]toolCallBson, len(m.ToolCalls))
+	for i, tc := range m.ToolCalls {
+		toolCalls[i] = toolCallFromTypes(&tc)
+	}
+
+	toolResults := make([]toolResultBson, len(m.ToolResults))
+	for i, tr := range m.ToolResults {
+		toolResults[i] = toolResultFromTypes(&tr)
+	}
+
+	return messageBson{
+		ConversationID: m.ConversationID,
+		Role:           string(m.Role),
+		Content:        m.Content,
+		ToolCalls:      toolCalls,
+		ToolResults:    toolResults,
+		Timestamp:      m.Timestamp,
+		Metadata:       m.Metadata,
+		CreatedAt:      m.CreatedAt,
+	}
+}
+
+type toolCallBson struct {
+	ID        string         `bson:"id"`
+	Name      string         `bson:"name"`
+	Arguments map[string]any `bson:"arguments"`
+	Metadata  map[string]any `bson:"metadata,omitempty"`
+}
+
+func (tc *toolCallBson) toTypes() types.ToolCall {
+	return types.ToolCall{
+		ID:        tc.ID,
+		Name:      tc.Name,
+		Arguments: tc.Arguments,
+		Metadata:  tc.Metadata,
+	}
+}
+
+func toolCallFromTypes(tc *types.ToolCall) toolCallBson {
+	return toolCallBson{
+		ID:        tc.ID,
+		Name:      tc.Name,
+		Arguments: tc.Arguments,
+		Metadata:  tc.Metadata,
+	}
+}
+
+type toolResultBson struct {
+	ToolCallID string `bson:"tool_call_id"`
+	ToolName   string `bson:"tool_name,omitempty"`
+	Content    string `bson:"content"`
+	IsError    bool   `bson:"is_error,omitempty"`
+}
+
+func (tr *toolResultBson) toTypes() types.ToolResult {
+	return types.ToolResult{
+		ToolCallID: tr.ToolCallID,
+		ToolName:   tr.ToolName,
+		Content:    tr.Content,
+		IsError:    tr.IsError,
+	}
+}
+
+func toolResultFromTypes(tr *types.ToolResult) toolResultBson {
+	return toolResultBson{
+		ToolCallID: tr.ToolCallID,
+		ToolName:   tr.ToolName,
+		Content:    tr.Content,
+		IsError:    tr.IsError,
+	}
 }

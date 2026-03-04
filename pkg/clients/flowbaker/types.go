@@ -519,11 +519,13 @@ type ToolCall struct {
 	ID        string                 `json:"id" bson:"id"`
 	Name      string                 `json:"name" bson:"name"`
 	Arguments map[string]interface{} `json:"arguments" bson:"arguments"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty" bson:"metadata,omitempty"`
 }
 
 // ToolResult represents the result of a tool call
 type ToolResult struct {
 	ToolCallID string `json:"tool_call_id" bson:"tool_call_id"`
+	ToolName   string `json:"tool_name,omitempty" bson:"tool_name,omitempty"`
 	Content    string `json:"content" bson:"content"`
 	IsError    bool   `json:"is_error,omitempty" bson:"is_error,omitempty"`
 }

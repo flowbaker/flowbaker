@@ -75,11 +75,7 @@ func New(opts ...Option) (*Agent, error) {
 	}
 
 	for _, t := range agent.Tools {
-		if emitter, ok := t.(tool.EventEmittingTool); ok {
-			emitter.SetEventEmitter(func(event types.StreamEvent) {
-				agent.eventChan <- event
-			})
-		}
+		agent.setupTool(t)
 	}
 
 	if agent.Memory == nil {
@@ -87,6 +83,32 @@ func New(opts ...Option) (*Agent, error) {
 	}
 
 	return agent, nil
+}
+
+func (a *Agent) setupTool(t tool.Tool) {
+	if emitter, ok := t.(tool.EventEmittingTool); ok {
+		if !emitter.HasEventEmitter() {
+			emitter.SetEventEmitter(func(event types.StreamEvent) {
+				a.eventChan <- event
+			})
+		}
+	}
+	if adder, ok := t.(tool.ToolAdderTool); ok {
+		adder.SetToolAdder(func(newTool tool.Tool) {
+			a.setupTool(newTool)
+			a.mu.Lock()
+			a.Tools = append(a.Tools, newTool)
+			a.mu.Unlock()
+		})
+	}
+	if userInputTool, ok := t.(tool.UserInputTool); ok {
+		a.mu.Lock()
+		if a.UserInputTools == nil {
+			a.UserInputTools = make(map[string]tool.UserInputTool)
+		}
+		a.UserInputTools[t.Name()] = userInputTool
+		a.mu.Unlock()
+	}
 }
 
 type ChatRequest struct {
@@ -112,6 +134,7 @@ func (s *ChatStream) Wait() error {
 }
 
 func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
+
 	err := a.SetupConversation(ctx, req)
 	if err != nil {
 		return ChatStream{}, err
@@ -119,6 +142,16 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (ChatStream, error) {
 
 	go func() {
 		defer a.Cleanup()
+
+		defer func() {
+			finishReason := a.FinishReason
+			if finishReason == "" {
+				finishReason = "stop"
+			}
+			a.eventChan <- types.NewAgentEndedEvent(a.TotalUsage, finishReason)
+		}()
+
+		a.eventChan <- types.NewAgentStartedEvent(req.SessionID)
 
 		for a.currentStepNumber < a.MaxIterations {
 			if a.CanFinish() {
@@ -253,7 +286,9 @@ func (a *Agent) OnStepComplete() {
 }
 
 func (a *Agent) OnComplete() {
-	a.eventChan <- types.NewStreamEndEvent("stop", a.TotalUsage)
+	// agent-ended is now emitted via defer in Chat() to ensure it's always sent
+	// This method is kept for any additional completion logic if needed
+	a.FinishReason = "stop"
 }
 
 type Step struct {
@@ -409,6 +444,7 @@ func (a *Agent) getError() error {
 
 func (a *Agent) OnError(err error) {
 	a.setError(err)
+	a.FinishReason = types.FinishReasonError
 
 	select {
 	case a.eventChan <- types.NewStreamErrorEvent(err, "", err.Error(), false):
@@ -436,21 +472,38 @@ func (a *Agent) HandleToolCalls(ctx context.Context) {
 		return
 	}
 
-	toolResults := []types.ToolResult{}
+	var toolCallsToExecute []types.ToolCall
 
 	for _, toolCall := range currentStep.ToolCalls {
-		if a.IsHumanInterventionToolCall(toolCall) {
-			continue
+		if !a.IsHumanInterventionToolCall(toolCall) {
+			toolCallsToExecute = append(toolCallsToExecute, toolCall)
 		}
-
-		toolResult, err := a.HandleToolCall(ctx, currentStep, toolCall)
-		if err != nil {
-			a.OnError(err)
-			return
-		}
-
-		toolResults = append(toolResults, toolResult)
 	}
+
+	toolResults := make([]types.ToolResult, len(toolCallsToExecute))
+
+	var wg sync.WaitGroup
+
+	for i, tc := range toolCallsToExecute {
+		wg.Add(1)
+
+		go func(index int, toolCall types.ToolCall) {
+			defer wg.Done()
+
+			toolResult, err := a.HandleToolCall(ctx, currentStep, toolCall)
+			if err != nil {
+				toolResults[index] = types.ToolResult{
+					ToolCallID: toolCall.ID,
+					ToolName:   toolCall.Name,
+					Content:    fmt.Sprintf("Error: %v", err),
+					IsError:    true,
+				}
+			} else {
+				toolResults[index] = toolResult
+			}
+		}(i, tc)
+	}
+	wg.Wait()
 
 	currentStep.ToolResults = toolResults
 
@@ -478,6 +531,7 @@ func (a *Agent) HandleToolCall(ctx context.Context, step *Step, toolCall types.T
 
 	toolResult := types.ToolResult{
 		ToolCallID: toolCall.ID,
+		ToolName:   toolCall.Name,
 		Content:    content,
 		IsError:    err != nil,
 	}
@@ -518,12 +572,26 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 		return err
 	}
 
-	if conversation.IsInterrupted() {
+	if conversation.IsInterrupted() && len(req.ToolResults) > 0 {
+		pendingToolCalls := a.getPendingToolCalls(conversation)
+		for i, tr := range req.ToolResults {
+			if tr.ToolName == "" {
+				for _, tc := range pendingToolCalls {
+					if tc.ID == tr.ToolCallID {
+						req.ToolResults[i].ToolName = tc.Name
+						break
+					}
+				}
+			}
+		}
+
 		conversation.Messages = append(conversation.Messages, types.Message{
 			Role:        types.RoleTool,
 			ToolResults: req.ToolResults,
 			Timestamp:   time.Now(),
 		})
+
+		conversation.Status = types.StatusActive
 
 		err = a.SaveConversation(ctx, conversation)
 		if err != nil {
@@ -535,6 +603,31 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 		return nil
 	}
 
+	if conversation.IsInterrupted() && req.Prompt != "" {
+		pendingToolCalls := a.getPendingToolCalls(conversation)
+
+		if len(pendingToolCalls) > 0 {
+			skippedResults := make([]types.ToolResult, 0, len(pendingToolCalls))
+
+			for _, tc := range pendingToolCalls {
+				skippedResults = append(skippedResults, types.ToolResult{
+					ToolCallID: tc.ID,
+					ToolName:   tc.Name,
+					Content:    `{"skipped": true, "reason": "User sent a new message instead of responding to the input request"}`,
+					IsError:    false,
+				})
+			}
+
+			conversation.Messages = append(conversation.Messages, types.Message{
+				Role:        types.RoleTool,
+				ToolResults: skippedResults,
+				Timestamp:   time.Now(),
+			})
+		}
+
+		conversation.Status = types.StatusActive
+	}
+
 	if req.Prompt != "" {
 		conversation.Messages = append(conversation.Messages, types.Message{
 			Role:      types.RoleUser,
@@ -544,6 +637,18 @@ func (a *Agent) SetupConversation(ctx context.Context, req ChatRequest) error {
 	}
 
 	a.conversation = &conversation
+
+	return nil
+}
+
+func (a *Agent) getPendingToolCalls(conversation types.Conversation) []types.ToolCall {
+	for i := len(conversation.Messages) - 1; i >= 0; i-- {
+		msg := conversation.Messages[i]
+
+		if msg.Role == types.RoleAssistant && len(msg.ToolCalls) > 0 {
+			return msg.ToolCalls
+		}
+	}
 
 	return nil
 }

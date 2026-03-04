@@ -56,6 +56,7 @@ func (m *Memory) SaveConversation(ctx context.Context, conversation types.Conver
 				ID:        tc.ID,
 				Name:      tc.Name,
 				Arguments: tc.Arguments,
+				Metadata:  tc.Metadata,
 			}
 		}
 
@@ -125,6 +126,7 @@ func (m *Memory) GetConversation(ctx context.Context, filter memory.Filter) (typ
 				ID:        tc.ID,
 				Name:      tc.Name,
 				Arguments: tc.Arguments,
+				Metadata:  tc.Metadata,
 			}
 		}
 

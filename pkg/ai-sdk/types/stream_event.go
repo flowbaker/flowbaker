@@ -40,6 +40,8 @@ const (
 	EventTypeProviderMetadata StreamEventType = "provider-metadata"
 
 	// Agent-specific events
+	EventTypeAgentStarted          StreamEventType = "agent-started"
+	EventTypeAgentEnded            StreamEventType = "agent-ended"
 	EventTypeAgentStepStart        StreamEventType = "agent-step-start"
 	EventTypeAgentStepComplete     StreamEventType = "agent-step-complete"
 	EventTypeToolExecutionStart    StreamEventType = "tool-execution-start"
@@ -180,6 +182,19 @@ type WarningEvent struct {
 type ProviderMetadataEvent struct {
 	baseEvent
 	Metadata ProviderMetadata `json:"metadata"`
+}
+
+// AgentStartedEvent signals the beginning of an agent conversation
+type AgentStartedEvent struct {
+	baseEvent
+	SessionID string `json:"session_id,omitempty"`
+}
+
+// AgentEndedEvent signals the end of an agent conversation
+type AgentEndedEvent struct {
+	baseEvent
+	TotalUsage   Usage  `json:"total_usage"`
+	FinishReason string `json:"finish_reason"`
 }
 
 // AgentStepStartEvent signals the start of an agent iteration
@@ -331,6 +346,21 @@ func NewProviderMetadataEvent(metadata ProviderMetadata) *ProviderMetadataEvent 
 	return &ProviderMetadataEvent{
 		baseEvent: newBaseEvent(EventTypeProviderMetadata),
 		Metadata:  metadata,
+	}
+}
+
+func NewAgentStartedEvent(sessionID string) *AgentStartedEvent {
+	return &AgentStartedEvent{
+		baseEvent: newBaseEvent(EventTypeAgentStarted),
+		SessionID: sessionID,
+	}
+}
+
+func NewAgentEndedEvent(usage Usage, finishReason string) *AgentEndedEvent {
+	return &AgentEndedEvent{
+		baseEvent:    newBaseEvent(EventTypeAgentEnded),
+		TotalUsage:   usage,
+		FinishReason: finishReason,
 	}
 }
 

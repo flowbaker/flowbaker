@@ -113,12 +113,17 @@ func (p *Provider) Generate(ctx context.Context, req provider.GenerateRequest) (
 		FinishReason: string(choice.FinishReason),
 		Model:        resp.Model,
 		Usage: types.Usage{
-			PromptTokens:      resp.Usage.PromptTokens,
-			CompletionTokens:  resp.Usage.CompletionTokens,
-			TotalTokens:       resp.Usage.TotalTokens,
-			ReasoningTokens:   resp.Usage.CompletionTokensDetails.ReasoningTokens,
-			CachedInputTokens: resp.Usage.PromptTokensDetails.CachedTokens,
+			PromptTokens:     resp.Usage.PromptTokens,
+			CompletionTokens: resp.Usage.CompletionTokens,
+			TotalTokens:      resp.Usage.TotalTokens,
 		},
+	}
+
+	if resp.Usage.CompletionTokensDetails != nil {
+		response.Usage.ReasoningTokens = resp.Usage.CompletionTokensDetails.ReasoningTokens
+	}
+	if resp.Usage.PromptTokensDetails != nil {
+		response.Usage.CachedInputTokens = resp.Usage.PromptTokensDetails.CachedTokens
 	}
 
 	// Convert tool calls if present
@@ -400,6 +405,7 @@ var maxCompletionTokensModels = map[string]bool{
 	"gpt-5": true, "gpt-5-mini": true, "gpt-5-nano": true,
 	"gpt-5-chat-latest":   true,
 	"gpt-5.2-chat-latest": true,
+	"gpt-5.2":             true,
 }
 
 func isMaxCompletionTokensModel(model string) bool {

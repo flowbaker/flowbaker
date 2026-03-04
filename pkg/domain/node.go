@@ -96,6 +96,9 @@ type NodeProperty struct {
 	Help        string `json:"help,omitempty"`        // Extended help text
 	RegexKey    string `json:"regex_key,omitempty"`   // Key for regex validation
 
+	// Default value
+	Default any `json:"default,omitempty"` // Default value for this property
+
 	// Options based on type
 	Options                 []NodePropertyOption         `json:"options,omitempty"`                   // For selectable options
 	MultipleOpts            []MultipleNodePropertyOption `json:"multiple_opts,omitempty"`             // For multiple selectable options
@@ -195,9 +198,9 @@ type EndpointPropertyOptions struct {
 }
 
 type EndpointPropertyData struct {
-	TestingURL    string `json:"testing_url"`
-	ProductionURL string `json:"production_url"`
-	Method        string `json:"method"`
+	TestingPath    string `json:"testing_path"`
+	ProductionPath string `json:"production_path"`
+	Method         string `json:"method"`
 }
 
 func NewEndpointPropertDataFromMap(from any) (EndpointPropertyData, error) {
@@ -206,14 +209,14 @@ func NewEndpointPropertDataFromMap(from any) (EndpointPropertyData, error) {
 		return EndpointPropertyData{}, fmt.Errorf("path is not a map")
 	}
 
-	testingURL, ok := m["testing_url"].(string)
+	testingPath, ok := m["testing_path"].(string)
 	if !ok {
-		return EndpointPropertyData{}, fmt.Errorf("testing_url is required in webhook route")
+		return EndpointPropertyData{}, fmt.Errorf("testing_path is required in webhook route")
 	}
 
-	productionURL, ok := m["production_url"].(string)
+	productionPath, ok := m["production_path"].(string)
 	if !ok {
-		return EndpointPropertyData{}, fmt.Errorf("production_url is required in webhook route")
+		return EndpointPropertyData{}, fmt.Errorf("production_path is required in webhook route")
 	}
 
 	method, ok := m["method"].(string)
@@ -222,9 +225,9 @@ func NewEndpointPropertDataFromMap(from any) (EndpointPropertyData, error) {
 	}
 
 	return EndpointPropertyData{
-		TestingURL:    testingURL,
-		ProductionURL: productionURL,
-		Method:        method,
+		TestingPath:    testingPath,
+		ProductionPath: productionPath,
+		Method:         method,
 	}, nil
 }
 

@@ -23,6 +23,14 @@ type UserInputTool interface {
 type EventEmittingTool interface {
 	Tool
 	SetEventEmitter(emitter func(types.StreamEvent))
+	HasEventEmitter() bool
+}
+
+// ToolAdderTool is an optional interface that tools can implement
+// to dynamically add new tools to the agent during execution
+type ToolAdderTool interface {
+	Tool
+	SetToolAdder(adder func(Tool))
 }
 
 type FuncTool struct {

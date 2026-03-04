@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/flowbaker/flowbaker/pkg/ai-sdk/provider"
@@ -131,7 +132,7 @@ func (p *Provider) Generate(ctx context.Context, req provider.GenerateRequest) (
 				// Store ThoughtSignature in metadata (required for Gemini 3 models)
 				if len(part.ThoughtSignature) > 0 {
 					toolCall.Metadata = map[string]any{
-						"thought_signature": part.ThoughtSignature,
+						"thought_signature": base64.StdEncoding.EncodeToString(part.ThoughtSignature),
 					}
 				}
 				response.ToolCalls = append(response.ToolCalls, toolCall)
@@ -227,7 +228,7 @@ func (p *Provider) Stream(ctx context.Context, req provider.GenerateRequest) (*p
 						}
 						if len(part.ThoughtSignature) > 0 {
 							toolCall.Metadata = map[string]any{
-								"thought_signature": part.ThoughtSignature,
+								"thought_signature": base64.StdEncoding.EncodeToString(part.ThoughtSignature),
 							}
 						}
 						toolCalls = append(toolCalls, toolCall)
@@ -319,35 +320,40 @@ func (p *Provider) convertMessages(messages []types.Message) []*genai.Content {
 					Args: tc.Arguments,
 				},
 			}
-			// Extract ThoughtSignature from metadata (required for Gemini 3 models)
-			if sig, ok := tc.Metadata["thought_signature"].([]byte); ok && len(sig) > 0 {
-				part.ThoughtSignature = sig
+			// Extract ThoughtSignature from metadata (stored as base64 string)
+			if sig, ok := tc.Metadata["thought_signature"].(string); ok && sig != "" {
+				if decoded, err := base64.StdEncoding.DecodeString(sig); err == nil {
+					part.ThoughtSignature = decoded
+				}
 			}
 			parts = append(parts, part)
 		}
 
 		// Add function responses (for tool role messages)
-		// We need to find the matching tool call to get its ThoughtSignature
 		for _, tr := range msg.ToolResults {
+			// Find matching tool call for ThoughtSignature
+			var thoughtSig []byte
+			for _, prevMsg := range messages {
+				for _, tc := range prevMsg.ToolCalls {
+					if tc.ID == tr.ToolCallID {
+						if sig, ok := tc.Metadata["thought_signature"].(string); ok && sig != "" {
+							if decoded, err := base64.StdEncoding.DecodeString(sig); err == nil {
+								thoughtSig = decoded
+							}
+						}
+						break
+					}
+				}
+			}
 			part := &genai.Part{
 				FunctionResponse: &genai.FunctionResponse{
-					Name: tr.ToolCallID,
+					Name: tr.ToolName,
 					Response: map[string]any{
 						"result":   tr.Content,
 						"is_error": tr.IsError,
 					},
 				},
-			}
-			// Find matching tool call from previous messages to get ThoughtSignature
-			for _, prevMsg := range messages {
-				for _, tc := range prevMsg.ToolCalls {
-					if tc.ID == tr.ToolCallID {
-						if sig, ok := tc.Metadata["thought_signature"].([]byte); ok && len(sig) > 0 {
-							part.ThoughtSignature = sig
-						}
-						break
-					}
-				}
+				ThoughtSignature: thoughtSig,
 			}
 			parts = append(parts, part)
 		}
