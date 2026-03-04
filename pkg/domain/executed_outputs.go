@@ -19,13 +19,16 @@ func NewExecutedOutputsProviderFromEntries(getEntries func() []NodeExecutionEntr
 
 func BuildExecutedOutputs(entries []NodeExecutionEntry, currentNodeID string) ExecutedOutputs {
 	out := make(ExecutedOutputs)
+
 	for _, entry := range entries {
 		if entry.EventType != NodeExecuted {
 			continue
 		}
+
 		if currentNodeID != "" && entry.NodeID == currentNodeID {
 			continue
 		}
+
 		for outputID, nodeItems := range entry.ItemsByOutputID {
 			nodeID := nodeItems.FromNodeID
 			outputIndex := parseOutputIndexFromOutputID(outputID)
@@ -41,6 +44,7 @@ func BuildExecutedOutputs(entries []NodeExecutionEntry, currentNodeID string) Ex
 			out[nodeID][outputIndex] = append(out[nodeID][outputIndex], nodeItems.Items...)
 		}
 	}
+
 	return out
 }
 
@@ -49,9 +53,11 @@ func parseOutputIndexFromOutputID(outputID string) int {
 	if lastDash < 0 {
 		return -1
 	}
+
 	idx, err := strconv.Atoi(outputID[lastDash+1:])
 	if err != nil {
 		return -1
 	}
+
 	return idx
 }
