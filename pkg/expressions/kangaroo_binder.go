@@ -248,17 +248,6 @@ func buildOutputsFromContext(ctx context.Context, log zerolog.Logger) map[string
 	}
 	currentIndex := execCtx.CurrentItemIndex
 
-	outputNodeCount := 0
-	if executedOutputs != nil {
-		outputNodeCount = len(executedOutputs)
-	}
-	log.Debug().
-		Bool("execCtx_found", true).
-		Bool("executedOutputs_nil", executedOutputs == nil).
-		Int("currentIndex", currentIndex).
-		Int("output_nodes", outputNodeCount).
-		Msg("buildOutputsFromContext")
-
 	if executedOutputs == nil {
 		return nil
 	}
@@ -307,8 +296,6 @@ func (b *KangarooBinder) evaluateExpression(ctx context.Context, item any, expre
 			Msg("Kangaroo expression evaluation failed")
 		return nil, fmt.Errorf("evaluation error: %w", err)
 	}
-
-	fmt.Printf("result: %v\n", result.Value)
 
 	if !result.Success {
 		b.logger.Warn().
