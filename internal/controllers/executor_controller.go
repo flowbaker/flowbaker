@@ -122,11 +122,12 @@ func (c *ExecutorController) RerunNode(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 
-	var reqCtx context.Context = ctx.RequestCtx()
-	if req.ExecutedOutputs != nil {
-		converted := mappers.FlowbakerExecutedOutputsToDomain(req.ExecutedOutputs)
+	reqCtx := context.Context(ctx.RequestCtx())
+	if len(req.NodeExecutionEntries) > 0 {
+		domainEntries := mappers.FlowbakerNodeExecutionEntriesToDomain(req.NodeExecutionEntries)
+		executedOutputs := domain.BuildExecutedOutputs(domainEntries, req.NodeID)
 		reqCtx = context.WithValue(reqCtx, domain.WorkflowExecutionContextKey{}, &domain.WorkflowExecutionContext{
-			ExecutedOutputsProvider: func() map[string][][]domain.Item { return converted },
+			ExecutedOutputsProvider: func() map[string][][]domain.Item { return executedOutputs },
 		})
 	}
 
