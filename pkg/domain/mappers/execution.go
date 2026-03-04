@@ -152,11 +152,11 @@ func FlowbakerNodeExecutionEntriesToDomain(entries []flowbaker.NodeExecutionEntr
 }
 
 // FlowbakerExecutedOutputsToDomain converts flowbaker executed outputs to domain format
-func FlowbakerExecutedOutputsToDomain(out map[string][][]flowbaker.Item) map[string][][]domain.Item {
+func FlowbakerExecutedOutputsToDomain(out map[string][][]flowbaker.Item) domain.ExecutedOutputs {
 	if out == nil {
 		return nil
 	}
-	result := make(map[string][][]domain.Item, len(out))
+	result := make(domain.ExecutedOutputs, len(out))
 	for nodeID, byOutput := range out {
 		conv := make([][]domain.Item, len(byOutput))
 		for i, items := range byOutput {

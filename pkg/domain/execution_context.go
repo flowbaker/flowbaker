@@ -22,7 +22,7 @@ type WorkflowExecutionContext struct {
 	IsTesting           bool
 	TriggerNode         WorkflowNode
 
-	ExecutedOutputsProvider func() map[string][][]Item
+	ExecutedOutputsProvider func() ExecutedOutputs
 	CurrentItemIndex        int
 }
 

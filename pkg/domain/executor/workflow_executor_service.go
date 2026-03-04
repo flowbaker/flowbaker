@@ -349,7 +349,7 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		return ExecutionResult{}, err
 	}
 
-	var existingProvider func() map[string][][]domain.Item
+	var existingProvider func() domain.ExecutedOutputs
 	if parentCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok && parentCtx.ExecutedOutputsProvider != nil {
 		existingProvider = parentCtx.ExecutedOutputsProvider
 	}

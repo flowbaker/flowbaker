@@ -127,7 +127,7 @@ func (c *ExecutorController) RerunNode(ctx fiber.Ctx) error {
 		domainEntries := mappers.FlowbakerNodeExecutionEntriesToDomain(req.NodeExecutionEntries)
 		executedOutputs := domain.BuildExecutedOutputs(domainEntries, req.NodeID)
 		reqCtx = context.WithValue(reqCtx, domain.WorkflowExecutionContextKey{}, &domain.WorkflowExecutionContext{
-			ExecutedOutputsProvider: func() map[string][][]domain.Item { return executedOutputs },
+			ExecutedOutputsProvider: func() domain.ExecutedOutputs { return executedOutputs },
 		})
 	}
 

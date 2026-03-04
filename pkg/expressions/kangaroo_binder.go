@@ -239,7 +239,7 @@ func buildOutputsFromContext(ctx context.Context, log zerolog.Logger) map[string
 		return nil
 	}
 
-	var executedOutputs map[string][][]domain.Item
+	var executedOutputs domain.ExecutedOutputs
 	if execCtx.ExecutedOutputsProvider != nil {
 		executedOutputs = execCtx.ExecutedOutputsProvider()
 	} else {

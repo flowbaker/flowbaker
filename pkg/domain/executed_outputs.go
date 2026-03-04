@@ -5,8 +5,10 @@ import (
 	"strings"
 )
 
-func BuildExecutedOutputs(entries []NodeExecutionEntry, currentNodeID string) map[string][][]Item {
-	out := make(map[string][][]Item)
+type ExecutedOutputs map[string][][]Item
+
+func BuildExecutedOutputs(entries []NodeExecutionEntry, currentNodeID string) ExecutedOutputs {
+	out := make(ExecutedOutputs)
 	for _, entry := range entries {
 		if entry.EventType != NodeExecuted {
 			continue
