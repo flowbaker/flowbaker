@@ -1087,6 +1087,82 @@ func (r *DefaultFunctionRegistry) registerJsonFunctions() {
 func (r *DefaultFunctionRegistry) registerWorkflowFunctions() {
 	workflowFunctions := []*types.SafeFunction{
 		{
+			Name:        "$outputs",
+			Description: "Access outputs from previous nodes. $outputs(nodeId) merges all output items, $outputs(nodeId, outputIndex) targets a specific output. Returns {item, items}.",
+			Category:    types.CategoryWorkflow,
+			MinArgs:     2,
+			MaxArgs:     3,
+			Fn: func(args ...interface{}) (interface{}, error) {
+				// args[0] = outputs map (injected by executor from ExpressionContext)
+				// args[1] = nodeId (string)
+				// args[2] = outputIndex (number, optional)
+				outputsMap, ok := args[0].(map[string]any)
+				if !ok || outputsMap == nil {
+					return nil, nil
+				}
+
+				nodeID := r.converter.ToString(args[1])
+				nodeOutputs, exists := outputsMap[nodeID]
+				if !exists {
+					return nil, nil
+				}
+
+				outputsArray, ok := nodeOutputs.([]any)
+				if !ok {
+					return nil, nil
+				}
+
+				if len(args) == 2 {
+					var allItems []any
+					var currentItem any
+					for _, output := range outputsArray {
+						outputMap, ok := output.(map[string]any)
+						if !ok {
+							return nil, nil
+						}
+						if items, ok := outputMap["items"].([]any); ok {
+							allItems = append(allItems, items...)
+						}
+						if item, ok := outputMap["item"]; ok {
+							currentItem = item
+						}
+					}
+					return map[string]any{
+						"item":  currentItem,
+						"items": allItems,
+					}, nil
+				}
+
+				if len(args) == 3 {
+					outputIndex := r.converter.ToInt(args[2])
+					if outputIndex < 0 || outputIndex >= len(outputsArray) {
+						return nil, nil
+					}
+
+					output, ok := outputsArray[outputIndex].(map[string]any)
+					if !ok {
+						return nil, nil
+					}
+
+					allItems, ok := output["items"]
+					if !ok {
+						return nil, nil
+					}
+					currentItem := output["item"]
+					if currentItem == nil {
+						return nil, nil
+					}
+
+					return map[string]any{
+						"item":  currentItem,
+						"items": allItems,
+					}, nil
+				}
+
+				return nil, nil
+			},
+		},
+		{
 			Name:        "isEmpty",
 			Description: "Check if value is empty",
 			Category:    types.CategoryUtility,

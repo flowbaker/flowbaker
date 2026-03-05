@@ -187,6 +187,11 @@ func (m *IntegrationActionManager) RunPerItem(ctx context.Context, actionType In
 		return IntegrationOutput{}, err
 	}
 
+	executionContext, ok := GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return IntegrationOutput{}, fmt.Errorf("workflow execution context not found")
+	}
+
 	allItems := make([]any, 0)
 
 	for _, items := range itemsByInputID {
@@ -197,7 +202,8 @@ func (m *IntegrationActionManager) RunPerItem(ctx context.Context, actionType In
 
 	outputs := make([]Item, 0)
 
-	for _, item := range allItems {
+	for i, item := range allItems {
+		executionContext.CurrentItemIndex = i
 		output, err := actionFuncPerItem(ctx, params, item)
 		if err != nil {
 			return IntegrationOutput{}, err
@@ -245,6 +251,11 @@ func (m *IntegrationActionManager) RunPerItemMulti(ctx context.Context, actionTy
 		return IntegrationOutput{}, err
 	}
 
+	executionContext, ok := GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return IntegrationOutput{}, fmt.Errorf("workflow execution context not found")
+	}
+
 	allItems := make([]any, 0)
 
 	for _, items := range itemsByInputID {
@@ -255,7 +266,8 @@ func (m *IntegrationActionManager) RunPerItemMulti(ctx context.Context, actionTy
 
 	outputs := make([]Item, 0)
 
-	for _, item := range allItems {
+	for i, item := range allItems {
+		executionContext.CurrentItemIndex = i
 		outputItems, err := actionFuncPerItemMulti(ctx, params, item)
 		if err != nil {
 			return IntegrationOutput{}, err
@@ -317,6 +329,11 @@ func (m *IntegrationActionManager) RunPerItemWithFile(ctx context.Context, actio
 		return IntegrationOutput{}, err
 	}
 
+	executionContext, ok := GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return IntegrationOutput{}, fmt.Errorf("workflow execution context not found")
+	}
+
 	allItems := make([]any, 0)
 
 	for _, items := range itemsByInputID {
@@ -327,7 +344,8 @@ func (m *IntegrationActionManager) RunPerItemWithFile(ctx context.Context, actio
 
 	outputs := make([]Item, 0)
 
-	for _, item := range allItems {
+	for i, item := range allItems {
+		executionContext.CurrentItemIndex = i
 		output, err := actionFuncPerItemWithFile(ctx, params, item)
 		if err != nil {
 			return IntegrationOutput{}, err
@@ -453,6 +471,11 @@ func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actio
 		return IntegrationOutput{}, err
 	}
 
+	executionContext, ok := GetWorkflowExecutionContext(ctx)
+	if !ok {
+		return IntegrationOutput{}, fmt.Errorf("workflow execution context not found")
+	}
+
 	allItems := make([]any, 0)
 
 	for _, items := range itemsByInputID {
@@ -463,7 +486,8 @@ func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actio
 
 	outputs := make([]RoutableOutput, 0)
 
-	for _, item := range allItems {
+	for i, item := range allItems {
+		executionContext.CurrentItemIndex = i
 		output, err := actionFuncPerItemRoutable(ctx, params, item)
 		if err != nil {
 			return IntegrationOutput{}, err

@@ -349,6 +349,11 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		return ExecutionResult{}, err
 	}
 
+	var existingProvider func() domain.ExecutedOutputs
+	if parentCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok && parentCtx.ExecutedOutputsProvider != nil {
+		existingProvider = parentCtx.ExecutedOutputsProvider
+	}
+
 	ctx = domain.NewContextWithEventOrder(ctx)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
 		WorkspaceID:         params.WorkspaceID,
@@ -358,6 +363,12 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 		Observer:            workflowExecutor.observer,
 		IsReExecution:       true,
 	})
+
+	if existingProvider != nil {
+		if execCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok {
+			execCtx.ExecutedOutputsProvider = existingProvider
+		}
+	}
 
 	executionEntry := params.NodeExecutionEntry
 

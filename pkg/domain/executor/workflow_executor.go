@@ -209,7 +209,16 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		TriggerNode:         triggerNode,
 	})
 
+	if execCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok {
+		execCtx.ExecutedOutputsProvider = domain.NewExecutedOutputsProviderFromEntries(w.historyRecorder.GetHistoryEntries, nodeID)
+	}
+
 	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
+
+	_, err := payload.ToItems()
+	if err != nil {
+		return ExecutionResult{}, err
+	}
 
 	// Queue trigger node as first execution task
 	inputID := fmt.Sprintf(InputHandleFormat, nodeID, 0)

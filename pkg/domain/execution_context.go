@@ -21,6 +21,9 @@ type WorkflowExecutionContext struct {
 	IsFromErrorTrigger  bool
 	IsTesting           bool
 	TriggerNode         WorkflowNode
+
+	ExecutedOutputsProvider func() ExecutedOutputs
+	CurrentItemIndex        int
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {
