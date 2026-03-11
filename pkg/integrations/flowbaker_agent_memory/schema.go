@@ -24,12 +24,11 @@ var (
 				},
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "session_id",
-						Name:             "Session ID",
-						Description:      "The session ID to use for the conversation memory",
-						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						ExpressionChoice: true,
+						Key:         "session_id",
+						Name:        "Session ID",
+						Description: "The session ID to use for the conversation memory",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
 					},
 				},
 			},

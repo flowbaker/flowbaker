@@ -35,7 +35,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
@@ -54,8 +53,6 @@ var (
 							},
 						},
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "document",
@@ -84,7 +81,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
@@ -103,8 +99,6 @@ var (
 							},
 						},
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "documents",
@@ -146,7 +140,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
@@ -165,8 +158,6 @@ var (
 							},
 						},
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "filter",
@@ -194,7 +185,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
@@ -213,8 +203,6 @@ var (
 							},
 						},
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "filter",
@@ -256,7 +244,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
@@ -275,8 +262,6 @@ var (
 							},
 						},
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "filter",
@@ -314,7 +299,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
@@ -333,8 +317,6 @@ var (
 							},
 						},
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "filter",
@@ -372,7 +354,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
@@ -391,8 +372,6 @@ var (
 							},
 						},
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "filter",
@@ -420,7 +399,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           MongoDBIntegrationPeekable_Databases,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
@@ -439,8 +417,6 @@ var (
 							},
 						},
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "filter",

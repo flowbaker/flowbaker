@@ -428,12 +428,12 @@ var (
 						PeekableType: NotionPeekable_Databases,
 					},
 					{
-						Key:              "selected_events",
-						Name:             "Notion Events",
-						Description:      "Select one or more Notion events to trigger this flow",
-						Required:         true,
-						Type:             domain.NodePropertyType_ListTagInput,
-						ExpressionChoice: false,
+						Key:               "selected_events",
+						Name:              "Notion Events",
+						Description:       "Select one or more Notion events to trigger this flow",
+						Required:          true,
+						Type:              domain.NodePropertyType_ListTagInput,
+						DisableExpression: true,
 						Options: []domain.NodePropertyOption{
 							{
 								Label:       "On Page Created",

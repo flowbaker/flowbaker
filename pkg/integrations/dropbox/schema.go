@@ -36,8 +36,6 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 				},
 			},
@@ -56,8 +54,6 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 
 					{
@@ -84,8 +80,6 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:                    "to_path",
@@ -96,8 +90,6 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 				},
 			},
@@ -116,8 +108,6 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:          "to_path",
@@ -145,8 +135,6 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 				},
 			},
@@ -180,8 +168,6 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "to_path",
@@ -207,8 +193,6 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "to_path",
@@ -234,8 +218,6 @@ var (
 						Peekable:               true,
 						PeekableType:           DropboxIntegrationPeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 				},
 			},

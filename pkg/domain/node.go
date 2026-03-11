@@ -121,7 +121,7 @@ type NodeProperty struct {
 	PeekableDependentProperties []PeekableDependentProperty       `json:"peekable_dependent_properties,omitempty"` // Properties that this field depends on
 	IsNonCredentialPeekable     bool                              `json:"is_non_credential_peekable,omitempty"`    // Whether this field can be peeked without credentials
 
-	ExpressionChoice bool `json:"expression_choice,omitempty"` // Whether this field can be set using expressions
+	DisableExpression bool `json:"disable_expression,omitempty"` // Whether expression mode is disabled for this field
 
 	ValidDraggableTypes []string `json:"valid_draggable_types,omitempty"` // Types that can be dragged and dropped into this field
 

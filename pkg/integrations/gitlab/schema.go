@@ -692,12 +692,12 @@ var (
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
 					},
 					{
-						Key:              "selected_events",
-						Name:             "GitLab Events",
-						Description:      "Select one or more GitLab events to trigger this flow",
-						Required:         true,
-						Type:             domain.NodePropertyType_ListTagInput,
-						ExpressionChoice: false,
+						Key:               "selected_events",
+						Name:              "GitLab Events",
+						Description:       "Select one or more GitLab events to trigger this flow",
+						Required:          true,
+						Type:              domain.NodePropertyType_ListTagInput,
+						DisableExpression: true,
 						Options: []domain.NodePropertyOption{
 							{Label: "On Push", Value: string(IntegrationEventType_Push), Description: "Triggered when commits are pushed to a repository"},
 							{Label: "On Tag Push", Value: string(IntegrationEventType_TagPush), Description: "Triggered when a tag is pushed to a repository"},

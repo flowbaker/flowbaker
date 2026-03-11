@@ -52,7 +52,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleSheetsPeekable_Files,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 				},
@@ -71,7 +70,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleSheetsPeekable_Files,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
@@ -89,7 +87,6 @@ var (
 								ValueKey:    "spreadsheet_id",
 							},
 						},
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "content",
@@ -121,7 +118,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleSheetsPeekable_Files,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
@@ -139,7 +135,6 @@ var (
 								ValueKey:    "spreadsheet_id",
 							},
 						},
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "data",
@@ -164,7 +159,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleSheetsPeekable_Files,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
@@ -190,7 +184,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleSheetsPeekable_Files,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
@@ -216,7 +209,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleSheetsPeekable_Files,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
@@ -234,7 +226,6 @@ var (
 								ValueKey:    "spreadsheet_id",
 							},
 						},
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "title",
@@ -251,7 +242,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleSheetsPeekable_Files,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 				},
@@ -270,7 +260,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleSheetsPeekable_Files,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
@@ -288,7 +277,6 @@ var (
 								ValueKey:    "spreadsheet_id",
 							},
 						},
-						ExpressionChoice: true,
 					},
 				},
 			},
@@ -306,7 +294,6 @@ var (
 						Type:                   domain.NodePropertyType_String,
 						Peekable:               true,
 						PeekableType:           GoogleSheetsPeekable_Files,
-						ExpressionChoice:       true,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
@@ -324,7 +311,6 @@ var (
 								ValueKey:    "spreadsheet_id",
 							},
 						},
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "match_type",
@@ -365,7 +351,6 @@ var (
 											ValueKey:    "worksheet_id",
 										},
 									},
-									ExpressionChoice: true,
 								},
 								{
 									Key:         "value",

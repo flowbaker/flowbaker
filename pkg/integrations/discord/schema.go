@@ -30,16 +30,14 @@ var (
 				Description: "Triggered when a message is received in a channel",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "guild_id",
-						Name:             "Guild",
-						Description:      "The ID of the guild to send the message to",
-						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     DiscordIntegrationPeekable_Guilds,
-						ExpressionChoice: true,
-						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-
+						Key:                    "guild_id",
+						Name:                   "Guild",
+						Description:            "The ID of the guild to send the message to",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           DiscordIntegrationPeekable_Guilds,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
 						Key:          "channel_id",
@@ -56,7 +54,6 @@ var (
 								ValueKey:    "guild_id",
 							},
 						},
-						ExpressionChoice: true,
 					},
 				},
 			},
@@ -69,16 +66,14 @@ var (
 				Description: "Send a message to a channel",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "guild_id",
-						Name:             "Guild",
-						Description:      "The ID of the guild to send the message to",
-						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     DiscordIntegrationPeekable_Guilds,
-						ExpressionChoice: true,
-						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-
+						Key:                    "guild_id",
+						Name:                   "Guild",
+						Description:            "The ID of the guild to send the message to",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           DiscordIntegrationPeekable_Guilds,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
 						Key:          "channel_id",
@@ -95,7 +90,6 @@ var (
 								ValueKey:    "guild_id",
 							},
 						},
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "content",
@@ -113,16 +107,14 @@ var (
 				Description: "Get messages from channel",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "guild_id",
-						Name:             "Guild",
-						Description:      "The ID of the guild to get messages",
-						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     DiscordIntegrationPeekable_Guilds,
-						ExpressionChoice: true,
-						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-
+						Key:                    "guild_id",
+						Name:                   "Guild",
+						Description:            "The ID of the guild to get messages",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           DiscordIntegrationPeekable_Guilds,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
 						Key:          "channel_id",
@@ -139,7 +131,6 @@ var (
 								ValueKey:    "guild_id",
 							},
 						},
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "amount",
@@ -171,16 +162,14 @@ var (
 				Description: "Get message from channel by id",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "guild_id",
-						Name:             "Guild",
-						Description:      "The ID of the guild to get the message to",
-						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     DiscordIntegrationPeekable_Guilds,
-						ExpressionChoice: true,
-						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-
+						Key:                    "guild_id",
+						Name:                   "Guild",
+						Description:            "The ID of the guild to get the message to",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           DiscordIntegrationPeekable_Guilds,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
 						Key:          "channel_id",
@@ -197,7 +186,6 @@ var (
 								ValueKey:    "guild_id",
 							},
 						},
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "message_id",
@@ -215,16 +203,14 @@ var (
 				Description: "Delete message from channel by id",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "guild_id",
-						Name:             "Guild",
-						Description:      "The ID of the guild to delete the message to",
-						Required:         true,
-						Type:             domain.NodePropertyType_String,
-						Peekable:         true,
-						PeekableType:     DiscordIntegrationPeekable_Guilds,
-						ExpressionChoice: true,
-						PeekablePaginationType:   domain.PeekablePaginationType_Cursor,
-
+						Key:                    "guild_id",
+						Name:                   "Guild",
+						Description:            "The ID of the guild to delete the message to",
+						Required:               true,
+						Type:                   domain.NodePropertyType_String,
+						Peekable:               true,
+						PeekableType:           DiscordIntegrationPeekable_Guilds,
+						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
 					},
 					{
 						Key:          "channel_id",
@@ -241,7 +227,6 @@ var (
 								ValueKey:    "guild_id",
 							},
 						},
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "message_id",
