@@ -42,7 +42,6 @@ var (
 						Peekable:                true,
 						PeekableType:            StorageIntegrationPeekable_Folders,
 						IsNonCredentialPeekable: true,
-						ExpressionChoice:        true,
 						PeekablePaginationType:  domain.PeekablePaginationType_Cursor,
 					},
 					{
@@ -54,7 +53,6 @@ var (
 						Peekable:                true,
 						PeekableType:            StorageIntegrationPeekable_Files,
 						IsNonCredentialPeekable: true,
-						ExpressionChoice:        true,
 						PeekablePaginationType:  domain.PeekablePaginationType_Cursor,
 						PeekableDependentProperties: []domain.PeekableDependentProperty{
 							{
@@ -80,7 +78,6 @@ var (
 						Peekable:                true,
 						PeekableType:            StorageIntegrationPeekable_Files,
 						IsNonCredentialPeekable: true,
-						ExpressionChoice:        true,
 						PeekablePaginationType:  domain.PeekablePaginationType_Cursor,
 					},
 				},
@@ -100,7 +97,6 @@ var (
 						Peekable:                true,
 						PeekableType:            StorageIntegrationPeekable_Files,
 						IsNonCredentialPeekable: true,
-						ExpressionChoice:        true,
 						PeekablePaginationType:  domain.PeekablePaginationType_Cursor,
 					},
 				},
@@ -112,12 +108,11 @@ var (
 				Description: "Remove expiration date from a file to prevent automatic deletion",
 				Properties: []domain.NodeProperty{
 					{
-						Key:              "file",
-						Name:             "File",
-						Description:      "The file to persist (remove expiration date)",
-						Type:             domain.NodePropertyType_File,
-						Required:         true,
-						ExpressionChoice: true,
+						Key:         "file",
+						Name:        "File",
+						Description: "The file to persist (remove expiration date)",
+						Type:        domain.NodePropertyType_File,
+						Required:    true,
 					},
 				},
 			},

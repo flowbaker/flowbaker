@@ -87,8 +87,6 @@ var (
 						Peekable:               true,
 						PeekableType:           JiraIntegrationPeekable_Projects,
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:          "issue_type",
@@ -105,7 +103,6 @@ var (
 								ValueKey:    "project_key",
 							},
 						},
-						ExpressionChoice: true,
 					},
 					{
 						Key:                    "parent_key",
@@ -128,7 +125,6 @@ var (
 							PropertyKey: "issue_type",
 							Values:      []any{"Sub-task", "Subtask", "subtask", "sub-task", "Sub task"},
 						},
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "summary",
@@ -509,8 +505,6 @@ var (
 						Peekable:               true,
 						PeekableType:           JiraIntegrationPeekable_Projects,
 						PeekablePaginationType: domain.PeekablePaginationType_Offset,
-
-						ExpressionChoice: true,
 					},
 					{
 						Key:         "path",

@@ -75,8 +75,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 				},
 			},
@@ -95,8 +93,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
-						ExpressionChoice: true,
 					},
 				},
 			},
@@ -115,7 +111,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 					{
 						Key:         "new_file_name",
@@ -133,7 +128,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 				},
 			},
@@ -173,7 +167,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 				},
 			},
@@ -192,7 +185,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 				},
 			},
@@ -211,7 +203,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 					{
 						Key:                    "destination_folder_id",
@@ -222,7 +213,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 				},
 			},
@@ -241,7 +231,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 					{
 						Key:         "role",
@@ -306,7 +295,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Files,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 					{
 						Key:         "new_file_name",
@@ -375,7 +363,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 				},
 			},
@@ -394,7 +381,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_Folders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 				},
 			},
@@ -413,7 +399,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_ShareableFolders,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 					{
 						Key:         "role",
@@ -505,7 +490,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_SharedDrives,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 				},
 			},
@@ -525,7 +509,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_SharedDrives,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 				},
 			},
@@ -575,7 +558,6 @@ var (
 						Peekable:               true,
 						PeekableType:           GoogleDrivePeekable_SharedDrives,
 						PeekablePaginationType: domain.PeekablePaginationType_Cursor,
-
 					},
 					{
 						Key:         "name",
