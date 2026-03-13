@@ -259,10 +259,10 @@ type RerunNodeResponse struct {
 }
 
 type RunNodeRequest struct {
-	ExecutionID    string            `json:"execution_id"`
-	NodeID         string            `json:"node_id"`
-	Workflow       Workflow          `json:"workflow"`
-	ItemsByInputID map[string][]byte `json:"items_by_input"`
+	ExecutionID       string         `json:"execution_id"`
+	NodeID            string         `json:"node_id"`
+	Workflow          Workflow       `json:"workflow"`
+	ItemsByInputIndex map[int][]byte `json:"items_by_input_index"`
 }
 
 type RunNodeResponse struct {

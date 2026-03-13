@@ -41,7 +41,7 @@ func (p NodePayloadByInputIndex) ToPayloadByInputIndex() map[int]domain.Payload 
 	return payloadByInputIndex
 }
 
-// ToItemsByInputID converts payloads to items by input ID
+// ToItemsByInputIndex converts payloads to items by input Index
 func (p NodePayloadByInputIndex) ToItemsByInputIndex() map[int]domain.NodeItems {
 	itemsByInputIndex := map[int]domain.NodeItems{}
 

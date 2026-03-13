@@ -394,11 +394,11 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 }
 
 type RunNodeParams struct {
-	NodeID       string
-	WorkspaceID  string
-	ExecutionID  string
-	Workflow     domain.Workflow
-	ItemsByInput map[string][]byte
+	NodeID            string
+	WorkspaceID       string
+	ExecutionID       string
+	Workflow          domain.Workflow
+	ItemsByInputIndex map[int][]byte
 }
 
 type RunNodeResult struct {
@@ -430,7 +430,7 @@ func (s *workflowExecutorService) RunNode(ctx context.Context, params RunNodePar
 
 	payload := domain.Payload{}
 
-	for _, p := range params.ItemsByInput {
+	for _, p := range params.ItemsByInputIndex {
 		payload = p
 
 		break
