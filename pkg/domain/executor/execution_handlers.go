@@ -31,22 +31,22 @@ func (h *HistoryRecorder) HandleEvent(ctx context.Context, event domain.Executio
 	switch e := event.(type) {
 	case NodeExecutionCompletedEvent:
 		h.historyEntries = append(h.historyEntries, domain.NodeExecutionEntry{
-			NodeID:          e.NodeID,
-			ItemsByInputID:  e.ItemsByInputID,
-			ItemsByOutputID: e.ItemsByOutputID,
-			EventType:       domain.NodeExecuted,
-			Timestamp:       e.EndedAt.UnixNano(),
-			ExecutionOrder:  int(e.ExecutionOrder),
+			NodeID:             e.NodeID,
+			ItemsByInputIndex:  e.ItemsByInputIndex,
+			ItemsByOutputIndex: e.ItemsByOutputIndex,
+			EventType:          domain.NodeExecuted,
+			Timestamp:          e.EndedAt.UnixNano(),
+			ExecutionOrder:     int(e.ExecutionOrder),
 		})
 
 	case NodeExecutionFailedEvent:
 		h.historyEntries = append(h.historyEntries, domain.NodeExecutionEntry{
-			NodeID:          e.NodeID,
-			ItemsByInputID:  e.ItemsByInputID,
-			ItemsByOutputID: map[string]domain.NodeItems{},
-			EventType:       domain.NodeFailed,
-			Error:           e.Error.Error(),
-			Timestamp:       e.Timestamp.UnixNano(),
+			NodeID:             e.NodeID,
+			ItemsByInputIndex:  e.ItemsByInputIndex,
+			ItemsByOutputIndex: map[int]domain.NodeItems{},
+			EventType:          domain.NodeFailed,
+			Error:              e.Error.Error(),
+			Timestamp:          e.Timestamp.UnixNano(),
 		})
 	}
 
@@ -108,8 +108,8 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			WorkflowExecutionID: b.executionID,
 			NodeID:              e.NodeID,
 			Timestamp:           e.EndedAt.UnixNano(),
-			ItemsByInputID:      e.ItemsByInputID,
-			ItemsByOutputID:     e.ItemsByOutputID,
+			ItemsByInputIndex:   e.ItemsByInputIndex,
+			ItemsByOutputIndex:  e.ItemsByOutputIndex,
 			ExecutionOrder:      int(e.ExecutionOrder),
 			IsReExecution:       e.IsReExecution,
 			IsTesting:           e.IsTesting,
@@ -123,8 +123,8 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			NodeID:              e.NodeID,
 			Timestamp:           e.Timestamp.UnixNano(),
 			Error:               e.Error.Error(),
-			ItemsByInputID:      e.ItemsByInputID,
-			ItemsByOutputID:     map[string]domain.NodeItems{},
+			ItemsByInputIndex:   e.ItemsByInputIndex,
+			ItemsByOutputIndex:  map[int]domain.NodeItems{},
 			IsReExecution:       e.IsReExecution,
 			IsFromErrorTrigger:  e.IsFromErrorTrigger,
 			IsTesting:           e.IsTesting,
@@ -175,30 +175,30 @@ func (u *UsageCollector) HandleEvent(ctx context.Context, event domain.Execution
 		inputItemsCount := domain.InputItemsCount{}
 		inputItemsSizeInBytes := domain.InputItemsSizeInBytes{}
 
-		for inputID, payload := range e.SourceNodePayloadByInputID {
-			items, err := payload.Payload.ToItems()
+		for inputIndex, nodePayload := range e.PayloadByInputIndex {
+			items, err := nodePayload.Payload.ToItems()
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to parse JSON for input %s", inputID)
+				log.Error().Err(err).Msgf("Failed to parse JSON for input %d", inputIndex)
 				continue
 			}
 
-			inputItemsCount[inputID] = int64(len(items))
-			inputItemsSizeInBytes[inputID] = int64(len(payload.Payload))
+			inputItemsCount[inputIndex] = int64(len(items))
+			inputItemsSizeInBytes[inputIndex] = int64(len(nodePayload.Payload))
 		}
 
 		outputItemsCount := domain.OutputItemsCount{}
 		outputItemsSizeInBytes := domain.OutputItemsSizeInBytes{}
 
-		for outputID, payload := range e.IntegrationOutput.ResultJSONByOutputID {
+		for outputIndex, payload := range e.IntegrationOutput.ResultJSONByOutputIndex {
 			var items []domain.Item
 			err := json.Unmarshal(payload, &items)
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to parse JSON for output %d", outputID)
+				log.Error().Err(err).Msgf("Failed to parse JSON for output %d", outputIndex)
 				continue
 			}
 
-			outputItemsCount[int64(outputID)] = int64(len(items))
-			outputItemsSizeInBytes[int64(outputID)] = int64(len(payload))
+			outputItemsCount[outputIndex] = int64(len(items))
+			outputItemsSizeInBytes[outputIndex] = int64(len(payload))
 		}
 
 		u.nodeExecutions = append(u.nodeExecutions, domain.NodeExecution{

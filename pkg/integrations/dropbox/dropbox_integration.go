@@ -219,7 +219,7 @@ func (i *DropboxIntegration) UploadFile(ctx context.Context, params domain.Integ
 	log.Info().Msgf("Uploading file to Dropbox")
 	log.Info().Msgf("Settings: %v", params.IntegrationParams)
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -313,7 +313,7 @@ func (i *DropboxIntegration) UploadFile(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{resultJSON},
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
 	}, nil
 }
 
@@ -477,7 +477,7 @@ func (i *DropboxIntegration) DownloadFile(ctx context.Context, params domain.Int
 	log.Info().Msgf("Downloading file from Dropbox")
 	log.Info().Msgf("Settings: %v", params.IntegrationParams)
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -559,14 +559,14 @@ func (i *DropboxIntegration) DownloadFile(ctx context.Context, params domain.Int
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{resultJSON},
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
 	}, nil
 }
 
 func (i *DropboxIntegration) MoveFile(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	log.Info().Msgf("Settings: %v", params.IntegrationParams)
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -642,7 +642,7 @@ func (i *DropboxIntegration) MoveFile(ctx context.Context, params domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{resultJSON},
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
 	}, nil
 }
 
@@ -650,7 +650,7 @@ func (i *DropboxIntegration) CopyFile(ctx context.Context, params domain.Integra
 	log.Info().Msgf("Copying file in Dropbox")
 	log.Info().Msgf("Settings: %v", params.IntegrationParams)
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -724,7 +724,7 @@ func (i *DropboxIntegration) CopyFile(ctx context.Context, params domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{resultJSON},
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
 	}, nil
 }
 
@@ -732,7 +732,7 @@ func (i *DropboxIntegration) DeleteFile(ctx context.Context, params domain.Integ
 	log.Info().Msgf("Deleting file in Dropbox")
 	log.Info().Msgf("Settings: %v", params.IntegrationParams)
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -802,7 +802,7 @@ func (i *DropboxIntegration) DeleteFile(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{resultJSON},
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
 	}, nil
 }
 
@@ -810,7 +810,7 @@ func (i *DropboxIntegration) CreateFolder(ctx context.Context, params domain.Int
 	log.Info().Msgf("Creating folder in Dropbox")
 	log.Info().Msgf("Settings: %v", params.IntegrationParams)
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -878,7 +878,7 @@ func (i *DropboxIntegration) CreateFolder(ctx context.Context, params domain.Int
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{resultJSON},
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
 	}, nil
 }
 
@@ -886,7 +886,7 @@ func (i *DropboxIntegration) MoveFolder(ctx context.Context, params domain.Integ
 	log.Info().Msgf("Moving folder in Dropbox")
 	log.Info().Msgf("Settings: %v", params.IntegrationParams)
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -958,7 +958,7 @@ func (i *DropboxIntegration) MoveFolder(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{resultJSON},
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
 	}, nil
 }
 
@@ -966,7 +966,7 @@ func (i *DropboxIntegration) CopyFolder(ctx context.Context, params domain.Integ
 	log.Info().Msgf("Copying folder in Dropbox")
 	log.Info().Msgf("Settings: %v", params.IntegrationParams)
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -1037,7 +1037,7 @@ func (i *DropboxIntegration) CopyFolder(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{resultJSON},
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
 	}, nil
 }
 
@@ -1045,7 +1045,7 @@ func (i *DropboxIntegration) DeleteFolder(ctx context.Context, params domain.Int
 	log.Info().Msgf("Deleting folder in Dropbox")
 	log.Info().Msgf("Settings: %v", params.IntegrationParams)
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -1114,7 +1114,7 @@ func (i *DropboxIntegration) DeleteFolder(ctx context.Context, params domain.Int
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{resultJSON},
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
 	}, nil
 }
 

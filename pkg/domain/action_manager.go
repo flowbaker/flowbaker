@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/rs/zerolog/log"
@@ -290,15 +288,23 @@ func (m *IntegrationActionManager) RunPerItemMulti(ctx context.Context, actionTy
 		outputs = append(outputs, nonEmptyOutputItems...)
 	}
 
-	resultJSON, err := json.Marshal(outputs)
+	resultJSONsByOutputIndex := make(map[int]Payload)
+	for outputIndex, output := range outputs {
+		resultJSON, err := json.Marshal(output)
+		if err != nil {
+			return IntegrationOutput{}, err
+		}
+
+		resultJSONsByOutputIndex[outputIndex] = resultJSON
+	}
+
 	if err != nil {
 		return IntegrationOutput{}, err
 	}
 
 	return IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]Payload{
-			0: resultJSON,
-		},
+		SourceNodeID:            params.NodeID,
+		ResultJSONByOutputIndex: resultJSONsByOutputIndex,
 	}, nil
 }
 
@@ -312,14 +318,14 @@ func (m *IntegrationActionManager) RunPerItemWithFile(ctx context.Context, actio
 		return IntegrationOutput{}, fmt.Errorf("action not found")
 	}
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputIndex, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return IntegrationOutput{}, err
 	}
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
+	for _, items := range itemsByInputIndex {
 		for _, item := range items {
 			allItems = append(allItems, item)
 		}
@@ -367,16 +373,18 @@ func (m *IntegrationActionManager) RunPerItemWithFile(ctx context.Context, actio
 		outputs = append(outputs, output.Item)
 	}
 
-	resultJSON, err := json.Marshal(outputs)
-	if err != nil {
-		return IntegrationOutput{}, err
+	resultJSONsByOutputIndex := make(map[int]Payload)
+	for outputIndex, output := range outputs {
+		resultJSON, err := json.Marshal(output)
+		if err != nil {
+			return IntegrationOutput{}, err
+		}
+		resultJSONsByOutputIndex[outputIndex] = resultJSON
 	}
 
 	return IntegrationOutput{
-		SourceNodeID: params.NodeID,
-		ResultJSONByOutputIndex: map[int]Payload{
-			0: resultJSON,
-		},
+		SourceNodeID:            params.NodeID,
+		ResultJSONByOutputIndex: resultJSONsByOutputIndex,
 	}, nil
 }
 
@@ -393,26 +401,16 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 
 	maxInputOrder := -1
 
-	for inputID := range itemsByInputID {
-		inputOrder, err := GetInputOrder(inputID)
-		if err != nil {
-			return IntegrationOutput{}, err
-		}
-
-		if inputOrder > maxInputOrder {
-			maxInputOrder = inputOrder
+	for inputIndex := range itemsByInputIndex {
+		if inputIndex > maxInputOrder {
+			maxInputOrder = inputIndex
 		}
 	}
 
 	itemsByInputOrder := make([][]Item, maxInputOrder+1)
 
-	for inputID, inputItems := range itemsByInputID {
-		inputOrder, err := GetInputOrder(inputID)
-		if err != nil {
-			return IntegrationOutput{}, err
-		}
-
-		itemsForInput := itemsByInputOrder[inputOrder]
+	for inputIndex, inputItems := range itemsByInputIndex {
+		itemsForInput := itemsByInputOrder[inputIndex]
 
 		if len(itemsForInput) == 0 {
 			itemsForInput = make([]Item, 0)
@@ -420,7 +418,7 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 
 		itemsForInput = append(itemsForInput, inputItems...)
 
-		itemsByInputOrder[inputOrder] = itemsForInput
+		itemsByInputOrder[inputIndex] = itemsForInput
 	}
 
 	outputs, err := actionFuncMultiInput(ctx, params, itemsByInputOrder)
@@ -432,31 +430,37 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 		outputs = []Item{}
 	}
 
-	resultJSON, err := json.Marshal(outputs)
-	if err != nil {
-		return IntegrationOutput{}, err
+	resultJSONsByOutputIndex := make(map[int]Payload)
+
+	for outputIndex, output := range outputs {
+		resultJSON, err := json.Marshal(output)
+		if err != nil {
+			return IntegrationOutput{}, err
+		}
+
+		resultJSONsByOutputIndex[outputIndex] = resultJSON
 	}
 
 	return IntegrationOutput{
-		ResultJSONByOutputID: []Payload{
-			resultJSON,
-		},
+		SourceNodeID:            params.NodeID,
+		ResultJSONByOutputIndex: resultJSONsByOutputIndex,
 	}, nil
 }
+
 func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actionType IntegrationActionType, params IntegrationInput) (IntegrationOutput, error) {
 	actionFuncPerItemRoutable, ok := m.GetPerItemRoutable(actionType)
 	if !ok {
 		return IntegrationOutput{}, fmt.Errorf("action not found")
 	}
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputIndex, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return IntegrationOutput{}, err
 	}
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
+	for _, items := range itemsByInputIndex {
 		for _, item := range items {
 			allItems = append(allItems, item)
 		}
@@ -503,10 +507,10 @@ func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actio
 		}
 	}
 
-	resultJSONs := make([]Payload, maxOutputIndex+1)
+	resultJSONs := make(map[int]Payload, maxOutputIndex+1)
 
-	for i := range resultJSONs {
-		resultJSONs[i] = []byte(`[]`)
+	for outputIndex := range resultJSONs {
+		resultJSONs[outputIndex] = []byte(`[]`)
 	}
 
 	for outputIndex, outputs := range outputsByIndex {
@@ -518,23 +522,16 @@ func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actio
 		resultJSONs[outputIndex] = resultJSON
 	}
 
+	resultJSONsByOutputIndex := make(map[int]Payload, maxOutputIndex+1)
+
+	for outputIndex, resultJSON := range resultJSONs {
+		resultJSONsByOutputIndex[outputIndex] = resultJSON
+	}
+
 	return IntegrationOutput{
-		ResultJSONByOutputID: resultJSONs,
+		SourceNodeID:            params.NodeID,
+		ResultJSONByOutputIndex: resultJSONsByOutputIndex,
 	}, nil
-}
-
-func GetInputOrder(inputID string) (int, error) {
-	parts := strings.Split(inputID, "-")
-	if len(parts) != 4 {
-		return 0, fmt.Errorf("invalid input ID")
-	}
-
-	order, err := strconv.Atoi(parts[3])
-	if err != nil {
-		return 0, err
-	}
-
-	return order, nil
 }
 
 type IntegrationPeekableManager struct {

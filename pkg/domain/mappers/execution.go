@@ -49,8 +49,8 @@ func DomainNodeItemsToFlowbaker(dni domain.NodeItems) flowbaker.NodeItems {
 }
 
 // DomainNodeItemsMapToFlowbaker converts a map of domain.NodeItems to flowbaker.NodeItems
-func DomainNodeItemsMapToFlowbaker(itemsMap map[string]domain.NodeItems) map[string]flowbaker.NodeItems {
-	result := make(map[string]flowbaker.NodeItems, len(itemsMap))
+func DomainNodeItemsMapToFlowbaker(itemsMap map[int]domain.NodeItems) map[int]flowbaker.NodeItems {
+	result := make(map[int]flowbaker.NodeItems, len(itemsMap))
 	for k, v := range itemsMap {
 		result[k] = DomainNodeItemsToFlowbaker(v)
 	}
@@ -60,13 +60,13 @@ func DomainNodeItemsMapToFlowbaker(itemsMap map[string]domain.NodeItems) map[str
 // DomainNodeExecutionEntryToFlowbaker converts a domain.NodeExecutionEntry to flowbaker.NodeExecutionEntry
 func DomainNodeExecutionEntryToFlowbaker(de domain.NodeExecutionEntry) flowbaker.NodeExecutionEntry {
 	return flowbaker.NodeExecutionEntry{
-		NodeID:          de.NodeID,
-		ItemsByInputID:  DomainNodeItemsMapToFlowbaker(de.ItemsByInputID),
-		ItemsByOutputID: DomainNodeItemsMapToFlowbaker(de.ItemsByOutputID),
-		EventType:       flowbaker.EventType(de.EventType),
-		Error:           de.Error,
-		Timestamp:       de.Timestamp,
-		ExecutionOrder:  de.ExecutionOrder,
+		NodeID:             de.NodeID,
+		ItemsByInputIndex:  DomainNodeItemsMapToFlowbaker(de.ItemsByInputIndex),
+		ItemsByOutputIndex: DomainNodeItemsMapToFlowbaker(de.ItemsByOutputIndex),
+		EventType:          flowbaker.EventType(de.EventType),
+		Error:              de.Error,
+		Timestamp:          de.Timestamp,
+		ExecutionOrder:     de.ExecutionOrder,
 	}
 }
 
@@ -121,8 +121,8 @@ func FlowbakerNodeItemsToDomain(fni flowbaker.NodeItems) domain.NodeItems {
 }
 
 // FlowbakerNodeItemsMapToDomain converts a map of flowbaker.NodeItems to domain.NodeItems
-func FlowbakerNodeItemsMapToDomain(itemsMap map[string]flowbaker.NodeItems) map[string]domain.NodeItems {
-	result := make(map[string]domain.NodeItems, len(itemsMap))
+func FlowbakerNodeItemsMapToDomain(itemsMap map[int]flowbaker.NodeItems) map[int]domain.NodeItems {
+	result := make(map[int]domain.NodeItems, len(itemsMap))
 	for k, v := range itemsMap {
 		result[k] = FlowbakerNodeItemsToDomain(v)
 	}
@@ -132,13 +132,13 @@ func FlowbakerNodeItemsMapToDomain(itemsMap map[string]flowbaker.NodeItems) map[
 // FlowbakerNodeExecutionEntryToDomain converts a flowbaker.NodeExecutionEntry to domain.NodeExecutionEntry
 func FlowbakerNodeExecutionEntryToDomain(fe flowbaker.NodeExecutionEntry) domain.NodeExecutionEntry {
 	return domain.NodeExecutionEntry{
-		NodeID:          fe.NodeID,
-		ItemsByInputID:  FlowbakerNodeItemsMapToDomain(fe.ItemsByInputID),
-		ItemsByOutputID: FlowbakerNodeItemsMapToDomain(fe.ItemsByOutputID),
-		EventType:       domain.EventType(fe.EventType),
-		Error:           fe.Error,
-		Timestamp:       fe.Timestamp,
-		ExecutionOrder:  fe.ExecutionOrder,
+		NodeID:             fe.NodeID,
+		ItemsByInputIndex:  FlowbakerNodeItemsMapToDomain(fe.ItemsByInputIndex),
+		ItemsByOutputIndex: FlowbakerNodeItemsMapToDomain(fe.ItemsByOutputIndex),
+		EventType:          domain.EventType(fe.EventType),
+		Error:              fe.Error,
+		Timestamp:          fe.Timestamp,
+		ExecutionOrder:     fe.ExecutionOrder,
 	}
 }
 
@@ -181,8 +181,8 @@ func ExecutorWorkflowNodeToDomain(n executortypes.WorkflowNode) domain.WorkflowN
 	inputs := make([]domain.NodeInput, len(n.Inputs))
 	for i, input := range n.Inputs {
 		inputs[i] = domain.NodeInput{
-			InputID:           input.InputID,
-			SubscribedOutputs: input.SubscribedEvents,
+			Input:             input.Input,
+			SubscribedOutputs: input.SubscribedOutputs,
 		}
 	}
 
@@ -190,7 +190,7 @@ func ExecutorWorkflowNodeToDomain(n executortypes.WorkflowNode) domain.WorkflowN
 		ID:                  n.ID,
 		WorkflowID:          n.WorkflowID,
 		Name:                n.Name,
-		SubscribedEvents:    []string{},
+		SubscribedOutputs:   []domain.Handle{},
 		Type:                domain.NodeType(n.Type),
 		IntegrationType:     domain.IntegrationType(n.IntegrationType),
 		IntegrationSettings: n.IntegrationSettings,
@@ -254,8 +254,8 @@ func DomainWorkflowNodesToExecutor(nodes []domain.WorkflowNode) []executortypes.
 		inputs := make([]executortypes.NodeInput, len(node.Inputs))
 		for j, input := range node.Inputs {
 			inputs[j] = executortypes.NodeInput{
-				InputID:          input.InputID,
-				SubscribedEvents: input.SubscribedOutputs,
+				Input:             input.Input,
+				SubscribedOutputs: input.SubscribedOutputs,
 			}
 		}
 		executorNodes[i] = executortypes.WorkflowNode{

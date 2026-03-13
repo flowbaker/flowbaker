@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	SlackIntegrationActionType_SendMessage  domain.IntegrationActionType = "send_message"
-	SlackIntegrationActionType_GetMessage   domain.IntegrationActionType = "get_message"
-	SlackIntegrationActionType_AddReaction  domain.IntegrationActionType = "add_reaction"
-	SlackIntegrationActionType_GetMessages  domain.IntegrationActionType = "get_messages"
+	SlackIntegrationActionType_SendMessage domain.IntegrationActionType = "send_message"
+	SlackIntegrationActionType_GetMessage  domain.IntegrationActionType = "get_message"
+	SlackIntegrationActionType_AddReaction domain.IntegrationActionType = "add_reaction"
+	SlackIntegrationActionType_GetMessages domain.IntegrationActionType = "get_messages"
 
 	SlackIntegrationPeekable_Channels domain.IntegrationPeekableType = "channels"
 )
@@ -109,7 +109,7 @@ type SendMessageOutputItem struct {
 }
 
 func (i *SlackIntegration) SendMessage(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := input.GetItemsByInputID()
+	itemsByInputID, err := input.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -147,8 +147,7 @@ func (i *SlackIntegration) SendMessage(ctx context.Context, input domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
 		},
 	}, nil
 }
@@ -177,9 +176,8 @@ type GetMessagesParams struct {
 	Cursor    string `json:"cursor"`
 }
 
-
 func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := input.GetItemsByInputID()
+	itemsByInputID, err := input.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -217,14 +215,13 @@ func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
 		},
 	}, nil
 }
 
 func (i *SlackIntegration) AddReaction(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := input.GetItemsByInputID()
+	itemsByInputID, err := input.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -275,14 +272,13 @@ func (i *SlackIntegration) AddReaction(ctx context.Context, input domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
 		},
 	}, nil
 }
 
 func (i *SlackIntegration) GetMessages(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := input.GetItemsByInputID()
+	itemsByInputID, err := input.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -330,8 +326,7 @@ func (i *SlackIntegration) GetMessages(ctx context.Context, input domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
 		},
 	}, nil
 }

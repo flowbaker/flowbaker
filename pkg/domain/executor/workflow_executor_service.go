@@ -361,23 +361,24 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 
 	executionEntry := params.NodeExecutionEntry
 
-	payloadByInputID := make(SourceNodePayloadByInputID)
+	payloadByInputIndex := NodePayloadByInputIndex{}
 
-	for inputID, items := range executionEntry.ItemsByInputID {
+	for inputIndex, items := range executionEntry.ItemsByInputIndex {
 		itemsJSON, err := json.Marshal(items.Items)
 		if err != nil {
 			return ExecutionResult{}, err
 		}
 
-		payloadByInputID[inputID] = SourceNodePayload{
+		payloadByInputIndex[inputIndex] = NodePayload{
 			SourceNodeID: items.FromNodeID,
 			Payload:      itemsJSON,
 		}
+
 	}
 
 	task := NodeExecutionTask{
-		NodeID:           params.NodeID,
-		PayloadByInputID: payloadByInputID,
+		NodeID:              params.NodeID,
+		PayloadByInputIndex: payloadByInputIndex,
 	}
 
 	_, err = workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{

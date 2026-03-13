@@ -250,7 +250,7 @@ func (i *HTTPIntegration) Execute(ctx context.Context, params domain.Integration
 }
 
 func (i *HTTPIntegration) ExecuteGet(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -307,14 +307,13 @@ func (i *HTTPIntegration) ExecuteGet(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
 		},
 	}, nil
 }
 
 func (i *HTTPIntegration) ExecutePost(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -384,14 +383,13 @@ func (i *HTTPIntegration) ExecutePost(ctx context.Context, params domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
 		},
 	}, nil
 }
 
 func (i *HTTPIntegration) ExecutePut(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -460,14 +458,13 @@ func (i *HTTPIntegration) ExecutePut(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
 		},
 	}, nil
 }
 
 func (i *HTTPIntegration) ExecutePatch(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -536,14 +533,13 @@ func (i *HTTPIntegration) ExecutePatch(ctx context.Context, params domain.Integr
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
 		},
 	}, nil
 }
 
 func (i *HTTPIntegration) ExecuteDelete(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputID, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return domain.IntegrationOutput{}, err
 	}
@@ -612,8 +608,7 @@ func (i *HTTPIntegration) ExecuteDelete(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
 		},
 	}, nil
 }

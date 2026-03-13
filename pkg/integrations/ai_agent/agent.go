@@ -911,7 +911,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 		toolName := fmt.Sprintf("%s_%s", strings.ToLower(string(toolNode.IntegrationType)), strings.ToLower(string(action.ActionType)))
 		toolDescription := fmt.Sprintf("%s: %s", action.Name, action.Description)
 
-		agentToolInputHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 1)
+		agentToolInputIndex := 1
 
 		executeFunc := func(args string) (string, error) {
 			err = c.observer.Notify(ctx, executor.NodeExecutionStartedEvent{
@@ -949,17 +949,10 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 				IntegrationParams: domain.IntegrationParams{
 					Settings: mergedSettings,
 				},
-				PayloadByInputID: map[string]domain.Payload{
-					agentToolInputHandleID: domain.Payload(inputPayload),
+				PayloadByInputIndex: map[int]domain.Payload{
+					agentToolInputIndex: domain.Payload(inputPayload),
 				},
 				Workflow: &workflow,
-			}
-
-			itemsByInputID := map[string]domain.NodeItems{
-				agentToolInputHandleID: {
-					FromNodeID: params.AgentNode.ID,
-					Items:      []domain.Item{mergedSettings},
-				},
 			}
 
 			startTime := time.Now()
@@ -968,10 +961,15 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to execute tool")
 				err = c.observer.Notify(ctx, executor.NodeExecutionFailedEvent{
-					NodeID:         toolNode.ID,
-					ItemsByInputID: itemsByInputID,
-					Error:          err,
-					Timestamp:      time.Now(),
+					NodeID: toolNode.ID,
+					ItemsByInputIndex: map[int]domain.NodeItems{
+						agentToolInputIndex: {
+							FromNodeID: params.AgentNode.ID,
+							Items:      inputItems,
+						},
+					},
+					Error:     err,
+					Timestamp: time.Now(),
 				})
 				if err != nil {
 					return "", fmt.Errorf("ai agent integration failed to notify observer about tool execution failed: %w", err)
@@ -981,9 +979,14 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			}
 
 			err = c.observer.Notify(ctx, executor.NodeExecutionCompletedEvent{
-				NodeID:                toolNode.ID,
-				ItemsByInputID:        itemsByInputID,
-				ItemsByOutputID:       output.ToItemsByOutputID(toolNode.ID),
+				NodeID: toolNode.ID,
+				ItemsByInputIndex: map[int]domain.NodeItems{
+					agentToolInputIndex: domain.NodeItems{
+						FromNodeID: params.AgentNode.ID,
+						Items:      inputItems,
+					},
+				},
+				ItemsByOutputIndex:    output.ToItemsByOutputIndex(),
 				StartedAt:             startTime,
 				EndedAt:               time.Now(),
 				IntegrationType:       toolNode.IntegrationType,
@@ -993,9 +996,9 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 				return "", fmt.Errorf("ai agent integration failed to notify observer about tool execution completed: %w", err)
 			}
 
-			payloads := output.ResultJSONByOutputID
+			payloads := output.ResultJSONByOutputIndex
 
-			lastPayload := payloads[len(payloads)-1]
+			lastPayload := payloads[0]
 
 			return string(lastPayload), nil
 		}
@@ -1405,10 +1408,10 @@ func (m *AgentHooksManager) OnBeforeGenerate(ctx context.Context, req *provider.
 }
 
 func (m *AgentHooksManager) OnGenerationFailed(ctx context.Context, req *provider.GenerateRequest, step *agent.Step, generationErr error) {
-	llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, m.LLMNode.ID, 0)
+	llmInputIndex := 0
 
-	itemsByInputID := map[string]domain.NodeItems{
-		llmInputHandleID: {
+	itemsByInputIndex := map[int]domain.NodeItems{
+		llmInputIndex: {
 			FromNodeID: m.AgentNodeID,
 			Items:      []domain.Item{m.InputItem},
 		},
@@ -1417,10 +1420,10 @@ func (m *AgentHooksManager) OnGenerationFailed(ctx context.Context, req *provide
 	now := time.Now()
 
 	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionFailedEvent{
-		NodeID:         m.LLMNode.ID,
-		ItemsByInputID: itemsByInputID,
-		Timestamp:      now,
-		Error:          generationErr,
+		NodeID:            m.LLMNode.ID,
+		ItemsByInputIndex: itemsByInputIndex,
+		Timestamp:         now,
+		Error:             generationErr,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to notify execution observer about LLM node execution failed")
@@ -1431,18 +1434,18 @@ func (m *AgentHooksManager) OnStepComplete(ctx context.Context, step *agent.Step
 	item := m.InputItem
 	llmNode := m.LLMNode
 
-	llmInputHandleID := fmt.Sprintf(InputHandleIDFormat, llmNode.ID, 0)
-	llmOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, llmNode.ID, 0)
+	agentToolInputIndex := 0
+	agentToolOutputIndex := 0
 
-	itemsByInputID := map[string]domain.NodeItems{
-		llmInputHandleID: {
+	itemsByInputIndex := map[int]domain.NodeItems{
+		agentToolInputIndex: {
 			FromNodeID: m.AgentNodeID,
 			Items:      []domain.Item{item},
 		},
 	}
 
-	itemsByOutputID := map[string]domain.NodeItems{
-		llmOutputHandleID: {
+	itemsByOutputIndex := map[int]domain.NodeItems{
+		agentToolOutputIndex: {
 			FromNodeID: llmNode.ID,
 			Items:      []domain.Item{step},
 		},
@@ -1452,8 +1455,8 @@ func (m *AgentHooksManager) OnStepComplete(ctx context.Context, step *agent.Step
 
 	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
 		NodeID:                llmNode.ID,
-		ItemsByInputID:        itemsByInputID,
-		ItemsByOutputID:       itemsByOutputID,
+		ItemsByInputIndex:     itemsByInputIndex,
+		ItemsByOutputIndex:    itemsByOutputIndex,
 		StartedAt:             now,
 		EndedAt:               now,
 		IntegrationType:       domain.IntegrationType(llmNode.IntegrationType),
@@ -1482,11 +1485,11 @@ func (m *AgentHooksManager) OnMemoryRetrieved(ctx context.Context, filter memory
 	item := m.InputItem
 	memoryNode := m.MemoryNode
 
-	memoryInputHandleID := fmt.Sprintf(InputHandleIDFormat, memoryNode.ID, 0)
-	memoryOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, memoryNode.ID, 0)
+	memoryInputIndex := 0
+	memoryOutputIndex := 0
 
-	itemsByInputID := map[string]domain.NodeItems{
-		memoryInputHandleID: {
+	itemsByInputIndex := map[int]domain.NodeItems{
+		memoryInputIndex: {
 			FromNodeID: m.AgentNodeID,
 			Items:      []domain.Item{item},
 		},
@@ -1496,8 +1499,8 @@ func (m *AgentHooksManager) OnMemoryRetrieved(ctx context.Context, filter memory
 		conversation,
 	}
 
-	itemsByOutputID := map[string]domain.NodeItems{
-		memoryOutputHandleID: {
+	itemsByOutputIndex := map[int]domain.NodeItems{
+		memoryOutputIndex: {
 			FromNodeID: memoryNode.ID,
 			Items:      outputItems,
 		},
@@ -1507,8 +1510,8 @@ func (m *AgentHooksManager) OnMemoryRetrieved(ctx context.Context, filter memory
 
 	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
 		NodeID:                memoryNode.ID,
-		ItemsByInputID:        itemsByInputID,
-		ItemsByOutputID:       itemsByOutputID,
+		ItemsByInputIndex:     itemsByInputIndex,
+		ItemsByOutputIndex:    itemsByOutputIndex,
 		StartedAt:             now,
 		EndedAt:               now,
 		IntegrationType:       domain.IntegrationType(memoryNode.IntegrationType),
@@ -1523,22 +1526,22 @@ func (m *AgentHooksManager) OnMemoryRetrievalFailed(ctx context.Context, filter 
 	item := m.InputItem
 	memoryNode := m.MemoryNode
 
-	memoryInputHandleID := fmt.Sprintf(InputHandleIDFormat, memoryNode.ID, 0)
+	memoryInputIndex := 0
 
 	now := time.Now()
 
-	itemsByInputID := map[string]domain.NodeItems{
-		memoryInputHandleID: {
+	itemsByInputIndex := map[int]domain.NodeItems{
+		memoryInputIndex: {
 			FromNodeID: m.AgentNodeID,
 			Items:      []domain.Item{item},
 		},
 	}
 
 	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionFailedEvent{
-		NodeID:         memoryNode.ID,
-		ItemsByInputID: itemsByInputID,
-		Timestamp:      now,
-		Error:          err,
+		NodeID:            memoryNode.ID,
+		ItemsByInputIndex: itemsByInputIndex,
+		Timestamp:         now,
+		Error:             err,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to notify execution observer about memory node execution failed")
@@ -1564,20 +1567,20 @@ func (m *AgentHooksManager) OnMemorySaveFailed(ctx context.Context, conversation
 
 	now := time.Now()
 
-	memoryInputHandleID := fmt.Sprintf(InputHandleIDFormat, memoryNode.ID, 0)
+	memoryInputIndex := 0
 
-	itemsByInputID := map[string]domain.NodeItems{
-		memoryInputHandleID: {
+	itemsByInputIndex := map[int]domain.NodeItems{
+		memoryInputIndex: {
 			FromNodeID: m.AgentNodeID,
 			Items:      []domain.Item{m.InputItem},
 		},
 	}
 
 	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionFailedEvent{
-		NodeID:         memoryNode.ID,
-		ItemsByInputID: itemsByInputID,
-		Timestamp:      now,
-		Error:          err,
+		NodeID:            memoryNode.ID,
+		ItemsByInputIndex: itemsByInputIndex,
+		Timestamp:         now,
+		Error:             err,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to notify execution observer about memory node execution failed")
@@ -1587,18 +1590,18 @@ func (m *AgentHooksManager) OnMemorySaveFailed(ctx context.Context, conversation
 func (m *AgentHooksManager) OnMemorySaved(ctx context.Context, conversation types.Conversation) {
 	memoryNode := m.MemoryNode
 
-	memoryInputHandleID := fmt.Sprintf(InputHandleIDFormat, memoryNode.ID, 0)
-	memoryOutputHandleID := fmt.Sprintf(OutputHandleIDFormat, memoryNode.ID, 0)
+	memoryInputIndex := 0
+	memoryOutputIndex := 0
 
-	itemsByInputID := map[string]domain.NodeItems{
-		memoryInputHandleID: {
+	itemsByInputIndex := map[int]domain.NodeItems{
+		memoryInputIndex: {
 			FromNodeID: m.AgentNodeID,
 			Items:      []domain.Item{m.InputItem},
 		},
 	}
 
-	itemsByOutputID := map[string]domain.NodeItems{
-		memoryOutputHandleID: {
+	itemsByOutputIndex := map[int]domain.NodeItems{
+		memoryOutputIndex: {
 			FromNodeID: memoryNode.ID,
 			Items:      []domain.Item{conversation},
 		},
@@ -1608,8 +1611,8 @@ func (m *AgentHooksManager) OnMemorySaved(ctx context.Context, conversation type
 
 	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
 		NodeID:                memoryNode.ID,
-		ItemsByInputID:        itemsByInputID,
-		ItemsByOutputID:       itemsByOutputID,
+		ItemsByInputIndex:     itemsByInputIndex,
+		ItemsByOutputIndex:    itemsByOutputIndex,
 		StartedAt:             now,
 		EndedAt:               now,
 		IntegrationType:       domain.IntegrationType(memoryNode.IntegrationType),
