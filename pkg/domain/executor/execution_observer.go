@@ -119,6 +119,28 @@ func (e NodeExecutionFailedEvent) SetIsTesting(isTesting bool) domain.ExecutionE
 	return e
 }
 
+type WorkflowExecutionStartedEvent struct {
+	Timestamp          time.Time
+	IsTesting          bool
+	IsFromErrorTrigger bool
+}
+
+func (WorkflowExecutionStartedEvent) GetEventType() domain.ExecutionEventType {
+	return domain.ExecutionEventTypeWorkflowExecutionStarted
+}
+
+func (e WorkflowExecutionStartedEvent) SetIsTesting(isTesting bool) domain.ExecutionEvent {
+	e.IsTesting = isTesting
+
+	return e
+}
+
+func (e WorkflowExecutionStartedEvent) SetIsFromErrorTrigger(isFromErrorTrigger bool) domain.ExecutionEvent {
+	e.IsFromErrorTrigger = isFromErrorTrigger
+
+	return e
+}
+
 type WorkflowExecutionCompletedEvent struct {
 	Timestamp          time.Time
 	IsTesting          bool

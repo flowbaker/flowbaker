@@ -209,6 +209,12 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		TriggerNode:         triggerNode,
 	})
 
+	if err := w.observer.Notify(ctx, WorkflowExecutionStartedEvent{
+		Timestamp: time.Now(),
+	}); err != nil {
+		log.Error().Err(err).Msg("Failed to notify workflow execution started")
+	}
+
 	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
 
 	// Queue trigger node as first execution task

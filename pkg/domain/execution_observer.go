@@ -23,6 +23,7 @@ const (
 	ExecutionEventTypeNodeExecutionStarted       ExecutionEventType = "node_execution_started"
 	ExecutionEventTypeNodeExecutionCompleted     ExecutionEventType = "node_execution_completed"
 	ExecutionEventTypeNodeExecutionFailed        ExecutionEventType = "node_execution_failed"
+	ExecutionEventTypeWorkflowExecutionStarted   ExecutionEventType = "workflow_execution_started"
 	ExecutionEventTypeWorkflowExecutionCompleted ExecutionEventType = "workflow_execution_completed"
 )
 

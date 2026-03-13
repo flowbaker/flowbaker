@@ -68,6 +68,7 @@ const (
 	NodeExecuted               EventType = "node_executed"
 	NodeFailed                 EventType = "node_failed"
 	NodeExecutionStarted       EventType = "node_execution_started"
+	WorkflowExecutionStarted   EventType = "workflow_execution_started"
 	WorkflowExecutionCompleted EventType = "workflow_execution_completed"
 )
 
@@ -154,6 +155,27 @@ type ExecuteWorkflowRequestEvent struct {
 
 func (e ExecuteWorkflowRequestEvent) GetType() EventType {
 	return "execute_workflow_request"
+}
+
+type WorkflowExecutionStartedEvent struct {
+	WorkflowID          string `json:"workflow_id"`
+	WorkflowExecutionID string `json:"workflow_execution_id"`
+	Timestamp           int64  `json:"timestamp"`
+	EventOrder          int    `json:"event_order"`
+	IsTesting           bool   `json:"is_testing"`
+	IsFromErrorTrigger  bool   `json:"is_from_error_trigger"`
+}
+
+func (e *WorkflowExecutionStartedEvent) GetType() EventType {
+	return WorkflowExecutionStarted
+}
+
+func (e *WorkflowExecutionStartedEvent) GetEventOrder() int {
+	return e.EventOrder
+}
+
+func (e *WorkflowExecutionStartedEvent) SetEventOrder(order int) {
+	e.EventOrder = order
 }
 
 type WorkflowExecutionCompletedEvent struct {

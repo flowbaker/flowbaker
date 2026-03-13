@@ -130,6 +130,15 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			IsTesting:           e.IsTesting,
 		})
 
+	case WorkflowExecutionStartedEvent:
+		return b.orderedEventPublisher.PublishEvent(ctx, &domain.WorkflowExecutionStartedEvent{
+			WorkflowID:          b.workflowID,
+			WorkflowExecutionID: b.executionID,
+			Timestamp:           e.Timestamp.UnixNano(),
+			IsTesting:           e.IsTesting,
+			IsFromErrorTrigger:  e.IsFromErrorTrigger,
+		})
+
 	case WorkflowExecutionCompletedEvent:
 		return b.orderedEventPublisher.PublishEvent(ctx, &domain.WorkflowExecutionCompletedEvent{
 			WorkflowID:          b.workflowID,
