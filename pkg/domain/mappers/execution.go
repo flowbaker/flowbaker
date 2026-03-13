@@ -161,13 +161,13 @@ func ExecutorWorkflowToDomain(w *executortypes.Workflow) domain.Workflow {
 	}
 
 	return domain.Workflow{
-		ID:               w.ID,
-		Name:             w.Name,
-		Description:      w.Description,
-		Slug:             w.Slug,
-		WorkspaceID:      w.WorkspaceID,
-		AuthorUserID:     w.AuthorUserID,
-		Nodes:            nodes,
+		ID:           w.ID,
+		Name:         w.Name,
+		Description:  w.Description,
+		Slug:         w.Slug,
+		WorkspaceID:  w.WorkspaceID,
+		AuthorUserID: w.AuthorUserID,
+		Nodes:        nodes,
 		Settings: domain.WorkflowSettings{
 			NodeExecutionLimit: w.Settings.NodeExecutionLimit,
 		},
@@ -181,8 +181,8 @@ func ExecutorWorkflowNodeToDomain(n executortypes.WorkflowNode) domain.WorkflowN
 	inputs := make([]domain.NodeInput, len(n.Inputs))
 	for i, input := range n.Inputs {
 		inputs[i] = domain.NodeInput{
-			InputID:          input.InputID,
-			SubscribedEvents: input.SubscribedEvents,
+			InputID:           input.InputID,
+			SubscribedOutputs: input.SubscribedEvents,
 		}
 	}
 
@@ -232,12 +232,12 @@ func ExecutorWorkflowTypeToDomain(wt executortypes.WorkflowType) domain.Workflow
 // DomainWorkflowToExecutor converts a domain.Workflow to executor.Workflow
 func DomainWorkflowToExecutor(w domain.Workflow) executortypes.Workflow {
 	return executortypes.Workflow{
-		ID:               w.ID,
-		Name:             w.Name,
-		Description:      w.Description,
-		WorkspaceID:      w.WorkspaceID,
-		AuthorUserID:     w.AuthorUserID,
-		Slug:             w.Slug,
+		ID:           w.ID,
+		Name:         w.Name,
+		Description:  w.Description,
+		WorkspaceID:  w.WorkspaceID,
+		AuthorUserID: w.AuthorUserID,
+		Slug:         w.Slug,
 		Settings: executortypes.WorkflowSettings{
 			NodeExecutionLimit: w.Settings.NodeExecutionLimit,
 		},
@@ -255,7 +255,7 @@ func DomainWorkflowNodesToExecutor(nodes []domain.WorkflowNode) []executortypes.
 		for j, input := range node.Inputs {
 			inputs[j] = executortypes.NodeInput{
 				InputID:          input.InputID,
-				SubscribedEvents: input.SubscribedEvents,
+				SubscribedEvents: input.SubscribedOutputs,
 			}
 		}
 		executorNodes[i] = executortypes.WorkflowNode{

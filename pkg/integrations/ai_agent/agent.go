@@ -756,16 +756,16 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentSettingsParams) ([]tool.Tool, error) {
 	toolsHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 3)
 
-	toolsInput, exists := params.AgentNode.GetInputByID(toolsHandleID)
+	toolsInput, exists := params.AgentNode.GetInput(3, toolsHandleID)
 	if !exists {
 		return nil, nil
 	}
 
-	if len(toolsInput.SubscribedEvents) == 0 {
+	if len(toolsInput.SubscribedOutputs) == 0 {
 		return nil, nil
 	}
 
-	toolNodeIDs := e.GetNodeIDsFromOutputIDs(toolsInput.SubscribedEvents)
+	toolNodeIDs := e.GetNodeIDsFromOutputs(toolsInput.SubscribedOutputs)
 
 	nodeReferences := make([]NodeReference, 0, len(toolNodeIDs))
 
@@ -795,30 +795,14 @@ func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentS
 	return tools, nil
 }
 
-func (e *AIAgentExecutor) GetNodeIDsFromOutputIDs(outputIDs []string) []string {
-	nodeIDs := make([]string, 0, len(outputIDs))
+func (e *AIAgentExecutor) GetNodeIDsFromOutputs(outputs []domain.Handle) []string {
+	nodeIDs := make([]string, 0, len(outputs))
 
-	for _, outputID := range outputIDs {
-		parts := strings.Split(outputID, "-")
-
-		if len(parts) >= 3 {
-			nodeID := e.GetNodeIDFromOutputID(outputID)
-
-			nodeIDs = append(nodeIDs, nodeID)
-		}
+	for _, output := range outputs {
+		nodeIDs = append(nodeIDs, output.NodeID)
 	}
 
 	return nodeIDs
-}
-
-func (e *AIAgentExecutor) GetNodeIDFromOutputID(outputID string) string {
-	parts := strings.Split(outputID, "-")
-
-	if len(parts) >= 3 {
-		return strings.Join(parts[1:len(parts)-1], "-")
-	}
-
-	return ""
 }
 
 type IntegrationToolCreator struct {

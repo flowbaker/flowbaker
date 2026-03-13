@@ -160,8 +160,8 @@ type TriggerNodeOpts struct {
 
 // NodeInput represents an input for a workflow node
 type NodeInput struct {
-	InputID          string   `json:"input_id"`
-	SubscribedEvents []string `json:"subscribed_events"`
+	Input             domain.Handle   `json:"input"`
+	SubscribedOutputs []domain.Handle `json:"subscribed_outputs"`
 }
 
 type NodeSettings struct {

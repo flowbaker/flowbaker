@@ -17,12 +17,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type SourceNodePayload struct {
+type NodePayload struct {
 	SourceNodeID string
+	TargetNodeID string
 	Payload      domain.Payload
 }
 
-type SourceNodePayloadByInputID map[string]SourceNodePayload
+type NodePayloadByInputIndex map[int]NodePayload
 
 type NodeExecutionResult struct {
 	Output                domain.IntegrationOutput
@@ -30,34 +31,34 @@ type NodeExecutionResult struct {
 	IntegrationActionType domain.IntegrationActionType
 }
 
-func (p SourceNodePayloadByInputID) ToPayloadByInputID() map[string]domain.Payload {
-	payloadByInputID := map[string]domain.Payload{}
+func (p NodePayloadByInputIndex) ToPayloadByInputIndex() map[int]domain.Payload {
+	payloadByInputIndex := map[int]domain.Payload{}
 
-	for inputID, payload := range p {
-		payloadByInputID[inputID] = payload.Payload
+	for inputIndex, payload := range p {
+		payloadByInputIndex[inputIndex] = payload.Payload
 	}
 
-	return payloadByInputID
+	return payloadByInputIndex
 }
 
 // ToItemsByInputID converts payloads to items by input ID
-func (p SourceNodePayloadByInputID) ToItemsByInputID() map[string]domain.NodeItems {
-	itemsByInputID := map[string]domain.NodeItems{}
+func (p NodePayloadByInputIndex) ToItemsByInputIndex() map[int]domain.NodeItems {
+	itemsByInputIndex := map[int]domain.NodeItems{}
 
-	for inputID, payload := range p {
-		items, err := payload.Payload.ToItems()
+	for inputIndex, nodePayload := range p {
+		items, err := nodePayload.Payload.ToItems()
 		if err != nil {
-			log.Error().Err(err).Msgf("Failed to convert payload to items for input %s", inputID)
+			log.Error().Err(err).Msgf("Failed to convert payload to items for input %d", inputIndex)
 			continue
 		}
 
-		itemsByInputID[inputID] = domain.NodeItems{
-			FromNodeID: payload.SourceNodeID,
+		itemsByInputIndex[inputIndex] = domain.NodeItems{
+			FromNodeID: nodePayload.SourceNodeID,
 			Items:      items,
 		}
 	}
 
-	return itemsByInputID
+	return itemsByInputIndex
 }
 
 type WorkflowExecutorI interface {
@@ -72,7 +73,7 @@ type WorkflowExecutor struct {
 	executionQueue        []NodeExecutionTask
 	executedNodes         map[string]struct{}
 
-	nodesByEventName       map[string][]domain.WorkflowNode
+	nodesByEventIndex      map[int][]domain.WorkflowNode
 	executionCountByNodeID map[string]int
 
 	mutex sync.Mutex
@@ -109,21 +110,21 @@ type WorkflowExecutorDeps struct {
 }
 
 func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
-	nodesByEventName := map[string][]domain.WorkflowNode{}
+	nodesByEventIndex := map[int][]domain.WorkflowNode{}
 
 	actionNodes := deps.Workflow.GetActionNodes()
 
 	for _, node := range actionNodes {
 		for _, input := range node.Inputs {
-			for _, eventName := range input.SubscribedEvents {
-				nodes, ok := nodesByEventName[eventName]
+			for _, subscribedOutput := range input.SubscribedOutputs {
+				nodes, ok := nodesByEventIndex[subscribedOutput.Index]
 				if !ok {
 					nodes = []domain.WorkflowNode{}
 				}
 
 				nodes = append(nodes, node)
 
-				nodesByEventName[eventName] = nodes
+				nodesByEventIndex[subscribedOutput.Index] = nodes
 			}
 		}
 	}
@@ -162,7 +163,7 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		waitingExecutionTasks:      []WaitingExecutionTask{},
 		executionQueue:             []NodeExecutionTask{},
 		executedNodes:              map[string]struct{}{},
-		nodesByEventName:           nodesByEventName,
+		nodesByEventIndex:          nodesByEventIndex,
 		integrationSelector:        deps.Selector,
 		executionCountByNodeID:     map[string]int{},
 		enableEvents:               deps.EnableEvents,
@@ -218,15 +219,14 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
 
 	// Queue trigger node as first execution task
-	inputID := fmt.Sprintf(InputHandleFormat, nodeID, 0)
 	w.AddExecutionTask(NodeExecutionTask{
 		NodeID: nodeID,
-		PayloadByInputID: SourceNodePayloadByInputID{
-			inputID: {
+		PayloadByInputIndex: map[int]NodePayload{
+			0: {
 				SourceNodeID: nodeID,
+				TargetNodeID: nodeID,
 				Payload:      payload,
-			},
-		},
+			}},
 	})
 
 	executionCount := 0
@@ -260,10 +260,10 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 			log.Error().Err(err).Msg("Error executing node")
 
 			errNotify := w.observer.Notify(ctx, NodeExecutionFailedEvent{
-				NodeID:         execution.NodeID,
-				ItemsByInputID: execution.PayloadByInputID.ToItemsByInputID(),
-				Error:          err,
-				Timestamp:      time.Now(),
+				NodeID:            execution.NodeID,
+				ItemsByInputIndex: execution.PayloadByInputIndex.ToItemsByInputIndex(),
+				Error:             err,
+				Timestamp:         time.Now(),
 			})
 			if errNotify != nil {
 				log.Error().Err(errNotify).Str("workflow_id", w.workflow.ID).Msg("executor: failed to notify node failed event")
@@ -275,8 +275,8 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		if len(w.executionQueue) == 0 && len(w.waitingExecutionTasks) > 0 {
 			for _, task := range w.waitingExecutionTasks {
 				w.AddExecutionTask(NodeExecutionTask{
-					NodeID:           task.NodeID,
-					PayloadByInputID: task.MergePayloadsByInputID(),
+					NodeID:              task.NodeID,
+					PayloadByInputIndex: task.MergePayloadsByInputIndex(),
 				})
 			}
 
@@ -341,7 +341,7 @@ type ExecuteNodeParams struct {
 }
 
 type ExecuteNodeResult struct {
-	ItemsByOutputID map[string]domain.NodeItems
+	ItemsByOutputIndex map[int]domain.NodeItems
 }
 
 func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams) (ExecuteNodeResult, error) {
@@ -396,12 +396,11 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	nodeExecutionEndedAt := time.Now()
 
 	if propagate {
-		for outputIndex, payload := range result.Output.ResultJSONByOutputID {
-			outputID := fmt.Sprintf(OutputHandleFormat, nodeID, outputIndex)
+		for outputIndex, payload := range result.Output.ResultJSONByOutputIndex {
 
-			nodes, ok := w.nodesByEventName[outputID]
+			nodes, ok := w.nodesByEventIndex[outputIndex]
 			if !ok {
-				log.Info().Msgf("No nodes registered for event %d", outputIndex)
+				log.Info().Msgf("No nodes registered for output index %d", outputIndex)
 				continue
 			}
 
@@ -410,8 +409,8 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 					err := w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
 						FromNodeID: nodeID,
 						Node:       node,
-						OutputID:   outputID,
-						Payload:    payload,
+
+						Payload: payload,
 					})
 					if err != nil {
 						return ExecuteNodeResult{}, err
@@ -423,34 +422,33 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 
 	w.MarkNodeAsExecuted(nodeID)
 
-	itemsByOutputID := result.Output.ToItemsByOutputID(nodeID)
-	itemsByInputID := execution.PayloadByInputID.ToItemsByInputID()
+	itemsByOutputIndex := result.Output.ToItemsByOutputIndex()
+	itemsByInputIndex := execution.PayloadByInputIndex.ToItemsByInputIndex()
 
 	err = w.observer.Notify(ctx, NodeExecutionCompletedEvent{
-		NodeID:                     nodeID,
-		SourceNodePayloadByInputID: execution.PayloadByInputID,
-		IntegrationOutput:          result.Output,
-		ItemsByInputID:             itemsByInputID,
-		ItemsByOutputID:            itemsByOutputID,
-		ExecutionOrder:             executionOrder,
-		IntegrationType:            result.IntegrationType,
-		IntegrationActionType:      result.IntegrationActionType,
-		StartedAt:                  nodeExecutionStartedAt,
-		EndedAt:                    nodeExecutionEndedAt,
+		NodeID:                nodeID,
+		PayloadByInputIndex:   execution.PayloadByInputIndex,
+		IntegrationOutput:     result.Output,
+		ItemsByInputIndex:     itemsByInputIndex,
+		ItemsByOutputIndex:    itemsByOutputIndex,
+		ExecutionOrder:        executionOrder,
+		IntegrationType:       result.IntegrationType,
+		IntegrationActionType: result.IntegrationActionType,
+		StartedAt:             nodeExecutionStartedAt,
+		EndedAt:               nodeExecutionEndedAt,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to notify node execution completed")
 	}
 
 	return ExecuteNodeResult{
-		ItemsByOutputID: itemsByOutputID,
+		ItemsByOutputIndex: itemsByOutputIndex,
 	}, nil
 }
 
 func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, node domain.WorkflowNode, execution NodeExecutionTask) (NodeExecutionResult, error) {
 
-	inputID := fmt.Sprintf(InputHandleFormat, node.ID, 0)
-	inputPayload, exists := execution.PayloadByInputID[inputID]
+	inputPayload, exists := execution.PayloadByInputIndex[0]
 	if !exists {
 		err := fmt.Errorf("trigger input payload not found")
 		return NodeExecutionResult{}, err
@@ -458,7 +456,10 @@ func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, node domain.W
 
 	return NodeExecutionResult{
 		Output: domain.IntegrationOutput{
-			ResultJSONByOutputID: []domain.Payload{inputPayload.Payload},
+			SourceNodeID: node.ID,
+			ResultJSONByOutputIndex: map[int]domain.Payload{
+				0: inputPayload.Payload,
+			},
 		},
 		IntegrationType:       domain.IntegrationType(node.Type),
 		IntegrationActionType: domain.IntegrationActionType(node.TriggerNodeOpts.EventType),
@@ -472,7 +473,10 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		log.Debug().Msgf("Skipping agent item node %s with usage context %s", execution.NodeID, node.UsageContext)
 		return NodeExecutionResult{
 			Output: domain.IntegrationOutput{
-				ResultJSONByOutputID: []domain.Payload{},
+				SourceNodeID: node.ID,
+				ResultJSONByOutputIndex: map[int]domain.Payload{
+					0: domain.Payload{},
+				},
 			},
 			IntegrationType:       domain.IntegrationType(node.IntegrationType),
 			IntegrationActionType: node.ActionNodeOpts.ActionType,
@@ -505,12 +509,12 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		return NodeExecutionResult{}, err
 	}
 
-	payloadByInputID := execution.PayloadByInputID.ToPayloadByInputID()
+	payloadByInputIndex := execution.PayloadByInputIndex.ToPayloadByInputIndex()
 
 	output, err := integrationExecutor.Execute(ctx, domain.IntegrationInput{
-		NodeID:           node.ID,
-		PayloadByInputID: payloadByInputID,
-		Workflow:         &w.workflow,
+		NodeID:              node.ID,
+		PayloadByInputIndex: payloadByInputIndex,
+		Workflow:            &w.workflow,
 		IntegrationParams: domain.IntegrationParams{
 			Settings: node.IntegrationSettings,
 		},
@@ -529,10 +533,10 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 }
 
 type AddTaskForDownstreamNodeParams struct {
-	FromNodeID string
-	Node       domain.WorkflowNode
-	OutputID   string
-	Payload    domain.Payload
+	FromNodeID  string
+	Node        domain.WorkflowNode
+	OutputIndex int
+	Payload     domain.Payload
 }
 
 // Check if node is currently waiting for this event
@@ -546,40 +550,40 @@ type AddTaskForDownstreamNodeParams struct {
 func (w *WorkflowExecutor) AddTaskForDownstreamNode(ctx context.Context, p AddTaskForDownstreamNodeParams) error {
 	node := p.Node
 	payload := p.Payload
-	outputID := p.OutputID
+	outputIndex := p.OutputIndex
 
-	matchingInputID := ""
+	matchingInputIndex := 0
 
 	for _, input := range node.Inputs {
-		for _, subscribedOutputID := range input.SubscribedEvents {
-			if subscribedOutputID == outputID {
-				matchingInputID = input.InputID
+		for _, subscribedOutput := range input.SubscribedOutputs {
+			if subscribedOutput.NodeID == node.ID && subscribedOutput.Index == outputIndex {
+				matchingInputIndex = input.Input.Index
 			}
 		}
 	}
 
-	if matchingInputID == "" {
-		return fmt.Errorf("inputID not found for subscribed outputID %s", outputID)
+	if matchingInputIndex == 0 {
+		return fmt.Errorf("inputID not found for subscribed output index %d", outputIndex)
 	}
 
 	waitingTask, exists := w.GetWaitingExecutionTask(p.Node.ID)
 	if exists {
-		waitingTask.AddPayload(p.FromNodeID, matchingInputID, outputID, payload)
+		waitingTask.AddPayload(p.FromNodeID, matchingInputIndex, outputIndex, payload)
 
 		canExecute := w.shouldExecuteWaitingTask(ctx, waitingTask, node)
 
 		if canExecute {
-			payloadsByInputID := map[string]SourceNodePayload{}
+			payloadsByInputIndex := map[int]NodePayload{}
 
-			for inputID, p := range waitingTask.ReceivedPayloads {
+			for inputIndex, p := range waitingTask.ReceivedPayloads {
 				for _, payload := range p {
-					payloadsByInputID[inputID] = payload
+					payloadsByInputIndex[inputIndex] = payload
 				}
 			}
 
 			w.AddExecutionTask(NodeExecutionTask{
-				NodeID:           node.ID,
-				PayloadByInputID: payloadsByInputID,
+				NodeID:              node.ID,
+				PayloadByInputIndex: payloadsByInputIndex,
 			})
 
 			w.mutex.Lock()
@@ -604,10 +608,11 @@ func (w *WorkflowExecutor) AddTaskForDownstreamNode(ctx context.Context, p AddTa
 		w.AddWaitingExecutionTask(WaitingExecutionTask{
 			NodeID:  node.ID,
 			Payload: payload,
-			ReceivedPayloads: map[string]map[string]SourceNodePayload{
-				matchingInputID: {
-					outputID: {
+			ReceivedPayloads: map[int]map[int]NodePayload{
+				matchingInputIndex: {
+					outputIndex: {
 						SourceNodeID: p.FromNodeID,
+						TargetNodeID: node.ID,
 						Payload:      payload,
 					},
 				},
@@ -621,22 +626,22 @@ func (w *WorkflowExecutor) AddTaskForDownstreamNode(ctx context.Context, p AddTa
 	fmt.Println("Adding task to execution stack", node.ID)
 
 	// Node has only one input
-	payloadByInputID := map[string]SourceNodePayload{}
+	payloadByInputIndex := map[int]NodePayload{}
 
 	for _, input := range node.Inputs {
-		sourceNodePayload := SourceNodePayload{
+		sourceNodePayload := NodePayload{
 			SourceNodeID: p.FromNodeID,
 			Payload:      payload,
 		}
 
-		payloadByInputID[input.InputID] = sourceNodePayload
+		payloadByInputIndex[input.Input.Index] = sourceNodePayload
 
 		break
 	}
 
 	w.AddExecutionTask(NodeExecutionTask{
-		NodeID:           node.ID,
-		PayloadByInputID: payloadByInputID,
+		NodeID:              node.ID,
+		PayloadByInputIndex: payloadByInputIndex,
 	})
 
 	return nil
@@ -649,15 +654,15 @@ func (w *WorkflowExecutor) shouldExecuteWaitingTask(ctx context.Context, waiting
 	eventStatuses := []bool{}
 
 	for _, input := range node.Inputs {
-		payloadsForInput, exists := waitingTask.ReceivedPayloads[input.InputID]
+		payloadsForInput, exists := waitingTask.ReceivedPayloads[input.Input.Index]
 		if !exists {
 			return false
 		}
 
-		for _, subscribedOutputID := range input.SubscribedEvents {
-			_, exists := payloadsForInput[subscribedOutputID]
+		for _, subscribedOutput := range input.SubscribedOutputs {
+			_, exists := payloadsForInput[subscribedOutput.Index]
 			if !exists {
-				log.Info().Msgf("Missing payload for input %s, output %s", input.InputID, subscribedOutputID)
+				log.Info().Msgf("Missing payload for input %s, output %s", input.Input.Index, subscribedOutput.Index)
 
 				continue
 			}
@@ -788,7 +793,10 @@ func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorPa
 
 	return NodeExecutionResult{
 		Output: domain.IntegrationOutput{
-			ResultJSONByOutputID: []domain.Payload{errorPayload},
+			SourceNodeID: p.Node.ID,
+			ResultJSONByOutputIndex: map[int]domain.Payload{
+				0: errorPayload,
+			},
 		},
 		IntegrationType:       integrationType,
 		IntegrationActionType: domain.IntegrationActionType(actionType),

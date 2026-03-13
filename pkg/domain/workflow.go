@@ -103,7 +103,7 @@ type WorkflowNode struct {
 	Name                         string
 	Type                         NodeType
 	IntegrationType              IntegrationType
-	SubscribedEvents             []string
+	SubscribedOutputs            []Handle
 	Positions                    NodePositions
 	IntegrationSettings          map[string]any
 	Settings                     NodeSettings
@@ -125,9 +125,20 @@ type ActionNodeOpts struct {
 	ActionType IntegrationActionType `json:"action_type,omitempty"`
 }
 
-func (n *WorkflowNode) GetInputByID(inputID string) (NodeInput, bool) {
+func (n *WorkflowNode) GetInput(index int, uid string) (NodeInput, bool) {
 	for _, input := range n.Inputs {
-		if input.InputID == inputID {
+		targetIndex := -1
+		if input.Input.Index != -1 {
+			targetIndex = input.Input.Index
+		}
+
+		targetUID := input.Input.UID
+
+		if targetUID != "" && targetUID == uid {
+			return input, true
+		}
+
+		if targetIndex != -1 && targetIndex == index {
 			return input, true
 		}
 	}
@@ -135,9 +146,15 @@ func (n *WorkflowNode) GetInputByID(inputID string) (NodeInput, bool) {
 	return NodeInput{}, false
 }
 
+type Handle struct {
+	NodeID string `json:"node_id"`
+	Index  int    `json:"index"`
+	UID    string `json:"uid"`
+}
+
 type NodeInput struct {
-	InputID          string
-	SubscribedEvents []string
+	Input             Handle
+	SubscribedOutputs []Handle
 }
 
 type NodeSettings struct {

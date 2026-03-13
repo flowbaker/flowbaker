@@ -182,14 +182,14 @@ func (m *IntegrationActionManager) RunPerItem(ctx context.Context, actionType In
 		return IntegrationOutput{}, fmt.Errorf("action not found")
 	}
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputIndex, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return IntegrationOutput{}, err
 	}
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
+	for _, items := range itemsByInputIndex {
 		for _, item := range items {
 			allItems = append(allItems, item)
 		}
@@ -228,8 +228,8 @@ func (m *IntegrationActionManager) RunPerItem(ctx context.Context, actionType In
 	}
 
 	return IntegrationOutput{
-		ResultJSONByOutputID: []Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]Payload{
+			0: resultJSON,
 		},
 	}, nil
 }
@@ -240,14 +240,14 @@ func (m *IntegrationActionManager) RunPerItemMulti(ctx context.Context, actionTy
 		return IntegrationOutput{}, fmt.Errorf("action not found")
 	}
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputIndex, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return IntegrationOutput{}, err
 	}
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
+	for _, items := range itemsByInputIndex {
 		for _, item := range items {
 			allItems = append(allItems, item)
 		}
@@ -296,8 +296,8 @@ func (m *IntegrationActionManager) RunPerItemMulti(ctx context.Context, actionTy
 	}
 
 	return IntegrationOutput{
-		ResultJSONByOutputID: []Payload{
-			resultJSON,
+		ResultJSONByOutputIndex: map[int]Payload{
+			0: resultJSON,
 		},
 	}, nil
 }
@@ -373,8 +373,9 @@ func (m *IntegrationActionManager) RunPerItemWithFile(ctx context.Context, actio
 	}
 
 	return IntegrationOutput{
-		ResultJSONByOutputID: []Payload{
-			resultJSON,
+		SourceNodeID: params.NodeID,
+		ResultJSONByOutputIndex: map[int]Payload{
+			0: resultJSON,
 		},
 	}, nil
 }
@@ -385,7 +386,7 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 		return IntegrationOutput{}, fmt.Errorf("action not found")
 	}
 
-	itemsByInputID, err := params.GetItemsByInputID()
+	itemsByInputIndex, err := params.GetItemsByInputIndex()
 	if err != nil {
 		return IntegrationOutput{}, err
 	}

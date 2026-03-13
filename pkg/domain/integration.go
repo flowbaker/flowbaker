@@ -3,7 +3,6 @@ package domain
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	"github.com/rs/zerolog/log"
@@ -198,37 +197,37 @@ type IntegrationEmbeddingModel struct {
 }
 
 type IntegrationInput struct {
-	NodeID            string
-	PayloadByInputID  map[string]Payload
-	IntegrationParams IntegrationParams
-	ActionType        IntegrationActionType
-	Workflow          *Workflow
+	NodeID              string
+	PayloadByInputIndex map[int]Payload
+	IntegrationParams   IntegrationParams
+	ActionType          IntegrationActionType
+	Workflow            *Workflow
 }
 
-func (i IntegrationInput) GetItemsByInputID() (map[string][]Item, error) {
-	itemsByInputID := map[string][]Item{}
+func (i IntegrationInput) GetItemsByInputIndex() (map[int][]Item, error) {
+	itemsByInputIndex := map[int][]Item{}
 
-	for inputID, payload := range i.PayloadByInputID {
+	for inputIndex, payload := range i.PayloadByInputIndex {
 		items, err := payload.ToItems()
 		if err != nil {
 			return nil, err
 		}
 
-		itemsByInputID[inputID] = items
+		itemsByInputIndex[inputIndex] = items
 	}
 
-	return itemsByInputID, nil
+	return itemsByInputIndex, nil
 }
 
 func (i IntegrationInput) GetAllItems() ([]Item, error) {
-	itemsByInputID, err := i.GetItemsByInputID()
+	itemsByInputIndex, err := i.GetItemsByInputIndex()
 	if err != nil {
 		return nil, err
 	}
 
 	items := []Item{}
 
-	for _, inputItems := range itemsByInputID {
+	for _, inputItems := range itemsByInputIndex {
 		items = append(items, inputItems...)
 	}
 
@@ -240,28 +239,27 @@ type IntegrationParams struct {
 }
 
 type IntegrationOutput struct {
-	ResultJSONByOutputID []Payload
+	SourceNodeID            string
+	ResultJSONByOutputIndex map[int]Payload
 }
 
-func (o IntegrationOutput) ToItemsByOutputID(nodeID string) map[string]NodeItems {
-	itemsByOutputID := map[string]NodeItems{}
+func (o IntegrationOutput) ToItemsByOutputIndex() map[int]NodeItems {
+	itemsByOutputIndex := map[int]NodeItems{}
 
-	for outputIndex, payload := range o.ResultJSONByOutputID {
+	for outputIndex, payload := range o.ResultJSONByOutputIndex {
 		items, err := payload.ToItems()
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to convert payload to items for output %d", outputIndex)
 			continue
 		}
 
-		outputID := fmt.Sprintf("output-%s-%d", nodeID, outputIndex)
-
-		itemsByOutputID[outputID] = NodeItems{
-			FromNodeID: nodeID,
+		itemsByOutputIndex[outputIndex] = NodeItems{
+			FromNodeID: o.SourceNodeID,
 			Items:      items,
 		}
 	}
 
-	return itemsByOutputID
+	return itemsByOutputIndex
 }
 
 type IntegrationDeps struct {
