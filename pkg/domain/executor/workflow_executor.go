@@ -73,7 +73,7 @@ type WorkflowExecutor struct {
 	executionQueue        []NodeExecutionTask
 	executedNodes         map[string]struct{}
 
-	nodesByEventIndex      map[int][]domain.WorkflowNode
+	nodesBySourceOutputKey map[sourceOutputKey][]domain.WorkflowNode
 	executionCountByNodeID map[string]int
 
 	mutex sync.Mutex
@@ -97,6 +97,11 @@ type WorkflowExecutor struct {
 	streamEventPublisher domain.StreamEventPublisher
 }
 
+type sourceOutputKey struct {
+	SourceNodeID string
+	OutputIndex  int
+}
+
 type WorkflowExecutorDeps struct {
 	ExecutionID           string
 	UserID                *string
@@ -110,21 +115,26 @@ type WorkflowExecutorDeps struct {
 }
 
 func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
-	nodesByEventIndex := map[int][]domain.WorkflowNode{}
+	nodesBySourceOutputKey := map[sourceOutputKey][]domain.WorkflowNode{}
 
 	actionNodes := deps.Workflow.GetActionNodes()
 
 	for _, node := range actionNodes {
 		for _, input := range node.Inputs {
 			for _, subscribedOutput := range input.SubscribedOutputs {
-				nodes, ok := nodesByEventIndex[subscribedOutput.Index]
+				key := sourceOutputKey{
+					SourceNodeID: subscribedOutput.NodeID,
+					OutputIndex:  subscribedOutput.Index,
+				}
+
+				nodes, ok := nodesBySourceOutputKey[key]
 				if !ok {
 					nodes = []domain.WorkflowNode{}
 				}
 
 				nodes = append(nodes, node)
 
-				nodesByEventIndex[subscribedOutput.Index] = nodes
+				nodesBySourceOutputKey[key] = nodes
 			}
 		}
 	}
@@ -163,7 +173,7 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		waitingExecutionTasks:      []WaitingExecutionTask{},
 		executionQueue:             []NodeExecutionTask{},
 		executedNodes:              map[string]struct{}{},
-		nodesByEventIndex:          nodesByEventIndex,
+		nodesBySourceOutputKey:     nodesBySourceOutputKey,
 		integrationSelector:        deps.Selector,
 		executionCountByNodeID:     map[string]int{},
 		enableEvents:               deps.EnableEvents,
@@ -179,9 +189,6 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 }
 
 const (
-	InputHandleFormat  = "input-%s-%d"
-	OutputHandleFormat = "output-%s-%d"
-
 	DefaultNodeExecutionLimit = 1000
 )
 
@@ -397,20 +404,23 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 
 	if propagate {
 		for outputIndex, payload := range result.Output.ResultJSONByOutputIndex {
+			key := sourceOutputKey{
+				SourceNodeID: nodeID,
+				OutputIndex:  outputIndex,
+			}
 
-			nodes, ok := w.nodesByEventIndex[outputIndex]
+			nodes, ok := w.nodesBySourceOutputKey[key]
 			if !ok {
-				log.Info().Msgf("No nodes registered for output index %d", outputIndex)
 				continue
 			}
 
 			if !payload.IsEmpty() {
 				for _, node := range nodes {
 					err := w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
-						FromNodeID: nodeID,
-						Node:       node,
-
-						Payload: payload,
+						FromNodeID:  nodeID,
+						Node:        node,
+						Payload:     payload,
+						OutputIndex: outputIndex,
 					})
 					if err != nil {
 						return ExecuteNodeResult{}, err
@@ -552,18 +562,23 @@ func (w *WorkflowExecutor) AddTaskForDownstreamNode(ctx context.Context, p AddTa
 	payload := p.Payload
 	outputIndex := p.OutputIndex
 
-	matchingInputIndex := 0
+	matchingInputIndex := -1 // Default to no match
 
 	for _, input := range node.Inputs {
 		for _, subscribedOutput := range input.SubscribedOutputs {
-			if subscribedOutput.NodeID == node.ID && subscribedOutput.Index == outputIndex {
+			isNodeIDMatch := subscribedOutput.NodeID == p.FromNodeID
+			isOutputIndexMatch := subscribedOutput.Index == outputIndex
+
+			isMatch := isNodeIDMatch && isOutputIndexMatch
+
+			if isMatch {
 				matchingInputIndex = input.Input.Index
 			}
 		}
 	}
 
-	if matchingInputIndex == 0 {
-		return fmt.Errorf("inputID not found for subscribed output index %d", outputIndex)
+	if matchingInputIndex == -1 {
+		return fmt.Errorf("input index not found for subscribed output index %d", outputIndex)
 	}
 
 	waitingTask, exists := w.GetWaitingExecutionTask(p.Node.ID)
@@ -662,7 +677,7 @@ func (w *WorkflowExecutor) shouldExecuteWaitingTask(ctx context.Context, waiting
 		for _, subscribedOutput := range input.SubscribedOutputs {
 			_, exists := payloadsForInput[subscribedOutput.Index]
 			if !exists {
-				log.Info().Msgf("Missing payload for input %s, output %s", input.Input.Index, subscribedOutput.Index)
+				log.Info().Msgf("Missing payload for input %d, output %d", input.Input.Index, subscribedOutput.Index)
 
 				continue
 			}
