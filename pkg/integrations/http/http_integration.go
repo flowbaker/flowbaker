@@ -307,8 +307,7 @@ func (i *HTTPIntegration) ExecuteGet(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
-		},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -383,8 +382,7 @@ func (i *HTTPIntegration) ExecutePost(ctx context.Context, params domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
-		},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -458,8 +456,7 @@ func (i *HTTPIntegration) ExecutePut(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
-		},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -533,8 +530,7 @@ func (i *HTTPIntegration) ExecutePatch(ctx context.Context, params domain.Integr
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
-		},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -608,8 +604,7 @@ func (i *HTTPIntegration) ExecuteDelete(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
-		},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 

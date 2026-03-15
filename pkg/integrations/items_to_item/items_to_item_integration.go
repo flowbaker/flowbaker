@@ -102,7 +102,7 @@ func (i *ItemsToItemIntegration) ItemsToItem(ctx context.Context, params domain.
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
-		},
+		ResultJSONByOutputIndex: []domain.Payload{domain.Payload(resultJSON)},
+		SourceNodeID:            params.NodeID,
 	}, nil
 }

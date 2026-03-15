@@ -135,8 +135,7 @@ func (i *SendResponseIntegration) Execute(ctx context.Context, params domain.Int
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON,
-		},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 

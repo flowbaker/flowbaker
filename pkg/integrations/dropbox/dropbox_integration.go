@@ -313,7 +313,7 @@ func (i *DropboxIntegration) UploadFile(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -559,7 +559,7 @@ func (i *DropboxIntegration) DownloadFile(ctx context.Context, params domain.Int
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -642,7 +642,7 @@ func (i *DropboxIntegration) MoveFile(ctx context.Context, params domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -724,7 +724,7 @@ func (i *DropboxIntegration) CopyFile(ctx context.Context, params domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -802,7 +802,7 @@ func (i *DropboxIntegration) DeleteFile(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -878,7 +878,7 @@ func (i *DropboxIntegration) CreateFolder(ctx context.Context, params domain.Int
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -958,7 +958,7 @@ func (i *DropboxIntegration) MoveFolder(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -1037,7 +1037,7 @@ func (i *DropboxIntegration) CopyFolder(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
@@ -1114,7 +1114,7 @@ func (i *DropboxIntegration) DeleteFolder(ctx context.Context, params domain.Int
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]domain.Payload{0: resultJSON},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
