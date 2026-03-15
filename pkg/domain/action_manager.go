@@ -226,9 +226,7 @@ func (m *IntegrationActionManager) RunPerItem(ctx context.Context, actionType In
 	}
 
 	return IntegrationOutput{
-		ResultJSONByOutputIndex: map[int]Payload{
-			0: resultJSON,
-		},
+		ResultJSONByOutputIndex: []Payload{resultJSON},
 	}, nil
 }
 
@@ -288,23 +286,14 @@ func (m *IntegrationActionManager) RunPerItemMulti(ctx context.Context, actionTy
 		outputs = append(outputs, nonEmptyOutputItems...)
 	}
 
-	resultJSONsByOutputIndex := make(map[int]Payload)
-	for outputIndex, output := range outputs {
-		resultJSON, err := json.Marshal(output)
-		if err != nil {
-			return IntegrationOutput{}, err
-		}
-
-		resultJSONsByOutputIndex[outputIndex] = resultJSON
-	}
-
+	resultJSON, err := json.Marshal(outputs)
 	if err != nil {
 		return IntegrationOutput{}, err
 	}
 
 	return IntegrationOutput{
 		SourceNodeID:            params.NodeID,
-		ResultJSONByOutputIndex: resultJSONsByOutputIndex,
+		ResultJSONByOutputIndex: []Payload{resultJSON},
 	}, nil
 }
 
@@ -373,18 +362,14 @@ func (m *IntegrationActionManager) RunPerItemWithFile(ctx context.Context, actio
 		outputs = append(outputs, output.Item)
 	}
 
-	resultJSONsByOutputIndex := make(map[int]Payload)
-	for outputIndex, output := range outputs {
-		resultJSON, err := json.Marshal(output)
-		if err != nil {
-			return IntegrationOutput{}, err
-		}
-		resultJSONsByOutputIndex[outputIndex] = resultJSON
+	resultJSON, err := json.Marshal(outputs)
+	if err != nil {
+		return IntegrationOutput{}, err
 	}
 
 	return IntegrationOutput{
 		SourceNodeID:            params.NodeID,
-		ResultJSONByOutputIndex: resultJSONsByOutputIndex,
+		ResultJSONByOutputIndex: []Payload{resultJSON},
 	}, nil
 }
 
@@ -430,20 +415,14 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 		outputs = []Item{}
 	}
 
-	resultJSONsByOutputIndex := make(map[int]Payload)
-
-	for outputIndex, output := range outputs {
-		resultJSON, err := json.Marshal(output)
-		if err != nil {
-			return IntegrationOutput{}, err
-		}
-
-		resultJSONsByOutputIndex[outputIndex] = resultJSON
+	resultJSON, err := json.Marshal(outputs)
+	if err != nil {
+		return IntegrationOutput{}, err
 	}
 
 	return IntegrationOutput{
 		SourceNodeID:            params.NodeID,
-		ResultJSONByOutputIndex: resultJSONsByOutputIndex,
+		ResultJSONByOutputIndex: []Payload{resultJSON},
 	}, nil
 }
 
@@ -507,7 +486,7 @@ func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actio
 		}
 	}
 
-	resultJSONs := make(map[int]Payload, maxOutputIndex+1)
+	resultJSONs := make([]Payload, maxOutputIndex+1)
 
 	for outputIndex := range resultJSONs {
 		resultJSONs[outputIndex] = []byte(`[]`)
@@ -522,15 +501,9 @@ func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actio
 		resultJSONs[outputIndex] = resultJSON
 	}
 
-	resultJSONsByOutputIndex := make(map[int]Payload, maxOutputIndex+1)
-
-	for outputIndex, resultJSON := range resultJSONs {
-		resultJSONsByOutputIndex[outputIndex] = resultJSON
-	}
-
 	return IntegrationOutput{
 		SourceNodeID:            params.NodeID,
-		ResultJSONByOutputIndex: resultJSONsByOutputIndex,
+		ResultJSONByOutputIndex: resultJSONs,
 	}, nil
 }
 

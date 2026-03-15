@@ -240,7 +240,7 @@ type IntegrationParams struct {
 
 type IntegrationOutput struct {
 	SourceNodeID            string
-	ResultJSONByOutputIndex map[int]Payload
+	ResultJSONByOutputIndex []Payload
 }
 
 func (o IntegrationOutput) ToItemsByOutputIndex() map[int]NodeItems {

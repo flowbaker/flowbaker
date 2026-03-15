@@ -466,10 +466,8 @@ func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, node domain.W
 
 	return NodeExecutionResult{
 		Output: domain.IntegrationOutput{
-			SourceNodeID: node.ID,
-			ResultJSONByOutputIndex: map[int]domain.Payload{
-				0: inputPayload.Payload,
-			},
+			SourceNodeID:            node.ID,
+			ResultJSONByOutputIndex: []domain.Payload{inputPayload.Payload},
 		},
 		IntegrationType:       domain.IntegrationType(node.Type),
 		IntegrationActionType: domain.IntegrationActionType(node.TriggerNodeOpts.EventType),
@@ -483,10 +481,8 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		log.Debug().Msgf("Skipping agent item node %s with usage context %s", execution.NodeID, node.UsageContext)
 		return NodeExecutionResult{
 			Output: domain.IntegrationOutput{
-				SourceNodeID: node.ID,
-				ResultJSONByOutputIndex: map[int]domain.Payload{
-					0: domain.Payload{},
-				},
+				SourceNodeID:            node.ID,
+				ResultJSONByOutputIndex: []domain.Payload{},
 			},
 			IntegrationType:       domain.IntegrationType(node.IntegrationType),
 			IntegrationActionType: node.ActionNodeOpts.ActionType,
@@ -808,10 +804,8 @@ func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorPa
 
 	return NodeExecutionResult{
 		Output: domain.IntegrationOutput{
-			SourceNodeID: p.Node.ID,
-			ResultJSONByOutputIndex: map[int]domain.Payload{
-				0: errorPayload,
-			},
+			SourceNodeID:            p.Node.ID,
+			ResultJSONByOutputIndex: []domain.Payload{errorPayload},
 		},
 		IntegrationType:       integrationType,
 		IntegrationActionType: domain.IntegrationActionType(actionType),
