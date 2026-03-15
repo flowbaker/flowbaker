@@ -103,6 +103,5 @@ func (i *ItemsToItemIntegration) ItemsToItem(ctx context.Context, params domain.
 
 	return domain.IntegrationOutput{
 		ResultJSONByOutputIndex: []domain.Payload{domain.Payload(resultJSON)},
-		SourceNodeID:            params.NodeID,
 	}, nil
 }

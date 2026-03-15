@@ -239,11 +239,10 @@ type IntegrationParams struct {
 }
 
 type IntegrationOutput struct {
-	SourceNodeID            string
 	ResultJSONByOutputIndex []Payload
 }
 
-func (o IntegrationOutput) ToItemsByOutputIndex() map[int]NodeItems {
+func (o IntegrationOutput) ToItemsByOutputIndex(nodeID string) map[int]NodeItems {
 	itemsByOutputIndex := map[int]NodeItems{}
 
 	for outputIndex, payload := range o.ResultJSONByOutputIndex {
@@ -254,7 +253,7 @@ func (o IntegrationOutput) ToItemsByOutputIndex() map[int]NodeItems {
 		}
 
 		itemsByOutputIndex[outputIndex] = NodeItems{
-			FromNodeID: o.SourceNodeID,
+			FromNodeID: nodeID,
 			Items:      items,
 		}
 	}

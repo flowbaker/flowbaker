@@ -432,7 +432,7 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 
 	w.MarkNodeAsExecuted(nodeID)
 
-	itemsByOutputIndex := result.Output.ToItemsByOutputIndex()
+	itemsByOutputIndex := result.Output.ToItemsByOutputIndex(nodeID)
 	itemsByInputIndex := execution.PayloadByInputIndex.ToItemsByInputIndex()
 
 	err = w.observer.Notify(ctx, NodeExecutionCompletedEvent{
@@ -466,7 +466,6 @@ func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, node domain.W
 
 	return NodeExecutionResult{
 		Output: domain.IntegrationOutput{
-			SourceNodeID:            node.ID,
 			ResultJSONByOutputIndex: []domain.Payload{inputPayload.Payload},
 		},
 		IntegrationType:       domain.IntegrationType(node.Type),
@@ -481,7 +480,6 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		log.Debug().Msgf("Skipping agent item node %s with usage context %s", execution.NodeID, node.UsageContext)
 		return NodeExecutionResult{
 			Output: domain.IntegrationOutput{
-				SourceNodeID:            node.ID,
 				ResultJSONByOutputIndex: []domain.Payload{},
 			},
 			IntegrationType:       domain.IntegrationType(node.IntegrationType),
@@ -804,7 +802,6 @@ func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorPa
 
 	return NodeExecutionResult{
 		Output: domain.IntegrationOutput{
-			SourceNodeID:            p.Node.ID,
 			ResultJSONByOutputIndex: []domain.Payload{errorPayload},
 		},
 		IntegrationType:       integrationType,

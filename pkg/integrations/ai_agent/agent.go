@@ -986,7 +986,7 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 						Items:      inputItems,
 					},
 				},
-				ItemsByOutputIndex:    output.ToItemsByOutputIndex(),
+				ItemsByOutputIndex:    output.ToItemsByOutputIndex(p.NodeID),
 				StartedAt:             startTime,
 				EndedAt:               time.Now(),
 				IntegrationType:       toolNode.IntegrationType,

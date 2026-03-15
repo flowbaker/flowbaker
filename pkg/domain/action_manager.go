@@ -292,7 +292,6 @@ func (m *IntegrationActionManager) RunPerItemMulti(ctx context.Context, actionTy
 	}
 
 	return IntegrationOutput{
-		SourceNodeID:            params.NodeID,
 		ResultJSONByOutputIndex: []Payload{resultJSON},
 	}, nil
 }
@@ -368,7 +367,6 @@ func (m *IntegrationActionManager) RunPerItemWithFile(ctx context.Context, actio
 	}
 
 	return IntegrationOutput{
-		SourceNodeID:            params.NodeID,
 		ResultJSONByOutputIndex: []Payload{resultJSON},
 	}, nil
 }
@@ -421,7 +419,6 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 	}
 
 	return IntegrationOutput{
-		SourceNodeID:            params.NodeID,
 		ResultJSONByOutputIndex: []Payload{resultJSON},
 	}, nil
 }
@@ -502,7 +499,6 @@ func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actio
 	}
 
 	return IntegrationOutput{
-		SourceNodeID:            params.NodeID,
 		ResultJSONByOutputIndex: resultJSONs,
 	}, nil
 }
