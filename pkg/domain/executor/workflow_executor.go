@@ -19,7 +19,6 @@ import (
 
 type NodePayload struct {
 	SourceNodeID string
-	TargetNodeID string
 	Payload      domain.Payload
 }
 
@@ -231,7 +230,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, payload d
 		PayloadByInputIndex: map[int]NodePayload{
 			0: {
 				SourceNodeID: nodeID,
-				TargetNodeID: nodeID,
 				Payload:      payload,
 			}},
 	})
@@ -621,7 +619,6 @@ func (w *WorkflowExecutor) AddTaskForDownstreamNode(ctx context.Context, p AddTa
 				matchingInputIndex: {
 					outputIndex: {
 						SourceNodeID: p.FromNodeID,
-						TargetNodeID: node.ID,
 						Payload:      payload,
 					},
 				},

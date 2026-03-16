@@ -34,8 +34,6 @@ func (t WaitingExecutionTask) MergePayloadsByInputIndex() map[int]NodePayload {
 }
 
 func (t WaitingExecutionTask) AddPayload(sourceNodeID string, inputIndex int, outputIndex int, payload domain.Payload) {
-	nodeID := t.NodeID
-
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
@@ -47,7 +45,6 @@ func (t WaitingExecutionTask) AddPayload(sourceNodeID string, inputIndex int, ou
 		t.ReceivedPayloads[inputIndex] = map[int]NodePayload{
 			outputIndex: {
 				SourceNodeID: sourceNodeID,
-				TargetNodeID: nodeID,
 				Payload:      payload,
 			},
 		}
@@ -55,7 +52,6 @@ func (t WaitingExecutionTask) AddPayload(sourceNodeID string, inputIndex int, ou
 
 	t.ReceivedPayloads[inputIndex][outputIndex] = NodePayload{
 		SourceNodeID: sourceNodeID,
-		TargetNodeID: nodeID,
 		Payload:      payload,
 	}
 }
