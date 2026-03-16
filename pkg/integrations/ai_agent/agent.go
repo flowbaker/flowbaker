@@ -754,9 +754,7 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 }
 
 func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentSettingsParams) ([]tool.Tool, error) {
-	toolsHandleID := fmt.Sprintf(InputHandleIDFormat, params.AgentNode.ID, 3)
-
-	toolsInput, exists := params.AgentNode.GetInput(3, toolsHandleID)
+	toolsInput, exists := params.AgentNode.GetInputByIndex(3)
 	if !exists {
 		return nil, nil
 	}
