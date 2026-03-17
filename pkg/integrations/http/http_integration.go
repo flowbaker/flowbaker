@@ -60,8 +60,8 @@ type HTTPIntegration struct {
 	workspaceID               string
 
 	actionManager       *domain.IntegrationActionManager
-	requestBodyManager  domain.RequestBodyManager
-	responseBodyManager domain.ResponseBodyManager
+	requestBodyManager  RequestBodyManager
+	responseBodyManager ResponseBodyManager
 }
 
 func (c *HTTPIntegrationCreator) CreateIntegration(ctx context.Context, p domain.CreateIntegrationParams) (domain.IntegrationExecutor, error) {
@@ -105,12 +105,12 @@ func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, err
 		AddPerItem(IntegrationActionType_Patch, integration.PatchRequest).
 		AddPerItem(IntegrationActionType_Delete, integration.DeleteRequest)
 
-	requestBodyManager := domain.NewRequestBodyManager(domain.RequestBodyManagerDependencies{
+	requestBodyManager := NewRequestBodyManager(RequestBodyManagerDependencies{
 		ExecutorStorageManager: deps.ExecutorStorageManager,
 		WorkspaceID:            deps.WorkspaceID,
 	})
 
-	responseBodyManager := domain.NewResponseBodyManager(domain.ResponseBodyManagerDependencies{
+	responseBodyManager := NewResponseBodyManager(ResponseBodyManagerDependencies{
 		ExecutorStorageManager: deps.ExecutorStorageManager,
 		WorkspaceID:            deps.WorkspaceID,
 	})
@@ -132,16 +132,6 @@ type HTTPRequestParams struct {
 	Body         any          `json:"body"`
 }
 
-type HTTPBodyType = domain.HTTPBodyType
-
-const (
-	HTTPBodyType_JSON               = domain.HTTPBodyType_JSON
-	HTTPBodyType_Text               = domain.HTTPBodyType_Text
-	HTTPBodyType_MultipartFormData  = domain.HTTPBodyType_MultipartFormData
-	HTTPBodyType_URLEncodedFormData = domain.HTTPBodyType_URLEncodedFormData
-	HTTPBodyType_File               = domain.HTTPBodyType_File
-)
-
 type HTTPAuthType string
 
 const (
@@ -150,15 +140,12 @@ const (
 	HTTPAuthType_PreDefined   HTTPAuthType = "pre-defined"
 )
 
-type Header = domain.HTTPHeader
+type Header = HTTPHeader
 
 type QueryParam struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
-
-type MultipartFormData = domain.MultipartFormData
-type URLEncodedFormData = domain.URLEncodedFormData
 
 type HttpAuthType string
 
@@ -195,25 +182,11 @@ const (
 	reqTypeDelete reqType = "DELETE"
 )
 
-type setRequestBodyParams = domain.RequestBodyParams
+type setRequestBodyParams = RequestBodyParams
 
 type GetHTTPCredentialClientParams struct {
 	AuthType HTTPAuthType `json:"auth_type"`
 }
-
-type ContentType = domain.ContentType
-
-const (
-	ContentType_Application_JSON               = domain.ContentType_Application_JSON
-	ContentType_Text_Plain                     = domain.ContentType_Text_Plain
-	ContentType_Application_URLEncodedFormData = domain.ContentType_Application_URLEncodedFormData
-	ContentType_Image_PNG                      = domain.ContentType_Image_PNG
-	ContentType_Image_JPEG                     = domain.ContentType_Image_JPEG
-	ContentType_Image_JPG                      = domain.ContentType_Image_JPG
-	ContentType_Image_GIF                      = domain.ContentType_Image_GIF
-	ContentType_Image_WEBP                     = domain.ContentType_Image_WEBP
-	ContentType_Application_OctetStream        = domain.ContentType_Application_OctetStream
-)
 
 func (i *HTTPIntegration) Execute(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	executeHttpParams := GetHTTPCredentialClientParams{}

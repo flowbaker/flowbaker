@@ -1,4 +1,4 @@
-package domain
+package http
 
 import (
 	"bytes"
@@ -8,14 +8,9 @@ import (
 	"io"
 	"net/http"
 	"strings"
-)
 
-type HTTPResponse struct {
-	StatusCode int          `json:"status_code"`
-	Status     string       `json:"status"`
-	Header     []HTTPHeader `json:"header"`
-	Body       any          `json:"body"`
-}
+	"github.com/flowbaker/flowbaker/pkg/domain"
+)
 
 type ContentType string
 
@@ -30,12 +25,12 @@ type ResponseBodyManager interface {
 }
 
 type ResponseBodyManagerDependencies struct {
-	ExecutorStorageManager ExecutorStorageManager
+	ExecutorStorageManager domain.ExecutorStorageManager
 	WorkspaceID            string
 }
 
 type responseBodyManager struct {
-	storageManager ExecutorStorageManager
+	storageManager domain.ExecutorStorageManager
 	workspaceID    string
 }
 
@@ -112,7 +107,7 @@ func (m *responseBodyManager) OctetStreamResponseBody(ctx context.Context, p Res
 	bodyReader := io.NopCloser(bytes.NewReader(p.Body))
 	defer bodyReader.Close()
 
-	executionFile, err := m.storageManager.PutExecutionFile(ctx, PutExecutionFileParams{
+	executionFile, err := m.storageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
 		WorkspaceID:  m.workspaceID,
 		UploadedBy:   m.workspaceID,
 		OriginalName: fileName,
@@ -135,7 +130,7 @@ func (m *responseBodyManager) ImageResponseBody(ctx context.Context, p ResponseB
 	fileName = strings.TrimPrefix(fileName, "attachment; filename=")
 	fileName = strings.Trim(fileName, "\"")
 
-	executionFile, err := m.storageManager.PutExecutionFile(ctx, PutExecutionFileParams{
+	executionFile, err := m.storageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
 		WorkspaceID:  m.workspaceID,
 		UploadedBy:   m.workspaceID,
 		OriginalName: fileName,

@@ -1,4 +1,4 @@
-package domain
+package http
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 	"net/textproto"
 	"net/url"
 	"strings"
+
+	"github.com/flowbaker/flowbaker/pkg/domain"
 
 	"github.com/rs/zerolog/log"
 )
@@ -35,8 +37,8 @@ type URLEncodedFormData struct {
 }
 
 type MultipartFormData struct {
-	Key   string   `json:"key"`
-	Value FileItem `json:"value"`
+	Key   string          `json:"key"`
+	Value domain.FileItem `json:"value"`
 }
 
 const (
@@ -67,12 +69,12 @@ type RequestBodyManager interface {
 }
 
 type RequestBodyManagerDependencies struct {
-	ExecutorStorageManager ExecutorStorageManager
+	ExecutorStorageManager domain.ExecutorStorageManager
 	WorkspaceID            string
 }
 
 type requestBodyManager struct {
-	storageManager ExecutorStorageManager
+	storageManager domain.ExecutorStorageManager
 	workspaceID    string
 }
 
@@ -184,7 +186,7 @@ func (m *requestBodyManager) MultipartFormDataRequestBody(ctx context.Context, p
 		}
 
 		if item.Value.ObjectKey != "" {
-			executionFile, err := m.storageManager.GetExecutionFile(ctx, GetExecutionFileParams{
+			executionFile, err := m.storageManager.GetExecutionFile(ctx, domain.GetExecutionFileParams{
 				WorkspaceID: m.workspaceID,
 				UploadID:    item.Value.FileID,
 			})
@@ -234,9 +236,9 @@ func (m *requestBodyManager) MultipartFormDataRequestBody(ctx context.Context, p
 }
 
 func (m *requestBodyManager) FileRequestBody(ctx context.Context, p RequestBodyParams) (RequestBodyResult, error) {
-	executionFile, err := m.storageManager.GetExecutionFile(ctx, GetExecutionFileParams{
+	executionFile, err := m.storageManager.GetExecutionFile(ctx, domain.GetExecutionFileParams{
 		WorkspaceID: m.workspaceID,
-		UploadID:    p.Body.(FileItem).FileID,
+		UploadID:    p.Body.(domain.FileItem).FileID,
 	})
 	if err != nil {
 		return RequestBodyResult{Headers: p.Headers}, fmt.Errorf("failed to get file from storage: %w", err)
