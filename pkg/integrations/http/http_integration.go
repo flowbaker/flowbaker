@@ -53,6 +53,7 @@ type HTTPIntegration struct {
 	integrationSelector       domain.IntegrationSelector
 	executionStorageManager   domain.ExecutorStorageManager
 	executorCredentialManager domain.ExecutorCredentialManager
+	httpClientManager         HTTPClientManager
 	client                    *http.Client
 	bodyReader                io.Reader
 	credentialID              string
@@ -90,6 +91,13 @@ func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, err
 		executorCredentialManager: deps.ExecutorCredentialManager,
 	}
 
+	httpClientManager := NewHTTPClientManager(HTTPClientManagerDependencies{
+		HTTPCredentialGetter:      deps.HTTPCredentialGetter,
+		IntegrationSelector:       deps.IntegrationSelector,
+		ExecutorCredentialManager: deps.ExecutorCredentialManager,
+		CredentialID:              deps.CredentialID,
+	})
+
 	actionManager := domain.NewIntegrationActionManager().
 		AddPerItem(IntegrationActionType_Get, integration.GetRequest).
 		AddPerItem(IntegrationActionType_Post, integration.PostRequest).
@@ -110,6 +118,7 @@ func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, err
 	integration.actionManager = actionManager
 	integration.requestBodyManager = requestBodyManager
 	integration.responseBodyManager = responseBodyManager
+	integration.httpClientManager = httpClientManager
 
 	return integration, nil
 }
@@ -219,7 +228,7 @@ func (i *HTTPIntegration) Execute(ctx context.Context, params domain.Integration
 		return domain.IntegrationOutput{}, err
 	}
 
-	client, err := i.getHTTPClient(ctx, GetHTTPCredentialClientParams{
+	client, err := i.httpClientManager.GetHTTPClient(ctx, GetHTTPCredentialClientParams{
 		AuthType: executeHttpParams.AuthType,
 	})
 	if err != nil {
@@ -508,138 +517,3 @@ func (i *HTTPIntegration) httpRequest(ctx context.Context, params HTTPRequestFun
 	return newResp, nil
 }
 
-func (i *HTTPIntegration) getHTTPClient(ctx context.Context, p GetHTTPCredentialClientParams) (*http.Client, error) {
-	switch p.AuthType {
-	case HTTPAuthType_Generic:
-		client, err := i.getGenericClient(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return client, nil
-
-	case HTTPAuthType_PreDefined:
-		credential, err := i.executorCredentialManager.GetFullCredential(ctx, i.credentialID)
-		if err != nil {
-			return nil, err
-		}
-
-		client, err := i.getPredefinedClient(ctx, credential)
-		if err != nil {
-			return nil, err
-		}
-		return client, nil
-
-	default:
-		client, err := i.getNoCredentialClient()
-		if err != nil {
-			return nil, err
-		}
-		return client, nil
-	}
-}
-
-func (i *HTTPIntegration) getNoCredentialClient() (*http.Client, error) {
-	return &http.Client{}, nil
-}
-
-func (i *HTTPIntegration) getGenericClient(ctx context.Context) (*http.Client, error) {
-	decryptionResult, err := i.httpCredentialGetter.GetDecryptedCredential(ctx, i.credentialID)
-	if err != nil {
-		return nil, err
-	}
-
-	genericHTTPClientProvider := NewHTTPClientProviderGeneric()
-
-	client, err := genericHTTPClientProvider.GetHTTPDefaultClientGeneric(ctx, decryptionResult)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
-func (i *HTTPIntegration) getPredefinedClient(ctx context.Context, credentialRaw domain.Credential) (*http.Client, error) {
-	switch credentialRaw.Type {
-	case domain.CredentialTypeOAuth, domain.CredentialTypeOAuthWithParams:
-		client, err := i.getPreDefinedOAuthClient(ctx, credentialRaw.IntegrationType, credentialRaw)
-		if err != nil {
-			return nil, err
-		}
-
-		return client, nil
-
-	case domain.CredentialTypeDefault:
-		client, err := i.getPreDefinedDefaultClient(ctx, credentialRaw.IntegrationType, credentialRaw)
-		if err != nil {
-			return nil, err
-		}
-
-		return client, nil
-	}
-
-	return nil, fmt.Errorf("unsupported credential type for http client provider: %s", credentialRaw.Type)
-}
-
-func (i *HTTPIntegration) getPreDefinedOAuthClient(ctx context.Context, integrationTypeCredential domain.IntegrationType, credential domain.Credential) (*http.Client, error) {
-	oauthAccount, err := i.executorCredentialManager.GetOAuthAccount(ctx, credential.OAuthAccountID)
-	if err != nil {
-		return nil, err
-	}
-
-	httpClient, err := i.integrationSelector.SelectHTTPOAuthClientProvider(ctx, domain.SelectIntegrationParams{
-		IntegrationType: integrationTypeCredential,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	sensitiveData := domain.OAuthAccountSensitiveData{}
-
-	sensitiveDataBytes, err := json.Marshal(credential.DecryptedPayload)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(sensitiveDataBytes, &sensitiveData)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := httpClient.GetHTTPOAuthClient(&domain.OAuthAccountWithSensitiveData{
-		OAuthAccount:  oauthAccount,
-		SensitiveData: sensitiveData,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
-func (i *HTTPIntegration) getPreDefinedDefaultClient(ctx context.Context, integrationTypeCredential domain.IntegrationType, credentialRaw domain.Credential) (*http.Client, error) {
-	httpClient, err := i.integrationSelector.SelectHTTPDefaultClientProvider(ctx, domain.SelectIntegrationParams{
-		IntegrationType: integrationTypeCredential,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var httpDecryptionResult HTTPDecryptionResult
-
-	dataBytes, err := json.Marshal(credentialRaw.DecryptedPayload)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(dataBytes, &httpDecryptionResult)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := httpClient.GetHTTPDefaultClient(&credentialRaw)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
