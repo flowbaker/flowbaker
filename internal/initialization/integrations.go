@@ -13,7 +13,6 @@ import (
 	cronintegration "github.com/flowbaker/flowbaker/pkg/integrations/cron"
 	"github.com/flowbaker/flowbaker/pkg/integrations/discord"
 	"github.com/flowbaker/flowbaker/pkg/integrations/dropbox"
-	"github.com/flowbaker/flowbaker/pkg/integrations/rawfiletoitem"
 	githubintegration "github.com/flowbaker/flowbaker/pkg/integrations/github"
 	gitlabintegration "github.com/flowbaker/flowbaker/pkg/integrations/gitlab"
 	"github.com/flowbaker/flowbaker/pkg/integrations/google/gmail"
@@ -21,7 +20,6 @@ import (
 	googlesheets "github.com/flowbaker/flowbaker/pkg/integrations/google/google_sheets"
 	"github.com/flowbaker/flowbaker/pkg/integrations/google/youtube"
 	"github.com/flowbaker/flowbaker/pkg/integrations/http"
-	http2 "github.com/flowbaker/flowbaker/pkg/integrations/http_2"
 	"github.com/flowbaker/flowbaker/pkg/integrations/jira"
 	jwtintegration "github.com/flowbaker/flowbaker/pkg/integrations/jwt"
 	"github.com/flowbaker/flowbaker/pkg/integrations/knowledge"
@@ -32,12 +30,13 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/integrations/openai"
 	pipedriveintegration "github.com/flowbaker/flowbaker/pkg/integrations/pipedrive"
 	"github.com/flowbaker/flowbaker/pkg/integrations/postgresql"
+	"github.com/flowbaker/flowbaker/pkg/integrations/rawfiletoitem"
 	"github.com/flowbaker/flowbaker/pkg/integrations/redis"
-	"github.com/flowbaker/flowbaker/pkg/integrations/snowflake"
 	resendintegration "github.com/flowbaker/flowbaker/pkg/integrations/resend"
 	s3integration "github.com/flowbaker/flowbaker/pkg/integrations/s3"
 	sendresponse "github.com/flowbaker/flowbaker/pkg/integrations/send_response"
 	slackintegration "github.com/flowbaker/flowbaker/pkg/integrations/slack"
+	"github.com/flowbaker/flowbaker/pkg/integrations/snowflake"
 	"github.com/flowbaker/flowbaker/pkg/integrations/split_array"
 	startupswatchintegration "github.com/flowbaker/flowbaker/pkg/integrations/startups_watch"
 	"github.com/flowbaker/flowbaker/pkg/integrations/storage"
@@ -67,10 +66,6 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_HTTP,
 		NewCreator:      http.NewHTTPIntegrationCreator,
-	},
-	{
-		IntegrationType: domain.IntegrationType_HTTP2,
-		NewCreator:      http2.NewHTTP2IntegrationCreator,
 	},
 	{
 		IntegrationType: domain.IntegrationType_PostgreSQL,
