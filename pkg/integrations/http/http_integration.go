@@ -62,7 +62,9 @@ type HTTPIntegration struct {
 	credentialID              string
 	workspaceID               string
 
-	actionManager *domain.IntegrationActionManager
+	actionManager       *domain.IntegrationActionManager
+	requestBodyManager  *RequestBodyManager
+	responseBodyManager *ResponseBodyManager
 }
 
 func (c *HTTPIntegrationCreator) CreateIntegration(ctx context.Context, p domain.CreateIntegrationParams) (domain.IntegrationExecutor, error) {
@@ -99,7 +101,27 @@ func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, err
 		AddPerItem(IntegrationActionType_Patch, integration.PatchRequest).
 		AddPerItem(IntegrationActionType_Delete, integration.DeleteRequest)
 
+	requestBodyManager := NewRequestBodyManager().
+		AddRequestBodyFunc(HTTPBodyType_JSON, integration.buildJSONRequestBody).
+		AddRequestBodyFunc(HTTPBodyType_Text, integration.buildTextRequestBody).
+		AddRequestBodyFunc(HTTPBodyType_URLEncodedFormData, integration.buildURLEncodedRequestBody).
+		AddRequestBodyFunc(HTTPBodyType_MultipartFormData, integration.buildMultipartRequestBody).
+		AddRequestBodyFunc(HTTPBodyType_File, integration.buildFileRequestBody)
+
+	responseBodyManager := NewResponseBodyManager().
+		AddResponseBodyFunc(ContentType_Application_JSON, integration.buildJSONResponseBody).
+		AddResponseBodyFunc(ContentType_Text_Plain, integration.buildTextResponseBody).
+		AddResponseBodyFunc(ContentType_Application_OctetStream, integration.buildOctetStreamResponseBody).
+		AddResponseBodyFunc(ContentType_Application_URLEncodedFormData, integration.buildURLEncodedResponseBody).
+		AddResponseBodyFunc(ContentType_Image_PNG, integration.buildImageResponseBody).
+		AddResponseBodyFunc(ContentType_Image_JPEG, integration.buildImageResponseBody).
+		AddResponseBodyFunc(ContentType_Image_JPG, integration.buildImageResponseBody).
+		AddResponseBodyFunc(ContentType_Image_GIF, integration.buildImageResponseBody).
+		AddResponseBodyFunc(ContentType_Image_WEBP, integration.buildImageResponseBody)
+
 	integration.actionManager = actionManager
+	integration.requestBodyManager = requestBodyManager
+	integration.responseBodyManager = responseBodyManager
 
 	return integration, nil
 }
@@ -190,6 +212,12 @@ type setRequestBodyParams struct {
 	Headers  []Header     `json:"headers"`
 	BodyType HTTPBodyType `json:"body_type"`
 	Body     any          `json:"body"`
+}
+
+type setResponseBodyParams struct {
+	Response    *http.Response
+	Body        []byte
+	ContentType *contentType
 }
 
 type GetHTTPCredentialClientParams struct {
@@ -460,10 +488,8 @@ func (i *HTTPIntegration) httpRequest(ctx context.Context, params HTTPRequestFun
 		return nil, err
 	}
 
-	// Add headers
 	for _, header := range params.Headers {
 		if header.Key != "" || header.Value != "" {
-			log.Info().Msgf("setting header: %s: %s", header.Key, header.Value)
 			req.Header.Add(header.Key, header.Value)
 		}
 	}
@@ -473,7 +499,6 @@ func (i *HTTPIntegration) httpRequest(ctx context.Context, params HTTPRequestFun
 		req.Header.Del("Content-Length")
 	}
 
-	// Add query parameters
 	if len(params.QueryParams) > 0 {
 		q := req.URL.Query()
 		for _, queryParam := range params.QueryParams {
@@ -482,7 +507,6 @@ func (i *HTTPIntegration) httpRequest(ctx context.Context, params HTTPRequestFun
 			}
 		}
 
-		log.Info().Msgf("query params: %+v", q)
 		req.URL.RawQuery = q.Encode()
 	}
 
@@ -499,7 +523,6 @@ func (i *HTTPIntegration) httpRequest(ctx context.Context, params HTTPRequestFun
 		return nil, fmt.Errorf("HTTP request failed with status %d: %s", resp.StatusCode, resp.Status)
 	}
 
-	// Read and store the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error().Msgf("error reading response body: %v", err)
@@ -507,7 +530,6 @@ func (i *HTTPIntegration) httpRequest(ctx context.Context, params HTTPRequestFun
 	}
 	resp.Body.Close()
 
-	// Create a new response with the body
 	newResp := &http.Response{
 		StatusCode: resp.StatusCode,
 		Status:     resp.Status,
@@ -515,28 +537,30 @@ func (i *HTTPIntegration) httpRequest(ctx context.Context, params HTTPRequestFun
 		Body:       io.NopCloser(bytes.NewReader(body)),
 	}
 
-	// log.Info().Msgf("response body: %s", string(body))
 	return newResp, nil
 }
 
 func (i *HTTPIntegration) setRequestBody(ctx context.Context, p setRequestBodyParams) (io.Reader, []Header, error) {
-	switch p.BodyType {
-	case HTTPBodyType_JSON:
-		var data []byte
-		var err error
+	requestBodyFunc, ok := i.requestBodyManager.GetRequestBodyFunc(p.BodyType)
+	if !ok {
+		return nil, p.Headers, nil
+	}
 
-		if strBody, ok := p.Body.(string); ok {
-			var parsed interface{}
-			if err := json.Unmarshal([]byte(strBody), &parsed); err == nil {
-				data, err = json.Marshal(parsed)
-				if err != nil {
-					return nil, p.Headers, err
-				}
-			} else {
-				data, err = json.Marshal(p.Body)
-				if err != nil {
-					return nil, p.Headers, err
-				}
+	return requestBodyFunc(ctx, p)
+}
+
+func (i *HTTPIntegration) buildJSONRequestBody(ctx context.Context, p setRequestBodyParams) (io.Reader, []Header, error) {
+	_ = ctx
+
+	var data []byte
+	var err error
+
+	if strBody, ok := p.Body.(string); ok {
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(strBody), &parsed); err == nil {
+			data, err = json.Marshal(parsed)
+			if err != nil {
+				return nil, p.Headers, err
 			}
 		} else {
 			data, err = json.Marshal(p.Body)
@@ -544,131 +568,141 @@ func (i *HTTPIntegration) setRequestBody(ctx context.Context, p setRequestBodyPa
 				return nil, p.Headers, err
 			}
 		}
-
-		if string(data) == "null" || len(bytes.TrimSpace(data)) == 0 {
-			return nil, p.Headers, nil
-		}
-
-		updatedHeaders := append(p.Headers, Header{
-			Key:   "Content-Type",
-			Value: string(ContentType_Application_JSON),
-		})
-
-		return bytes.NewReader(data), updatedHeaders, nil
-
-	case HTTPBodyType_Text:
-		trimmed := strings.TrimSpace(p.Body.(string))
-		if trimmed == "" {
-			return nil, p.Headers, nil
-		}
-
-		updatedHeaders := append(p.Headers, Header{
-			Key:   "Content-Type",
-			Value: string(ContentType_Text_Plain),
-		})
-
-		return strings.NewReader(trimmed), updatedHeaders, nil
-
-	case HTTPBodyType_URLEncodedFormData:
-		form := url.Values{}
-		for _, item := range p.Body.([]URLEncodedFormData) {
-			form.Add(item.Key, item.Value)
-		}
-
-		encoded := strings.TrimSpace(form.Encode())
-		if encoded == "" {
-			return nil, p.Headers, nil
-		}
-
-		updatedHeaders := append(p.Headers, Header{
-			Key:   "Content-Type",
-			Value: string(ContentType_Application_URLEncodedFormData),
-		})
-
-		return strings.NewReader(encoded), updatedHeaders, nil
-
-	case HTTPBodyType_MultipartFormData:
-		if len(p.Body.([]MultipartFormData)) == 0 {
-			return nil, p.Headers, nil
-		}
-
-		body := &bytes.Buffer{}
-		writer := multipart.NewWriter(body)
-
-		for _, item := range p.Body.([]MultipartFormData) {
-			contentType := item.Value.ContentType
-			if contentType == "" {
-				contentType = string(ContentType_Application_OctetStream)
-			}
-
-			if item.Value.ObjectKey != "" {
-				executionFile, err := i.executionStorageManager.GetExecutionFile(ctx, domain.GetExecutionFileParams{
-					WorkspaceID: i.workspaceID,
-					UploadID:    item.Value.FileID,
-				})
-				if err != nil {
-					return nil, p.Headers, fmt.Errorf("failed to get file from storage: %w", err)
-				}
-
-				partHeader := make(textproto.MIMEHeader)
-				partHeader.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, item.Key, item.Value.Name))
-				partHeader.Set("Content-Type", contentType)
-
-				part, err := writer.CreatePart(partHeader)
-				if err != nil {
-					return nil, p.Headers, fmt.Errorf("failed to create form file: %w", err)
-				}
-
-				fileBytes, err := io.ReadAll(executionFile.Reader)
-				if err != nil {
-					return nil, p.Headers, fmt.Errorf("failed to read file: %w", err)
-				}
-
-				if _, err := part.Write(fileBytes); err != nil {
-					return nil, p.Headers, fmt.Errorf("failed to write file data: %w", err)
-				}
-			} else {
-				log.Info().Msgf("writing form field: %s: %s", item.Key, item.Value.Name)
-				if err := writer.WriteField(item.Key, item.Value.Name); err != nil {
-					return nil, p.Headers, fmt.Errorf("failed to write form field: %w", err)
-				}
-			}
-		}
-
-		if body.Len() == 0 {
-			return nil, p.Headers, nil
-		}
-
-		if err := writer.Close(); err != nil {
-			return nil, p.Headers, fmt.Errorf("failed to close multipart writer: %w", err)
-		}
-
-		updatedHeaders := append(p.Headers, Header{
-			Key:   "Content-Type",
-			Value: writer.FormDataContentType(),
-		})
-
-		return body, updatedHeaders, nil
-
-	case HTTPBodyType_File:
-		executionFile, err := i.executionStorageManager.GetExecutionFile(ctx, domain.GetExecutionFileParams{
-			WorkspaceID: i.workspaceID,
-			UploadID:    p.Body.(domain.FileItem).FileID,
-		})
+	} else {
+		data, err = json.Marshal(p.Body)
 		if err != nil {
-			return nil, p.Headers, fmt.Errorf("failed to get file from storage: %w", err)
+			return nil, p.Headers, err
 		}
+	}
 
-		updatedHeaders := append(p.Headers, Header{
-			Key:   "Content-Type",
-			Value: string(ContentType_Application_OctetStream),
-		})
-
-		return executionFile.Reader, updatedHeaders, nil
-
-	default:
+	if string(data) == "null" || len(bytes.TrimSpace(data)) == 0 {
 		return nil, p.Headers, nil
 	}
+
+	updatedHeaders := append(p.Headers, Header{
+		Key:   "Content-Type",
+		Value: string(ContentType_Application_JSON),
+	})
+
+	return bytes.NewReader(data), updatedHeaders, nil
+}
+
+func (i *HTTPIntegration) buildTextRequestBody(ctx context.Context, p setRequestBodyParams) (io.Reader, []Header, error) {
+	_ = ctx
+
+	trimmed := strings.TrimSpace(p.Body.(string))
+	if trimmed == "" {
+		return nil, p.Headers, nil
+	}
+
+	updatedHeaders := append(p.Headers, Header{
+		Key:   "Content-Type",
+		Value: string(ContentType_Text_Plain),
+	})
+
+	return strings.NewReader(trimmed), updatedHeaders, nil
+}
+
+func (i *HTTPIntegration) buildURLEncodedRequestBody(ctx context.Context, p setRequestBodyParams) (io.Reader, []Header, error) {
+	_ = ctx
+
+	form := url.Values{}
+	for _, item := range p.Body.([]URLEncodedFormData) {
+		form.Add(item.Key, item.Value)
+	}
+
+	encoded := strings.TrimSpace(form.Encode())
+	if encoded == "" {
+		return nil, p.Headers, nil
+	}
+
+	updatedHeaders := append(p.Headers, Header{
+		Key:   "Content-Type",
+		Value: string(ContentType_Application_URLEncodedFormData),
+	})
+
+	return strings.NewReader(encoded), updatedHeaders, nil
+}
+
+func (i *HTTPIntegration) buildMultipartRequestBody(ctx context.Context, p setRequestBodyParams) (io.Reader, []Header, error) {
+	if len(p.Body.([]MultipartFormData)) == 0 {
+		return nil, p.Headers, nil
+	}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	for _, item := range p.Body.([]MultipartFormData) {
+		contentType := item.Value.ContentType
+		if contentType == "" {
+			contentType = string(ContentType_Application_OctetStream)
+		}
+
+		if item.Value.ObjectKey != "" {
+			executionFile, err := i.executionStorageManager.GetExecutionFile(ctx, domain.GetExecutionFileParams{
+				WorkspaceID: i.workspaceID,
+				UploadID:    item.Value.FileID,
+			})
+			if err != nil {
+				return nil, p.Headers, fmt.Errorf("failed to get file from storage: %w", err)
+			}
+
+			partHeader := make(textproto.MIMEHeader)
+			partHeader.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, item.Key, item.Value.Name))
+			partHeader.Set("Content-Type", contentType)
+
+			part, err := writer.CreatePart(partHeader)
+			if err != nil {
+				return nil, p.Headers, fmt.Errorf("failed to create form file: %w", err)
+			}
+
+			fileBytes, err := io.ReadAll(executionFile.Reader)
+			if err != nil {
+				return nil, p.Headers, fmt.Errorf("failed to read file: %w", err)
+			}
+
+			if _, err := part.Write(fileBytes); err != nil {
+				return nil, p.Headers, fmt.Errorf("failed to write file data: %w", err)
+			}
+		} else {
+			log.Info().Msgf("writing form field: %s: %s", item.Key, item.Value.Name)
+			if err := writer.WriteField(item.Key, item.Value.Name); err != nil {
+				return nil, p.Headers, fmt.Errorf("failed to write form field: %w", err)
+			}
+		}
+	}
+
+	if body.Len() == 0 {
+		return nil, p.Headers, nil
+	}
+
+	if err := writer.Close(); err != nil {
+		return nil, p.Headers, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	updatedHeaders := append(p.Headers, Header{
+		Key:   "Content-Type",
+		Value: writer.FormDataContentType(),
+	})
+
+	return body, updatedHeaders, nil
+}
+
+func (i *HTTPIntegration) buildFileRequestBody(ctx context.Context, p setRequestBodyParams) (io.Reader, []Header, error) {
+	executionFile, err := i.executionStorageManager.GetExecutionFile(ctx, domain.GetExecutionFileParams{
+		WorkspaceID: i.workspaceID,
+		UploadID:    p.Body.(domain.FileItem).FileID,
+	})
+	if err != nil {
+		return nil, p.Headers, fmt.Errorf("failed to get file from storage: %w", err)
+	}
+
+	updatedHeaders := append(p.Headers, Header{
+		Key:   "Content-Type",
+		Value: string(ContentType_Application_OctetStream),
+	})
+
+	return executionFile.Reader, updatedHeaders, nil
 }
 
 type contentType struct {
@@ -713,70 +747,96 @@ func (i *HTTPIntegration) setResponseBody(ctx context.Context, resp *http.Respon
 		return nil, fmt.Errorf("failed to parse content type: %w", err)
 	}
 
-	switch contentType.Type {
-	case string(ContentType_Application_JSON):
-		var jsonBody any
-		if err := json.Unmarshal(body, &jsonBody); err != nil {
-			return nil, fmt.Errorf("failed to parse JSON response: %w", err)
-		}
-		return jsonBody, nil
-
-	case string(ContentType_Text_Plain):
-		return string(body), nil
-
-	case string(ContentType_Application_OctetStream):
-		fileName := resp.Header.Get("Content-Disposition")
-		if fileName == "" {
-			fileName = "unnamed-image"
-		}
-
-		fileName = strings.TrimPrefix(fileName, "attachment; filename=")
-		fileName = strings.Trim(fileName, "\"")
-
-		bodyReader := io.NopCloser(bytes.NewReader(body))
-		defer bodyReader.Close()
-
-		executionFile, err := i.executionStorageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
-			WorkspaceID:  i.workspaceID,
-			UploadedBy:   i.workspaceID,
-			OriginalName: fileName,
-			SizeInBytes:  int64(len(body)),
-			ContentType:  string(ContentType_Application_OctetStream),
-			Reader:       bodyReader,
+	responseBodyFunc, ok := i.responseBodyManager.GetResponseBodyFunc(ContentType(contentType.Type))
+	if !ok {
+		return i.buildDefaultResponseBody(ctx, setResponseBodyParams{
+			Response:    resp,
+			Body:        body,
+			ContentType: contentType,
 		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to put workflow execution object: %w", err)
-		}
-
-		return executionFile, nil
-	case string(ContentType_Application_URLEncodedFormData):
-		return body, nil
-
-	case string(ContentType_Image_PNG), string(ContentType_Image_JPEG), string(ContentType_Image_JPG), string(ContentType_Image_GIF), string(ContentType_Image_WEBP):
-		fileName := resp.Header.Get("Content-Disposition")
-		if fileName == "" {
-			fileName = "unnamed-image." + strings.TrimPrefix(contentType.Type, "image/")
-		}
-
-		fileName = strings.TrimPrefix(fileName, "attachment; filename=")
-		fileName = strings.Trim(fileName, "\"")
-
-		executionFile, err := i.executionStorageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
-			WorkspaceID:  i.workspaceID,
-			UploadedBy:   i.workspaceID,
-			OriginalName: fileName,
-			SizeInBytes:  int64(len(body)),
-			ContentType:  string(ContentType_Application_OctetStream),
-			Reader:       io.NopCloser(bytes.NewReader(body)),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to put workflow execution object: %w", err)
-		}
-
-		return executionFile, nil
-	default:
-		return string(body), nil
 	}
+
+	return responseBodyFunc(ctx, setResponseBodyParams{
+		Response:    resp,
+		Body:        body,
+		ContentType: contentType,
+	})
+}
+
+func (i *HTTPIntegration) buildJSONResponseBody(ctx context.Context, p setResponseBodyParams) (any, error) {
+	_ = ctx
+
+	var jsonBody any
+	if err := json.Unmarshal(p.Body, &jsonBody); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON response: %w", err)
+	}
+	return jsonBody, nil
+}
+
+func (i *HTTPIntegration) buildTextResponseBody(ctx context.Context, p setResponseBodyParams) (any, error) {
+	_ = ctx
+	return string(p.Body), nil
+}
+
+func (i *HTTPIntegration) buildOctetStreamResponseBody(ctx context.Context, p setResponseBodyParams) (any, error) {
+	fileName := p.Response.Header.Get("Content-Disposition")
+	if fileName == "" {
+		fileName = "unnamed-image"
+	}
+
+	fileName = strings.TrimPrefix(fileName, "attachment; filename=")
+	fileName = strings.Trim(fileName, "\"")
+
+	bodyReader := io.NopCloser(bytes.NewReader(p.Body))
+	defer bodyReader.Close()
+
+	executionFile, err := i.executionStorageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
+		WorkspaceID:  i.workspaceID,
+		UploadedBy:   i.workspaceID,
+		OriginalName: fileName,
+		SizeInBytes:  int64(len(p.Body)),
+		ContentType:  string(ContentType_Application_OctetStream),
+		Reader:       bodyReader,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to put workflow execution object: %w", err)
+	}
+
+	return executionFile, nil
+}
+
+func (i *HTTPIntegration) buildURLEncodedResponseBody(ctx context.Context, p setResponseBodyParams) (any, error) {
+	_ = ctx
+	return p.Body, nil
+}
+
+func (i *HTTPIntegration) buildImageResponseBody(ctx context.Context, p setResponseBodyParams) (any, error) {
+	fileName := p.Response.Header.Get("Content-Disposition")
+	if fileName == "" {
+		fileName = "unnamed-image." + strings.TrimPrefix(p.ContentType.Type, "image/")
+	}
+
+	fileName = strings.TrimPrefix(fileName, "attachment; filename=")
+	fileName = strings.Trim(fileName, "\"")
+
+	executionFile, err := i.executionStorageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
+		WorkspaceID:  i.workspaceID,
+		UploadedBy:   i.workspaceID,
+		OriginalName: fileName,
+		SizeInBytes:  int64(len(p.Body)),
+		ContentType:  string(ContentType_Application_OctetStream),
+		Reader:       io.NopCloser(bytes.NewReader(p.Body)),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to put workflow execution object: %w", err)
+	}
+
+	return executionFile, nil
+}
+
+func (i *HTTPIntegration) buildDefaultResponseBody(ctx context.Context, p setResponseBodyParams) (any, error) {
+	_ = ctx
+	return string(p.Body), nil
 }
 
 func (i *HTTPIntegration) getHTTPClient(ctx context.Context, p GetHTTPCredentialClientParams) (*http.Client, error) {
