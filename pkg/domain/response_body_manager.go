@@ -1,8 +1,23 @@
-package http
+package domain
 
 import "context"
 
+type HTTPResponse struct {
+	StatusCode int          `json:"status_code"`
+	Status     string       `json:"status"`
+	Header     []HTTPHeader `json:"header"`
+	Body       any          `json:"body"`
+}
+
+type ContentType string
+
 type ResponseBodyFunc func(ctx context.Context, p setResponseBodyParams) (any, error)
+
+type setResponseBodyParams struct {
+	Response    *HTTPResponse
+	Body        any
+	ContentType *ContentType
+}
 
 type ResponseBodyManager struct {
 	responseBodyFuncs map[ContentType]ResponseBodyFunc
