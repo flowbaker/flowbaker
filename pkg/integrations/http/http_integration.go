@@ -59,8 +59,8 @@ type HTTPIntegration struct {
 	workspaceID               string
 
 	actionManager       *domain.IntegrationActionManager
-	requestBodyManager  *RequestBodyManager
-	responseBodyManager *ResponseBodyManager
+	requestBodyManager  domain.RequestBodyManager
+	responseBodyManager domain.ResponseBodyManager
 }
 
 func (c *HTTPIntegrationCreator) CreateIntegration(ctx context.Context, p domain.CreateIntegrationParams) (domain.IntegrationExecutor, error) {
@@ -97,23 +97,15 @@ func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, err
 		AddPerItem(IntegrationActionType_Patch, integration.PatchRequest).
 		AddPerItem(IntegrationActionType_Delete, integration.DeleteRequest)
 
-	requestBodyManager := NewHTTPRequestBodyManager().
-		AddRequestBodyFunc(HTTPBodyType_JSON, integration.buildJSONRequestBody).
-		AddRequestBodyFunc(HTTPBodyType_Text, integration.buildTextRequestBody).
-		AddRequestBodyFunc(HTTPBodyType_URLEncodedFormData, integration.buildURLEncodedRequestBody).
-		AddRequestBodyFunc(HTTPBodyType_MultipartFormData, integration.buildMultipartRequestBody).
-		AddRequestBodyFunc(HTTPBodyType_File, integration.buildFileRequestBody)
+	requestBodyManager := domain.NewRequestBodyManager(domain.RequestBodyManagerDependencies{
+		ExecutorStorageManager: deps.ExecutorStorageManager,
+		WorkspaceID:            deps.WorkspaceID,
+	})
 
-	responseBodyManager := NewHTTPResponseBodyManager().
-		AddResponseBodyFunc(ContentType_Application_JSON, integration.buildJSONResponseBody).
-		AddResponseBodyFunc(ContentType_Text_Plain, integration.buildTextResponseBody).
-		AddResponseBodyFunc(ContentType_Application_OctetStream, integration.buildOctetStreamResponseBody).
-		AddResponseBodyFunc(ContentType_Application_URLEncodedFormData, integration.buildURLEncodedResponseBody).
-		AddResponseBodyFunc(ContentType_Image_PNG, integration.buildImageResponseBody).
-		AddResponseBodyFunc(ContentType_Image_JPEG, integration.buildImageResponseBody).
-		AddResponseBodyFunc(ContentType_Image_JPG, integration.buildImageResponseBody).
-		AddResponseBodyFunc(ContentType_Image_GIF, integration.buildImageResponseBody).
-		AddResponseBodyFunc(ContentType_Image_WEBP, integration.buildImageResponseBody)
+	responseBodyManager := domain.NewResponseBodyManager(domain.ResponseBodyManagerDependencies{
+		ExecutorStorageManager: deps.ExecutorStorageManager,
+		WorkspaceID:            deps.WorkspaceID,
+	})
 
 	integration.actionManager = actionManager
 	integration.requestBodyManager = requestBodyManager
@@ -131,14 +123,14 @@ type HTTPRequestParams struct {
 	Body         any          `json:"body"`
 }
 
-type HTTPBodyType string
+type HTTPBodyType = domain.HTTPBodyType
 
 const (
-	HTTPBodyType_JSON               HTTPBodyType = "json"
-	HTTPBodyType_Text               HTTPBodyType = "text"
-	HTTPBodyType_MultipartFormData  HTTPBodyType = "multipart_form_data"
-	HTTPBodyType_URLEncodedFormData HTTPBodyType = "urlencoded_form_data"
-	HTTPBodyType_File               HTTPBodyType = "file"
+	HTTPBodyType_JSON               = domain.HTTPBodyType_JSON
+	HTTPBodyType_Text               = domain.HTTPBodyType_Text
+	HTTPBodyType_MultipartFormData  = domain.HTTPBodyType_MultipartFormData
+	HTTPBodyType_URLEncodedFormData = domain.HTTPBodyType_URLEncodedFormData
+	HTTPBodyType_File               = domain.HTTPBodyType_File
 )
 
 type HTTPAuthType string
@@ -149,25 +141,15 @@ const (
 	HTTPAuthType_PreDefined   HTTPAuthType = "pre-defined"
 )
 
-type Header struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
+type Header = domain.HTTPHeader
 
 type QueryParam struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
-type MultipartFormData struct {
-	Key   string          `json:"key"`
-	Value domain.FileItem `json:"value"`
-}
-
-type URLEncodedFormData struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
+type MultipartFormData = domain.MultipartFormData
+type URLEncodedFormData = domain.URLEncodedFormData
 
 type HttpAuthType string
 
@@ -204,35 +186,30 @@ const (
 	reqTypeDelete reqType = "DELETE"
 )
 
-type setRequestBodyParams struct {
-	Headers  []Header     `json:"headers"`
-	BodyType HTTPBodyType `json:"body_type"`
-	Body     any          `json:"body"`
-}
-
-type setResponseBodyParams struct {
-	Response    *http.Response
-	Body        []byte
-	ContentType *contentType
-}
+type setRequestBodyParams = domain.RequestBodyParams
 
 type GetHTTPCredentialClientParams struct {
 	AuthType HTTPAuthType `json:"auth_type"`
 }
 
-type ContentType string
+type ContentType = domain.ContentType
 
 const (
-	ContentType_Application_JSON               ContentType = "application/json"
-	ContentType_Text_Plain                     ContentType = "text/plain"
-	ContentType_Application_URLEncodedFormData ContentType = "application/x-www-form-urlencoded"
-	ContentType_Image_PNG                      ContentType = "image/png"
-	ContentType_Image_JPEG                     ContentType = "image/jpeg"
-	ContentType_Image_JPG                      ContentType = "image/jpg"
-	ContentType_Image_GIF                      ContentType = "image/gif"
-	ContentType_Image_WEBP                     ContentType = "image/webp"
-	ContentType_Application_OctetStream        ContentType = "application/octet-stream"
+	ContentType_Application_JSON               = domain.ContentType_Application_JSON
+	ContentType_Text_Plain                     = domain.ContentType_Text_Plain
+	ContentType_Application_URLEncodedFormData = domain.ContentType_Application_URLEncodedFormData
+	ContentType_Image_PNG                      = domain.ContentType_Image_PNG
+	ContentType_Image_JPEG                     = domain.ContentType_Image_JPEG
+	ContentType_Image_JPG                      = domain.ContentType_Image_JPG
+	ContentType_Image_GIF                      = domain.ContentType_Image_GIF
+	ContentType_Image_WEBP                     = domain.ContentType_Image_WEBP
+	ContentType_Application_OctetStream        = domain.ContentType_Application_OctetStream
 )
+
+type parsedContentType struct {
+	Type     string
+	Boundary string
+}
 
 func (i *HTTPIntegration) Execute(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	executeHttpParams := GetHTTPCredentialClientParams{}
@@ -281,7 +258,7 @@ func (i *HTTPIntegration) GetRequest(ctx context.Context, params domain.Integrat
 	}
 	defer resp.Body.Close()
 
-	body, err := i.setResponseBody(ctx, resp)
+	body, err := i.responseBodyManager.SetResponseBody(ctx, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -303,22 +280,22 @@ func (i *HTTPIntegration) PostRequest(ctx context.Context, params domain.Integra
 		return nil, err
 	}
 
-	bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
+	bodyResult, err := i.requestBodyManager.SetRequestBody(ctx, setRequestBodyParams{
 		Headers:  p.Headers,
 		BodyType: HTTPBodyType(p.BodyType),
 		Body:     p.Body,
 	})
 	if err != nil {
-		bodyReader = nil
+		return nil, err
 	}
 
 	resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
 		Method:      "POST",
 		URL:         p.URL,
-		Headers:     headers,
+		Headers:     bodyResult.Headers,
 		QueryParams: p.QueryParams,
 		BodyType:    string(p.BodyType),
-		BodyReader:  bodyReader,
+		BodyReader:  bodyResult.Reader,
 		RequestType: reqTypePost,
 	})
 	if err != nil {
@@ -327,7 +304,7 @@ func (i *HTTPIntegration) PostRequest(ctx context.Context, params domain.Integra
 	}
 	defer resp.Body.Close()
 
-	body, err := i.setResponseBody(ctx, resp)
+	body, err := i.responseBodyManager.SetResponseBody(ctx, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -349,22 +326,22 @@ func (i *HTTPIntegration) PutRequest(ctx context.Context, params domain.Integrat
 		return nil, err
 	}
 
-	bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
+	bodyResult, err := i.requestBodyManager.SetRequestBody(ctx, setRequestBodyParams{
 		Headers:  p.Headers,
 		BodyType: HTTPBodyType(p.BodyType),
 		Body:     p.Body,
 	})
 	if err != nil {
-		bodyReader = nil
+		return nil, err
 	}
 
 	resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
 		Method:      "PUT",
 		URL:         p.URL,
-		Headers:     headers,
+		Headers:     bodyResult.Headers,
 		QueryParams: p.QueryParams,
 		BodyType:    string(HTTPBodyType_JSON),
-		BodyReader:  bodyReader,
+		BodyReader:  bodyResult.Reader,
 		RequestType: reqTypePut,
 	})
 	if err != nil {
@@ -372,7 +349,7 @@ func (i *HTTPIntegration) PutRequest(ctx context.Context, params domain.Integrat
 	}
 	defer resp.Body.Close()
 
-	body, err := i.setResponseBody(ctx, resp)
+	body, err := i.responseBodyManager.SetResponseBody(ctx, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -394,22 +371,22 @@ func (i *HTTPIntegration) PatchRequest(ctx context.Context, params domain.Integr
 		return nil, err
 	}
 
-	bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
+	bodyResult, err := i.requestBodyManager.SetRequestBody(ctx, setRequestBodyParams{
 		Headers:  p.Headers,
 		BodyType: HTTPBodyType(p.BodyType),
 		Body:     p.Body,
 	})
 	if err != nil {
-		bodyReader = nil
+		return nil, err
 	}
 
 	resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
 		Method:      "PATCH",
 		URL:         p.URL,
-		Headers:     headers,
+		Headers:     bodyResult.Headers,
 		QueryParams: p.QueryParams,
 		BodyType:    string(HTTPBodyType_JSON),
-		BodyReader:  bodyReader,
+		BodyReader:  bodyResult.Reader,
 		RequestType: reqTypePatch,
 	})
 	if err != nil {
@@ -417,7 +394,7 @@ func (i *HTTPIntegration) PatchRequest(ctx context.Context, params domain.Integr
 	}
 	defer resp.Body.Close()
 
-	body, err := i.setResponseBody(ctx, resp)
+	body, err := i.responseBodyManager.SetResponseBody(ctx, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -439,22 +416,22 @@ func (i *HTTPIntegration) DeleteRequest(ctx context.Context, params domain.Integ
 		return nil, err
 	}
 
-	bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
+	bodyResult, err := i.requestBodyManager.SetRequestBody(ctx, setRequestBodyParams{
 		Headers:  p.Headers,
 		BodyType: HTTPBodyType(p.BodyType),
 		Body:     p.Body,
 	})
 	if err != nil {
-		bodyReader = nil
+		bodyResult.Reader = nil
 	}
 
 	resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
 		Method:      "DELETE",
 		URL:         p.URL,
-		Headers:     headers,
+		Headers:     bodyResult.Headers,
 		QueryParams: p.QueryParams,
 		BodyType:    string(HTTPBodyType_JSON),
-		BodyReader:  bodyReader,
+		BodyReader:  bodyResult.Reader,
 		RequestType: reqTypeDelete,
 	})
 	if err != nil {
@@ -462,7 +439,7 @@ func (i *HTTPIntegration) DeleteRequest(ctx context.Context, params domain.Integ
 	}
 	defer resp.Body.Close()
 
-	body, err := i.setResponseBody(ctx, resp)
+	body, err := i.responseBodyManager.SetResponseBody(ctx, resp)
 	if err != nil {
 		return nil, err
 	}
