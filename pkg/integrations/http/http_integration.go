@@ -105,16 +105,12 @@ func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, err
 }
 
 type HTTPRequestParams struct {
-	URL                string               `json:"url"`
-	Headers            []Header             `json:"headers"`
-	QueryParams        []QueryParam         `json:"query_params"`
-	HttpAuthType       HttpAuthType         `json:"http_auth_type"`
-	BodyType           HTTPBodyType         `json:"body_type"`
-	JSONBody           interface{}          `json:"json_body"`
-	TextBody           string               `json:"text_body"`
-	MultipartFormData  []MultipartFormData  `json:"multipart_form_data_body"`
-	URLEncodedFormData []URLEncodedFormData `json:"urlencoded_form_data_body"`
-	File               domain.FileItem      `json:"file_body"`
+	URL          string       `json:"url"`
+	Headers      []Header     `json:"headers"`
+	QueryParams  []QueryParam `json:"query_params"`
+	HttpAuthType HttpAuthType `json:"http_auth_type"`
+	BodyType     HTTPBodyType `json:"body_type"`
+	Body         any          `json:"body"`
 }
 
 type HTTPBodyType string
@@ -191,13 +187,9 @@ const (
 )
 
 type setRequestBodyParams struct {
-	Headers            []Header             `json:"headers"`
-	BodyType           HTTPBodyType         `json:"body_type"`
-	JSONBody           interface{}          `json:"json_body"`
-	TextBody           string               `json:"text_body"`
-	MultipartFormData  []MultipartFormData  `json:"multipart_form_data_body"`
-	URLEncodedFormData []URLEncodedFormData `json:"urlencoded_form_data_body"`
-	File               domain.FileItem      `json:"file_body"`
+	Headers  []Header     `json:"headers"`
+	BodyType HTTPBodyType `json:"body_type"`
+	Body     any          `json:"body"`
 }
 
 type GetHTTPCredentialClientParams struct {
@@ -288,13 +280,9 @@ func (i *HTTPIntegration) PostRequest(ctx context.Context, params domain.Integra
 	}
 
 	bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
-		Headers:            p.Headers,
-		BodyType:           HTTPBodyType(p.BodyType),
-		JSONBody:           p.JSONBody,
-		TextBody:           p.TextBody,
-		MultipartFormData:  p.MultipartFormData,
-		URLEncodedFormData: p.URLEncodedFormData,
-		File:               p.File,
+		Headers:  p.Headers,
+		BodyType: HTTPBodyType(p.BodyType),
+		Body:     p.Body,
 	})
 	if err != nil {
 		bodyReader = nil
@@ -338,13 +326,9 @@ func (i *HTTPIntegration) PutRequest(ctx context.Context, params domain.Integrat
 	}
 
 	bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
-		Headers:            p.Headers,
-		BodyType:           HTTPBodyType(p.BodyType),
-		JSONBody:           p.JSONBody,
-		TextBody:           p.TextBody,
-		MultipartFormData:  p.MultipartFormData,
-		URLEncodedFormData: p.URLEncodedFormData,
-		File:               p.File,
+		Headers:  p.Headers,
+		BodyType: HTTPBodyType(p.BodyType),
+		Body:     p.Body,
 	})
 	if err != nil {
 		bodyReader = nil
@@ -387,13 +371,9 @@ func (i *HTTPIntegration) PatchRequest(ctx context.Context, params domain.Integr
 	}
 
 	bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
-		Headers:            p.Headers,
-		BodyType:           HTTPBodyType(p.BodyType),
-		JSONBody:           p.JSONBody,
-		TextBody:           p.TextBody,
-		MultipartFormData:  p.MultipartFormData,
-		URLEncodedFormData: p.URLEncodedFormData,
-		File:               p.File,
+		Headers:  p.Headers,
+		BodyType: HTTPBodyType(p.BodyType),
+		Body:     p.Body,
 	})
 	if err != nil {
 		bodyReader = nil
@@ -436,13 +416,9 @@ func (i *HTTPIntegration) DeleteRequest(ctx context.Context, params domain.Integ
 	}
 
 	bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
-		Headers:            p.Headers,
-		BodyType:           HTTPBodyType(p.BodyType),
-		JSONBody:           p.JSONBody,
-		TextBody:           p.TextBody,
-		MultipartFormData:  p.MultipartFormData,
-		URLEncodedFormData: p.URLEncodedFormData,
-		File:               p.File,
+		Headers:  p.Headers,
+		BodyType: HTTPBodyType(p.BodyType),
+		Body:     p.Body,
 	})
 	if err != nil {
 		bodyReader = nil
@@ -549,7 +525,7 @@ func (i *HTTPIntegration) setRequestBody(ctx context.Context, p setRequestBodyPa
 		var data []byte
 		var err error
 
-		if strBody, ok := p.JSONBody.(string); ok {
+		if strBody, ok := p.Body.(string); ok {
 			var parsed interface{}
 			if err := json.Unmarshal([]byte(strBody), &parsed); err == nil {
 				data, err = json.Marshal(parsed)
@@ -557,13 +533,13 @@ func (i *HTTPIntegration) setRequestBody(ctx context.Context, p setRequestBodyPa
 					return nil, p.Headers, err
 				}
 			} else {
-				data, err = json.Marshal(p.JSONBody)
+				data, err = json.Marshal(p.Body)
 				if err != nil {
 					return nil, p.Headers, err
 				}
 			}
 		} else {
-			data, err = json.Marshal(p.JSONBody)
+			data, err = json.Marshal(p.Body)
 			if err != nil {
 				return nil, p.Headers, err
 			}
@@ -581,7 +557,7 @@ func (i *HTTPIntegration) setRequestBody(ctx context.Context, p setRequestBodyPa
 		return bytes.NewReader(data), updatedHeaders, nil
 
 	case HTTPBodyType_Text:
-		trimmed := strings.TrimSpace(p.TextBody)
+		trimmed := strings.TrimSpace(p.Body.(string))
 		if trimmed == "" {
 			return nil, p.Headers, nil
 		}
@@ -595,7 +571,7 @@ func (i *HTTPIntegration) setRequestBody(ctx context.Context, p setRequestBodyPa
 
 	case HTTPBodyType_URLEncodedFormData:
 		form := url.Values{}
-		for _, item := range p.URLEncodedFormData {
+		for _, item := range p.Body.([]URLEncodedFormData) {
 			form.Add(item.Key, item.Value)
 		}
 
@@ -612,14 +588,14 @@ func (i *HTTPIntegration) setRequestBody(ctx context.Context, p setRequestBodyPa
 		return strings.NewReader(encoded), updatedHeaders, nil
 
 	case HTTPBodyType_MultipartFormData:
-		if len(p.MultipartFormData) == 0 {
+		if len(p.Body.([]MultipartFormData)) == 0 {
 			return nil, p.Headers, nil
 		}
 
 		body := &bytes.Buffer{}
 		writer := multipart.NewWriter(body)
 
-		for _, item := range p.MultipartFormData {
+		for _, item := range p.Body.([]MultipartFormData) {
 			contentType := item.Value.ContentType
 			if contentType == "" {
 				contentType = string(ContentType_Application_OctetStream)
@@ -677,7 +653,7 @@ func (i *HTTPIntegration) setRequestBody(ctx context.Context, p setRequestBodyPa
 	case HTTPBodyType_File:
 		executionFile, err := i.executionStorageManager.GetExecutionFile(ctx, domain.GetExecutionFileParams{
 			WorkspaceID: i.workspaceID,
-			UploadID:    p.File.FileID,
+			UploadID:    p.Body.(domain.FileItem).FileID,
 		})
 		if err != nil {
 			return nil, p.Headers, fmt.Errorf("failed to get file from storage: %w", err)
@@ -801,8 +777,6 @@ func (i *HTTPIntegration) setResponseBody(ctx context.Context, resp *http.Respon
 	default:
 		return string(body), nil
 	}
-
-	return nil, fmt.Errorf("unsupported content type: %s", contentTypeHeader)
 }
 
 func (i *HTTPIntegration) getHTTPClient(ctx context.Context, p GetHTTPCredentialClientParams) (*http.Client, error) {
