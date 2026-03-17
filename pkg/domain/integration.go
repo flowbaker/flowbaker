@@ -35,7 +35,6 @@ const (
 	IntegrationType_OpenAI               IntegrationType = "openai"
 	IntegrationType_GoogleSheets         IntegrationType = "google_sheets"
 	IntegrationType_HTTP                 IntegrationType = "http"
-	IntegrationType_HTTP2                IntegrationType = "http_2"
 	IntegrationType_PostgreSQL           IntegrationType = "postgresql"
 	IntegrationType_Webhook              IntegrationType = "webhook"
 	IntegrationType_MongoDB              IntegrationType = "mongodb"
