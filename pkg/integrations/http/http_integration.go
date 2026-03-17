@@ -206,11 +206,6 @@ const (
 	ContentType_Application_OctetStream        = domain.ContentType_Application_OctetStream
 )
 
-type parsedContentType struct {
-	Type     string
-	Boundary string
-}
-
 func (i *HTTPIntegration) Execute(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	executeHttpParams := GetHTTPCredentialClientParams{}
 
