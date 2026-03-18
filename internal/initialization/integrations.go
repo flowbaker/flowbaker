@@ -20,6 +20,7 @@ import (
 	googlesheets "github.com/flowbaker/flowbaker/pkg/integrations/google/google_sheets"
 	"github.com/flowbaker/flowbaker/pkg/integrations/google/youtube"
 	"github.com/flowbaker/flowbaker/pkg/integrations/http"
+	http2 "github.com/flowbaker/flowbaker/pkg/integrations/http_2"
 	"github.com/flowbaker/flowbaker/pkg/integrations/jira"
 	jwtintegration "github.com/flowbaker/flowbaker/pkg/integrations/jwt"
 	"github.com/flowbaker/flowbaker/pkg/integrations/knowledge"
@@ -66,6 +67,10 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 	{
 		IntegrationType: domain.IntegrationType_HTTP,
 		NewCreator:      http.NewHTTPIntegrationCreator,
+	},
+	{
+		IntegrationType: domain.IntegrationType_HTTP2,
+		NewCreator:      http2.NewHTTP2IntegrationCreator,
 	},
 	{
 		IntegrationType: domain.IntegrationType_PostgreSQL,
