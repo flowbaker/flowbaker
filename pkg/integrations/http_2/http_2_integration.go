@@ -92,22 +92,48 @@ const (
 	HTTPBodyType_File               HTTPBodyType = "application/octet-stream"
 )
 
+func (i *HTTP2Integration) GetRequest(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	return i.request(ctx, params, item, "GET")
+}
+
 func (i *HTTP2Integration) PostRequest(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	return i.request(ctx, params, item, "POST")
+}
+
+func (i *HTTP2Integration) PutRequest(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	return i.request(ctx, params, item, "PUT")
+}
+
+func (i *HTTP2Integration) PatchRequest(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	return i.request(ctx, params, item, "PATCH")
+}
+
+func (i *HTTP2Integration) DeleteRequest(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	return i.request(ctx, params, item, "DELETE")
+}
+
+func (i *HTTP2Integration) request(ctx context.Context, params domain.IntegrationInput, item domain.Item, method string) (domain.Item, error) {
 	p := HTTPRequestParams{}
 	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
 	if err != nil {
 		return nil, err
 	}
 
-	body, err := i.setRequestBody(SetRequestBodyParams{
-		Body:     p.Body,
-		BodyType: p.BodyType,
-	})
-	if err != nil {
-		return nil, err
+	var body io.Reader
+
+	if method != "GET" {
+		body, err = i.createRequestBody(CreateRequestBodyParams{
+			Body:     p.Body,
+			BodyType: p.BodyType,
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		body = nil
 	}
 
-	req, err := http.NewRequest("POST", p.URL, body)
+	req, err := http.NewRequest(method, p.URL, body)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +147,7 @@ func (i *HTTP2Integration) PostRequest(ctx context.Context, params domain.Integr
 	}
 	defer response.Body.Close()
 
-	responseBody, err := i.setResponseBody(response)
+	responseBody, err := i.parseResponseBody(response)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +160,7 @@ func (i *HTTP2Integration) PostRequest(ctx context.Context, params domain.Integr
 	}, nil
 }
 
-type SetRequestBodyParams struct {
+type CreateRequestBodyParams struct {
 	Body     any
 	BodyType HTTPBodyType
 }
@@ -174,7 +200,7 @@ type URLEncodedParams struct {
 	Value string `json:"value"`
 }
 
-func (i *HTTP2Integration) setRequestBody(params SetRequestBodyParams) (io.Reader, error) {
+func (i *HTTP2Integration) createRequestBody(params CreateRequestBodyParams) (io.Reader, error) {
 	switch params.BodyType {
 	case HTTPBodyType_Text:
 		stringBodyText, ok := params.Body.(string)
@@ -219,7 +245,7 @@ func (i *HTTP2Integration) setRequestBody(params SetRequestBodyParams) (io.Reade
 
 type URLEncodedResponse map[string][]string
 
-func (i *HTTP2Integration) setResponseBody(response *http.Response) (any, error) {
+func (i *HTTP2Integration) parseResponseBody(response *http.Response) (any, error) {
 	contentType := response.Header.Get("Content-Type")
 	if strings.Contains(contentType, ";") {
 		contentType = strings.TrimSpace(strings.Split(contentType, ";")[0])
