@@ -57,6 +57,33 @@ var (
 						},
 					},
 					{
+						Key:         "query_params",
+						Name:        "Query Parameters",
+						Description: "Optional request query parameters",
+						Type:        domain.NodePropertyType_Array,
+						ArrayOpts: &domain.ArrayPropertyOptions{
+							MinItems: 0,
+							MaxItems: 100,
+							ItemType: domain.NodePropertyType_Map,
+							ItemProperties: []domain.NodeProperty{
+								{
+									Key:         "key",
+									Name:        "Key",
+									Description: "Query parameter key",
+									Type:        domain.NodePropertyType_String,
+									Required:    true,
+								},
+								{
+									Key:         "value",
+									Name:        "Value",
+									Description: "Query parameter value",
+									Type:        domain.NodePropertyType_String,
+									Required:    true,
+								},
+							},
+						},
+					},
+					{
 						Key:         "body_type",
 						Name:        "Body Type ",
 						Description: "Request body type",

@@ -113,7 +113,7 @@ func (i *HTTP2Integration) PostRequest(ctx context.Context, params domain.Integr
 	}
 
 	i.setRequestHeaders(req, p.BodyType, p.Headers)
-	i.setRequestQueries(req, p.QueryParams)
+	i.setRequestQueryParams(req, p.QueryParams)
 
 	response, err := i.client.Do(req)
 	if err != nil {
@@ -151,7 +151,7 @@ func (i *HTTP2Integration) setRequestHeaders(req *http.Request, bodyType HTTPBod
 	}
 }
 
-func (i *HTTP2Integration) setRequestQueries(req *http.Request, queryParams []HTTPQueryParam) {
+func (i *HTTP2Integration) setRequestQueryParams(req *http.Request, queryParams []HTTPQueryParam) {
 	if len(queryParams) == 0 {
 		return
 	}
