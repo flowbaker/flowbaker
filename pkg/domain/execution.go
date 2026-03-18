@@ -8,13 +8,13 @@ type NodeItems struct {
 }
 
 type NodeExecutionEntry struct {
-	NodeID          string
-	ItemsByInputID  map[string]NodeItems
-	ItemsByOutputID map[string]NodeItems
-	EventType       EventType
-	Error           string
-	Timestamp       int64
-	ExecutionOrder  int
+	NodeID             string
+	ItemsByInputIndex  map[int]NodeItems
+	ItemsByOutputIndex map[int]NodeItems
+	EventType          EventType
+	Error              string
+	Timestamp          int64
+	ExecutionOrder     int
 }
 type NodeExecution struct {
 	ID                     string
@@ -30,7 +30,7 @@ type NodeExecution struct {
 	OutputItemsSizeInBytes OutputItemsSizeInBytes
 }
 
-type InputItemsCount map[string]int64
-type InputItemsSizeInBytes map[string]int64
-type OutputItemsCount map[int64]int64
-type OutputItemsSizeInBytes map[int64]int64
+type InputItemsCount map[int]int64
+type InputItemsSizeInBytes map[int]int64
+type OutputItemsCount map[int]int64
+type OutputItemsSizeInBytes map[int]int64

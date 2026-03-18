@@ -7,50 +7,50 @@ import (
 )
 
 type NodeExecutionTask struct {
-	NodeID           string
-	PayloadByInputID SourceNodePayloadByInputID
+	NodeID              string
+	PayloadByInputIndex NodePayloadByInputIndex
 }
 
 type WaitingExecutionTask struct {
 	NodeID           string
 	Payload          []byte
-	ReceivedPayloads map[string]map[string]SourceNodePayload // inputID -> subscribed outputID -> payload
+	ReceivedPayloads map[int]map[int]NodePayload // input index -> subscribed output index -> payload
 	mutex            *sync.Mutex
 }
 
-func (t WaitingExecutionTask) MergePayloadsByInputID() map[string]SourceNodePayload {
+func (t WaitingExecutionTask) MergePayloadsByInputIndex() map[int]NodePayload {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	payloadsByInputID := map[string]SourceNodePayload{}
+	payloadsByInputIndex := map[int]NodePayload{}
 
-	for inputID, p := range t.ReceivedPayloads {
+	for inputIndex, p := range t.ReceivedPayloads {
 		for _, payload := range p {
-			payloadsByInputID[inputID] = payload
+			payloadsByInputIndex[inputIndex] = payload
 		}
 	}
 
-	return payloadsByInputID
+	return payloadsByInputIndex
 }
 
-func (t WaitingExecutionTask) AddPayload(sourceNodeID string, inputID string, outputID string, payload domain.Payload) {
+func (t WaitingExecutionTask) AddPayload(sourceNodeID string, inputIndex int, outputIndex int, payload domain.Payload) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
 	if t.ReceivedPayloads == nil {
-		t.ReceivedPayloads = map[string]map[string]SourceNodePayload{}
+		t.ReceivedPayloads = map[int]map[int]NodePayload{}
 	}
 
-	if _, exists := t.ReceivedPayloads[inputID]; !exists {
-		t.ReceivedPayloads[inputID] = map[string]SourceNodePayload{
-			outputID: {
+	if _, exists := t.ReceivedPayloads[inputIndex]; !exists {
+		t.ReceivedPayloads[inputIndex] = map[int]NodePayload{
+			outputIndex: {
 				SourceNodeID: sourceNodeID,
 				Payload:      payload,
 			},
 		}
 	}
 
-	t.ReceivedPayloads[inputID][outputID] = SourceNodePayload{
+	t.ReceivedPayloads[inputIndex][outputIndex] = NodePayload{
 		SourceNodeID: sourceNodeID,
 		Payload:      payload,
 	}

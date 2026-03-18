@@ -29,28 +29,28 @@ const (
 
 // NodeExecution represents the execution metrics for a single node
 type NodeExecution struct {
-	ID                     string           `json:"id"`
-	NodeID                 string           `json:"node_id"`
-	IntegrationType        string           `json:"integration_type"`
-	IntegrationActionType  string           `json:"integration_action_type"`
-	StartedAt              time.Time        `json:"started_at"`
-	EndedAt                time.Time        `json:"ended_at"`
-	ExecutionOrder         int64            `json:"execution_order"`
-	InputItemsCount        map[string]int64 `json:"input_items_count"`
-	InputItemsSizeInBytes  map[string]int64 `json:"input_items_size_in_bytes"`
-	OutputItemsCount       map[int64]int64  `json:"output_items_count"`
-	OutputItemsSizeInBytes map[int64]int64  `json:"output_items_size_in_bytes"`
+	ID                     string        `json:"id"`
+	NodeID                 string        `json:"node_id"`
+	IntegrationType        string        `json:"integration_type"`
+	IntegrationActionType  string        `json:"integration_action_type"`
+	StartedAt              time.Time     `json:"started_at"`
+	EndedAt                time.Time     `json:"ended_at"`
+	ExecutionOrder         int64         `json:"execution_order"`
+	InputItemsCount        map[int]int64 `json:"input_items_count"`
+	InputItemsSizeInBytes  map[int]int64 `json:"input_items_size_in_bytes"`
+	OutputItemsCount       map[int]int64 `json:"output_items_count"`
+	OutputItemsSizeInBytes map[int]int64 `json:"output_items_size_in_bytes"`
 }
 
 // NodeExecutionEntry represents a history entry for node execution
 type NodeExecutionEntry struct {
-	NodeID          string               `json:"node_id"`
-	ItemsByInputID  map[string]NodeItems `json:"items_by_input_id"`
-	ItemsByOutputID map[string]NodeItems `json:"items_by_output_id"`
-	EventType       EventType            `json:"event_type"`
-	Error           string               `json:"error,omitempty"`
-	Timestamp       int64                `json:"timestamp"`
-	ExecutionOrder  int                  `json:"execution_order"`
+	NodeID             string            `json:"node_id"`
+	ItemsByInputIndex  map[int]NodeItems `json:"items_by_input_index"`
+	ItemsByOutputIndex map[int]NodeItems `json:"items_by_output_index"`
+	EventType          EventType         `json:"event_type"`
+	Error              string            `json:"error,omitempty"`
+	Timestamp          int64             `json:"timestamp"`
+	ExecutionOrder     int               `json:"execution_order"`
 }
 
 // PublishEventRequest represents the request to publish an execution event

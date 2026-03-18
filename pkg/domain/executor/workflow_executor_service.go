@@ -361,23 +361,24 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 
 	executionEntry := params.NodeExecutionEntry
 
-	payloadByInputID := make(SourceNodePayloadByInputID)
+	payloadByInputIndex := NodePayloadByInputIndex{}
 
-	for inputID, items := range executionEntry.ItemsByInputID {
+	for inputIndex, items := range executionEntry.ItemsByInputIndex {
 		itemsJSON, err := json.Marshal(items.Items)
 		if err != nil {
 			return ExecutionResult{}, err
 		}
 
-		payloadByInputID[inputID] = SourceNodePayload{
+		payloadByInputIndex[inputIndex] = NodePayload{
 			SourceNodeID: items.FromNodeID,
 			Payload:      itemsJSON,
 		}
+
 	}
 
 	task := NodeExecutionTask{
-		NodeID:           params.NodeID,
-		PayloadByInputID: payloadByInputID,
+		NodeID:              params.NodeID,
+		PayloadByInputIndex: payloadByInputIndex,
 	}
 
 	_, err = workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{
@@ -393,11 +394,11 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 }
 
 type RunNodeParams struct {
-	NodeID       string
-	WorkspaceID  string
-	ExecutionID  string
-	Workflow     domain.Workflow
-	ItemsByInput map[string][]byte
+	NodeID            string
+	WorkspaceID       string
+	ExecutionID       string
+	Workflow          domain.Workflow
+	ItemsByInputIndex map[int][]byte
 }
 
 type RunNodeResult struct {
@@ -429,7 +430,7 @@ func (s *workflowExecutorService) RunNode(ctx context.Context, params RunNodePar
 
 	payload := domain.Payload{}
 
-	for _, p := range params.ItemsByInput {
+	for _, p := range params.ItemsByInputIndex {
 		payload = p
 
 		break

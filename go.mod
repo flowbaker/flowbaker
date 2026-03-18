@@ -116,6 +116,7 @@ require (
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
