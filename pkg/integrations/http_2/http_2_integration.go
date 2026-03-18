@@ -119,10 +119,10 @@ func (i *HTTP2Integration) request(ctx context.Context, params domain.Integratio
 		return nil, err
 	}
 
-	var bodyReader io.Reader
+	var body io.Reader
 
 	if method != "GET" {
-		bodyReader, err = i.createRequestBody(CreateRequestBodyParams{
+		body, err = i.createRequestBody(CreateRequestBodyParams{
 			Body:     p.Body,
 			BodyType: p.BodyType,
 		})
@@ -130,10 +130,10 @@ func (i *HTTP2Integration) request(ctx context.Context, params domain.Integratio
 			return nil, err
 		}
 	} else {
-		bodyReader = nil
+		body = nil
 	}
 
-	req, err := http.NewRequest(method, p.URL, bodyReader)
+	req, err := http.NewRequest(method, p.URL, body)
 	if err != nil {
 		return nil, err
 	}
