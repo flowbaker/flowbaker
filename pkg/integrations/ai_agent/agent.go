@@ -754,25 +754,15 @@ func (e *AIAgentExecutor) ResolveMemory(ctx context.Context, params ResolveAgent
 }
 
 func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentSettingsParams) ([]tool.Tool, error) {
-	toolsInput, exists := params.AgentNode.GetInputByIndex(3)
-	if !exists {
+	toolNodeIDs := params.Workflow.GetSourceNodesForInput(params.AgentNode.ID, 3)
+	if len(toolNodeIDs) == 0 {
 		return nil, nil
 	}
-
-	if len(toolsInput.SubscribedOutputs) == 0 {
-		return nil, nil
-	}
-
-	toolNodeIDs := e.GetNodeIDsFromOutputs(toolsInput.SubscribedOutputs)
 
 	nodeReferences := make([]NodeReference, 0, len(toolNodeIDs))
 
 	for _, toolNodeID := range toolNodeIDs {
 		nodeReferences = append(nodeReferences, NodeReference{NodeID: toolNodeID})
-	}
-
-	if len(nodeReferences) == 0 {
-		return nil, nil
 	}
 
 	toolCreator := NewIntegrationToolCreator(IntegrationToolCreatorDeps{
@@ -791,16 +781,6 @@ func (e *AIAgentExecutor) ResolveTools(ctx context.Context, params ResolveAgentS
 	}
 
 	return tools, nil
-}
-
-func (e *AIAgentExecutor) GetNodeIDsFromOutputs(outputs []domain.Handle) []string {
-	nodeIDs := make([]string, 0, len(outputs))
-
-	for _, output := range outputs {
-		nodeIDs = append(nodeIDs, output.NodeID)
-	}
-
-	return nodeIDs
 }
 
 type IntegrationToolCreator struct {

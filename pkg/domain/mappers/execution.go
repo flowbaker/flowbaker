@@ -168,6 +168,7 @@ func ExecutorWorkflowToDomain(w *executortypes.Workflow) domain.Workflow {
 		WorkspaceID:  w.WorkspaceID,
 		AuthorUserID: w.AuthorUserID,
 		Nodes:        nodes,
+		Edges:        w.Edges,
 		Settings: domain.WorkflowSettings{
 			NodeExecutionLimit: w.Settings.NodeExecutionLimit,
 		},
@@ -178,19 +179,10 @@ func ExecutorWorkflowToDomain(w *executortypes.Workflow) domain.Workflow {
 
 // ExecutorWorkflowNodeToDomain converts an executor WorkflowNode to domain.WorkflowNode
 func ExecutorWorkflowNodeToDomain(n executortypes.WorkflowNode) domain.WorkflowNode {
-	inputs := make([]domain.NodeInput, len(n.Inputs))
-	for i, input := range n.Inputs {
-		inputs[i] = domain.NodeInput{
-			Input:             input.Input,
-			SubscribedOutputs: input.SubscribedOutputs,
-		}
-	}
-
 	return domain.WorkflowNode{
 		ID:                  n.ID,
 		WorkflowID:          n.WorkflowID,
 		Name:                n.Name,
-		SubscribedOutputs:   []domain.Handle{},
 		Type:                domain.NodeType(n.Type),
 		IntegrationType:     domain.IntegrationType(n.IntegrationType),
 		IntegrationSettings: n.IntegrationSettings,
@@ -205,7 +197,6 @@ func ExecutorWorkflowNodeToDomain(n executortypes.WorkflowNode) domain.WorkflowN
 			XPosition: n.XPosition,
 			YPosition: n.YPosition,
 		},
-		Inputs:       inputs,
 		UsageContext: n.UsageContext,
 		ParentID:     n.ParentID,
 		ActionNodeOpts: domain.ActionNodeOpts{
@@ -238,6 +229,7 @@ func DomainWorkflowToExecutor(w domain.Workflow) executortypes.Workflow {
 		WorkspaceID:  w.WorkspaceID,
 		AuthorUserID: w.AuthorUserID,
 		Slug:         w.Slug,
+		Edges:        w.Edges,
 		Settings: executortypes.WorkflowSettings{
 			NodeExecutionLimit: w.Settings.NodeExecutionLimit,
 		},
@@ -251,13 +243,6 @@ func DomainWorkflowToExecutor(w domain.Workflow) executortypes.Workflow {
 func DomainWorkflowNodesToExecutor(nodes []domain.WorkflowNode) []executortypes.WorkflowNode {
 	executorNodes := make([]executortypes.WorkflowNode, len(nodes))
 	for i, node := range nodes {
-		inputs := make([]executortypes.NodeInput, len(node.Inputs))
-		for j, input := range node.Inputs {
-			inputs[j] = executortypes.NodeInput{
-				Input:             input.Input,
-				SubscribedOutputs: input.SubscribedOutputs,
-			}
-		}
 		executorNodes[i] = executortypes.WorkflowNode{
 			ID:                  node.ID,
 			WorkflowID:          node.WorkflowID,
@@ -274,7 +259,6 @@ func DomainWorkflowNodesToExecutor(nodes []domain.WorkflowNode) []executortypes.
 			ProvidedByAgent:              node.ProvidedByAgent,
 			XPosition:                    node.Positions.XPosition,
 			YPosition:                    node.Positions.YPosition,
-			Inputs:                       inputs,
 			UsageContext:                 node.UsageContext,
 			ParentID:                     node.ParentID,
 			ActionNodeOpts: executortypes.ActionNodeOpts{

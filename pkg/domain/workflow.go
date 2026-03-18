@@ -23,6 +23,13 @@ const (
 	WorkflowActivationStatusInactive WorkflowActivationStatus = "inactive"
 )
 
+type WorkflowEdge struct {
+	SourceNodeID string `json:"source_node_id"`
+	SourceIndex  int    `json:"source_index"`
+	TargetNodeID string `json:"target_node_id"`
+	TargetIndex  int    `json:"target_index"`
+}
+
 type Workflow struct {
 	ID               string
 	Name             string
@@ -31,6 +38,7 @@ type Workflow struct {
 	WorkspaceID      string
 	AuthorUserID     string
 	Nodes            []WorkflowNode
+	Edges            []WorkflowEdge
 	Settings         WorkflowSettings
 	LastUpdatedAt    time.Time
 	ActivationStatus WorkflowActivationStatus
@@ -90,6 +98,93 @@ func (w Workflow) GetActionNodes() []WorkflowNode {
 	return actionNodes
 }
 
+func (w Workflow) GetOutgoingEdges(nodeID string) []WorkflowEdge {
+	edges := make([]WorkflowEdge, 0)
+	for _, edge := range w.Edges {
+		if edge.SourceNodeID == nodeID {
+			edges = append(edges, edge)
+		}
+	}
+	return edges
+}
+
+func (w Workflow) GetIncomingEdges(nodeID string) []WorkflowEdge {
+	edges := make([]WorkflowEdge, 0)
+	for _, edge := range w.Edges {
+		if edge.TargetNodeID == nodeID {
+			edges = append(edges, edge)
+		}
+	}
+	return edges
+}
+
+func (w Workflow) GetConnectedInputIndices(nodeID string) []int {
+	seen := map[int]struct{}{}
+	indices := make([]int, 0)
+	for _, edge := range w.Edges {
+		if edge.TargetNodeID == nodeID {
+			if _, ok := seen[edge.TargetIndex]; !ok {
+				seen[edge.TargetIndex] = struct{}{}
+				indices = append(indices, edge.TargetIndex)
+			}
+		}
+	}
+	return indices
+}
+
+func (w Workflow) FindEdge(targetNodeID, sourceNodeID string, sourceIndex int) (WorkflowEdge, bool) {
+	for _, edge := range w.Edges {
+		if edge.TargetNodeID == targetNodeID && edge.SourceNodeID == sourceNodeID && edge.SourceIndex == sourceIndex {
+			return edge, true
+		}
+	}
+	return WorkflowEdge{}, false
+}
+
+func (w Workflow) GetSourceNodesForInput(targetNodeID string, targetIndex int) []string {
+	nodeIDs := make([]string, 0)
+	for _, edge := range w.Edges {
+		if edge.TargetNodeID == targetNodeID && edge.TargetIndex == targetIndex {
+			nodeIDs = append(nodeIDs, edge.SourceNodeID)
+		}
+	}
+	return nodeIDs
+}
+
+type SourceOutput struct {
+	NodeID      string
+	OutputIndex int
+}
+
+type EdgeIndex struct {
+	targetNodesBySourceOutput map[SourceOutput][]WorkflowNode
+}
+
+func NewEdgeIndex(w Workflow) EdgeIndex {
+	m := make(map[SourceOutput][]WorkflowNode)
+
+	for _, edge := range w.Edges {
+		key := SourceOutput{NodeID: edge.SourceNodeID, OutputIndex: edge.SourceIndex}
+
+		if node, ok := w.GetNodeByID(edge.TargetNodeID); ok {
+			m[key] = append(m[key], node)
+		}
+	}
+
+	return EdgeIndex{
+		targetNodesBySourceOutput: m,
+	}
+}
+
+func (idx EdgeIndex) GetTargetNodes(nodeID string, outputIndex int) []WorkflowNode {
+	sourceOutput := SourceOutput{
+		NodeID:      nodeID,
+		OutputIndex: outputIndex,
+	}
+
+	return idx.targetNodesBySourceOutput[sourceOutput]
+}
+
 type NodeType string
 
 const (
@@ -103,13 +198,11 @@ type WorkflowNode struct {
 	Name                         string
 	Type                         NodeType
 	IntegrationType              IntegrationType
-	SubscribedOutputs            []Handle
 	Positions                    NodePositions
 	IntegrationSettings          map[string]any
 	Settings                     NodeSettings
 	ExpressionSelectedProperties []string
 	ProvidedByAgent              []string
-	Inputs                       []NodeInput
 	UsageContext                 string
 	ParentID                     string
 
@@ -123,31 +216,6 @@ type TriggerNodeOpts struct {
 
 type ActionNodeOpts struct {
 	ActionType IntegrationActionType `json:"action_type,omitempty"`
-}
-
-func (n *WorkflowNode) GetInputByIndex(index int) (NodeInput, bool) {
-	for _, input := range n.Inputs {
-		targetIndex := -1
-		if input.Input.Index != -1 {
-			targetIndex = input.Input.Index
-		}
-
-		if targetIndex != -1 && targetIndex == index {
-			return input, true
-		}
-	}
-
-	return NodeInput{}, false
-}
-
-type Handle struct {
-	NodeID string `json:"node_id"`
-	Index  int    `json:"index"`
-}
-
-type NodeInput struct {
-	Input             Handle
-	SubscribedOutputs []Handle
 }
 
 type NodeSettings struct {

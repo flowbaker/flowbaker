@@ -114,6 +114,7 @@ type Workflow struct {
 	AuthorUserID     string                   `json:"author_user_id"`
 	Slug             string                   `json:"slug"`
 	Nodes            []WorkflowNode           `json:"nodes"`
+	Edges            []domain.WorkflowEdge    `json:"edges"`
 	Settings         WorkflowSettings         `json:"settings"`
 	LastUpdatedAt    int64                    `json:"last_updated_at"`
 	ActivationStatus WorkflowActivationStatus `json:"activation_status"`
@@ -143,7 +144,6 @@ type WorkflowNode struct {
 	ProvidedByAgent              []string        `json:"provided_by_agent"`
 	XPosition                    float64         `json:"x_position"`
 	YPosition                    float64         `json:"y_position"`
-	Inputs                       []NodeInput     `json:"inputs"`
 	UsageContext                 string          `json:"usage_context,omitempty"`
 	ParentID                     string          `json:"parent_id,omitempty"`
 	ActionNodeOpts               ActionNodeOpts  `json:"action_node_opts,omitempty"`
@@ -156,12 +156,6 @@ type ActionNodeOpts struct {
 
 type TriggerNodeOpts struct {
 	EventType IntegrationTriggerEventType `json:"event_type"`
-}
-
-// NodeInput represents an input for a workflow node
-type NodeInput struct {
-	Input             domain.Handle   `json:"input"`
-	SubscribedOutputs []domain.Handle `json:"subscribed_outputs"`
 }
 
 type NodeSettings struct {
