@@ -73,7 +73,7 @@ var (
 							{Index: 3, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionRight, Text: "Tools", UsageContext: domain.UsageContextTool},
 						},
 						Output: []domain.NodeHandle{
-							{Index: 2, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Output", UsageContext: domain.UsageContextWorkflow},
+							{Index: 0, Type: domain.NodeHandleTypeDefault, Position: domain.NodeHandlePositionBottom, Text: "Output", UsageContext: domain.UsageContextWorkflow},
 						},
 					},
 					domain.UsageContextTool: {

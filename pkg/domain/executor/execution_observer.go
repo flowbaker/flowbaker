@@ -50,19 +50,19 @@ func (e NodeExecutionStartedEvent) SetIsFromErrorTrigger(isFromErrorTrigger bool
 }
 
 type NodeExecutionCompletedEvent struct {
-	NodeID                     string
-	SourceNodePayloadByInputID SourceNodePayloadByInputID
-	IntegrationOutput          domain.IntegrationOutput
-	ItemsByInputID             map[string]domain.NodeItems
-	ItemsByOutputID            map[string]domain.NodeItems
-	ExecutionOrder             int64
-	StartedAt                  time.Time
-	EndedAt                    time.Time
-	IntegrationType            domain.IntegrationType
-	IntegrationActionType      domain.IntegrationActionType
-	IsReExecution              bool
-	IsFromErrorTrigger         bool
-	IsTesting                  bool
+	NodeID                string
+	PayloadByInputIndex   NodePayloadByInputIndex
+	IntegrationOutput     domain.IntegrationOutput
+	ItemsByInputIndex     map[int]domain.NodeItems
+	ItemsByOutputIndex    map[int]domain.NodeItems
+	ExecutionOrder        int64
+	StartedAt             time.Time
+	EndedAt               time.Time
+	IntegrationType       domain.IntegrationType
+	IntegrationActionType domain.IntegrationActionType
+	IsReExecution         bool
+	IsFromErrorTrigger    bool
+	IsTesting             bool
 }
 
 func (NodeExecutionCompletedEvent) GetEventType() domain.ExecutionEventType {
@@ -89,7 +89,7 @@ func (e NodeExecutionCompletedEvent) SetIsTesting(isTesting bool) domain.Executi
 
 type NodeExecutionFailedEvent struct {
 	NodeID             string
-	ItemsByInputID     map[string]domain.NodeItems
+	ItemsByInputIndex  map[int]domain.NodeItems
 	Error              error
 	Timestamp          time.Time
 	IsReExecution      bool

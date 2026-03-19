@@ -251,9 +251,7 @@ func (i *OpenAIIntegration) ListModels(ctx context.Context, params domain.Integr
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
-		},
+		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
 	}, nil
 }
 
