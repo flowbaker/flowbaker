@@ -82,6 +82,7 @@ const (
 	IntegrationType_Gitlab               IntegrationType = "gitlab"
 	IntegrationType_Snowflake            IntegrationType = "snowflake"
 	IntegrationType_InputTrigger         IntegrationType = "input_trigger"
+	IntegrationType_Loop                 IntegrationType = "loop"
 )
 
 type Integration struct {
@@ -92,6 +93,7 @@ type Integration struct {
 	CredentialProperties []NodeProperty              `json:"credential_props" bson:"credential_properties"`
 	Actions              []IntegrationAction         `json:"actions" bson:"actions"`
 	Triggers             []IntegrationTrigger        `json:"triggers" bson:"triggers"`
+	Containers           []IntegrationContainer      `json:"containers,omitempty" bson:"containers,omitempty"`
 	EmbeddingModels      []IntegrationEmbeddingModel `json:"embedding_models,omitempty" bson:"embedding_models,omitempty"`
 
 	IsGroup bool `json:"is_group" bson:"is_group"`
@@ -118,6 +120,16 @@ func (i Integration) GetTriggerByType(triggerType IntegrationTriggerEventType) (
 	}
 
 	return IntegrationTrigger{}, false
+}
+
+func (i Integration) GetContainerByType(containerType IntegrationContainerType) (IntegrationContainer, bool) {
+	for _, container := range i.Containers {
+		if container.ContainerType == containerType {
+			return container, true
+		}
+	}
+
+	return IntegrationContainer{}, false
 }
 
 type IntegrationTrigger struct {
@@ -186,8 +198,32 @@ type IntegrationAction struct {
 	SupportedContexts []ActionUsageContext                  `json:"supported_contexts" bson:"supported_contexts"`
 	CombinedContexts  []ActionUsageContext                  `json:"combined_contexts" bson:"combined_contexts"`
 
-	IsNonAvailableForDefaultOAuth bool           `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
-	Decoration                    NodeDecoration `json:"decoration" bson:"decoration"`
+type IntegrationContainerType string
+
+type ContainerControlRole string
+
+const (
+	ContainerControlRoleEntrypoint ContainerControlRole = "entrypoint"
+	ContainerControlRoleFeedback   ContainerControlRole = "feedback"
+	ContainerControlRoleTerminal   ContainerControlRole = "terminal"
+)
+
+type ContainerControl struct {
+	ID       string          `json:"id" bson:"id"`
+	Role     ContainerControlRole `json:"role" bson:"role"`
+	Label    string          `json:"label" bson:"label"`
+	Subtitle string          `json:"subtitle" bson:"subtitle"`
+	Handles  []NodeHandle    `json:"handles" bson:"handles"`
+}
+
+type IntegrationContainer struct {
+	ID              string                                `json:"id" bson:"id"`
+	ContainerType   IntegrationContainerType              `json:"container_type" bson:"container_type"`
+	Name            string                                `json:"name" bson:"name"`
+	Description     string                                `json:"description" bson:"description"`
+	Properties      []NodeProperty                        `json:"properties" bson:"properties"`
+	HandlesByContext map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
+	Controls    []ContainerControl                `json:"controls" bson:"controls"`
 }
 
 type IntegrationEmbeddingModel struct {
