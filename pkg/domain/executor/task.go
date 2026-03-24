@@ -17,6 +17,7 @@ type WaitingExecutionTask struct {
 	mutex            *sync.Mutex
 }
 
+// TODO: Enes: Examine merging strategy for multi input nodes
 func (t WaitingExecutionTask) MergeItemsByInputIndex() map[int]domain.NodeItems {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
