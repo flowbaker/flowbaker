@@ -7,51 +7,60 @@ import (
 )
 
 type NodeExecutionTask struct {
-	NodeID              string
-	PayloadByInputIndex NodePayloadByInputIndex
+	NodeID            string
+	ItemsByInputIndex map[int]domain.NodeItems
 }
 
 type WaitingExecutionTask struct {
 	NodeID           string
-	Payload          []byte
-	ReceivedPayloads map[int]map[int]NodePayload // input index -> subscribed output index -> payload
+	ReceivedPayloads map[int]map[int]domain.NodeItems
 	mutex            *sync.Mutex
 }
 
-func (t WaitingExecutionTask) MergePayloadsByInputIndex() map[int]NodePayload {
+func (t WaitingExecutionTask) MergeItemsByInputIndex() map[int]domain.NodeItems {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	payloadsByInputIndex := map[int]NodePayload{}
+	result := map[int]domain.NodeItems{}
 
-	for inputIndex, p := range t.ReceivedPayloads {
-		for _, payload := range p {
-			payloadsByInputIndex[inputIndex] = payload
+	for inputIndex, byOutputIndex := range t.ReceivedPayloads {
+		var allItems []domain.Item
+		var fromNodeID string
+
+		for _, nodeItems := range byOutputIndex {
+			allItems = append(allItems, nodeItems.Items...)
+			fromNodeID = nodeItems.FromNodeID
+		}
+
+		result[inputIndex] = domain.NodeItems{
+			FromNodeID: fromNodeID,
+			Items:      allItems,
 		}
 	}
 
-	return payloadsByInputIndex
+	return result
 }
 
-func (t WaitingExecutionTask) AddPayload(sourceNodeID string, inputIndex int, outputIndex int, payload domain.Payload) {
+func (t WaitingExecutionTask) AddItems(fromNodeID string, inputIndex int, outputIndex int, items []domain.Item) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
 	if t.ReceivedPayloads == nil {
-		t.ReceivedPayloads = map[int]map[int]NodePayload{}
+		t.ReceivedPayloads = map[int]map[int]domain.NodeItems{}
 	}
 
 	if _, exists := t.ReceivedPayloads[inputIndex]; !exists {
-		t.ReceivedPayloads[inputIndex] = map[int]NodePayload{
-			outputIndex: {
-				SourceNodeID: sourceNodeID,
-				Payload:      payload,
-			},
-		}
+		t.ReceivedPayloads[inputIndex] = map[int]domain.NodeItems{}
 	}
 
-	t.ReceivedPayloads[inputIndex][outputIndex] = NodePayload{
-		SourceNodeID: sourceNodeID,
-		Payload:      payload,
+	existing, exists := t.ReceivedPayloads[inputIndex][outputIndex]
+	if exists {
+		existing.Items = append(existing.Items, items...)
+		t.ReceivedPayloads[inputIndex][outputIndex] = existing
+	} else {
+		t.ReceivedPayloads[inputIndex][outputIndex] = domain.NodeItems{
+			FromNodeID: fromNodeID,
+			Items:      items,
+		}
 	}
 }

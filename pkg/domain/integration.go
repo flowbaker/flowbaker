@@ -233,41 +233,21 @@ type IntegrationEmbeddingModel struct {
 }
 
 type IntegrationInput struct {
-	NodeID              string
-	PayloadByInputIndex map[int]Payload
-	IntegrationParams   IntegrationParams
-	ActionType          IntegrationActionType
-	Workflow            *Workflow
+	NodeID            string
+	ItemsByInputIndex map[int]NodeItems
+	IntegrationParams IntegrationParams
+	ActionType        IntegrationActionType
+	Workflow          *Workflow
 }
 
-func (i IntegrationInput) GetItemsByInputIndex() (map[int][]Item, error) {
-	itemsByInputIndex := map[int][]Item{}
-
-	for inputIndex, payload := range i.PayloadByInputIndex {
-		items, err := payload.ToItems()
-		if err != nil {
-			return nil, err
-		}
-
-		itemsByInputIndex[inputIndex] = items
-	}
-
-	return itemsByInputIndex, nil
-}
-
-func (i IntegrationInput) GetAllItems() ([]Item, error) {
-	itemsByInputIndex, err := i.GetItemsByInputIndex()
-	if err != nil {
-		return nil, err
-	}
-
+func (i IntegrationInput) GetAllItems() []Item {
 	items := []Item{}
 
-	for _, inputItems := range itemsByInputIndex {
-		items = append(items, inputItems...)
+	for _, nodeItems := range i.ItemsByInputIndex {
+		items = append(items, nodeItems.Items...)
 	}
 
-	return items, nil
+	return items
 }
 
 type IntegrationParams struct {
@@ -275,26 +255,7 @@ type IntegrationParams struct {
 }
 
 type IntegrationOutput struct {
-	ResultJSONByOutputIndex []Payload
-}
-
-func (o IntegrationOutput) ToItemsByOutputIndex(nodeID string) map[int]NodeItems {
-	itemsByOutputIndex := map[int]NodeItems{}
-
-	for outputIndex, payload := range o.ResultJSONByOutputIndex {
-		items, err := payload.ToItems()
-		if err != nil {
-			log.Error().Err(err).Msgf("Failed to convert payload to items for output %d", outputIndex)
-			continue
-		}
-
-		itemsByOutputIndex[outputIndex] = NodeItems{
-			FromNodeID: nodeID,
-			Items:      items,
-		}
-	}
-
-	return itemsByOutputIndex
+	ItemsByOutputIndex []NodeItems
 }
 
 type IntegrationDeps struct {

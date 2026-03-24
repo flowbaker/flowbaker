@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"encoding/json"
+
 	executortypes "github.com/flowbaker/flowbaker/pkg/clients/flowbaker-executor"
 
 	"github.com/flowbaker/flowbaker/pkg/domain/executor"
@@ -148,11 +150,20 @@ func (c *ExecutorController) RunNode(ctx fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
 
+	itemsByInputIndex := map[int][]domain.Item{}
+	for idx, raw := range req.ItemsByInputIndex {
+		var items []domain.Item
+		if err := json.Unmarshal(raw, &items); err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid items format")
+		}
+		itemsByInputIndex[idx] = items
+	}
+
 	result, err := c.executorService.RunNode(ctx.RequestCtx(), executor.RunNodeParams{
 		ExecutionID:       req.ExecutionID,
 		NodeID:            req.NodeID,
 		Workflow:          mappers.ExecutorWorkflowToDomain(&req.Workflow),
-		ItemsByInputIndex: req.ItemsByInputIndex,
+		ItemsByInputIndex: itemsByInputIndex,
 		WorkspaceID:       workspaceID,
 	})
 	if err != nil {

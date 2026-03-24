@@ -250,19 +250,12 @@ func (i *HTTPIntegration) Execute(ctx context.Context, params domain.Integration
 }
 
 func (i *HTTPIntegration) ExecuteGet(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
+	allItems := make([]domain.Item, 0)
+	for _, nodeItems := range params.ItemsByInputIndex {
+		allItems = append(allItems, nodeItems.Items...)
 	}
 
-	allItems := make([]any, 0)
-	for _, items := range itemsByInputID {
-		for _, item := range items {
-			allItems = append(allItems, item)
-		}
-	}
-
-	outputItems := make([]any, 0, len(allItems))
+	outputItems := make([]domain.Item, 0, len(allItems))
 
 	for _, item := range allItems {
 		p := HTTPRequestParams{}
@@ -271,7 +264,6 @@ func (i *HTTPIntegration) ExecuteGet(ctx context.Context, params domain.Integrat
 			return domain.IntegrationOutput{}, err
 		}
 
-		// For GET requests, we don't want to send any body
 		resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
 			Method:      "GET",
 			URL:         p.URL,
@@ -301,30 +293,20 @@ func (i *HTTPIntegration) ExecuteGet(ctx context.Context, params domain.Integrat
 		outputItems = append(outputItems, httpResp)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: []domain.NodeItems{
+			{FromNodeID: params.NodeID, Items: outputItems},
+		},
 	}, nil
 }
 
 func (i *HTTPIntegration) ExecutePost(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
+	allItems := make([]domain.Item, 0)
+	for _, nodeItems := range params.ItemsByInputIndex {
+		allItems = append(allItems, nodeItems.Items...)
 	}
 
-	allItems := make([]any, 0)
-	for _, items := range itemsByInputID {
-		for _, item := range items {
-			allItems = append(allItems, item)
-		}
-	}
-
-	outputItems := make([]any, 0, len(allItems))
+	outputItems := make([]domain.Item, 0, len(allItems))
 
 	for _, item := range allItems {
 		p := HTTPRequestParams{}
@@ -376,30 +358,20 @@ func (i *HTTPIntegration) ExecutePost(ctx context.Context, params domain.Integra
 		outputItems = append(outputItems, httpResp)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: []domain.NodeItems{
+			{FromNodeID: params.NodeID, Items: outputItems},
+		},
 	}, nil
 }
 
 func (i *HTTPIntegration) ExecutePut(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
+	allItems := make([]domain.Item, 0)
+	for _, nodeItems := range params.ItemsByInputIndex {
+		allItems = append(allItems, nodeItems.Items...)
 	}
 
-	allItems := make([]any, 0)
-	for _, items := range itemsByInputID {
-		for _, item := range items {
-			allItems = append(allItems, item)
-		}
-	}
-
-	outputItems := make([]any, 0, len(allItems))
+	outputItems := make([]domain.Item, 0, len(allItems))
 
 	for _, item := range allItems {
 		p := HTTPRequestParams{}
@@ -450,30 +422,20 @@ func (i *HTTPIntegration) ExecutePut(ctx context.Context, params domain.Integrat
 		outputItems = append(outputItems, httpResp)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: []domain.NodeItems{
+			{FromNodeID: params.NodeID, Items: outputItems},
+		},
 	}, nil
 }
 
 func (i *HTTPIntegration) ExecutePatch(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
+	allItems := make([]domain.Item, 0)
+	for _, nodeItems := range params.ItemsByInputIndex {
+		allItems = append(allItems, nodeItems.Items...)
 	}
 
-	allItems := make([]any, 0)
-	for _, items := range itemsByInputID {
-		for _, item := range items {
-			allItems = append(allItems, item)
-		}
-	}
-
-	outputItems := make([]any, 0, len(allItems))
+	outputItems := make([]domain.Item, 0, len(allItems))
 
 	for _, item := range allItems {
 		p := HTTPRequestParams{}
@@ -524,30 +486,20 @@ func (i *HTTPIntegration) ExecutePatch(ctx context.Context, params domain.Integr
 		outputItems = append(outputItems, httpResp)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: []domain.NodeItems{
+			{FromNodeID: params.NodeID, Items: outputItems},
+		},
 	}, nil
 }
 
 func (i *HTTPIntegration) ExecuteDelete(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
+	allItems := make([]domain.Item, 0)
+	for _, nodeItems := range params.ItemsByInputIndex {
+		allItems = append(allItems, nodeItems.Items...)
 	}
 
-	allItems := make([]any, 0)
-	for _, items := range itemsByInputID {
-		for _, item := range items {
-			allItems = append(allItems, item)
-		}
-	}
-
-	outputItems := make([]any, 0, len(allItems))
+	outputItems := make([]domain.Item, 0, len(allItems))
 
 	for _, item := range allItems {
 		p := HTTPRequestParams{}
@@ -598,13 +550,10 @@ func (i *HTTPIntegration) ExecuteDelete(ctx context.Context, params domain.Integ
 		outputItems = append(outputItems, httpResp)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: []domain.NodeItems{
+			{FromNodeID: params.NodeID, Items: outputItems},
+		},
 	}, nil
 }
 

@@ -51,8 +51,6 @@ func (e NodeExecutionStartedEvent) SetIsFromErrorTrigger(isFromErrorTrigger bool
 
 type NodeExecutionCompletedEvent struct {
 	NodeID                string
-	PayloadByInputIndex   NodePayloadByInputIndex
-	IntegrationOutput     domain.IntegrationOutput
 	ItemsByInputIndex     map[int]domain.NodeItems
 	ItemsByOutputIndex    map[int]domain.NodeItems
 	ExecutionOrder        int64

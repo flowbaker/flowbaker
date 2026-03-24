@@ -916,19 +916,17 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 
 			inputItems := []domain.Item{mergedSettings}
 
-			inputPayload, err := json.Marshal(inputItems)
-			if err != nil {
-				return "", fmt.Errorf("failed to marshal tool input: %w", err)
-			}
-
 			p := domain.IntegrationInput{
 				NodeID:     toolNode.ID,
 				ActionType: toolNode.ActionNodeOpts.ActionType,
 				IntegrationParams: domain.IntegrationParams{
 					Settings: mergedSettings,
 				},
-				PayloadByInputIndex: map[int]domain.Payload{
-					agentToolInputIndex: domain.Payload(inputPayload),
+				ItemsByInputIndex: map[int]domain.NodeItems{
+					agentToolInputIndex: {
+						FromNodeID: params.AgentNode.ID,
+						Items:      inputItems,
+					},
 				},
 				Workflow: &workflow,
 			}
@@ -956,15 +954,21 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 				return "", fmt.Errorf("failed to execute tool %s: %w", toolNode.Name, err)
 			}
 
+			outputItemsByIndex := map[int]domain.NodeItems{}
+
+			for idx, nodeItems := range output.ItemsByOutputIndex {
+				outputItemsByIndex[idx] = nodeItems
+			}
+
 			err = c.observer.Notify(ctx, executor.NodeExecutionCompletedEvent{
 				NodeID: toolNode.ID,
 				ItemsByInputIndex: map[int]domain.NodeItems{
-					agentToolInputIndex: domain.NodeItems{
+					agentToolInputIndex: {
 						FromNodeID: params.AgentNode.ID,
 						Items:      inputItems,
 					},
 				},
-				ItemsByOutputIndex:    output.ToItemsByOutputIndex(p.NodeID),
+				ItemsByOutputIndex:    outputItemsByIndex,
 				StartedAt:             startTime,
 				EndedAt:               time.Now(),
 				IntegrationType:       toolNode.IntegrationType,
@@ -974,11 +978,14 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 				return "", fmt.Errorf("ai agent integration failed to notify observer about tool execution completed: %w", err)
 			}
 
-			payloads := output.ResultJSONByOutputIndex
+			lastItems := output.ItemsByOutputIndex[0].Items
 
-			lastPayload := payloads[0]
+			serialized, err := json.Marshal(lastItems)
+			if err != nil {
+				return "", fmt.Errorf("failed to marshal tool output: %w", err)
+			}
 
-			return string(lastPayload), nil
+			return string(serialized), nil
 		}
 
 		funcTool := tool.Define(toolName, toolDescription, toolParameters, executeFunc)
