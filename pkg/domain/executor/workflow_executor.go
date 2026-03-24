@@ -186,14 +186,10 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 
 		executionCount++
 
-		node, exists := w.workflow.GetNodeByID(execution.NodeID)
-		if exists {
-			limit := w.getNodeExecutionLimit(node)
-			if w.executionCountByNodeID[execution.NodeID] >= limit {
-				log.Error().Msgf("node %s executed more than %d times (limit reached)", execution.NodeID, limit)
-				break
-			}
+		if w.IsExecutionLimitReached(execution.NodeID) {
+			break
 		}
+
 		_, err := w.ExecuteNode(ctx, ExecuteNodeParams{
 			Task:           execution,
 			ExecutionOrder: int64(executionCount),
@@ -696,14 +692,32 @@ func (w *WorkflowExecutor) IsErrorTrigger(nodeID string) bool {
 	return node.Type == domain.NodeTypeTrigger && node.TriggerNodeOpts.EventType == "on_error"
 }
 
-func (w *WorkflowExecutor) getNodeExecutionLimit(node domain.WorkflowNode) int {
+func (w *WorkflowExecutor) IsExecutionLimitReached(nodeID string) bool {
+	node, exists := w.workflow.GetNodeByID(nodeID)
+	if !exists {
+		return false
+	}
+
+	count, exists := w.executionCountByNodeID[nodeID]
+	if !exists {
+		return false
+	}
+
+	limit := DefaultNodeExecutionLimit
+
 	if node.Settings.OverwriteExecutionLimit && node.Settings.ExecutionLimit > 0 {
-		return node.Settings.ExecutionLimit
+		limit = node.Settings.ExecutionLimit
 	}
 
 	if w.workflow.Settings.NodeExecutionLimit > 0 {
-		return w.workflow.Settings.NodeExecutionLimit
+		limit = w.workflow.Settings.NodeExecutionLimit
 	}
 
-	return DefaultNodeExecutionLimit
+	isLimitReached := count >= limit
+
+	if isLimitReached {
+		log.Error().Msgf("node %s execution limit reached (limit: %d, count: %d)", nodeID, limit, count)
+	}
+
+	return isLimitReached
 }
