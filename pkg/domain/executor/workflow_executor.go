@@ -224,7 +224,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 
 	executionResults := w.historyRecorder.GetHistoryEntries()
 
-	// Convert domain types to flowbaker types using mappers
 	nodeExecutions := mappers.DomainNodeExecutionsToFlowbaker(w.usageCollector.GetNodeExecutions())
 	historyEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(executionResults)
 
@@ -398,10 +397,7 @@ func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, node domain.W
 }
 
 func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.WorkflowNode, execution NodeExecutionTask) (NodeExecutionResult, error) {
-	// Skip non-executable nodes (like agent items)
-	// Agent items have UsageContext other than "workflow"
-	if node.UsageContext != "" && node.UsageContext != "workflow" {
-		log.Debug().Msgf("Skipping agent item node %s with usage context %s", execution.NodeID, node.UsageContext)
+	if w.ShouldSkip(node) {
 		return NodeExecutionResult{
 			Output: domain.IntegrationOutput{
 				ItemsByOutputIndex: []domain.NodeItems{},
@@ -510,6 +506,10 @@ func (w *WorkflowExecutor) ShouldWait(node domain.WorkflowNode) bool {
 	}
 
 	return len(inputIndices) > 1 && !slices.Contains(excludedTypes, node.IntegrationType)
+}
+
+func (w *WorkflowExecutor) ShouldSkip(node domain.WorkflowNode) bool {
+	return node.UsageContext != "" && node.UsageContext != string(domain.UsageContextWorkflow)
 }
 
 type HandleWaitingTaskParams struct {
