@@ -211,8 +211,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 			break
 		}
 
-		time.Sleep(1 * time.Second)
-
 		if len(w.executionQueue) == 0 && len(w.waitingExecutionTasks) > 0 {
 			for _, task := range w.waitingExecutionTasks {
 				w.AddExecutionTask(NodeExecutionTask{

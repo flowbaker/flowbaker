@@ -186,7 +186,7 @@ func (idx EdgeIndex) GetTargetNodes(nodeID string, outputIndex int) []WorkflowNo
 	nodes := idx.targetNodesBySourceOutput[sourceOutput]
 
 	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].Positions.XPosition < nodes[j].Positions.XPosition
+		return nodes[i].Positions.XPosition > nodes[j].Positions.XPosition
 	})
 
 	return nodes
