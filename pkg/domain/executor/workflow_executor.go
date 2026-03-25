@@ -180,8 +180,6 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 			return ExecutionResult{}, ctx.Err()
 		}
 
-		log.Info().Msgf("Execution stack: %v", len(w.executionQueue))
-
 		execution := w.executionQueue[0]
 		w.executionQueue = w.executionQueue[1:]
 
