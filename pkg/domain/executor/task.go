@@ -32,18 +32,6 @@ func NewWaitingExecutionTask(nodeID string, payloads map[int]domain.NodeItems) W
 	}
 }
 
-func (t WaitingExecutionTask) MergeItemsByInputIndex() map[int]domain.NodeItems {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-
-	result := map[int]domain.NodeItems{}
-	for inputIndex, nodeItems := range t.ReceivedPayloads {
-		result[inputIndex] = nodeItems
-	}
-
-	return result
-}
-
 func (t WaitingExecutionTask) AddItems(fromNodeID string, inputIndex int, items []domain.Item) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()

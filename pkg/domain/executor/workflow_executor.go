@@ -273,40 +273,35 @@ type ExecuteNodeResult struct {
 }
 
 func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams) (ExecuteNodeResult, error) {
-	execution := p.Task
-	executionOrder := p.ExecutionOrder
-	propagate := p.Propagate
+	task := p.Task
 
-	var result NodeExecutionResult
-	var nodeID string
-
-	node, exists := w.workflow.GetNodeByID(execution.NodeID)
+	node, exists := w.workflow.GetNodeByID(task.NodeID)
 	if !exists {
-		return ExecuteNodeResult{}, fmt.Errorf("node %s not found in workflow", execution.NodeID)
+		return ExecuteNodeResult{}, fmt.Errorf("node %s not found in workflow", task.NodeID)
 	}
 
-	nodeID = node.ID
-
 	w.mutex.Lock()
-	executionCount := w.executionCountByNodeID[nodeID]
-	w.executionCountByNodeID[nodeID] = executionCount + 1
+	executionCount := w.executionCountByNodeID[node.ID]
+	w.executionCountByNodeID[node.ID] = executionCount + 1
 	w.mutex.Unlock()
 
 	nodeExecutionStartedAt := time.Now()
 
 	err := w.observer.Notify(ctx, NodeExecutionStartedEvent{
-		NodeID:    execution.NodeID,
+		NodeID:    task.NodeID,
 		Timestamp: nodeExecutionStartedAt,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to notify node execution started")
 	}
 
+	var result NodeExecutionResult
+
 	switch node.Type {
 	case domain.NodeTypeAction:
-		result, err = w.ExecuteActionNode(ctx, node, execution)
+		result, err = w.ExecuteActionNode(ctx, node, task)
 	case domain.NodeTypeTrigger:
-		result, err = w.ExecuteTriggerNode(ctx, node, execution)
+		result, err = w.ExecuteTriggerNode(ctx, node, task)
 	default:
 		return ExecuteNodeResult{}, fmt.Errorf("node type is invalid: %s", node.Type)
 	}
@@ -323,30 +318,14 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 
 	nodeExecutionEndedAt := time.Now()
 
-	if propagate {
-		for outputIndex, nodeItems := range result.Output.ItemsByOutputIndex {
-			nodes := w.edgeIndex.GetTargetNodes(nodeID, outputIndex)
-			if len(nodes) == 0 {
-				continue
-			}
-
-			if len(nodeItems.Items) > 0 {
-				for _, node := range nodes {
-					err := w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
-						FromNodeID:  nodeID,
-						Node:        node,
-						Items:       nodeItems.Items,
-						OutputIndex: outputIndex,
-					})
-					if err != nil {
-						return ExecuteNodeResult{}, err
-					}
-				}
-			}
+	if p.Propagate {
+		err := w.Propagate(ctx, node.ID, result.Output)
+		if err != nil {
+			return ExecuteNodeResult{}, err
 		}
 	}
 
-	w.MarkNodeAsExecuted(nodeID)
+	w.MarkNodeAsExecuted(node.ID)
 
 	itemsByOutputIndex := map[int]domain.NodeItems{}
 	for idx, nodeItems := range result.Output.ItemsByOutputIndex {
@@ -354,10 +333,10 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	}
 
 	err = w.observer.Notify(ctx, NodeExecutionCompletedEvent{
-		NodeID:                nodeID,
-		ItemsByInputIndex:     execution.ItemsByInputIndex,
+		NodeID:                node.ID,
+		ItemsByInputIndex:     task.ItemsByInputIndex,
 		ItemsByOutputIndex:    itemsByOutputIndex,
-		ExecutionOrder:        executionOrder,
+		ExecutionOrder:        p.ExecutionOrder,
 		IntegrationType:       result.IntegrationType,
 		IntegrationActionType: result.IntegrationActionType,
 		StartedAt:             nodeExecutionStartedAt,
@@ -442,6 +421,30 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 		IntegrationType:       domain.IntegrationType(node.IntegrationType),
 		IntegrationActionType: node.ActionNodeOpts.ActionType,
 	}, nil
+}
+
+func (w *WorkflowExecutor) Propagate(ctx context.Context, nodeID string, output domain.IntegrationOutput) error {
+	for outputIndex, nodeItems := range output.ItemsByOutputIndex {
+		if len(nodeItems.Items) == 0 {
+			continue
+		}
+
+		nodes := w.edgeIndex.GetTargetNodes(nodeID, outputIndex)
+
+		for _, node := range nodes {
+			err := w.AddTaskForDownstreamNode(ctx, AddTaskForDownstreamNodeParams{
+				FromNodeID:  nodeID,
+				Node:        node,
+				Items:       nodeItems.Items,
+				OutputIndex: outputIndex,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 type AddTaskForDownstreamNodeParams struct {
