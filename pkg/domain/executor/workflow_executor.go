@@ -211,6 +211,8 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 			break
 		}
 
+		time.Sleep(1 * time.Second)
+
 		if len(w.executionQueue) == 0 && len(w.waitingExecutionTasks) > 0 {
 			for _, task := range w.waitingExecutionTasks {
 				w.AddExecutionTask(NodeExecutionTask{
@@ -465,14 +467,6 @@ type AddTaskForDownstreamNodeParams struct {
 	Items       []domain.Item
 }
 
-// Check if node is currently waiting for this event
-// If it is fill the payload
-// Check if all events are received
-// If they are add the task to the execution stack
-// If node is not waiting for this event
-// Check if next node has multiple inputs
-// If it does add the task to the waiting execution tasks
-// If it doesn't add the task to the execution stack
 func (w *WorkflowExecutor) AddTaskForDownstreamNode(ctx context.Context, p AddTaskForDownstreamNodeParams) error {
 	node := p.Node
 	items := p.Items
@@ -485,100 +479,69 @@ func (w *WorkflowExecutor) AddTaskForDownstreamNode(ctx context.Context, p AddTa
 
 	matchingInputIndex := edge.TargetIndex
 
-	waitingTask, exists := w.GetWaitingExecutionTask(p.Node.ID)
-	if exists {
-		waitingTask.AddItems(p.FromNodeID, matchingInputIndex, outputIndex, items)
-
-		canExecute := w.shouldExecuteWaitingTask(ctx, waitingTask, node)
-
-		if canExecute {
-			w.AddExecutionTask(NodeExecutionTask{
-				NodeID:            node.ID,
-				ItemsByInputIndex: waitingTask.MergeItemsByInputIndex(),
-			})
-
-			w.mutex.Lock()
-			newWaitingTasks := []WaitingExecutionTask{}
-
-			for _, task := range w.waitingExecutionTasks {
-				if task.NodeID != node.ID {
-					newWaitingTasks = append(newWaitingTasks, task)
-				}
-			}
-
-			w.waitingExecutionTasks = newWaitingTasks
-			w.mutex.Unlock()
-		}
-
-		return nil
-	}
-
 	inputIndices := w.workflow.GetConnectedInputIndices(node.ID)
-	isNextNodeHasMultipleInputs := len(inputIndices) > 1 && node.IntegrationType != domain.IntegrationType_AIAgent
+	hasMultipleInputs := len(inputIndices) > 1 && node.IntegrationType != domain.IntegrationType_AIAgent
 
-	if isNextNodeHasMultipleInputs {
-		w.AddWaitingExecutionTask(WaitingExecutionTask{
-			ReceivedPayloads: map[int]map[int]domain.NodeItems{
+	if !hasMultipleInputs {
+		w.AddExecutionTask(NodeExecutionTask{
+			NodeID: node.ID,
+			ItemsByInputIndex: map[int]domain.NodeItems{
 				matchingInputIndex: {
-					outputIndex: {
-						FromNodeID: p.FromNodeID,
-						Items:      items,
-					},
+					FromNodeID: p.FromNodeID,
+					Items:      items,
 				},
 			},
-			NodeID: node.ID,
-			mutex:  &sync.Mutex{},
 		})
-
 		return nil
 	}
 
-	fmt.Println("Adding task to execution stack", node.ID)
-
-	// Node has only one input
-	w.AddExecutionTask(NodeExecutionTask{
-		NodeID: node.ID,
-		ItemsByInputIndex: map[int]domain.NodeItems{
-			matchingInputIndex: {
-				FromNodeID: p.FromNodeID,
-				Items:      items,
-			},
-		},
+	w.HandleMultiInputTask(HandleMultiInputTaskParams{
+		FromNodeID: p.FromNodeID,
+		Node:       node,
+		InputIndex: matchingInputIndex,
+		Items:      items,
 	})
 
 	return nil
 }
 
-func (w *WorkflowExecutor) shouldExecuteWaitingTask(ctx context.Context, waitingTask WaitingExecutionTask, node domain.WorkflowNode) bool {
+type HandleMultiInputTaskParams struct {
+	FromNodeID string
+	Node       domain.WorkflowNode
+	InputIndex int
+	Items      []domain.Item
+}
+
+func (w *WorkflowExecutor) HandleMultiInputTask(p HandleMultiInputTaskParams) {
+	waitingTask, exists := w.GetAvailableWaitingTask(p.Node.ID, p.InputIndex)
+
+	if !exists {
+		t := NewWaitingExecutionTask(p.Node.ID, map[int]domain.NodeItems{
+			p.InputIndex: {
+				FromNodeID: p.FromNodeID,
+				Items:      p.Items,
+			},
+		})
+
+		w.AddWaitingExecutionTask(t)
+		return
+	}
+
+	waitingTask.AddItems(p.FromNodeID, p.InputIndex, p.Items)
+
+	if w.shouldExecuteWaitingTask(waitingTask, p.Node) {
+		w.ResolveWaitingTask(p.Node.ID, waitingTask)
+	}
+}
+
+func (w *WorkflowExecutor) shouldExecuteWaitingTask(waitingTask WaitingExecutionTask, node domain.WorkflowNode) bool {
 	waitingTask.mutex.Lock()
 	defer waitingTask.mutex.Unlock()
 
-	edges := w.workflow.GetIncomingEdges(node.ID)
-	if len(edges) == 0 {
-		return false
-	}
-
-	// Group edges by target index to check each input slot
 	inputIndices := w.workflow.GetConnectedInputIndices(node.ID)
 
 	for _, inputIndex := range inputIndices {
-		payloadsForInput, exists := waitingTask.ReceivedPayloads[inputIndex]
-		if !exists {
-			return false
-		}
-
-		// Check that at least one subscribed output for this input has been received
-		hasPayload := false
-		for _, edge := range edges {
-			if edge.TargetIndex == inputIndex {
-				if _, exists := payloadsForInput[edge.SourceIndex]; exists {
-					hasPayload = true
-					break
-				}
-			}
-		}
-
-		if !hasPayload {
+		if _, exists := waitingTask.ReceivedPayloads[inputIndex]; !exists {
 			return false
 		}
 	}
@@ -586,13 +549,15 @@ func (w *WorkflowExecutor) shouldExecuteWaitingTask(ctx context.Context, waiting
 	return true
 }
 
-func (w *WorkflowExecutor) GetWaitingExecutionTask(nodeID string) (WaitingExecutionTask, bool) {
+func (w *WorkflowExecutor) GetAvailableWaitingTask(nodeID string, inputIndex int) (WaitingExecutionTask, bool) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
 	for _, task := range w.waitingExecutionTasks {
 		if task.NodeID == nodeID {
-			return task, true
+			if _, filled := task.ReceivedPayloads[inputIndex]; !filled {
+				return task, true
+			}
 		}
 	}
 
@@ -633,12 +598,35 @@ func (w *WorkflowExecutor) IsNodeExecuted(nodeID string) bool {
 
 func (w *WorkflowExecutor) AddWaitingExecutionTask(task WaitingExecutionTask) {
 	w.mutex.Lock()
-
 	defer w.mutex.Unlock()
 
-	log.Info().Msgf("Adding waiting task for node %s", task.NodeID)
+	log.Info().Msgf("Adding waiting task %s for node %s", task.ID, task.NodeID)
 
 	w.waitingExecutionTasks = append(w.waitingExecutionTasks, task)
+}
+
+func (w *WorkflowExecutor) RemoveWaitingExecutionTask(taskID string) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	filtered := []WaitingExecutionTask{}
+
+	for _, task := range w.waitingExecutionTasks {
+		if task.ID != taskID {
+			filtered = append(filtered, task)
+		}
+	}
+
+	w.waitingExecutionTasks = filtered
+}
+
+func (w *WorkflowExecutor) ResolveWaitingTask(nodeID string, task WaitingExecutionTask) {
+	w.AddExecutionTask(NodeExecutionTask{
+		NodeID:            nodeID,
+		ItemsByInputIndex: task.MergeItemsByInputIndex(),
+	})
+
+	w.RemoveWaitingExecutionTask(task.ID)
 }
 
 type ErrorItem struct {

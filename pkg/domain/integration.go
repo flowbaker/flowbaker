@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -188,14 +187,17 @@ type ContextHandles struct {
 }
 
 type IntegrationAction struct {
-	ID                string                                `json:"id" bson:"id"`
-	ActionType        IntegrationActionType                 `json:"action_type" bson:"action_type"`
-	Name              string                                `json:"name" bson:"name"`
-	Description       string                                `json:"description" bson:"description"`
-	Properties        []NodeProperty                        `json:"properties" bson:"properties"`
-	HandlesByContext  map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
-	SupportedContexts []ActionUsageContext                  `json:"supported_contexts" bson:"supported_contexts"`
-	CombinedContexts  []ActionUsageContext                  `json:"combined_contexts" bson:"combined_contexts"`
+	ID                            string                                `json:"id" bson:"id"`
+	ActionType                    IntegrationActionType                 `json:"action_type" bson:"action_type"`
+	Name                          string                                `json:"name" bson:"name"`
+	Description                   string                                `json:"description" bson:"description"`
+	Properties                    []NodeProperty                        `json:"properties" bson:"properties"`
+	HandlesByContext              map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
+	SupportedContexts             []ActionUsageContext                  `json:"supported_contexts" bson:"supported_contexts"`
+	CombinedContexts              []ActionUsageContext                  `json:"combined_contexts" bson:"combined_contexts"`
+	IsNonAvailableForDefaultOAuth bool                                  `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
+	Decoration                    NodeDecoration                        `json:"decoration" bson:"decoration"`
+}
 
 type IntegrationContainerType string
 
@@ -208,21 +210,21 @@ const (
 )
 
 type ContainerControl struct {
-	ID       string          `json:"id" bson:"id"`
+	ID       string               `json:"id" bson:"id"`
 	Role     ContainerControlRole `json:"role" bson:"role"`
-	Label    string          `json:"label" bson:"label"`
-	Subtitle string          `json:"subtitle" bson:"subtitle"`
-	Handles  []NodeHandle    `json:"handles" bson:"handles"`
+	Label    string               `json:"label" bson:"label"`
+	Subtitle string               `json:"subtitle" bson:"subtitle"`
+	Handles  []NodeHandle         `json:"handles" bson:"handles"`
 }
 
 type IntegrationContainer struct {
-	ID              string                                `json:"id" bson:"id"`
-	ContainerType   IntegrationContainerType              `json:"container_type" bson:"container_type"`
-	Name            string                                `json:"name" bson:"name"`
-	Description     string                                `json:"description" bson:"description"`
-	Properties      []NodeProperty                        `json:"properties" bson:"properties"`
+	ID               string                                `json:"id" bson:"id"`
+	ContainerType    IntegrationContainerType              `json:"container_type" bson:"container_type"`
+	Name             string                                `json:"name" bson:"name"`
+	Description      string                                `json:"description" bson:"description"`
+	Properties       []NodeProperty                        `json:"properties" bson:"properties"`
 	HandlesByContext map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
-	Controls    []ContainerControl                `json:"controls" bson:"controls"`
+	Controls         []ContainerControl                    `json:"controls" bson:"controls"`
 }
 
 type IntegrationEmbeddingModel struct {
