@@ -210,16 +210,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 			break
 		}
 
-		if len(w.executionQueue) == 0 && len(w.waitingExecutionTasks) > 0 {
-			for _, task := range w.waitingExecutionTasks {
-				w.AddExecutionTask(NodeExecutionTask{
-					NodeID:            task.NodeID,
-					ItemsByInputIndex: task.MergeItemsByInputIndex(),
-				})
-			}
-
-			w.waitingExecutionTasks = []WaitingExecutionTask{}
-		}
+		w.FlushWaitingTasks()
 	}
 
 	executionResults := w.historyRecorder.GetHistoryEntries()
@@ -571,6 +562,21 @@ func (w *WorkflowExecutor) GetAvailableWaitingTask(nodeID string, inputIndex int
 	return WaitingExecutionTask{}, false
 }
 
+func (w *WorkflowExecutor) FlushWaitingTasks() {
+	if len(w.executionQueue) > 0 || len(w.waitingExecutionTasks) == 0 {
+		return
+	}
+
+	for _, task := range w.waitingExecutionTasks {
+		w.AddExecutionTask(NodeExecutionTask{
+			NodeID:            task.NodeID,
+			ItemsByInputIndex: task.ReceivedPayloads,
+		})
+	}
+
+	w.waitingExecutionTasks = []WaitingExecutionTask{}
+}
+
 func (w *WorkflowExecutor) AddExecutionTask(execution NodeExecutionTask) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
@@ -630,7 +636,7 @@ func (w *WorkflowExecutor) RemoveWaitingExecutionTask(taskID string) {
 func (w *WorkflowExecutor) ResolveWaitingTask(nodeID string, task WaitingExecutionTask) {
 	w.AddExecutionTask(NodeExecutionTask{
 		NodeID:            nodeID,
-		ItemsByInputIndex: task.MergeItemsByInputIndex(),
+		ItemsByInputIndex: task.ReceivedPayloads,
 	})
 
 	w.RemoveWaitingExecutionTask(task.ID)
