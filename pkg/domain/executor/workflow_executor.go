@@ -525,6 +525,7 @@ func (w *WorkflowExecutor) HandleWaitingTask(p HandleWaitingTaskParams) {
 		})
 
 		w.AddWaitingExecutionTask(t)
+
 		return
 	}
 
