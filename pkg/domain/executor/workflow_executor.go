@@ -530,12 +530,12 @@ func (w *WorkflowExecutor) HandleWaitingTask(p HandleWaitingTaskParams) {
 
 	waitingTask.AddItems(p.FromNodeID, p.InputIndex, p.Items)
 
-	if w.shouldExecuteWaitingTask(waitingTask, p.Node) {
+	if w.ShouldResolveWaitingTask(waitingTask, p.Node) {
 		w.ResolveWaitingTask(p.Node.ID, waitingTask)
 	}
 }
 
-func (w *WorkflowExecutor) shouldExecuteWaitingTask(waitingTask WaitingExecutionTask, node domain.WorkflowNode) bool {
+func (w *WorkflowExecutor) ShouldResolveWaitingTask(waitingTask WaitingExecutionTask, node domain.WorkflowNode) bool {
 	waitingTask.mutex.Lock()
 	defer waitingTask.mutex.Unlock()
 
