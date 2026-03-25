@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -477,40 +478,50 @@ func (w *WorkflowExecutor) AddTaskForDownstreamNode(ctx context.Context, p AddTa
 
 	matchingInputIndex := edge.TargetIndex
 
-	inputIndices := w.workflow.GetConnectedInputIndices(node.ID)
-	hasMultipleInputs := len(inputIndices) > 1 && node.IntegrationType != domain.IntegrationType_AIAgent
-
-	if !hasMultipleInputs {
-		w.AddExecutionTask(NodeExecutionTask{
-			NodeID: node.ID,
-			ItemsByInputIndex: map[int]domain.NodeItems{
-				matchingInputIndex: {
-					FromNodeID: p.FromNodeID,
-					Items:      items,
-				},
-			},
+	if w.ShouldWait(node) {
+		w.HandleWaitingTask(HandleWaitingTaskParams{
+			FromNodeID: p.FromNodeID,
+			Node:       node,
+			InputIndex: matchingInputIndex,
+			Items:      items,
 		})
+
 		return nil
 	}
 
-	w.HandleMultiInputTask(HandleMultiInputTaskParams{
-		FromNodeID: p.FromNodeID,
-		Node:       node,
-		InputIndex: matchingInputIndex,
-		Items:      items,
-	})
+	t := NodeExecutionTask{
+		NodeID: node.ID,
+		ItemsByInputIndex: map[int]domain.NodeItems{
+			matchingInputIndex: {
+				FromNodeID: p.FromNodeID,
+				Items:      items,
+			},
+		},
+	}
+
+	w.AddExecutionTask(t)
 
 	return nil
 }
 
-type HandleMultiInputTaskParams struct {
+func (w *WorkflowExecutor) ShouldWait(node domain.WorkflowNode) bool {
+	inputIndices := w.workflow.GetConnectedInputIndices(node.ID)
+
+	excludedTypes := []domain.IntegrationType{
+		domain.IntegrationType_AIAgent,
+	}
+
+	return len(inputIndices) > 1 && !slices.Contains(excludedTypes, node.IntegrationType)
+}
+
+type HandleWaitingTaskParams struct {
 	FromNodeID string
 	Node       domain.WorkflowNode
 	InputIndex int
 	Items      []domain.Item
 }
 
-func (w *WorkflowExecutor) HandleMultiInputTask(p HandleMultiInputTaskParams) {
+func (w *WorkflowExecutor) HandleWaitingTask(p HandleWaitingTaskParams) {
 	waitingTask, exists := w.GetAvailableWaitingTask(p.Node.ID, p.InputIndex)
 
 	if !exists {
