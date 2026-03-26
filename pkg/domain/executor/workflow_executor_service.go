@@ -2,7 +2,6 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"sync"
 	"time"
@@ -130,12 +129,7 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 		return ExecutionResult{}, err
 	}
 
-	p, err := ConvertToArray(params.PayloadJSON)
-	if err != nil {
-		return ExecutionResult{}, err
-	}
-
-	payloadJSON, err := json.Marshal(p)
+	items, err := ConvertToArray(params.PayloadJSON)
 	if err != nil {
 		return ExecutionResult{}, err
 	}
@@ -153,7 +147,7 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 	s.executionRegistry.RegisterExecution(activeExecution)
 	defer s.executionRegistry.UnregisterExecution(params.ExecutionID)
 
-	executionResult, err := workflowExecutor.Execute(cancelCtx, params.EventName, []byte(payloadJSON))
+	executionResult, err := workflowExecutor.Execute(cancelCtx, params.EventName, items)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to execute workflow")
 
@@ -361,24 +355,9 @@ func (s *workflowExecutorService) RerunNode(ctx context.Context, params RerunNod
 
 	executionEntry := params.NodeExecutionEntry
 
-	payloadByInputIndex := NodePayloadByInputIndex{}
-
-	for inputIndex, items := range executionEntry.ItemsByInputIndex {
-		itemsJSON, err := json.Marshal(items.Items)
-		if err != nil {
-			return ExecutionResult{}, err
-		}
-
-		payloadByInputIndex[inputIndex] = NodePayload{
-			SourceNodeID: items.FromNodeID,
-			Payload:      itemsJSON,
-		}
-
-	}
-
 	task := NodeExecutionTask{
-		NodeID:              params.NodeID,
-		PayloadByInputIndex: payloadByInputIndex,
+		NodeID:            params.NodeID,
+		ItemsByInputIndex: executionEntry.ItemsByInputIndex,
 	}
 
 	_, err = workflowExecutor.ExecuteNode(ctx, ExecuteNodeParams{
@@ -398,7 +377,7 @@ type RunNodeParams struct {
 	WorkspaceID       string
 	ExecutionID       string
 	Workflow          domain.Workflow
-	ItemsByInputIndex map[int][]byte
+	ItemsByInputIndex map[int][]domain.Item
 }
 
 type RunNodeResult struct {
@@ -428,15 +407,14 @@ func (s *workflowExecutorService) RunNode(ctx context.Context, params RunNodePar
 		Observer:            workflowExecutor.observer,
 	})
 
-	payload := domain.Payload{}
+	var items []domain.Item
 
-	for _, p := range params.ItemsByInputIndex {
-		payload = p
-
+	for _, inputItems := range params.ItemsByInputIndex {
+		items = inputItems
 		break
 	}
 
-	result, err := workflowExecutor.Execute(ctx, params.NodeID, payload)
+	result, err := workflowExecutor.Execute(ctx, params.NodeID, items)
 	if err != nil {
 		return RunNodeResult{}, err
 	}

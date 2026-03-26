@@ -98,15 +98,15 @@ func (e *NodeExecutionStartedEvent) SetEventOrder(order int) {
 type NodeExecutedEvent struct {
 	WorkflowID          string            `json:"workflow_id"`
 	NodeID              string            `json:"node_id"`
-	ItemsByInputIndex   map[int]NodeItems `json:"items_by_input_index"`
-	ItemsByOutputIndex  map[int]NodeItems `json:"items_by_output_index"`
-	Timestamp           int64             `json:"timestamp"`
-	ExecutionOrder      int               `json:"execution_order"`
-	WorkflowExecutionID string            `json:"workflow_execution_id"`
-	EventOrder          int               `json:"event_order"`
-	IsReExecution       bool              `json:"is_re_execution"`
-	IsTesting           bool              `json:"is_testing"`
-	IsFromErrorTrigger  bool              `json:"is_from_error_trigger"`
+	ItemsByInputIndex   NodeItemsMap `json:"items_by_input_index"`
+	ItemsByOutputIndex  NodeItemsMap `json:"items_by_output_index"`
+	Timestamp           int64        `json:"timestamp"`
+	ExecutionOrder      int          `json:"execution_order"`
+	WorkflowExecutionID string       `json:"workflow_execution_id"`
+	EventOrder          int          `json:"event_order"`
+	IsReExecution       bool         `json:"is_re_execution"`
+	IsTesting           bool         `json:"is_testing"`
+	IsFromErrorTrigger  bool         `json:"is_from_error_trigger"`
 }
 
 func (e *NodeExecutedEvent) GetType() EventType {
@@ -122,14 +122,14 @@ func (e *NodeExecutedEvent) SetEventOrder(order int) {
 }
 
 type NodeFailedEvent struct {
-	WorkflowID          string            `json:"workflow_id"`
-	NodeID              string            `json:"node_id"`
-	Error               string            `json:"error"`
-	WorkflowExecutionID string            `json:"workflow_execution_id"`
-	ExecutionOrder      int               `json:"execution_order"`
-	Timestamp           int64             `json:"timestamp"`
-	ItemsByInputIndex   map[int]NodeItems `json:"items_by_input_index"`
-	ItemsByOutputIndex  map[int]NodeItems `json:"items_by_output_index"`
+	WorkflowID          string       `json:"workflow_id"`
+	NodeID              string       `json:"node_id"`
+	Error               string       `json:"error"`
+	WorkflowExecutionID string       `json:"workflow_execution_id"`
+	ExecutionOrder      int          `json:"execution_order"`
+	Timestamp           int64        `json:"timestamp"`
+	ItemsByInputIndex   NodeItemsMap `json:"items_by_input_index"`
+	ItemsByOutputIndex  NodeItemsMap `json:"items_by_output_index"`
 	EventOrder          int               `json:"event_order"`
 	IsReExecution       bool              `json:"is_re_execution"`
 	IsTesting           bool              `json:"is_testing"`

@@ -43,7 +43,7 @@ func (h *HistoryRecorder) HandleEvent(ctx context.Context, event domain.Executio
 		h.historyEntries = append(h.historyEntries, domain.NodeExecutionEntry{
 			NodeID:             e.NodeID,
 			ItemsByInputIndex:  e.ItemsByInputIndex,
-			ItemsByOutputIndex: map[int]domain.NodeItems{},
+			ItemsByOutputIndex: domain.NodeItemsMap{},
 			EventType:          domain.NodeFailed,
 			Error:              e.Error.Error(),
 			Timestamp:          e.Timestamp.UnixNano(),
@@ -124,7 +124,7 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			Timestamp:           e.Timestamp.UnixNano(),
 			Error:               e.Error.Error(),
 			ItemsByInputIndex:   e.ItemsByInputIndex,
-			ItemsByOutputIndex:  map[int]domain.NodeItems{},
+			ItemsByOutputIndex:  domain.NodeItemsMap{},
 			IsReExecution:       e.IsReExecution,
 			IsFromErrorTrigger:  e.IsFromErrorTrigger,
 			IsTesting:           e.IsTesting,
@@ -175,30 +175,27 @@ func (u *UsageCollector) HandleEvent(ctx context.Context, event domain.Execution
 		inputItemsCount := domain.InputItemsCount{}
 		inputItemsSizeInBytes := domain.InputItemsSizeInBytes{}
 
-		for inputIndex, nodePayload := range e.PayloadByInputIndex {
-			items, err := nodePayload.Payload.ToItems()
+		for inputIndex, nodeItems := range e.ItemsByInputIndex {
+			inputItemsCount[inputIndex] = int64(len(nodeItems.Items))
+			serialized, err := json.Marshal(nodeItems.Items)
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to parse JSON for input %d", inputIndex)
+				log.Error().Err(err).Msgf("Failed to marshal items for input %d", inputIndex)
 				continue
 			}
-
-			inputItemsCount[inputIndex] = int64(len(items))
-			inputItemsSizeInBytes[inputIndex] = int64(len(nodePayload.Payload))
+			inputItemsSizeInBytes[inputIndex] = int64(len(serialized))
 		}
 
 		outputItemsCount := domain.OutputItemsCount{}
 		outputItemsSizeInBytes := domain.OutputItemsSizeInBytes{}
 
-		for outputIndex, payload := range e.IntegrationOutput.ResultJSONByOutputIndex {
-			var items []domain.Item
-			err := json.Unmarshal(payload, &items)
+		for outputIndex, nodeItems := range e.ItemsByOutputIndex {
+			outputItemsCount[outputIndex] = int64(len(nodeItems.Items))
+			serialized, err := json.Marshal(nodeItems.Items)
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to parse JSON for output %d", outputIndex)
+				log.Error().Err(err).Msgf("Failed to marshal items for output %d", outputIndex)
 				continue
 			}
-
-			outputItemsCount[outputIndex] = int64(len(items))
-			outputItemsSizeInBytes[outputIndex] = int64(len(payload))
+			outputItemsSizeInBytes[outputIndex] = int64(len(serialized))
 		}
 
 		u.nodeExecutions = append(u.nodeExecutions, domain.NodeExecution{

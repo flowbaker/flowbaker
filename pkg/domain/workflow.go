@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"sort"
 	"time"
 )
 
@@ -182,7 +183,13 @@ func (idx EdgeIndex) GetTargetNodes(nodeID string, outputIndex int) []WorkflowNo
 		OutputIndex: outputIndex,
 	}
 
-	return idx.targetNodesBySourceOutput[sourceOutput]
+	nodes := idx.targetNodesBySourceOutput[sourceOutput]
+
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].Positions.XPosition > nodes[j].Positions.XPosition
+	})
+
+	return nodes
 }
 
 type NodeType string

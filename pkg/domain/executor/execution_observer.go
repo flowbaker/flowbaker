@@ -51,10 +51,8 @@ func (e NodeExecutionStartedEvent) SetIsFromErrorTrigger(isFromErrorTrigger bool
 
 type NodeExecutionCompletedEvent struct {
 	NodeID                string
-	PayloadByInputIndex   NodePayloadByInputIndex
-	IntegrationOutput     domain.IntegrationOutput
-	ItemsByInputIndex     map[int]domain.NodeItems
-	ItemsByOutputIndex    map[int]domain.NodeItems
+	ItemsByInputIndex     domain.NodeItemsMap
+	ItemsByOutputIndex    domain.NodeItemsMap
 	ExecutionOrder        int64
 	StartedAt             time.Time
 	EndedAt               time.Time
@@ -89,7 +87,7 @@ func (e NodeExecutionCompletedEvent) SetIsTesting(isTesting bool) domain.Executi
 
 type NodeExecutionFailedEvent struct {
 	NodeID             string
-	ItemsByInputIndex  map[int]domain.NodeItems
+	ItemsByInputIndex  domain.NodeItemsMap
 	Error              error
 	Timestamp          time.Time
 	IsReExecution      bool

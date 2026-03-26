@@ -916,21 +916,14 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 
 			inputItems := []domain.Item{mergedSettings}
 
-			inputPayload, err := json.Marshal(inputItems)
-			if err != nil {
-				return "", fmt.Errorf("failed to marshal tool input: %w", err)
-			}
-
 			p := domain.IntegrationInput{
 				NodeID:     toolNode.ID,
 				ActionType: toolNode.ActionNodeOpts.ActionType,
 				IntegrationParams: domain.IntegrationParams{
 					Settings: mergedSettings,
 				},
-				PayloadByInputIndex: map[int]domain.Payload{
-					agentToolInputIndex: domain.Payload(inputPayload),
-				},
-				Workflow: &workflow,
+				ItemsByInputIndex: domain.NewNodeItemsMap(agentToolInputIndex, params.AgentNode.ID, inputItems),
+				Workflow:          &workflow,
 			}
 
 			startTime := time.Now()
@@ -939,14 +932,9 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to execute tool")
 				err = c.observer.Notify(ctx, executor.NodeExecutionFailedEvent{
-					NodeID: toolNode.ID,
-					ItemsByInputIndex: map[int]domain.NodeItems{
-						agentToolInputIndex: {
-							FromNodeID: params.AgentNode.ID,
-							Items:      inputItems,
-						},
-					},
-					Error:     err,
+					NodeID:            toolNode.ID,
+					ItemsByInputIndex: domain.NewNodeItemsMap(agentToolInputIndex, params.AgentNode.ID, inputItems),
+					Error:             err,
 					Timestamp: time.Now(),
 				})
 				if err != nil {
@@ -957,14 +945,9 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 			}
 
 			err = c.observer.Notify(ctx, executor.NodeExecutionCompletedEvent{
-				NodeID: toolNode.ID,
-				ItemsByInputIndex: map[int]domain.NodeItems{
-					agentToolInputIndex: domain.NodeItems{
-						FromNodeID: params.AgentNode.ID,
-						Items:      inputItems,
-					},
-				},
-				ItemsByOutputIndex:    output.ToItemsByOutputIndex(p.NodeID),
+				NodeID:                toolNode.ID,
+				ItemsByInputIndex:     domain.NewNodeItemsMap(agentToolInputIndex, params.AgentNode.ID, inputItems),
+				ItemsByOutputIndex:    output.ItemsByOutputIndex,
 				StartedAt:             startTime,
 				EndedAt:               time.Now(),
 				IntegrationType:       toolNode.IntegrationType,
@@ -974,11 +957,14 @@ func (c *IntegrationToolCreator) CreateTools(ctx context.Context, params CreateT
 				return "", fmt.Errorf("ai agent integration failed to notify observer about tool execution completed: %w", err)
 			}
 
-			payloads := output.ResultJSONByOutputIndex
+			lastItems := output.ItemsByOutputIndex[0].Items
 
-			lastPayload := payloads[0]
+			serialized, err := json.Marshal(lastItems)
+			if err != nil {
+				return "", fmt.Errorf("failed to marshal tool output: %w", err)
+			}
 
-			return string(lastPayload), nil
+			return string(serialized), nil
 		}
 
 		funcTool := tool.Define(toolName, toolDescription, toolParameters, executeFunc)
@@ -1386,20 +1372,11 @@ func (m *AgentHooksManager) OnBeforeGenerate(ctx context.Context, req *provider.
 }
 
 func (m *AgentHooksManager) OnGenerationFailed(ctx context.Context, req *provider.GenerateRequest, step *agent.Step, generationErr error) {
-	llmInputIndex := 0
-
-	itemsByInputIndex := map[int]domain.NodeItems{
-		llmInputIndex: {
-			FromNodeID: m.AgentNodeID,
-			Items:      []domain.Item{m.InputItem},
-		},
-	}
-
 	now := time.Now()
 
 	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionFailedEvent{
 		NodeID:            m.LLMNode.ID,
-		ItemsByInputIndex: itemsByInputIndex,
+		ItemsByInputIndex: domain.NewNodeItemsMap(0, m.AgentNodeID, []domain.Item{m.InputItem}),
 		Timestamp:         now,
 		Error:             generationErr,
 	})
@@ -1412,29 +1389,12 @@ func (m *AgentHooksManager) OnStepComplete(ctx context.Context, step *agent.Step
 	item := m.InputItem
 	llmNode := m.LLMNode
 
-	agentToolInputIndex := 0
-	agentToolOutputIndex := 0
-
-	itemsByInputIndex := map[int]domain.NodeItems{
-		agentToolInputIndex: {
-			FromNodeID: m.AgentNodeID,
-			Items:      []domain.Item{item},
-		},
-	}
-
-	itemsByOutputIndex := map[int]domain.NodeItems{
-		agentToolOutputIndex: {
-			FromNodeID: llmNode.ID,
-			Items:      []domain.Item{step},
-		},
-	}
-
 	now := time.Now()
 
 	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
 		NodeID:                llmNode.ID,
-		ItemsByInputIndex:     itemsByInputIndex,
-		ItemsByOutputIndex:    itemsByOutputIndex,
+		ItemsByInputIndex:     domain.NewNodeItemsMap(0, m.AgentNodeID, []domain.Item{item}),
+		ItemsByOutputIndex:    domain.NewNodeItemsMap(0, llmNode.ID, []domain.Item{step}),
 		StartedAt:             now,
 		EndedAt:               now,
 		IntegrationType:       domain.IntegrationType(llmNode.IntegrationType),
@@ -1460,36 +1420,13 @@ func (m *AgentHooksManager) OnBeforeMemoryRetrieve(ctx context.Context, filter m
 }
 
 func (m *AgentHooksManager) OnMemoryRetrieved(ctx context.Context, filter memory.Filter, conversation types.Conversation) {
-	item := m.InputItem
 	memoryNode := m.MemoryNode
-
-	memoryInputIndex := 0
-	memoryOutputIndex := 0
-
-	itemsByInputIndex := map[int]domain.NodeItems{
-		memoryInputIndex: {
-			FromNodeID: m.AgentNodeID,
-			Items:      []domain.Item{item},
-		},
-	}
-
-	outputItems := []domain.Item{
-		conversation,
-	}
-
-	itemsByOutputIndex := map[int]domain.NodeItems{
-		memoryOutputIndex: {
-			FromNodeID: memoryNode.ID,
-			Items:      outputItems,
-		},
-	}
-
 	now := time.Now()
 
 	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
 		NodeID:                memoryNode.ID,
-		ItemsByInputIndex:     itemsByInputIndex,
-		ItemsByOutputIndex:    itemsByOutputIndex,
+		ItemsByInputIndex:     domain.NewNodeItemsMap(0, m.AgentNodeID, []domain.Item{m.InputItem}),
+		ItemsByOutputIndex:    domain.NewNodeItemsMap(0, memoryNode.ID, []domain.Item{conversation}),
 		StartedAt:             now,
 		EndedAt:               now,
 		IntegrationType:       domain.IntegrationType(memoryNode.IntegrationType),
@@ -1501,23 +1438,12 @@ func (m *AgentHooksManager) OnMemoryRetrieved(ctx context.Context, filter memory
 }
 
 func (m *AgentHooksManager) OnMemoryRetrievalFailed(ctx context.Context, filter memory.Filter, err error) {
-	item := m.InputItem
 	memoryNode := m.MemoryNode
-
-	memoryInputIndex := 0
-
 	now := time.Now()
-
-	itemsByInputIndex := map[int]domain.NodeItems{
-		memoryInputIndex: {
-			FromNodeID: m.AgentNodeID,
-			Items:      []domain.Item{item},
-		},
-	}
 
 	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionFailedEvent{
 		NodeID:            memoryNode.ID,
-		ItemsByInputIndex: itemsByInputIndex,
+		ItemsByInputIndex: domain.NewNodeItemsMap(0, m.AgentNodeID, []domain.Item{m.InputItem}),
 		Timestamp:         now,
 		Error:             err,
 	})
@@ -1542,21 +1468,11 @@ func (m *AgentHooksManager) OnBeforeMemorySave(ctx context.Context, conversation
 
 func (m *AgentHooksManager) OnMemorySaveFailed(ctx context.Context, conversation types.Conversation, err error) {
 	memoryNode := m.MemoryNode
-
 	now := time.Now()
-
-	memoryInputIndex := 0
-
-	itemsByInputIndex := map[int]domain.NodeItems{
-		memoryInputIndex: {
-			FromNodeID: m.AgentNodeID,
-			Items:      []domain.Item{m.InputItem},
-		},
-	}
 
 	err = m.ExecutionObserver.Notify(ctx, executor.NodeExecutionFailedEvent{
 		NodeID:            memoryNode.ID,
-		ItemsByInputIndex: itemsByInputIndex,
+		ItemsByInputIndex: domain.NewNodeItemsMap(0, m.AgentNodeID, []domain.Item{m.InputItem}),
 		Timestamp:         now,
 		Error:             err,
 	})
@@ -1567,30 +1483,12 @@ func (m *AgentHooksManager) OnMemorySaveFailed(ctx context.Context, conversation
 
 func (m *AgentHooksManager) OnMemorySaved(ctx context.Context, conversation types.Conversation) {
 	memoryNode := m.MemoryNode
-
-	memoryInputIndex := 0
-	memoryOutputIndex := 0
-
-	itemsByInputIndex := map[int]domain.NodeItems{
-		memoryInputIndex: {
-			FromNodeID: m.AgentNodeID,
-			Items:      []domain.Item{m.InputItem},
-		},
-	}
-
-	itemsByOutputIndex := map[int]domain.NodeItems{
-		memoryOutputIndex: {
-			FromNodeID: memoryNode.ID,
-			Items:      []domain.Item{conversation},
-		},
-	}
-
 	now := time.Now()
 
 	err := m.ExecutionObserver.Notify(ctx, executor.NodeExecutionCompletedEvent{
 		NodeID:                memoryNode.ID,
-		ItemsByInputIndex:     itemsByInputIndex,
-		ItemsByOutputIndex:    itemsByOutputIndex,
+		ItemsByInputIndex:     domain.NewNodeItemsMap(0, m.AgentNodeID, []domain.Item{m.InputItem}),
+		ItemsByOutputIndex:    domain.NewNodeItemsMap(0, memoryNode.ID, []domain.Item{conversation}),
 		StartedAt:             now,
 		EndedAt:               now,
 		IntegrationType:       domain.IntegrationType(memoryNode.IntegrationType),

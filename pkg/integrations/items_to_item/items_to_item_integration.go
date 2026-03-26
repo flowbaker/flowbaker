@@ -2,7 +2,6 @@ package items_to_item
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
@@ -61,10 +60,7 @@ type itemWithFieldName struct {
 func (i *ItemsToItemIntegration) ItemsToItem(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	p := ItemsToItemParams{}
 
-	items, err := params.GetAllItems()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	items := params.GetAllItems()
 
 	itemWithFieldNames := make([]itemWithFieldName, 0)
 
@@ -96,12 +92,7 @@ func (i *ItemsToItemIntegration) ItemsToItem(ctx context.Context, params domain.
 		outputItem,
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{domain.Payload(resultJSON)},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }

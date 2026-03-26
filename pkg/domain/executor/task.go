@@ -1,57 +1,51 @@
 package executor
 
 import (
+	"crypto/rand"
+	"fmt"
 	"sync"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
 type NodeExecutionTask struct {
-	NodeID              string
-	PayloadByInputIndex NodePayloadByInputIndex
+	NodeID            string
+	ItemsByInputIndex domain.NodeItemsMap
 }
 
 type WaitingExecutionTask struct {
+	ID               string
 	NodeID           string
-	Payload          []byte
-	ReceivedPayloads map[int]map[int]NodePayload // input index -> subscribed output index -> payload
+	ReceivedPayloads domain.NodeItemsMap
 	mutex            *sync.Mutex
 }
 
-func (t WaitingExecutionTask) MergePayloadsByInputIndex() map[int]NodePayload {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+func NewWaitingExecutionTask(nodeID string, payloads domain.NodeItemsMap) WaitingExecutionTask {
+	b := make([]byte, 16)
+	rand.Read(b)
 
-	payloadsByInputIndex := map[int]NodePayload{}
-
-	for inputIndex, p := range t.ReceivedPayloads {
-		for _, payload := range p {
-			payloadsByInputIndex[inputIndex] = payload
-		}
+	return WaitingExecutionTask{
+		ID:               fmt.Sprintf("%x", b),
+		NodeID:           nodeID,
+		ReceivedPayloads: payloads,
+		mutex:            &sync.Mutex{},
 	}
-
-	return payloadsByInputIndex
 }
 
-func (t WaitingExecutionTask) AddPayload(sourceNodeID string, inputIndex int, outputIndex int, payload domain.Payload) {
+func (t WaitingExecutionTask) AddItems(fromNodeID string, inputIndex int, items []domain.Item) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
 	if t.ReceivedPayloads == nil {
-		t.ReceivedPayloads = map[int]map[int]NodePayload{}
+		t.ReceivedPayloads = domain.NodeItemsMap{}
 	}
 
-	if _, exists := t.ReceivedPayloads[inputIndex]; !exists {
-		t.ReceivedPayloads[inputIndex] = map[int]NodePayload{
-			outputIndex: {
-				SourceNodeID: sourceNodeID,
-				Payload:      payload,
-			},
-		}
-	}
+	t.ReceivedPayloads.Set(inputIndex, fromNodeID, items)
+}
 
-	t.ReceivedPayloads[inputIndex][outputIndex] = NodePayload{
-		SourceNodeID: sourceNodeID,
-		Payload:      payload,
+func (t *WaitingExecutionTask) ToExecutionTask() NodeExecutionTask {
+	return NodeExecutionTask{
+		NodeID:            t.NodeID,
+		ItemsByInputIndex: t.ReceivedPayloads,
 	}
 }

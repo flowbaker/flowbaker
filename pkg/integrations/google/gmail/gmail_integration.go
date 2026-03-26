@@ -3,7 +3,6 @@ package gmail
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -206,17 +205,14 @@ type FindMailParams struct {
 
 func (g *GmailIntegration) SendMail(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	// Get items by input ID
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	log.Info().Msgf("Send Mail Items: %v", itemsByInputID)
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -254,28 +250,18 @@ func (g *GmailIntegration) SendMail(ctx context.Context, params domain.Integrati
 		return domain.IntegrationOutput{}, fmt.Errorf("no mails sent")
 	}
 
-	// Marshal output items to JSON
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, fmt.Errorf("failed to marshal output items: %w", err)
-	}
-
-	// Return the output
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{domain.Payload(resultJSON)},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) FindMail(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -316,26 +302,18 @@ func (g *GmailIntegration) FindMail(ctx context.Context, params domain.Integrati
 		return domain.IntegrationOutput{}, fmt.Errorf("no mails found")
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) GetMail(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -361,26 +339,18 @@ func (g *GmailIntegration) GetMail(ctx context.Context, params domain.Integratio
 		return domain.IntegrationOutput{}, fmt.Errorf("no mails found")
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) SendMailToTrash(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -401,26 +371,18 @@ func (g *GmailIntegration) SendMailToTrash(ctx context.Context, params domain.In
 		outputItems = append(outputItems, deletedMail)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) SendMailsToTrash(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -454,26 +416,18 @@ func (g *GmailIntegration) SendMailsToTrash(ctx context.Context, params domain.I
 
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) DeleteMail(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -495,26 +449,18 @@ func (g *GmailIntegration) DeleteMail(ctx context.Context, params domain.Integra
 		outputItems = append(outputItems, p.MessageID)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) DeleteMails(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -547,13 +493,8 @@ func (g *GmailIntegration) DeleteMails(ctx context.Context, params domain.Integr
 
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -564,15 +505,12 @@ type GetMailItemOutput struct {
 }
 
 func (g *GmailIntegration) GetMails(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -617,26 +555,18 @@ func (g *GmailIntegration) GetMails(ctx context.Context, params domain.Integrati
 		return domain.IntegrationOutput{}, fmt.Errorf("no mails found")
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) ReplyMail(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -721,13 +651,8 @@ func (g *GmailIntegration) ReplyMail(ctx context.Context, params domain.Integrat
 		outputItems = append(outputItems, sentMail)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -763,15 +688,12 @@ func extractEmailFromHeader(header string) string {
 }
 
 func (g *GmailIntegration) CreateDraft(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -802,25 +724,18 @@ func (g *GmailIntegration) CreateDraft(ctx context.Context, params domain.Integr
 
 		outputItems = append(outputItems, sentMail)
 	}
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) MarkMailAsRead(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -850,26 +765,18 @@ func (g *GmailIntegration) MarkMailAsRead(ctx context.Context, params domain.Int
 		outputItems = append(outputItems, item)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) MarkMailAsUnread(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -901,26 +808,18 @@ func (g *GmailIntegration) MarkMailAsUnread(ctx context.Context, params domain.I
 		outputItems = append(outputItems, item)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) MarkMailsAsRead(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -973,26 +872,18 @@ func (g *GmailIntegration) MarkMailsAsRead(ctx context.Context, params domain.In
 		outputItems = append(outputItems, item)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) MarkMailsAsUnread(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1045,26 +936,18 @@ func (g *GmailIntegration) MarkMailsAsUnread(ctx context.Context, params domain.
 		outputItems = append(outputItems, item)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) GetDraft(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1090,26 +973,18 @@ func (g *GmailIntegration) GetDraft(ctx context.Context, params domain.Integrati
 		return domain.IntegrationOutput{}, fmt.Errorf("no drafts found")
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) GetDrafts(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1151,26 +1026,18 @@ func (g *GmailIntegration) GetDrafts(ctx context.Context, params domain.Integrat
 		return domain.IntegrationOutput{}, fmt.Errorf("no drafts found")
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) SendDraft(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1219,26 +1086,18 @@ func (g *GmailIntegration) SendDraft(ctx context.Context, params domain.Integrat
 		outputItems = append(outputItems, d)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) DeleteDraft(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1262,26 +1121,18 @@ func (g *GmailIntegration) DeleteDraft(ctx context.Context, params domain.Integr
 		outputItems = append(outputItems, p.DraftID)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) DeleteDrafts(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1309,26 +1160,18 @@ func (g *GmailIntegration) DeleteDrafts(ctx context.Context, params domain.Integ
 		}
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) GetLabels(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1375,26 +1218,18 @@ func (g *GmailIntegration) GetLabels(ctx context.Context, params domain.Integrat
 		return domain.IntegrationOutput{}, fmt.Errorf("no labels found")
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) AddLabel(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1418,26 +1253,18 @@ func (g *GmailIntegration) AddLabel(ctx context.Context, params domain.Integrati
 		outputItems = append(outputItems, item)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) RemoveLabel(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1470,26 +1297,18 @@ func (g *GmailIntegration) RemoveLabel(ctx context.Context, params domain.Integr
 		outputItems = append(outputItems, item)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) AddLabelToEmail(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1513,26 +1332,18 @@ func (g *GmailIntegration) AddLabelToEmail(ctx context.Context, params domain.In
 		outputItems = append(outputItems, item)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) RemoveLabelFromEmail(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1556,26 +1367,18 @@ func (g *GmailIntegration) RemoveLabelFromEmail(ctx context.Context, params doma
 		outputItems = append(outputItems, item)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) GetThreads(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1618,26 +1421,18 @@ func (g *GmailIntegration) GetThreads(ctx context.Context, params domain.Integra
 
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
 func (g *GmailIntegration) GetThread(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := params.GetItemsByInputIndex()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	itemsByInputID := params.ItemsByInputIndex
 
 	allItems := make([]any, 0)
 
-	for _, items := range itemsByInputID {
-		for _, item := range items {
+	for _, nodeItems := range itemsByInputID {
+		for _, item := range nodeItems.Items {
 			allItems = append(allItems, item)
 		}
 	}
@@ -1670,13 +1465,8 @@ func (g *GmailIntegration) GetThread(ctx context.Context, params domain.Integrat
 		return domain.IntegrationOutput{}, fmt.Errorf("no threads found")
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 

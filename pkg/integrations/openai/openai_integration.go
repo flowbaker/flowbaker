@@ -245,13 +245,13 @@ func (i *OpenAIIntegration) ListModels(ctx context.Context, params domain.Integr
 		return domain.IntegrationOutput{}, err
 	}
 
-	resultJSON, err := json.Marshal(models.Models)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
+	items := make([]domain.Item, len(models.Models))
+	for idx, model := range models.Models {
+		items[idx] = model
 	}
 
 	return domain.IntegrationOutput{
-		ResultJSONByOutputIndex: []domain.Payload{resultJSON},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, items),
 	}, nil
 }
 
