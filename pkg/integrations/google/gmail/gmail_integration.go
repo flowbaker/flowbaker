@@ -251,9 +251,7 @@ func (g *GmailIntegration) SendMail(ctx context.Context, params domain.Integrati
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -305,9 +303,7 @@ func (g *GmailIntegration) FindMail(ctx context.Context, params domain.Integrati
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -344,9 +340,7 @@ func (g *GmailIntegration) GetMail(ctx context.Context, params domain.Integratio
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -378,9 +372,7 @@ func (g *GmailIntegration) SendMailToTrash(ctx context.Context, params domain.In
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -425,9 +417,7 @@ func (g *GmailIntegration) SendMailsToTrash(ctx context.Context, params domain.I
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -460,9 +450,7 @@ func (g *GmailIntegration) DeleteMail(ctx context.Context, params domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -506,9 +494,7 @@ func (g *GmailIntegration) DeleteMails(ctx context.Context, params domain.Integr
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -570,9 +556,7 @@ func (g *GmailIntegration) GetMails(ctx context.Context, params domain.Integrati
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -668,9 +652,7 @@ func (g *GmailIntegration) ReplyMail(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -743,9 +725,7 @@ func (g *GmailIntegration) CreateDraft(ctx context.Context, params domain.Integr
 		outputItems = append(outputItems, sentMail)
 	}
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -786,9 +766,7 @@ func (g *GmailIntegration) MarkMailAsRead(ctx context.Context, params domain.Int
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -831,9 +809,7 @@ func (g *GmailIntegration) MarkMailAsUnread(ctx context.Context, params domain.I
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -897,9 +873,7 @@ func (g *GmailIntegration) MarkMailsAsRead(ctx context.Context, params domain.In
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -963,9 +937,7 @@ func (g *GmailIntegration) MarkMailsAsUnread(ctx context.Context, params domain.
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1002,9 +974,7 @@ func (g *GmailIntegration) GetDraft(ctx context.Context, params domain.Integrati
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1057,9 +1027,7 @@ func (g *GmailIntegration) GetDrafts(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1119,9 +1087,7 @@ func (g *GmailIntegration) SendDraft(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1156,9 +1122,7 @@ func (g *GmailIntegration) DeleteDraft(ctx context.Context, params domain.Integr
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1197,9 +1161,7 @@ func (g *GmailIntegration) DeleteDrafts(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1257,9 +1219,7 @@ func (g *GmailIntegration) GetLabels(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1294,9 +1254,7 @@ func (g *GmailIntegration) AddLabel(ctx context.Context, params domain.Integrati
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1340,9 +1298,7 @@ func (g *GmailIntegration) RemoveLabel(ctx context.Context, params domain.Integr
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1377,9 +1333,7 @@ func (g *GmailIntegration) AddLabelToEmail(ctx context.Context, params domain.In
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1414,9 +1368,7 @@ func (g *GmailIntegration) RemoveLabelFromEmail(ctx context.Context, params doma
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1470,9 +1422,7 @@ func (g *GmailIntegration) GetThreads(ctx context.Context, params domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -1516,9 +1466,7 @@ func (g *GmailIntegration) GetThread(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 

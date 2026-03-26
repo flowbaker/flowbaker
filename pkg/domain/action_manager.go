@@ -209,12 +209,7 @@ func (m *IntegrationActionManager) RunPerItem(ctx context.Context, actionType In
 	}
 
 	return IntegrationOutput{
-		ItemsByOutputIndex: []NodeItems{
-			{
-				FromNodeID: params.NodeID,
-				Items:      outputs,
-			},
-		},
+		ItemsByOutputIndex: NewNodeItemsMap(0, params.NodeID, outputs),
 	}, nil
 }
 
@@ -264,12 +259,7 @@ func (m *IntegrationActionManager) RunPerItemMulti(ctx context.Context, actionTy
 	}
 
 	return IntegrationOutput{
-		ItemsByOutputIndex: []NodeItems{
-			{
-				FromNodeID: params.NodeID,
-				Items:      outputs,
-			},
-		},
+		ItemsByOutputIndex: NewNodeItemsMap(0, params.NodeID, outputs),
 	}, nil
 }
 
@@ -328,12 +318,7 @@ func (m *IntegrationActionManager) RunPerItemWithFile(ctx context.Context, actio
 	}
 
 	return IntegrationOutput{
-		ItemsByOutputIndex: []NodeItems{
-			{
-				FromNodeID: params.NodeID,
-				Items:      outputs,
-			},
-		},
+		ItemsByOutputIndex: NewNodeItemsMap(0, params.NodeID, outputs),
 	}, nil
 }
 
@@ -375,12 +360,7 @@ func (m *IntegrationActionManager) RunMultiInput(ctx context.Context, actionType
 	}
 
 	return IntegrationOutput{
-		ItemsByOutputIndex: []NodeItems{
-			{
-				FromNodeID: params.NodeID,
-				Items:      outputs,
-			},
-		},
+		ItemsByOutputIndex: NewNodeItemsMap(0, params.NodeID, outputs),
 	}, nil
 }
 
@@ -425,27 +405,9 @@ func (m *IntegrationActionManager) RunPerItemRoutable(ctx context.Context, actio
 		outputsByIndex[output.OutputIndex] = append(outputsByIndex[output.OutputIndex], output.Item)
 	}
 
-	maxOutputIndex := -1
-
-	for outputIndex := range outputsByIndex {
-		if outputIndex > maxOutputIndex {
-			maxOutputIndex = outputIndex
-		}
-	}
-
-	nodeItemsByOutputIndex := make([]NodeItems, maxOutputIndex+1)
-
-	for i := range nodeItemsByOutputIndex {
-		nodeItemsByOutputIndex[i] = NodeItems{
-			FromNodeID: params.NodeID,
-		}
-	}
-
+	nodeItemsByOutputIndex := NodeItemsMap{}
 	for outputIndex, items := range outputsByIndex {
-		nodeItemsByOutputIndex[outputIndex] = NodeItems{
-			FromNodeID: params.NodeID,
-			Items:      items,
-		}
+		nodeItemsByOutputIndex.Set(outputIndex, params.NodeID, items)
 	}
 
 	return IntegrationOutput{

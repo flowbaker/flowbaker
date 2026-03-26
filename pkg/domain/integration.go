@@ -236,7 +236,7 @@ type IntegrationEmbeddingModel struct {
 
 type IntegrationInput struct {
 	NodeID            string
-	ItemsByInputIndex map[int]NodeItems
+	ItemsByInputIndex NodeItemsMap
 	IntegrationParams IntegrationParams
 	ActionType        IntegrationActionType
 	Workflow          *Workflow
@@ -257,7 +257,7 @@ type IntegrationParams struct {
 }
 
 type IntegrationOutput struct {
-	ItemsByOutputIndex []NodeItems
+	ItemsByOutputIndex NodeItemsMap
 }
 
 type IntegrationDeps struct {

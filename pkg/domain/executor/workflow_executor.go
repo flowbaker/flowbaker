@@ -163,14 +163,9 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 
 	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
 
-	// Queue trigger node as first execution task
 	w.AddExecutionTask(NodeExecutionTask{
-		NodeID: nodeID,
-		ItemsByInputIndex: map[int]domain.NodeItems{
-			0: {
-				FromNodeID: nodeID,
-				Items:      items,
-			}},
+		NodeID:            nodeID,
+		ItemsByInputIndex: domain.NewNodeItemsMap(0, nodeID, items),
 	})
 
 	executionCount := 0
@@ -269,7 +264,7 @@ type ExecuteNodeParams struct {
 }
 
 type ExecuteNodeResult struct {
-	ItemsByOutputIndex map[int]domain.NodeItems
+	ItemsByOutputIndex domain.NodeItemsMap
 }
 
 func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams) (ExecuteNodeResult, error) {
@@ -327,15 +322,10 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 
 	w.MarkNodeAsExecuted(node.ID)
 
-	itemsByOutputIndex := map[int]domain.NodeItems{}
-	for idx, nodeItems := range result.Output.ItemsByOutputIndex {
-		itemsByOutputIndex[idx] = nodeItems
-	}
-
 	err = w.observer.Notify(ctx, NodeExecutionCompletedEvent{
 		NodeID:                node.ID,
 		ItemsByInputIndex:     task.ItemsByInputIndex,
-		ItemsByOutputIndex:    itemsByOutputIndex,
+		ItemsByOutputIndex:    result.Output.ItemsByOutputIndex,
 		ExecutionOrder:        p.ExecutionOrder,
 		IntegrationType:       result.IntegrationType,
 		IntegrationActionType: result.IntegrationActionType,
@@ -347,7 +337,7 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	}
 
 	return ExecuteNodeResult{
-		ItemsByOutputIndex: itemsByOutputIndex,
+		ItemsByOutputIndex: result.Output.ItemsByOutputIndex,
 	}, nil
 }
 
@@ -359,7 +349,7 @@ func (w *WorkflowExecutor) ExecuteTriggerNode(ctx context.Context, node domain.W
 
 	return NodeExecutionResult{
 		Output: domain.IntegrationOutput{
-			ItemsByOutputIndex: []domain.NodeItems{inputPayload},
+			ItemsByOutputIndex: domain.NewNodeItemsMap(0, inputPayload.FromNodeID, inputPayload.Items),
 		},
 		IntegrationType:       domain.IntegrationType(node.Type),
 		IntegrationActionType: domain.IntegrationActionType(node.TriggerNodeOpts.EventType),
@@ -370,7 +360,7 @@ func (w *WorkflowExecutor) ExecuteActionNode(ctx context.Context, node domain.Wo
 	if w.ShouldSkip(node) {
 		return NodeExecutionResult{
 			Output: domain.IntegrationOutput{
-				ItemsByOutputIndex: []domain.NodeItems{},
+				ItemsByOutputIndex: domain.NodeItemsMap{},
 			},
 			IntegrationType:       domain.IntegrationType(node.IntegrationType),
 			IntegrationActionType: node.ActionNodeOpts.ActionType,
@@ -477,17 +467,10 @@ func (w *WorkflowExecutor) AddTaskForDownstreamNode(ctx context.Context, p AddTa
 		return nil
 	}
 
-	t := NodeExecutionTask{
-		NodeID: node.ID,
-		ItemsByInputIndex: map[int]domain.NodeItems{
-			matchingInputIndex: {
-				FromNodeID: p.FromNodeID,
-				Items:      items,
-			},
-		},
-	}
-
-	w.AddExecutionTask(t)
+	w.AddExecutionTask(NodeExecutionTask{
+		NodeID:            node.ID,
+		ItemsByInputIndex: domain.NewNodeItemsMap(matchingInputIndex, p.FromNodeID, items),
+	})
 
 	return nil
 }
@@ -517,14 +500,12 @@ func (w *WorkflowExecutor) HandleWaitingTask(p HandleWaitingTaskParams) {
 	waitingTask, exists := w.GetAvailableWaitingTask(p.Node.ID, p.InputIndex)
 
 	if !exists {
-		t := NewWaitingExecutionTask(p.Node.ID, map[int]domain.NodeItems{
-			p.InputIndex: {
-				FromNodeID: p.FromNodeID,
-				Items:      p.Items,
-			},
-		})
+		newTask := NewWaitingExecutionTask(
+			p.Node.ID,
+			domain.NewNodeItemsMap(p.InputIndex, p.FromNodeID, p.Items),
+		)
 
-		w.AddWaitingExecutionTask(t)
+		w.AddWaitingExecutionTask(newTask)
 
 		return
 	}
@@ -572,10 +553,7 @@ func (w *WorkflowExecutor) FlushWaitingTasks() {
 	}
 
 	for _, task := range w.waitingExecutionTasks {
-		w.AddExecutionTask(NodeExecutionTask{
-			NodeID:            task.NodeID,
-			ItemsByInputIndex: task.ReceivedPayloads,
-		})
+		w.AddExecutionTask(task.ToExecutionTask())
 	}
 
 	w.waitingExecutionTasks = []WaitingExecutionTask{}
@@ -646,10 +624,6 @@ func (w *WorkflowExecutor) ResolveWaitingTask(nodeID string, task WaitingExecuti
 	w.RemoveWaitingExecutionTask(task.ID)
 }
 
-type ErrorItem struct {
-	ErrorMessage string `json:"error_message"`
-}
-
 type HandleNodeExecutionErrorParams struct {
 	Err  error
 	Node domain.WorkflowNode
@@ -660,10 +634,6 @@ func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorPa
 
 	if !settings.ReturnErrorAsItem {
 		return NodeExecutionResult{}, p.Err
-	}
-
-	errorItem := ErrorItem{
-		ErrorMessage: p.Err.Error(),
 	}
 
 	integrationType := domain.IntegrationType(p.Node.Type)
@@ -678,11 +648,7 @@ func (w *WorkflowExecutor) HandleNodeExecutionError(p HandleNodeExecutionErrorPa
 	}
 
 	return NodeExecutionResult{
-		Output: domain.IntegrationOutput{
-			ItemsByOutputIndex: []domain.NodeItems{
-				{Items: []domain.Item{errorItem}},
-			},
-		},
+		Output:                domain.NewErrorIntegrationOutput(p.Err),
 		IntegrationType:       integrationType,
 		IntegrationActionType: domain.IntegrationActionType(actionType),
 	}, nil

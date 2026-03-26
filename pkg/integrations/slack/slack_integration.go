@@ -137,9 +137,7 @@ func (i *SlackIntegration) SendMessage(ctx context.Context, input domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: input.NodeID, Items: outputs},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, input.NodeID, outputs),
 	}, nil
 }
 
@@ -196,9 +194,7 @@ func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: input.NodeID, Items: outputs},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, input.NodeID, outputs),
 	}, nil
 }
 
@@ -241,9 +237,7 @@ func (i *SlackIntegration) AddReaction(ctx context.Context, input domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: input.NodeID, Items: outputs},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, input.NodeID, outputs),
 	}, nil
 }
 
@@ -285,9 +279,7 @@ func (i *SlackIntegration) GetMessages(ctx context.Context, input domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: input.NodeID, Items: outputs},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, input.NodeID, outputs),
 	}, nil
 }
 

@@ -127,9 +127,7 @@ func (i *SendResponseIntegration) Execute(ctx context.Context, params domain.Int
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 

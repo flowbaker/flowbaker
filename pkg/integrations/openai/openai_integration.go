@@ -251,9 +251,7 @@ func (i *OpenAIIntegration) ListModels(ctx context.Context, params domain.Integr
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: items},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, items),
 	}, nil
 }
 

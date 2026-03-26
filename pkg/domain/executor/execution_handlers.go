@@ -43,7 +43,7 @@ func (h *HistoryRecorder) HandleEvent(ctx context.Context, event domain.Executio
 		h.historyEntries = append(h.historyEntries, domain.NodeExecutionEntry{
 			NodeID:             e.NodeID,
 			ItemsByInputIndex:  e.ItemsByInputIndex,
-			ItemsByOutputIndex: map[int]domain.NodeItems{},
+			ItemsByOutputIndex: domain.NodeItemsMap{},
 			EventType:          domain.NodeFailed,
 			Error:              e.Error.Error(),
 			Timestamp:          e.Timestamp.UnixNano(),
@@ -124,7 +124,7 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			Timestamp:           e.Timestamp.UnixNano(),
 			Error:               e.Error.Error(),
 			ItemsByInputIndex:   e.ItemsByInputIndex,
-			ItemsByOutputIndex:  map[int]domain.NodeItems{},
+			ItemsByOutputIndex:  domain.NodeItemsMap{},
 			IsReExecution:       e.IsReExecution,
 			IsFromErrorTrigger:  e.IsFromErrorTrigger,
 			IsTesting:           e.IsTesting,

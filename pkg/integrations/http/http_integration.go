@@ -294,9 +294,7 @@ func (i *HTTPIntegration) ExecuteGet(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -359,9 +357,7 @@ func (i *HTTPIntegration) ExecutePost(ctx context.Context, params domain.Integra
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -423,9 +419,7 @@ func (i *HTTPIntegration) ExecutePut(ctx context.Context, params domain.Integrat
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -487,9 +481,7 @@ func (i *HTTPIntegration) ExecutePatch(ctx context.Context, params domain.Integr
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
@@ -551,9 +543,7 @@ func (i *HTTPIntegration) ExecuteDelete(ctx context.Context, params domain.Integ
 	}
 
 	return domain.IntegrationOutput{
-		ItemsByOutputIndex: []domain.NodeItems{
-			{FromNodeID: params.NodeID, Items: outputItems},
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 

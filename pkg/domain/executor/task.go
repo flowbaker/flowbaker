@@ -10,17 +10,17 @@ import (
 
 type NodeExecutionTask struct {
 	NodeID            string
-	ItemsByInputIndex map[int]domain.NodeItems
+	ItemsByInputIndex domain.NodeItemsMap
 }
 
 type WaitingExecutionTask struct {
 	ID               string
 	NodeID           string
-	ReceivedPayloads map[int]domain.NodeItems
+	ReceivedPayloads domain.NodeItemsMap
 	mutex            *sync.Mutex
 }
 
-func NewWaitingExecutionTask(nodeID string, payloads map[int]domain.NodeItems) WaitingExecutionTask {
+func NewWaitingExecutionTask(nodeID string, payloads domain.NodeItemsMap) WaitingExecutionTask {
 	b := make([]byte, 16)
 	rand.Read(b)
 
@@ -37,11 +37,15 @@ func (t WaitingExecutionTask) AddItems(fromNodeID string, inputIndex int, items 
 	defer t.mutex.Unlock()
 
 	if t.ReceivedPayloads == nil {
-		t.ReceivedPayloads = map[int]domain.NodeItems{}
+		t.ReceivedPayloads = domain.NodeItemsMap{}
 	}
 
-	t.ReceivedPayloads[inputIndex] = domain.NodeItems{
-		FromNodeID: fromNodeID,
-		Items:      items,
+	t.ReceivedPayloads.Set(inputIndex, fromNodeID, items)
+}
+
+func (t *WaitingExecutionTask) ToExecutionTask() NodeExecutionTask {
+	return NodeExecutionTask{
+		NodeID:            t.NodeID,
+		ItemsByInputIndex: t.ReceivedPayloads,
 	}
 }

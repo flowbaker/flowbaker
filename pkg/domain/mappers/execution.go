@@ -49,7 +49,7 @@ func DomainNodeItemsToFlowbaker(dni domain.NodeItems) flowbaker.NodeItems {
 }
 
 // DomainNodeItemsMapToFlowbaker converts a map of domain.NodeItems to flowbaker.NodeItems
-func DomainNodeItemsMapToFlowbaker(itemsMap map[int]domain.NodeItems) map[int]flowbaker.NodeItems {
+func DomainNodeItemsMapToFlowbaker(itemsMap domain.NodeItemsMap) map[int]flowbaker.NodeItems {
 	result := make(map[int]flowbaker.NodeItems, len(itemsMap))
 	for k, v := range itemsMap {
 		result[k] = DomainNodeItemsToFlowbaker(v)
@@ -121,8 +121,8 @@ func FlowbakerNodeItemsToDomain(fni flowbaker.NodeItems) domain.NodeItems {
 }
 
 // FlowbakerNodeItemsMapToDomain converts a map of flowbaker.NodeItems to domain.NodeItems
-func FlowbakerNodeItemsMapToDomain(itemsMap map[int]flowbaker.NodeItems) map[int]domain.NodeItems {
-	result := make(map[int]domain.NodeItems, len(itemsMap))
+func FlowbakerNodeItemsMapToDomain(itemsMap map[int]flowbaker.NodeItems) domain.NodeItemsMap {
+	result := make(domain.NodeItemsMap, len(itemsMap))
 	for k, v := range itemsMap {
 		result[k] = FlowbakerNodeItemsToDomain(v)
 	}

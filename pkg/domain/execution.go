@@ -7,10 +7,35 @@ type NodeItems struct {
 	Items      []Item `json:"items"`
 }
 
+type NodeItemsMap map[int]NodeItems
+
+func NewNodeItemsMap(index int, fromNodeID string, items []Item) NodeItemsMap {
+	return NodeItemsMap{
+		index: {FromNodeID: fromNodeID, Items: items},
+	}
+}
+
+func (m NodeItemsMap) Set(index int, fromNodeID string, items []Item) NodeItemsMap {
+	m[index] = NodeItems{FromNodeID: fromNodeID, Items: items}
+	return m
+}
+
+type ErrorItem struct {
+	ErrorMessage string `json:"error_message"`
+}
+
+func NewErrorIntegrationOutput(err error) IntegrationOutput {
+	return IntegrationOutput{
+		ItemsByOutputIndex: NewNodeItemsMap(0, "", []Item{ErrorItem{
+			ErrorMessage: err.Error(),
+		}}),
+	}
+}
+
 type NodeExecutionEntry struct {
 	NodeID             string
-	ItemsByInputIndex  map[int]NodeItems
-	ItemsByOutputIndex map[int]NodeItems
+	ItemsByInputIndex  NodeItemsMap
+	ItemsByOutputIndex NodeItemsMap
 	EventType          EventType
 	Error              string
 	Timestamp          int64
