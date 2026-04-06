@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	SlackIntegrationActionType_SendMessage  domain.IntegrationActionType = "send_message"
-	SlackIntegrationActionType_GetMessage   domain.IntegrationActionType = "get_message"
-	SlackIntegrationActionType_AddReaction  domain.IntegrationActionType = "add_reaction"
-	SlackIntegrationActionType_GetMessages  domain.IntegrationActionType = "get_messages"
+	SlackIntegrationActionType_SendMessage domain.IntegrationActionType = "send_message"
+	SlackIntegrationActionType_GetMessage  domain.IntegrationActionType = "get_message"
+	SlackIntegrationActionType_AddReaction domain.IntegrationActionType = "add_reaction"
+	SlackIntegrationActionType_GetMessages domain.IntegrationActionType = "get_messages"
 
 	SlackIntegrationPeekable_Channels domain.IntegrationPeekableType = "channels"
 )
@@ -109,15 +109,10 @@ type SendMessageOutputItem struct {
 }
 
 func (i *SlackIntegration) SendMessage(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := input.GetItemsByInputID()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	allItems := []domain.Item{}
 
-	for _, items := range itemsByInputID {
-		allItems = append(allItems, items...)
+	for _, nodeItems := range input.ItemsByInputIndex {
+		allItems = append(allItems, nodeItems.Items...)
 	}
 
 	outputs := []domain.Item{}
@@ -141,15 +136,8 @@ func (i *SlackIntegration) SendMessage(ctx context.Context, input domain.Integra
 		})
 	}
 
-	resultJSON, err := json.Marshal(outputs)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, input.NodeID, outputs),
 	}, nil
 }
 
@@ -177,17 +165,11 @@ type GetMessagesParams struct {
 	Cursor    string `json:"cursor"`
 }
 
-
 func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := input.GetItemsByInputID()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	allItems := []domain.Item{}
 
-	for _, items := range itemsByInputID {
-		allItems = append(allItems, items...)
+	for _, nodeItems := range input.ItemsByInputIndex {
+		allItems = append(allItems, nodeItems.Items...)
 	}
 
 	outputs := []domain.Item{}
@@ -211,28 +193,16 @@ func (i *SlackIntegration) GetMessage(ctx context.Context, input domain.Integrat
 		outputs = append(outputs, message)
 	}
 
-	resultJSON, err := json.Marshal(outputs)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, input.NodeID, outputs),
 	}, nil
 }
 
 func (i *SlackIntegration) AddReaction(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := input.GetItemsByInputID()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	allItems := []domain.Item{}
 
-	for _, items := range itemsByInputID {
-		allItems = append(allItems, items...)
+	for _, nodeItems := range input.ItemsByInputIndex {
+		allItems = append(allItems, nodeItems.Items...)
 	}
 
 	outputs := []domain.Item{}
@@ -245,7 +215,6 @@ func (i *SlackIntegration) AddReaction(ctx context.Context, input domain.Integra
 			return domain.IntegrationOutput{}, err
 		}
 
-		// Normalize emoji by stripping colons (e.g., :thumbsup: -> thumbsup)
 		emoji := strings.Trim(p.Emoji, ":")
 
 		err = i.slackClient.AddReactionContext(ctx, emoji, slack.ItemRef{
@@ -253,9 +222,7 @@ func (i *SlackIntegration) AddReaction(ctx context.Context, input domain.Integra
 			Timestamp: p.Timestamp,
 		})
 		if err != nil {
-			// Handle "already_reacted" as success
 			if slackErr, ok := err.(slack.SlackErrorResponse); ok && slackErr.Err == "already_reacted" {
-				// Already reacted, treat as success
 			} else {
 				return domain.IntegrationOutput{}, fmt.Errorf("failed to add reaction to message in channel %s: %w", p.ChannelID, err)
 			}
@@ -269,28 +236,16 @@ func (i *SlackIntegration) AddReaction(ctx context.Context, input domain.Integra
 		})
 	}
 
-	resultJSON, err := json.Marshal(outputs)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, input.NodeID, outputs),
 	}, nil
 }
 
 func (i *SlackIntegration) GetMessages(ctx context.Context, input domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	itemsByInputID, err := input.GetItemsByInputID()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	allItems := []domain.Item{}
 
-	for _, items := range itemsByInputID {
-		allItems = append(allItems, items...)
+	for _, nodeItems := range input.ItemsByInputIndex {
+		allItems = append(allItems, nodeItems.Items...)
 	}
 
 	outputs := []domain.Item{}
@@ -303,7 +258,6 @@ func (i *SlackIntegration) GetMessages(ctx context.Context, input domain.Integra
 			return domain.IntegrationOutput{}, err
 		}
 
-		// Default limit to 100, cap at 1000 (Slack API max)
 		limit := p.Limit
 		if limit <= 0 {
 			limit = 100
@@ -324,15 +278,8 @@ func (i *SlackIntegration) GetMessages(ctx context.Context, input domain.Integra
 		outputs = append(outputs, history)
 	}
 
-	resultJSON, err := json.Marshal(outputs)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, input.NodeID, outputs),
 	}, nil
 }
 

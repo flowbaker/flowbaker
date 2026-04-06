@@ -3,10 +3,8 @@ package domain
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -83,6 +81,7 @@ const (
 	IntegrationType_Gitlab               IntegrationType = "gitlab"
 	IntegrationType_Snowflake            IntegrationType = "snowflake"
 	IntegrationType_InputTrigger         IntegrationType = "input_trigger"
+	IntegrationType_Loop                 IntegrationType = "loop"
 )
 
 type Integration struct {
@@ -93,6 +92,7 @@ type Integration struct {
 	CredentialProperties []NodeProperty              `json:"credential_props" bson:"credential_properties"`
 	Actions              []IntegrationAction         `json:"actions" bson:"actions"`
 	Triggers             []IntegrationTrigger        `json:"triggers" bson:"triggers"`
+	Containers           []IntegrationContainer      `json:"containers,omitempty" bson:"containers,omitempty"`
 	EmbeddingModels      []IntegrationEmbeddingModel `json:"embedding_models,omitempty" bson:"embedding_models,omitempty"`
 
 	IsGroup bool `json:"is_group" bson:"is_group"`
@@ -119,6 +119,16 @@ func (i Integration) GetTriggerByType(triggerType IntegrationTriggerEventType) (
 	}
 
 	return IntegrationTrigger{}, false
+}
+
+func (i Integration) GetContainerByType(containerType IntegrationContainerType) (IntegrationContainer, bool) {
+	for _, container := range i.Containers {
+		if container.ContainerType == containerType {
+			return container, true
+		}
+	}
+
+	return IntegrationContainer{}, false
 }
 
 type IntegrationTrigger struct {
@@ -178,17 +188,44 @@ type ContextHandles struct {
 }
 
 type IntegrationAction struct {
-	ID                string                                `json:"id" bson:"id"`
-	ActionType        IntegrationActionType                 `json:"action_type" bson:"action_type"`
-	Name              string                                `json:"name" bson:"name"`
-	Description       string                                `json:"description" bson:"description"`
-	Properties        []NodeProperty                        `json:"properties" bson:"properties"`
-	HandlesByContext  map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
-	SupportedContexts []ActionUsageContext                  `json:"supported_contexts" bson:"supported_contexts"`
-	CombinedContexts  []ActionUsageContext                  `json:"combined_contexts" bson:"combined_contexts"`
+	ID                            string                                `json:"id" bson:"id"`
+	ActionType                    IntegrationActionType                 `json:"action_type" bson:"action_type"`
+	Name                          string                                `json:"name" bson:"name"`
+	Description                   string                                `json:"description" bson:"description"`
+	Properties                    []NodeProperty                        `json:"properties" bson:"properties"`
+	HandlesByContext              map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
+	SupportedContexts             []ActionUsageContext                  `json:"supported_contexts" bson:"supported_contexts"`
+	CombinedContexts              []ActionUsageContext                  `json:"combined_contexts" bson:"combined_contexts"`
+	IsNonAvailableForDefaultOAuth bool                                  `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
+	Decoration                    NodeDecoration                        `json:"decoration" bson:"decoration"`
+}
 
-	IsNonAvailableForDefaultOAuth bool           `json:"is_non_available_for_default_oauth" bson:"is_non_available_for_default_oauth"`
-	Decoration                    NodeDecoration `json:"decoration" bson:"decoration"`
+type IntegrationContainerType string
+
+type ContainerControlRole string
+
+const (
+	ContainerControlRoleEntrypoint ContainerControlRole = "entrypoint"
+	ContainerControlRoleFeedback   ContainerControlRole = "feedback"
+	ContainerControlRoleTerminal   ContainerControlRole = "terminal"
+)
+
+type ContainerControl struct {
+	ID       string               `json:"id" bson:"id"`
+	Role     ContainerControlRole `json:"role" bson:"role"`
+	Label    string               `json:"label" bson:"label"`
+	Subtitle string               `json:"subtitle" bson:"subtitle"`
+	Handles  []NodeHandle         `json:"handles" bson:"handles"`
+}
+
+type IntegrationContainer struct {
+	ID               string                                `json:"id" bson:"id"`
+	ContainerType    IntegrationContainerType              `json:"container_type" bson:"container_type"`
+	Name             string                                `json:"name" bson:"name"`
+	Description      string                                `json:"description" bson:"description"`
+	Properties       []NodeProperty                        `json:"properties" bson:"properties"`
+	HandlesByContext map[ActionUsageContext]ContextHandles `json:"handles_by_context" bson:"handles_by_context"`
+	Controls         []ContainerControl                    `json:"controls" bson:"controls"`
 }
 
 type IntegrationEmbeddingModel struct {
@@ -200,40 +237,20 @@ type IntegrationEmbeddingModel struct {
 
 type IntegrationInput struct {
 	NodeID            string
-	PayloadByInputID  map[string]Payload
+	ItemsByInputIndex NodeItemsMap
 	IntegrationParams IntegrationParams
 	ActionType        IntegrationActionType
 	Workflow          *Workflow
 }
 
-func (i IntegrationInput) GetItemsByInputID() (map[string][]Item, error) {
-	itemsByInputID := map[string][]Item{}
-
-	for inputID, payload := range i.PayloadByInputID {
-		items, err := payload.ToItems()
-		if err != nil {
-			return nil, err
-		}
-
-		itemsByInputID[inputID] = items
-	}
-
-	return itemsByInputID, nil
-}
-
-func (i IntegrationInput) GetAllItems() ([]Item, error) {
-	itemsByInputID, err := i.GetItemsByInputID()
-	if err != nil {
-		return nil, err
-	}
-
+func (i IntegrationInput) GetAllItems() []Item {
 	items := []Item{}
 
-	for _, inputItems := range itemsByInputID {
-		items = append(items, inputItems...)
+	for _, nodeItems := range i.ItemsByInputIndex {
+		items = append(items, nodeItems.Items...)
 	}
 
-	return items, nil
+	return items
 }
 
 type IntegrationParams struct {
@@ -241,28 +258,7 @@ type IntegrationParams struct {
 }
 
 type IntegrationOutput struct {
-	ResultJSONByOutputID []Payload
-}
-
-func (o IntegrationOutput) ToItemsByOutputID(nodeID string) map[string]NodeItems {
-	itemsByOutputID := map[string]NodeItems{}
-
-	for outputIndex, payload := range o.ResultJSONByOutputID {
-		items, err := payload.ToItems()
-		if err != nil {
-			log.Error().Err(err).Msgf("Failed to convert payload to items for output %d", outputIndex)
-			continue
-		}
-
-		outputID := fmt.Sprintf("output-%s-%d", nodeID, outputIndex)
-
-		itemsByOutputID[outputID] = NodeItems{
-			FromNodeID: nodeID,
-			Items:      items,
-		}
-	}
-
-	return itemsByOutputID
+	ItemsByOutputIndex NodeItemsMap
 }
 
 type IntegrationDeps struct {

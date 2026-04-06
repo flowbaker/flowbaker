@@ -7,15 +7,41 @@ type NodeItems struct {
 	Items      []Item `json:"items"`
 }
 
-type NodeExecutionEntry struct {
-	NodeID          string
-	ItemsByInputID  map[string]NodeItems
-	ItemsByOutputID map[string]NodeItems
-	EventType       EventType
-	Error           string
-	Timestamp       int64
-	ExecutionOrder  int
+type NodeItemsMap map[int]NodeItems
+
+func NewNodeItemsMap(index int, fromNodeID string, items []Item) NodeItemsMap {
+	return NodeItemsMap{
+		index: {FromNodeID: fromNodeID, Items: items},
+	}
 }
+
+func (m NodeItemsMap) Set(index int, fromNodeID string, items []Item) NodeItemsMap {
+	m[index] = NodeItems{FromNodeID: fromNodeID, Items: items}
+	return m
+}
+
+type ErrorItem struct {
+	ErrorMessage string `json:"error_message"`
+}
+
+func NewErrorIntegrationOutput(err error) IntegrationOutput {
+	return IntegrationOutput{
+		ItemsByOutputIndex: NewNodeItemsMap(0, "", []Item{ErrorItem{
+			ErrorMessage: err.Error(),
+		}}),
+	}
+}
+
+type NodeExecutionEntry struct {
+	NodeID             string
+	ItemsByInputIndex  NodeItemsMap
+	ItemsByOutputIndex NodeItemsMap
+	EventType          EventType
+	Error              string
+	Timestamp          int64
+	ExecutionOrder     int
+}
+
 type NodeExecution struct {
 	ID                     string
 	NodeID                 string
@@ -30,7 +56,7 @@ type NodeExecution struct {
 	OutputItemsSizeInBytes OutputItemsSizeInBytes
 }
 
-type InputItemsCount map[string]int64
-type InputItemsSizeInBytes map[string]int64
-type OutputItemsCount map[int64]int64
-type OutputItemsSizeInBytes map[int64]int64
+type InputItemsCount map[int]int64
+type InputItemsSizeInBytes map[int]int64
+type OutputItemsCount map[int]int64
+type OutputItemsSizeInBytes map[int]int64

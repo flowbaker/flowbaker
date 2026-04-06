@@ -55,10 +55,7 @@ func (i *SendResponseIntegration) Execute(ctx context.Context, params domain.Int
 		return domain.IntegrationOutput{}, errors.New("workflow execution context not found")
 	}
 
-	allItems, err := params.GetAllItems()
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
+	allItems := params.GetAllItems()
 
 	outputItems := []domain.Item{}
 
@@ -129,15 +126,8 @@ func (i *SendResponseIntegration) Execute(ctx context.Context, params domain.Int
 		workflowExecutionContext.SetResponseStatusCode(200)
 	}
 
-	resultJSON, err := json.Marshal(outputItems)
-	if err != nil {
-		return domain.IntegrationOutput{}, err
-	}
-
 	return domain.IntegrationOutput{
-		ResultJSONByOutputID: []domain.Payload{
-			resultJSON,
-		},
+		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
