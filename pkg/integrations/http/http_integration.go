@@ -99,11 +99,11 @@ func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, err
 	})
 
 	actionManager := domain.NewIntegrationActionManager().
-		AddPerItem(IntegrationActionType_Get, integration.GetRequest).
-		AddPerItem(IntegrationActionType_Post, integration.PostRequest).
-		AddPerItem(IntegrationActionType_Put, integration.PutRequest).
-		AddPerItem(IntegrationActionType_Patch, integration.PatchRequest).
-		AddPerItem(IntegrationActionType_Delete, integration.DeleteRequest)
+		AddPerItem(IntegrationActionType_Get, integration.ExecuteGet).
+		AddPerItem(IntegrationActionType_Post, integration.ExecutePost).
+		AddPerItem(IntegrationActionType_Put, integration.ExecutePut).
+		AddPerItem(IntegrationActionType_Patch, integration.ExecutePatch).
+		AddPerItem(IntegrationActionType_Delete, integration.ExecuteDelete)
 
 	requestBodyManager := NewRequestBodyManager(RequestBodyManagerDependencies{
 		ExecutorStorageManager: deps.ExecutorStorageManager,
@@ -182,8 +182,6 @@ const (
 	reqTypeDelete reqType = "DELETE"
 )
 
-type setRequestBodyParams = RequestBodyParams
-
 type GetHTTPCredentialClientParams struct {
 	AuthType HTTPAuthType `json:"auth_type"`
 }
@@ -213,82 +211,55 @@ func (i *HTTPIntegration) Execute(ctx context.Context, params domain.Integration
 	return i.actionManager.RunPerItem(ctx, params.ActionType, params)
 }
 
-func (i *HTTPIntegration) ExecuteGet(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	allItems := make([]domain.Item, 0)
-	for _, nodeItems := range params.ItemsByInputIndex {
-		allItems = append(allItems, nodeItems.Items...)
+func (i *HTTPIntegration) ExecuteGet(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	p := HTTPRequestParams{}
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return nil, err
 	}
 
-	outputItems := make([]domain.Item, 0, len(allItems))
-
-	for _, item := range allItems {
-		p := HTTPRequestParams{}
-		err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
-		if err != nil {
-			return domain.IntegrationOutput{}, err
-		}
-
-		resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
-			Method:      "GET",
-			URL:         p.URL,
-			Headers:     p.Headers,
-			QueryParams: p.QueryParams,
-			BodyType:    "",
-			BodyReader:  nil,
-			RequestType: reqTypeGet,
-		})
-		if err != nil {
-			return domain.IntegrationOutput{}, err
-		}
-		resp.Body.Close()
+	resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
+		Method:      "GET",
+		URL:         p.URL,
+		Headers:     p.Headers,
+		QueryParams: p.QueryParams,
+		BodyType:    "",
+		BodyReader:  nil,
+		RequestType: reqTypeGet,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 
 	body, err := i.responseBodyManager.SetResponseBody(ctx, resp)
 	if err != nil {
 		return nil, err
 	}
 
-	httpResp := HTTPResponse{
+	return HTTPResponse{
 		StatusCode: resp.StatusCode,
 		Status:     resp.Status,
 		Header:     resp.Header,
 		Body:       body,
-	}
-
-		outputItems = append(outputItems, httpResp)
-	}
-
-	return domain.IntegrationOutput{
-		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
-func (i *HTTPIntegration) ExecutePost(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	allItems := make([]domain.Item, 0)
-	for _, nodeItems := range params.ItemsByInputIndex {
-		allItems = append(allItems, nodeItems.Items...)
+func (i *HTTPIntegration) ExecutePost(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	p := HTTPRequestParams{}
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return nil, err
 	}
 
-	outputItems := make([]domain.Item, 0, len(allItems))
-
-	for _, item := range allItems {
-		p := HTTPRequestParams{}
-		err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
-		if err != nil {
-			return domain.IntegrationOutput{}, err
-		}
-
-		bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
-			Headers:            p.Headers,
-			BodyType:           HTTPBodyType(p.BodyType),
-			JSONBody:           p.JSONBody,
-			TextBody:           p.TextBody,
-			MultipartFormData:  p.MultipartFormData,
-			URLEncodedFormData: p.URLEncodedFormData,
-			File:               p.File,
-		})
-		if err != nil {
-			bodyReader = nil
-		}
+	bodyResult, err := i.requestBodyManager.SetRequestBody(ctx, RequestBodyParams{
+		Headers:  p.Headers,
+		BodyType: HTTPBodyType(p.BodyType),
+		Body:     p.Body,
+	})
+	if err != nil {
+		bodyResult = RequestBodyResult{Reader: nil, Headers: p.Headers}
+	}
 
 	resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
 		Method:      "POST",
@@ -310,54 +281,36 @@ func (i *HTTPIntegration) ExecutePost(ctx context.Context, params domain.Integra
 		return nil, err
 	}
 
-		httpResp := HTTPResponse{
-			StatusCode: resp.StatusCode,
-			Status:     resp.Status,
-			Header:     resp.Header,
-			Body:       body,
-		}
-		outputItems = append(outputItems, httpResp)
-	}
-
-	return domain.IntegrationOutput{
-		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
+	return HTTPResponse{
+		StatusCode: resp.StatusCode,
+		Status:     resp.Status,
+		Header:     resp.Header,
+		Body:       body,
 	}, nil
 }
 
-func (i *HTTPIntegration) ExecutePut(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	allItems := make([]domain.Item, 0)
-	for _, nodeItems := range params.ItemsByInputIndex {
-		allItems = append(allItems, nodeItems.Items...)
+func (i *HTTPIntegration) ExecutePut(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	p := HTTPRequestParams{}
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return nil, err
 	}
 
-	outputItems := make([]domain.Item, 0, len(allItems))
-
-	for _, item := range allItems {
-		p := HTTPRequestParams{}
-		err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
-		if err != nil {
-			return domain.IntegrationOutput{}, err
-		}
-
-		bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
-			Headers:            p.Headers,
-			BodyType:           HTTPBodyType(p.BodyType),
-			JSONBody:           p.JSONBody,
-			TextBody:           p.TextBody,
-			MultipartFormData:  p.MultipartFormData,
-			URLEncodedFormData: p.URLEncodedFormData,
-			File:               p.File,
-		})
-		if err != nil {
-			bodyReader = nil
-		}
+	bodyResult, err := i.requestBodyManager.SetRequestBody(ctx, RequestBodyParams{
+		Headers:  p.Headers,
+		BodyType: HTTPBodyType(p.BodyType),
+		Body:     p.Body,
+	})
+	if err != nil {
+		bodyResult = RequestBodyResult{Reader: nil, Headers: p.Headers}
+	}
 
 	resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
 		Method:      "PUT",
 		URL:         p.URL,
 		Headers:     bodyResult.Headers,
 		QueryParams: p.QueryParams,
-		BodyType:    string(HTTPBodyType_JSON),
+		BodyType:    string(p.BodyType),
 		BodyReader:  bodyResult.Reader,
 		RequestType: reqTypePut,
 	})
@@ -371,55 +324,36 @@ func (i *HTTPIntegration) ExecutePut(ctx context.Context, params domain.Integrat
 		return nil, err
 	}
 
-	httpResp := HTTPResponse{
+	return HTTPResponse{
 		StatusCode: resp.StatusCode,
 		Status:     resp.Status,
 		Header:     resp.Header,
 		Body:       body,
-	}
-
-		outputItems = append(outputItems, httpResp)
-	}
-
-	return domain.IntegrationOutput{
-		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
-func (i *HTTPIntegration) ExecutePatch(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	allItems := make([]domain.Item, 0)
-	for _, nodeItems := range params.ItemsByInputIndex {
-		allItems = append(allItems, nodeItems.Items...)
+func (i *HTTPIntegration) ExecutePatch(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	p := HTTPRequestParams{}
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return nil, err
 	}
 
-	outputItems := make([]domain.Item, 0, len(allItems))
-
-	for _, item := range allItems {
-		p := HTTPRequestParams{}
-		err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
-		if err != nil {
-			return domain.IntegrationOutput{}, err
-		}
-
-		bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
-			Headers:            p.Headers,
-			BodyType:           HTTPBodyType(p.BodyType),
-			JSONBody:           p.JSONBody,
-			TextBody:           p.TextBody,
-			MultipartFormData:  p.MultipartFormData,
-			URLEncodedFormData: p.URLEncodedFormData,
-			File:               p.File,
-		})
-		if err != nil {
-			bodyReader = nil
-		}
+	bodyResult, err := i.requestBodyManager.SetRequestBody(ctx, RequestBodyParams{
+		Headers:  p.Headers,
+		BodyType: HTTPBodyType(p.BodyType),
+		Body:     p.Body,
+	})
+	if err != nil {
+		bodyResult = RequestBodyResult{Reader: nil, Headers: p.Headers}
+	}
 
 	resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
 		Method:      "PATCH",
 		URL:         p.URL,
 		Headers:     bodyResult.Headers,
 		QueryParams: p.QueryParams,
-		BodyType:    string(HTTPBodyType_JSON),
+		BodyType:    string(p.BodyType),
 		BodyReader:  bodyResult.Reader,
 		RequestType: reqTypePatch,
 	})
@@ -433,55 +367,36 @@ func (i *HTTPIntegration) ExecutePatch(ctx context.Context, params domain.Integr
 		return nil, err
 	}
 
-	httpResp := HTTPResponse{
+	return HTTPResponse{
 		StatusCode: resp.StatusCode,
 		Status:     resp.Status,
 		Header:     resp.Header,
 		Body:       body,
-	}
-
-		outputItems = append(outputItems, httpResp)
-	}
-
-	return domain.IntegrationOutput{
-		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
-func (i *HTTPIntegration) ExecuteDelete(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
-	allItems := make([]domain.Item, 0)
-	for _, nodeItems := range params.ItemsByInputIndex {
-		allItems = append(allItems, nodeItems.Items...)
+func (i *HTTPIntegration) ExecuteDelete(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
+	p := HTTPRequestParams{}
+	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
+	if err != nil {
+		return nil, err
 	}
 
-	outputItems := make([]domain.Item, 0, len(allItems))
-
-	for _, item := range allItems {
-		p := HTTPRequestParams{}
-		err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
-		if err != nil {
-			return domain.IntegrationOutput{}, err
-		}
-
-		bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
-			Headers:            p.Headers,
-			BodyType:           HTTPBodyType(p.BodyType),
-			JSONBody:           p.JSONBody,
-			TextBody:           p.TextBody,
-			MultipartFormData:  p.MultipartFormData,
-			URLEncodedFormData: p.URLEncodedFormData,
-			File:               p.File,
-		})
-		if err != nil {
-			bodyReader = nil
-		}
+	bodyResult, err := i.requestBodyManager.SetRequestBody(ctx, RequestBodyParams{
+		Headers:  p.Headers,
+		BodyType: HTTPBodyType(p.BodyType),
+		Body:     p.Body,
+	})
+	if err != nil {
+		bodyResult = RequestBodyResult{Reader: nil, Headers: p.Headers}
+	}
 
 	resp, err := i.httpRequest(ctx, HTTPRequestFunctionParams{
 		Method:      "DELETE",
 		URL:         p.URL,
 		Headers:     bodyResult.Headers,
 		QueryParams: p.QueryParams,
-		BodyType:    string(HTTPBodyType_JSON),
+		BodyType:    string(p.BodyType),
 		BodyReader:  bodyResult.Reader,
 		RequestType: reqTypeDelete,
 	})
@@ -495,18 +410,11 @@ func (i *HTTPIntegration) ExecuteDelete(ctx context.Context, params domain.Integ
 		return nil, err
 	}
 
-	httpResp := HTTPResponse{
+	return HTTPResponse{
 		StatusCode: resp.StatusCode,
 		Status:     resp.Status,
 		Header:     resp.Header,
 		Body:       body,
-	}
-
-		outputItems = append(outputItems, httpResp)
-	}
-
-	return domain.IntegrationOutput{
-		ItemsByOutputIndex: domain.NewNodeItemsMap(0, params.NodeID, outputItems),
 	}, nil
 }
 
