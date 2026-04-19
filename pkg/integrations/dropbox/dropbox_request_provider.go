@@ -19,7 +19,7 @@ type CredentialPayload struct {
 }
 
 // TODO: check if it is working correctly
-func (p *DropboxRequestProvider) Attach(req *http.Request, credential *domain.Credential) (*http.Request, error) {
+func (p *DropboxRequestProvider) AttachCredential(req *http.Request, credential *domain.Credential) (*http.Request, error) {
 	payload := CredentialPayload{}
 	jsonPayload, err := json.Marshal(credential.DecryptedPayload)
 	if err != nil {

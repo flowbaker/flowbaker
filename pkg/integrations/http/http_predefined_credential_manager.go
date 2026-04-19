@@ -36,5 +36,5 @@ func (m *preDefinedCredentialManager) Authenticate(ctx context.Context, req *htt
 		return nil, err
 	}
 
-	return provider.Attach(req, &rawCredential)
+	return provider.AttachCredential(req, &rawCredential)
 }
