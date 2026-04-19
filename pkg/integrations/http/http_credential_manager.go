@@ -67,22 +67,6 @@ const (
 	HTTPAuthType_PreDefined   HTTPAuthType = "pre_defined"
 )
 
-func (m *credentialManager) Authenticate(ctx context.Context, params ApplyCredentialParams) (*http.Request, error) {
-	log.Debug().Msgf("Authenticating with credential: %+v", params.Credential)
-	switch params.AuthType {
-	case HTTPAuthType_NoCredential:
-		return params.Request, nil
-
-	case HTTPAuthType_Generic:
-		return m.genericCredentialManager.Authenticate(ctx, params.Request, params.GenericAuthType, params.Credential)
-
-	// credential itself doesn't know is it for http or not, so we set it to default case here
-	// maybe we should fine better approach for this
-	default:
-		return m.preDefinedCredentialManager.Authenticate(ctx, params.Request, params.Credential)
-	}
-}
-
 func (m *credentialManager) GetPayload(ctx context.Context) (HTTPPayload, error) {
 	rawCredential, err := m.executorCredentialManager.GetFullCredential(ctx, m.credentialID)
 	if err != nil {
@@ -102,4 +86,20 @@ func (m *credentialManager) GetPayload(ctx context.Context) (HTTPPayload, error)
 
 	payload.Credential = rawCredential
 	return payload, nil
+}
+
+func (m *credentialManager) Authenticate(ctx context.Context, params ApplyCredentialParams) (*http.Request, error) {
+	log.Debug().Msgf("Authenticating with credential: %+v", params.Credential)
+	switch params.AuthType {
+	case HTTPAuthType_NoCredential:
+		return params.Request, nil
+
+	case HTTPAuthType_Generic:
+		return m.genericCredentialManager.Authenticate(ctx, params.Request, params.GenericAuthType, params.Credential)
+
+	// credential itself doesn't know is it for http or not, so we set it to default case here
+	// maybe we should fine better approach for this
+	default:
+		return m.preDefinedCredentialManager.Authenticate(ctx, params.Request, params.Credential)
+	}
 }
