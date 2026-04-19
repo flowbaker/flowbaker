@@ -68,10 +68,10 @@ var (
 						Label: "Header Authentication",
 						Value: HTTPGenericAuthType_Header,
 					},
-					{
-						Label: "JSON (Custom JSON Parameters)",
-						Value: HTTPGenericAuthType_JSON,
-					},
+					// {
+					// 	Label: "JSON (Custom JSON Parameters)",
+					// 	Value: HTTPGenericAuthType_JSON,
+					// },
 				},
 			},
 			{
@@ -151,17 +151,17 @@ var (
 					Value:       HTTPGenericAuthType_Header,
 				},
 			},
-			{
-				Key:         "custom_json_payload",
-				Name:        "Custom JSON Payload",
-				Description: "JSON payload that will be merged into request body without removing existing keys",
-				Type:        domain.NodePropertyType_CodeEditor,
-				Required:    true,
-				DependsOn: &domain.DependsOn{
-					PropertyKey: "generic_auth_type",
-					Value:       HTTPGenericAuthType_JSON,
-				},
-			},
+			// {
+			// 	Key:         "custom_json_payload",
+			// 	Name:        "Custom JSON Payload",
+			// 	Description: "JSON payload that will be merged into request body without removing existing keys",
+			// 	Type:        domain.NodePropertyType_CodeEditor,
+			// 	Required:    true,
+			// 	DependsOn: &domain.DependsOn{
+			// 		PropertyKey: "generic_auth_type",
+			// 		Value:       HTTPGenericAuthType_JSON,
+			// 	},
+			// },
 		},
 		Actions: []domain.IntegrationAction{
 			{

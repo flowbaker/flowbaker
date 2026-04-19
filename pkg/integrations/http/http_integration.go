@@ -35,7 +35,6 @@ type HTTPIntegrationDependencies struct {
 type HTTPIntegration struct {
 	integrationSelector    domain.IntegrationSelector
 	executorStorageManager domain.ExecutorStorageManager
-	httpActionManager      HTTPActionManager
 	workspaceID            string
 	actionManager          *domain.IntegrationActionManager
 	credentialID           string
@@ -75,7 +74,7 @@ func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, err
 		CredentialID:              deps.CredentialID,
 	})
 
-	integration.httpActionManager = NewHttpActionManager(HTTPActionManagerDependencies{
+	httpActionManager := NewHttpActionManager(HTTPActionManagerDependencies{
 		Binder:              deps.Binder,
 		CredentialManager:   credentialManager,
 		RequestBodyManager:  requestBodyManager,
@@ -84,11 +83,11 @@ func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, err
 
 	actionManager := domain.NewIntegrationActionManager()
 	actionManager.
-		AddPerItem(IntegrationActionType_Post, integration.httpActionManager.Request(HTTPMethod_Post)).
-		AddPerItem(IntegrationActionType_Put, integration.httpActionManager.Request(HTTPMethod_Put)).
-		AddPerItem(IntegrationActionType_Delete, integration.httpActionManager.Request(HTTPMethod_Delete)).
-		AddPerItem(IntegrationActionType_Patch, integration.httpActionManager.Request(HTTPMethod_Patch)).
-		AddPerItem(IntegrationActionType_Get, integration.httpActionManager.Request(HTTPMethod_Get))
+		AddPerItem(IntegrationActionType_Post, httpActionManager.Request(HTTPMethod_Post)).
+		AddPerItem(IntegrationActionType_Put, httpActionManager.Request(HTTPMethod_Put)).
+		AddPerItem(IntegrationActionType_Delete, httpActionManager.Request(HTTPMethod_Delete)).
+		AddPerItem(IntegrationActionType_Patch, httpActionManager.Request(HTTPMethod_Patch)).
+		AddPerItem(IntegrationActionType_Get, httpActionManager.Request(HTTPMethod_Get))
 
 	integration.actionManager = actionManager
 

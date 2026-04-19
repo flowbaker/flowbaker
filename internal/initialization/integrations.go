@@ -48,12 +48,11 @@ import (
 )
 
 type integrationRegisterParams struct {
-	IntegrationType              domain.IntegrationType
-	NewCreator                   func(deps domain.IntegrationDeps) domain.IntegrationCreator
-	NewPollingEventHandler       func(deps domain.IntegrationDeps) domain.IntegrationPoller
-	NewHTTPOAuthClientProvider   func(deps domain.IntegrationDeps) domain.HTTPOauthClientProvider
-	NewHTTPDefaultClientProvider func(deps domain.IntegrationDeps) domain.HTTPDefaultClientProvider
-	NewConnectionTester          func(deps domain.IntegrationDeps) domain.IntegrationConnectionTester
+	IntegrationType        domain.IntegrationType
+	NewCreator             func(deps domain.IntegrationDeps) domain.IntegrationCreator
+	NewPollingEventHandler func(deps domain.IntegrationDeps) domain.IntegrationPoller
+	NewHTTPRequestProvider func(deps domain.IntegrationDeps) domain.HTTPRequestProvider
+	NewConnectionTester    func(deps domain.IntegrationDeps) domain.IntegrationConnectionTester
 }
 
 var integrationRegisterParamsList = []integrationRegisterParams{
@@ -100,15 +99,15 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 		IntegrationType: domain.IntegrationType_FlowbakerAgentMemory,
 	},
 	{
-		IntegrationType:            domain.IntegrationType_Dropbox,
-		NewCreator:                 dropbox.NewDropboxIntegrationCreator,
-		NewHTTPOAuthClientProvider: dropbox.NewDropboxHTTPClientProvider,
+		IntegrationType:        domain.IntegrationType_Gmail,
+		NewCreator:             gmail.NewGmailIntegrationCreator,
+		NewHTTPRequestProvider: gmail.NewGmailRequestProvider,
+		NewPollingEventHandler: gmail.NewGmailPollingHandler,
 	},
 	{
-		IntegrationType:            domain.IntegrationType_Gmail,
-		NewCreator:                 gmail.NewGmailIntegrationCreator,
-		NewHTTPOAuthClientProvider: gmail.NewGmailHTTPClientProvider,
-		NewPollingEventHandler:     gmail.NewGmailPollingHandler,
+		IntegrationType:        domain.IntegrationType_Dropbox,
+		NewCreator:             dropbox.NewDropboxIntegrationCreator,
+		NewHTTPRequestProvider: dropbox.NewDropboxRequestProvider,
 	},
 	{
 		IntegrationType: domain.IntegrationType_GoogleSheets,
@@ -255,14 +254,9 @@ func registerIntegrations(integrationSelector domain.IntegrationSelector, common
 			integrationSelector.RegisterPoller(params.IntegrationType, handler)
 		}
 
-		if params.NewHTTPOAuthClientProvider != nil {
-			httpOauthClientProvider := params.NewHTTPOAuthClientProvider(commonDeps)
-			integrationSelector.RegisterHTTPOAuthClientProvider(params.IntegrationType, httpOauthClientProvider)
-		}
-
-		if params.NewHTTPDefaultClientProvider != nil {
-			httpDefaultClientProvider := params.NewHTTPDefaultClientProvider(commonDeps)
-			integrationSelector.RegisterHTTPDefaultClientProvider(params.IntegrationType, httpDefaultClientProvider)
+		if params.NewHTTPRequestProvider != nil {
+			httpRequestProvider := params.NewHTTPRequestProvider(commonDeps)
+			integrationSelector.RegisterHTTPRequestProvider(params.IntegrationType, httpRequestProvider)
 		}
 
 		if params.NewConnectionTester != nil {

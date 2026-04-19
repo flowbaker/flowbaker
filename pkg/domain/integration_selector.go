@@ -35,12 +35,10 @@ type TestConnectionParams struct {
 	Credential Credential
 }
 
-type HTTPDefaultClientProvider interface {
-	GetHTTPDefaultClient(credential *Credential) (*http.Client, error)
-}
-
-type HTTPOauthClientProvider interface {
-	GetHTTPOAuthClient(credential *OAuthAccountWithSensitiveData) (*http.Client, error)
+// we use this interface to attach the credential to the request
+// for example, for dropbox, we need to attach the access token to the request
+type HTTPRequestProvider interface {
+	Attach(req *http.Request, credential *Credential) (*http.Request, error)
 }
 
 type IntegrationChatReplier interface {
@@ -60,31 +58,27 @@ type IntegrationSelector interface {
 	SelectCreator(ctx context.Context, params SelectIntegrationParams) (IntegrationCreator, error)
 	SelectPoller(ctx context.Context, params SelectIntegrationParams) (IntegrationPoller, error)
 	RegisterPoller(integrationType IntegrationType, poller IntegrationPoller)
-	SelectHTTPOAuthClientProvider(ctx context.Context, params SelectIntegrationParams) (HTTPOauthClientProvider, error)
-	RegisterHTTPOAuthClientProvider(integrationType IntegrationType, httpClientProvider HTTPOauthClientProvider)
-	SelectHTTPDefaultClientProvider(ctx context.Context, params SelectIntegrationParams) (HTTPDefaultClientProvider, error)
-	RegisterHTTPDefaultClientProvider(integrationType IntegrationType, httpClientProvider HTTPDefaultClientProvider)
+	SelectHTTPRequestProvider(ctx context.Context, params SelectIntegrationParams) (HTTPRequestProvider, error)
+	RegisterHTTPRequestProvider(integrationType IntegrationType, httpRequestProvider HTTPRequestProvider)
 	SelectConnectionTester(ctx context.Context, params SelectIntegrationParams) (IntegrationConnectionTester, error)
 	RegisterConnectionTester(integrationType IntegrationType, connectionTester IntegrationConnectionTester)
 }
 
 type integrationSelector struct {
-	integrationsByType               map[IntegrationType]IntegrationExecutor
-	creatorsByType                   map[IntegrationType]IntegrationCreator
-	pollingEventHandlersByType       map[IntegrationType]IntegrationPoller
-	httpOauthClientProvidersByType   map[IntegrationType]HTTPOauthClientProvider
-	httpDefaultClientProvidersByType map[IntegrationType]HTTPDefaultClientProvider
-	connectionTestersByType          map[IntegrationType]IntegrationConnectionTester
+	integrationsByType         map[IntegrationType]IntegrationExecutor
+	creatorsByType             map[IntegrationType]IntegrationCreator
+	pollingEventHandlersByType map[IntegrationType]IntegrationPoller
+	httpRequestProvidersByType map[IntegrationType]HTTPRequestProvider
+	connectionTestersByType    map[IntegrationType]IntegrationConnectionTester
 }
 
 func NewIntegrationSelector() IntegrationSelector {
 	return &integrationSelector{
-		integrationsByType:               make(map[IntegrationType]IntegrationExecutor),
-		creatorsByType:                   make(map[IntegrationType]IntegrationCreator),
-		pollingEventHandlersByType:       make(map[IntegrationType]IntegrationPoller),
-		httpOauthClientProvidersByType:   make(map[IntegrationType]HTTPOauthClientProvider),
-		httpDefaultClientProvidersByType: make(map[IntegrationType]HTTPDefaultClientProvider),
-		connectionTestersByType:          make(map[IntegrationType]IntegrationConnectionTester),
+		integrationsByType:         make(map[IntegrationType]IntegrationExecutor),
+		creatorsByType:             make(map[IntegrationType]IntegrationCreator),
+		pollingEventHandlersByType: make(map[IntegrationType]IntegrationPoller),
+		httpRequestProvidersByType: make(map[IntegrationType]HTTPRequestProvider),
+		connectionTestersByType:    make(map[IntegrationType]IntegrationConnectionTester),
 	}
 }
 
@@ -141,30 +135,17 @@ func (s *integrationSelector) SelectPoller(ctx context.Context, params SelectInt
 	return poller, nil
 }
 
-func (s *integrationSelector) RegisterHTTPOAuthClientProvider(integrationType IntegrationType, httpClientProvider HTTPOauthClientProvider) {
-	s.httpOauthClientProvidersByType[integrationType] = httpClientProvider
+func (s *integrationSelector) RegisterHTTPRequestProvider(integrationType IntegrationType, httpRequestProvider HTTPRequestProvider) {
+	s.httpRequestProvidersByType[integrationType] = httpRequestProvider
 }
 
-func (s *integrationSelector) SelectHTTPOAuthClientProvider(ctx context.Context, params SelectIntegrationParams) (HTTPOauthClientProvider, error) {
-	httpOauthClientProvider, ok := s.httpOauthClientProvidersByType[params.IntegrationType]
+func (s *integrationSelector) SelectHTTPRequestProvider(ctx context.Context, params SelectIntegrationParams) (HTTPRequestProvider, error) {
+	httpRequestProvider, ok := s.httpRequestProvidersByType[params.IntegrationType]
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrIntegrationNotFound, params.IntegrationType)
 	}
 
-	return httpOauthClientProvider, nil
-}
-
-func (s *integrationSelector) RegisterHTTPDefaultClientProvider(integrationType IntegrationType, httpClientProvider HTTPDefaultClientProvider) {
-	s.httpDefaultClientProvidersByType[integrationType] = httpClientProvider
-}
-
-func (s *integrationSelector) SelectHTTPDefaultClientProvider(ctx context.Context, params SelectIntegrationParams) (HTTPDefaultClientProvider, error) {
-	httpDefaultClientProvider, ok := s.httpDefaultClientProvidersByType[params.IntegrationType]
-	if !ok {
-		return nil, fmt.Errorf("%w: %s", ErrIntegrationNotFound, params.IntegrationType)
-	}
-
-	return httpDefaultClientProvider, nil
+	return httpRequestProvider, nil
 }
 
 func (s *integrationSelector) SelectConnectionTester(ctx context.Context, params SelectIntegrationParams) (IntegrationConnectionTester, error) {

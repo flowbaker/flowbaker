@@ -13,22 +13,19 @@ import (
 
 type genericCredentialManager struct {
 	executorCredentialManager domain.ExecutorCredentialManager
-	credentialID              string
 }
 
 type GenericCredentialManager interface {
-	Authenticate(ctx context.Context, req *http.Request, genericAuthType HTTPGenericAuthType) (*http.Request, error)
+	Authenticate(ctx context.Context, req *http.Request, genericAuthType HTTPGenericAuthType, rawCredential domain.Credential) (*http.Request, error)
 }
 
 type GenericCredentialManagerDependencies struct {
 	ExecutorCredentialManager domain.ExecutorCredentialManager
-	CredentialID              string
 }
 
 func NewGenericCredentialManager(deps GenericCredentialManagerDependencies) GenericCredentialManager {
 	return &genericCredentialManager{
 		executorCredentialManager: deps.ExecutorCredentialManager,
-		credentialID:              deps.CredentialID,
 	}
 }
 
@@ -68,15 +65,7 @@ type GenericJSONCredential struct {
 
 type JSONBody map[string]any
 
-func (m *genericCredentialManager) Authenticate(ctx context.Context, req *http.Request, genericAuthType HTTPGenericAuthType) (*http.Request, error) {
-	if m.credentialID == "" {
-		return nil, errors.New("credential is required for generic authentication")
-	}
-	rawCredential, err := m.executorCredentialManager.GetFullCredential(ctx, m.credentialID)
-	if err != nil {
-		return nil, err
-	}
-
+func (m *genericCredentialManager) Authenticate(ctx context.Context, req *http.Request, genericAuthType HTTPGenericAuthType, rawCredential domain.Credential) (*http.Request, error) {
 	switch genericAuthType {
 	case HTTPGenericAuthType_Basic:
 		return m.Basic(req, rawCredential)

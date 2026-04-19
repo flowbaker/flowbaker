@@ -10,18 +10,17 @@ import (
 )
 
 type ApplyCredentialParams struct {
-	AuthType           HTTPAuthType
-	GenericAuthType    HTTPGenericAuthType
-	PreDefinedAuthType any
-	Request            *http.Request
-	RequestParams      HTTPRequestParams
+	AuthType        HTTPAuthType
+	GenericAuthType HTTPGenericAuthType
+	Request         *http.Request     `json:"-"`
+	RequestParams   HTTPRequestParams `json:"-"`
+	Credential      domain.Credential `json:"-"`
 }
 
 type HTTPPayload struct {
-	AuthType           HTTPAuthType        `json:"auth_type"`
-	GenericAuthType    HTTPGenericAuthType `json:"generic_auth_type"`
-	PreDefinedAuthType any                 `json:"pre_defined_auth_type"`
-	Credential         domain.Credential   `json:"-"`
+	AuthType        HTTPAuthType        `json:"auth_type"`
+	GenericAuthType HTTPGenericAuthType `json:"generic_auth_type"` // nil if auth type is not generic
+	Credential      domain.Credential   `json:"-"`
 }
 
 type CredentialManager interface {
@@ -44,11 +43,9 @@ type credentialManager struct {
 func NewCredentialManager(deps CredentialManagerDependencies) CredentialManager {
 	genericCredentialManager := NewGenericCredentialManager(GenericCredentialManagerDependencies{
 		ExecutorCredentialManager: deps.ExecutorCredentialManager,
-		CredentialID:              deps.CredentialID,
 	})
 	preDefinedCredentialManager := NewPreDefinedCredentialManager(PreDefinedCredentialManagerDependencies{
 		ExecutorCredentialManager: deps.ExecutorCredentialManager,
-		CredentialID:              deps.CredentialID,
 	})
 
 	return &credentialManager{
@@ -73,10 +70,10 @@ func (m *credentialManager) Authenticate(ctx context.Context, params ApplyCreden
 		return params.Request, nil
 
 	case HTTPAuthType_Generic:
-		return m.genericCredentialManager.Authenticate(ctx, params.Request, params.GenericAuthType)
+		return m.genericCredentialManager.Authenticate(ctx, params.Request, params.GenericAuthType, params.Credential)
 
 	case HTTPAuthType_PreDefined:
-		return m.preDefinedCredentialManager.Authenticate(ctx, params.Request)
+		return m.preDefinedCredentialManager.Authenticate(ctx, params.Request, params.Credential)
 
 	default:
 		return nil, errors.New("invalid auth type")

@@ -87,11 +87,11 @@ func (h *httpActionManager) Request(method HTTPMethod) domain.ActionFuncPerItem 
 		}
 
 		req, err = h.credentialManager.Authenticate(ctx, ApplyCredentialParams{
-			AuthType:           payload.AuthType,
-			GenericAuthType:    payload.GenericAuthType,
-			PreDefinedAuthType: payload.PreDefinedAuthType,
-			Request:            req,
-			RequestParams:      p,
+			AuthType:        payload.AuthType,
+			GenericAuthType: payload.GenericAuthType,
+			Request:         req,
+			RequestParams:   p,
+			Credential:      payload.Credential,
 		})
 		if err != nil {
 			return HTTPResponse{}, err
