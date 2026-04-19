@@ -13,7 +13,6 @@ type PreDefinedCredentialManager interface {
 
 type preDefinedCredentialManager struct {
 	executorCredentialManager domain.ExecutorCredentialManager
-	oauthGetter               domain.CredentialGetter[domain.OAuthAccountSensitiveData]
 	integrationSelector       domain.IntegrationSelector
 }
 
