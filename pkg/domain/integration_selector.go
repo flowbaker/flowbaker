@@ -35,10 +35,8 @@ type TestConnectionParams struct {
 	Credential Credential
 }
 
-// we use this interface to attach the credential to the request
-// for example, for dropbox, we need to attach the access token to the request
 type HTTPRequestProvider interface {
-	Attach(req *http.Request, credential *Credential) (*http.Request, error)
+	AttachCredential(req *http.Request, credential *Credential) (*http.Request, error)
 }
 
 type IntegrationChatReplier interface {

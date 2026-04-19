@@ -3,8 +3,9 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
@@ -30,6 +31,7 @@ type CredentialManager interface {
 
 type CredentialManagerDependencies struct {
 	ExecutorCredentialManager domain.ExecutorCredentialManager
+	IntegrationSelector       domain.IntegrationSelector
 	CredentialID              string
 }
 
@@ -46,6 +48,7 @@ func NewCredentialManager(deps CredentialManagerDependencies) CredentialManager 
 	})
 	preDefinedCredentialManager := NewPreDefinedCredentialManager(PreDefinedCredentialManagerDependencies{
 		ExecutorCredentialManager: deps.ExecutorCredentialManager,
+		IntegrationSelector:       deps.IntegrationSelector,
 	})
 
 	return &credentialManager{
@@ -65,6 +68,7 @@ const (
 )
 
 func (m *credentialManager) Authenticate(ctx context.Context, params ApplyCredentialParams) (*http.Request, error) {
+	log.Debug().Msgf("Authenticating with credential: %+v", params.Credential)
 	switch params.AuthType {
 	case HTTPAuthType_NoCredential:
 		return params.Request, nil
@@ -72,11 +76,10 @@ func (m *credentialManager) Authenticate(ctx context.Context, params ApplyCreden
 	case HTTPAuthType_Generic:
 		return m.genericCredentialManager.Authenticate(ctx, params.Request, params.GenericAuthType, params.Credential)
 
-	case HTTPAuthType_PreDefined:
-		return m.preDefinedCredentialManager.Authenticate(ctx, params.Request, params.Credential)
-
+	// credential itself doesn't know is it for http or not, so we set it to default case here
+	// maybe we should fine better approach for this
 	default:
-		return nil, errors.New("invalid auth type")
+		return m.preDefinedCredentialManager.Authenticate(ctx, params.Request, params.Credential)
 	}
 }
 

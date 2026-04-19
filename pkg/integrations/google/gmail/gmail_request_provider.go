@@ -18,7 +18,7 @@ type CredentialPayload struct {
 	AccessToken string `json:"access_token"`
 }
 
-func (p *GmailRequestProvider) Attach(req *http.Request, credential *domain.Credential) (*http.Request, error) {
+func (p *GmailRequestProvider) AttachCredential(req *http.Request, credential *domain.Credential) (*http.Request, error) {
 	payload := CredentialPayload{}
 	jsonPayload, err := json.Marshal(credential.DecryptedPayload)
 	if err != nil {

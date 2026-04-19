@@ -71,6 +71,7 @@ func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, err
 
 	credentialManager := NewCredentialManager(CredentialManagerDependencies{
 		ExecutorCredentialManager: deps.ExecutorCredentialManager,
+		IntegrationSelector:       deps.IntegrationSelector,
 		CredentialID:              deps.CredentialID,
 	})
 
