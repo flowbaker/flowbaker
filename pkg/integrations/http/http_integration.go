@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"io"
 	"net/http"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
@@ -12,6 +11,7 @@ type HTTPIntegrationCreator struct {
 	integrationSelector    domain.IntegrationSelector
 	binder                 domain.IntegrationParameterBinder
 	executorStorageManager domain.ExecutorStorageManager
+	credentialManager      domain.ExecutorCredentialManager
 }
 
 func NewHTTPIntegrationCreator(deps domain.IntegrationDeps) domain.IntegrationCreator {
@@ -19,55 +19,76 @@ func NewHTTPIntegrationCreator(deps domain.IntegrationDeps) domain.IntegrationCr
 		integrationSelector:    deps.IntegrationSelector,
 		binder:                 deps.ParameterBinder,
 		executorStorageManager: deps.ExecutorStorageManager,
+		credentialManager:      deps.ExecutorCredentialManager,
 	}
 }
 
 type HTTPIntegrationDependencies struct {
-	IntegrationSelector    domain.IntegrationSelector
-	Binder                 domain.IntegrationParameterBinder
-	ExecutorStorageManager domain.ExecutorStorageManager
-	WorkspaceID            string
+	IntegrationSelector       domain.IntegrationSelector
+	Binder                    domain.IntegrationParameterBinder
+	ExecutorStorageManager    domain.ExecutorStorageManager
+	ExecutorCredentialManager domain.ExecutorCredentialManager
+	WorkspaceID               string
+	CredentialID              string
 }
 
 type HTTPIntegration struct {
 	integrationSelector    domain.IntegrationSelector
 	executorStorageManager domain.ExecutorStorageManager
-	requestBodyManager     RequestBodyManager
-	responseBodyManager    ResponseBodyManager
+	httpActionManager      HTTPActionManager
 	workspaceID            string
 	actionManager          *domain.IntegrationActionManager
-	binder                 domain.IntegrationParameterBinder
-	client                 *http.Client
+	credentialID           string
 }
 
 func (c *HTTPIntegrationCreator) CreateIntegration(ctx context.Context, params domain.CreateIntegrationParams) (domain.IntegrationExecutor, error) {
 	return NewHTTPIntegration(HTTPIntegrationDependencies{
-		IntegrationSelector:    c.integrationSelector,
-		Binder:                 c.binder,
-		ExecutorStorageManager: c.executorStorageManager,
-		WorkspaceID:            params.WorkspaceID,
+		IntegrationSelector:       c.integrationSelector,
+		Binder:                    c.binder,
+		ExecutorStorageManager:    c.executorStorageManager,
+		ExecutorCredentialManager: c.credentialManager,
+		WorkspaceID:               params.WorkspaceID,
+		CredentialID:              params.CredentialID,
 	})
 }
 
 func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, error) {
 	integration := &HTTPIntegration{
 		integrationSelector:    deps.IntegrationSelector,
-		binder:                 deps.Binder,
 		executorStorageManager: deps.ExecutorStorageManager,
-		requestBodyManager: NewRequestBodyManager(RequestBodyManagerDependencies{
-			ExecutorStorageManager: deps.ExecutorStorageManager,
-			WorkspaceID:            deps.WorkspaceID,
-		}),
-		responseBodyManager: NewResponseBodyManager(ResponseBodyManagerDependencies{
-			ExecutorStorageManager: deps.ExecutorStorageManager,
-			WorkspaceID:            deps.WorkspaceID,
-		}),
-		workspaceID: deps.WorkspaceID,
-		client:      &http.Client{},
+		workspaceID:            deps.WorkspaceID,
+		credentialID:           deps.CredentialID,
 	}
 
-	actionManager := domain.NewIntegrationActionManager().
-		AddPerItem(IntegrationActionType_Post, integration.PostRequest)
+	requestBodyManager := NewRequestBodyManager(RequestBodyManagerDependencies{
+		ExecutorStorageManager: deps.ExecutorStorageManager,
+		WorkspaceID:            deps.WorkspaceID,
+	})
+
+	responseBodyManager := NewResponseBodyManager(ResponseBodyManagerDependencies{
+		ExecutorStorageManager: deps.ExecutorStorageManager,
+		WorkspaceID:            deps.WorkspaceID,
+	})
+
+	credentialManager := NewCredentialManager(CredentialManagerDependencies{
+		ExecutorCredentialManager: deps.ExecutorCredentialManager,
+		CredentialID:              deps.CredentialID,
+	})
+
+	integration.httpActionManager = NewHttpActionManager(HTTPActionManagerDependencies{
+		Binder:              deps.Binder,
+		CredentialManager:   credentialManager,
+		RequestBodyManager:  requestBodyManager,
+		ResponseBodyManager: responseBodyManager,
+	})
+
+	actionManager := domain.NewIntegrationActionManager()
+	actionManager.
+		AddPerItem(IntegrationActionType_Post, integration.httpActionManager.Request(HTTPMethod_Post)).
+		AddPerItem(IntegrationActionType_Put, integration.httpActionManager.Request(HTTPMethod_Put)).
+		AddPerItem(IntegrationActionType_Delete, integration.httpActionManager.Request(HTTPMethod_Delete)).
+		AddPerItem(IntegrationActionType_Patch, integration.httpActionManager.Request(HTTPMethod_Patch)).
+		AddPerItem(IntegrationActionType_Get, integration.httpActionManager.Request(HTTPMethod_Get))
 
 	integration.actionManager = actionManager
 
@@ -86,16 +107,6 @@ type HTTPRequestParams struct {
 	QueryParams []HTTPQueryParam  `json:"query_params"`
 }
 
-type HTTPHeaderParam struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-type HTTPQueryParam struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
 type HTTPBodyType string
 
 const (
@@ -106,80 +117,9 @@ const (
 	HTTPBodyType_Application_OctetStream HTTPBodyType = "application/octet-stream"
 )
 
-func (i *HTTPIntegration) GetRequest(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
-	return i.request(ctx, params, item, "GET")
-}
-
-func (i *HTTPIntegration) PostRequest(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
-	return i.request(ctx, params, item, "POST")
-}
-
-func (i *HTTPIntegration) PutRequest(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
-	return i.request(ctx, params, item, "PUT")
-}
-
-func (i *HTTPIntegration) PatchRequest(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
-	return i.request(ctx, params, item, "PATCH")
-}
-
-func (i *HTTPIntegration) DeleteRequest(ctx context.Context, params domain.IntegrationInput, item domain.Item) (domain.Item, error) {
-	return i.request(ctx, params, item, "DELETE")
-}
-
-type HTTPRequestResponse struct {
+type HTTPResponse struct {
 	StatusCode int         `json:"status_code"`
 	Status     string      `json:"status"`
 	Headers    http.Header `json:"headers"`
 	Body       any         `json:"body"`
-}
-
-func (i *HTTPIntegration) request(ctx context.Context, params domain.IntegrationInput, item domain.Item, method string) (HTTPRequestResponse, error) {
-	p := HTTPRequestParams{}
-	err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
-	if err != nil {
-		return HTTPRequestResponse{}, err
-	}
-
-	var body io.Reader
-	contentType := string(p.BodyType)
-
-	if method != "GET" {
-		bodyResult, err := i.requestBodyManager.Create(ctx, CreateRequestBodyParams{
-			Body:     p.Body,
-			BodyType: p.BodyType,
-		})
-		if err != nil {
-			return HTTPRequestResponse{}, err
-		}
-
-		body = bodyResult.Reader
-	} else {
-		body = nil
-	}
-
-	req, err := http.NewRequest(method, p.URL, body)
-	if err != nil {
-		return HTTPRequestResponse{}, err
-	}
-
-	i.setRequestHeaders(req, contentType, p.Headers)
-	i.setRequestQueryParams(req, p.QueryParams)
-
-	response, err := i.client.Do(req)
-	if err != nil {
-		return HTTPRequestResponse{}, err
-	}
-	defer response.Body.Close()
-
-	responseBody, err := i.responseBodyManager.Parse(ctx, response)
-	if err != nil {
-		return HTTPRequestResponse{}, err
-	}
-
-	return HTTPRequestResponse{
-		StatusCode: response.StatusCode,
-		Status:     response.Status,
-		Headers:    response.Header,
-		Body:       responseBody,
-	}, nil
 }

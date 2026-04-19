@@ -5,7 +5,12 @@ import (
 	"strings"
 )
 
-func (i *HTTPIntegration) setRequestHeaders(req *http.Request, defaultContentType string, headers []HTTPHeaderParam) {
+type HTTPHeaderParam struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+func (h *httpActionManager) setRequestHeaders(req *http.Request, defaultContentType string, headers []HTTPHeaderParam) {
 	if strings.TrimSpace(defaultContentType) != "" {
 		req.Header.Set("Content-Type", defaultContentType)
 	}

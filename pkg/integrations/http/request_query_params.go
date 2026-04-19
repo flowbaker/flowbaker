@@ -2,7 +2,12 @@ package http
 
 import "net/http"
 
-func (i *HTTPIntegration) setRequestQueryParams(req *http.Request, queryParams []HTTPQueryParam) {
+type HTTPQueryParam struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+func (h *httpActionManager) setRequestQueryParams(req *http.Request, queryParams []HTTPQueryParam) {
 	if len(queryParams) == 0 {
 		return
 	}
