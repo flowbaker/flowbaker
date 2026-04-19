@@ -1,7 +1,6 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -140,19 +139,24 @@ func (m *responseBodyManager) MultipartFormData(ctx context.Context, response *h
 			fileName = part.FormName()
 		}
 
-		partBytes, err := io.ReadAll(part)
+		fileSize, err := io.Copy(io.Discard, part)
 		if err != nil {
 			return nil, err
 		}
 
-		contentType := http.DetectContentType(partBytes)
+		// read the header to get the content type
+		headerBytes := make([]byte, 512)
+		n, _ := part.Read(headerBytes)
+		headerBytes = headerBytes[:n]
+
+		contentType := http.DetectContentType(headerBytes)
 
 		fileItem, err := m.storageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
 			WorkspaceID:  m.workspaceID,
 			OriginalName: fileName,
 			ContentType:  contentType,
-			Reader:       io.NopCloser(bytes.NewReader(partBytes)),
-			SizeInBytes:  int64(len(partBytes)),
+			Reader:       part,
+			SizeInBytes:  fileSize,
 			UploadedBy:   m.workspaceID,
 		})
 		if err != nil {
@@ -166,7 +170,7 @@ func (m *responseBodyManager) MultipartFormData(ctx context.Context, response *h
 }
 
 func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, response *http.Response) (any, error) {
-	responseBodyBytes, err := io.ReadAll(response.Body)
+	fileSize, err := io.Copy(io.Discard, response.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -178,14 +182,17 @@ func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, respon
 	fileName = strings.TrimPrefix(fileName, "attachment; filename=")
 	fileName = strings.Trim(fileName, "\"")
 
-	contentType := http.DetectContentType(responseBodyBytes)
+	headerBytes := make([]byte, 512)
+	n, _ := response.Body.Read(headerBytes)
+	headerBytes = headerBytes[:n]
+	contentType := http.DetectContentType(headerBytes)
 
 	fileItem, err := m.storageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
 		WorkspaceID:  m.workspaceID,
 		OriginalName: fileName,
 		ContentType:  contentType,
-		Reader:       io.NopCloser(bytes.NewReader(responseBodyBytes)),
-		SizeInBytes:  int64(len(responseBodyBytes)),
+		Reader:       response.Body,
+		SizeInBytes:  fileSize,
 		UploadedBy:   m.workspaceID,
 	})
 	if err != nil {
