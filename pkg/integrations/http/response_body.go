@@ -7,12 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
@@ -225,17 +225,11 @@ func (m *responseBodyManager) resolveFilePayload(src filePayloadParams) (filePay
 		return filePayload{}, fmt.Errorf("file size exceeds maximum allowed size of %d bytes", maxResponseFileSize)
 	}
 
-	var contentLength int64
-	if contentLengthStr := src.header.Get("Content-Length"); contentLengthStr != "" {
-		contentLength, err = strconv.ParseInt(contentLengthStr, 10, 64)
-		if err != nil {
-			return filePayload{}, fmt.Errorf("failed to parse content length: %w", err)
-		}
-	} else {
-		contentLength = int64(len(buf))
-	}
+	contentLength := int64(len(buf))
 
-	fileExtension, err := resolveFileExtension(src.header.Get("Content-Type"), fileName)
+	contentTypeHeader := src.header.Get("Content-Type")
+
+	fileExtension, err := resolveFileExtension(contentTypeHeader, fileName)
 	if err != nil {
 		return filePayload{}, err
 	}
@@ -257,8 +251,8 @@ func resolveFileExtension(headerContentType, fileName string) (string, error) {
 	fileExt := strings.TrimPrefix(strings.ToLower(filepath.Ext(fileName)), ".")
 	if fileExt != "" {
 		resolvedFromExt := normalizeMediaType(mime.TypeByExtension("." + fileExt))
-
 		if resolvedFromExt != "" {
+			log.Println("resolvedFromExt", resolvedFromExt, fileName, fileExt)
 			return resolvedFromExt, nil
 		}
 	}
