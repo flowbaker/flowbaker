@@ -139,24 +139,17 @@ func (m *responseBodyManager) MultipartFormData(ctx context.Context, response *h
 			fileName = part.FormName()
 		}
 
-		fileSize, err := io.Copy(io.Discard, part)
+		filePayload, err := m.resolveFilePayload(ctx, part)
 		if err != nil {
 			return nil, err
 		}
 
-		// read the header to get the content type
-		headerBytes := make([]byte, 512)
-		n, _ := part.Read(headerBytes)
-		headerBytes = headerBytes[:n]
-
-		contentType := http.DetectContentType(headerBytes)
-
 		fileItem, err := m.storageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
 			WorkspaceID:  m.workspaceID,
 			OriginalName: fileName,
-			ContentType:  contentType,
+			ContentType:  filePayload.contentType,
 			Reader:       part,
-			SizeInBytes:  fileSize,
+			SizeInBytes:  filePayload.fileSize,
 			UploadedBy:   m.workspaceID,
 		})
 		if err != nil {
@@ -170,11 +163,6 @@ func (m *responseBodyManager) MultipartFormData(ctx context.Context, response *h
 }
 
 func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, response *http.Response) (any, error) {
-	fileSize, err := io.Copy(io.Discard, response.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	fileName := response.Header.Get("Content-Disposition")
 	if fileName == "" {
 		fileName = "unnamed-file"
@@ -182,17 +170,17 @@ func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, respon
 	fileName = strings.TrimPrefix(fileName, "attachment; filename=")
 	fileName = strings.Trim(fileName, "\"")
 
-	headerBytes := make([]byte, 512)
-	n, _ := response.Body.Read(headerBytes)
-	headerBytes = headerBytes[:n]
-	contentType := http.DetectContentType(headerBytes)
+	filePayload, err := m.resolveFilePayload(ctx, response.Body)
+	if err != nil {
+		return nil, err
+	}
 
 	fileItem, err := m.storageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
 		WorkspaceID:  m.workspaceID,
 		OriginalName: fileName,
-		ContentType:  contentType,
+		ContentType:  filePayload.contentType,
 		Reader:       response.Body,
-		SizeInBytes:  fileSize,
+		SizeInBytes:  filePayload.fileSize,
 		UploadedBy:   m.workspaceID,
 	})
 	if err != nil {
@@ -200,4 +188,27 @@ func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, respon
 	}
 
 	return fileItem, nil
+}
+
+type resolveFileResponse struct {
+	fileSize    int64
+	contentType string
+}
+
+func (m *responseBodyManager) resolveFilePayload(ctx context.Context, reader io.Reader) (response resolveFileResponse, err error) {
+	fileSize, err := io.Copy(io.Discard, reader)
+	if err != nil {
+		return response, err
+	}
+
+	headerBytes := make([]byte, 512)
+	n, _ := reader.Read(headerBytes)
+	headerBytes = headerBytes[:n]
+	contentType := http.DetectContentType(headerBytes)
+
+	return resolveFileResponse{
+		fileSize:    fileSize,
+		contentType: contentType,
+	}, nil
+
 }
