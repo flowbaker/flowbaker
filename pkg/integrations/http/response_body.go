@@ -147,9 +147,8 @@ func (m *responseBodyManager) MultipartFormData(ctx context.Context, response *h
 		}
 
 		filePayload, err := m.resolveFilePayload(filePayloadParams{
-			header:   http.Header(part.Header),
-			reader:   part,
-			fileName: fileName,
+			header: http.Header(part.Header),
+			reader: part,
 		})
 		if err != nil {
 			return nil, err
@@ -174,17 +173,9 @@ func (m *responseBodyManager) MultipartFormData(ctx context.Context, response *h
 }
 
 func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, response *http.Response) (any, error) {
-	fileName := response.Header.Get("Content-Disposition")
-	if fileName == "" {
-		fileName = "unnamed-file"
-	}
-	fileName = strings.TrimPrefix(fileName, "attachment; filename=")
-	fileName = strings.Trim(fileName, "\"")
-
 	filePayload, err := m.resolveFilePayload(filePayloadParams{
-		header:   response.Header,
-		reader:   response.Body,
-		fileName: fileName,
+		header: response.Header,
+		reader: response.Body,
 	})
 	if err != nil {
 		return nil, err
@@ -192,7 +183,7 @@ func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, respon
 
 	fileItem, err := m.storageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
 		WorkspaceID:  m.workspaceID,
-		OriginalName: fileName,
+		OriginalName: filePayload.fileName,
 		ContentType:  filePayload.contentType,
 		Reader:       filePayload.reader,
 		SizeInBytes:  filePayload.contentLength,
@@ -206,18 +197,25 @@ func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, respon
 }
 
 type filePayloadParams struct {
-	header   http.Header
-	reader   io.Reader
-	fileName string
+	header http.Header
+	reader io.Reader
 }
 
 type filePayload struct {
+	fileName      string
 	contentType   string
 	contentLength int64
 	reader        io.ReadCloser
 }
 
 func (m *responseBodyManager) resolveFilePayload(src filePayloadParams) (filePayload, error) {
+	fileName := src.header.Get("Content-Disposition")
+	if fileName == "" {
+		fileName = "unnamed-file"
+	}
+	fileName = strings.TrimPrefix(fileName, "attachment; filename=")
+	fileName = strings.Trim(fileName, "\"")
+
 	buf, err := io.ReadAll(io.LimitReader(src.reader, maxResponseFileSize+1))
 	if err != nil {
 		return filePayload{}, fmt.Errorf("failed to read file content: %w", err)
@@ -234,9 +232,10 @@ func (m *responseBodyManager) resolveFilePayload(src filePayloadParams) (filePay
 		}
 	}
 
-	contentType := resolveContentType(src.header.Get("Content-Type"), src.fileName, buf)
+	contentType := resolveContentType(src.header.Get("Content-Type"), fileName, buf)
 
 	return filePayload{
+		fileName:      fileName,
 		contentType:   contentType,
 		contentLength: int64(len(buf)),
 		reader:        io.NopCloser(bytes.NewReader(buf)),
