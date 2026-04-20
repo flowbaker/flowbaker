@@ -1,17 +1,24 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
+
+const maxResponseFileSize = 1024 * 1024 * 100 // 100MB
 
 type ResponseBodyManager interface {
 	Parse(ctx context.Context, response *http.Response) (any, error)
@@ -139,7 +146,11 @@ func (m *responseBodyManager) MultipartFormData(ctx context.Context, response *h
 			fileName = part.FormName()
 		}
 
-		filePayload, err := m.resolveFilePayload(ctx, part)
+		filePayload, err := m.resolveFilePayload(filePayloadParams{
+			header:   http.Header(part.Header),
+			reader:   part,
+			fileName: fileName,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -148,8 +159,8 @@ func (m *responseBodyManager) MultipartFormData(ctx context.Context, response *h
 			WorkspaceID:  m.workspaceID,
 			OriginalName: fileName,
 			ContentType:  filePayload.contentType,
-			Reader:       part,
-			SizeInBytes:  filePayload.fileSize,
+			Reader:       filePayload.reader,
+			SizeInBytes:  filePayload.contentLength,
 			UploadedBy:   m.workspaceID,
 		})
 		if err != nil {
@@ -170,7 +181,11 @@ func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, respon
 	fileName = strings.TrimPrefix(fileName, "attachment; filename=")
 	fileName = strings.Trim(fileName, "\"")
 
-	filePayload, err := m.resolveFilePayload(ctx, response.Body)
+	filePayload, err := m.resolveFilePayload(filePayloadParams{
+		header:   response.Header,
+		reader:   response.Body,
+		fileName: fileName,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -179,8 +194,8 @@ func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, respon
 		WorkspaceID:  m.workspaceID,
 		OriginalName: fileName,
 		ContentType:  filePayload.contentType,
-		Reader:       response.Body,
-		SizeInBytes:  filePayload.fileSize,
+		Reader:       filePayload.reader,
+		SizeInBytes:  filePayload.contentLength,
 		UploadedBy:   m.workspaceID,
 	})
 	if err != nil {
@@ -190,25 +205,68 @@ func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, respon
 	return fileItem, nil
 }
 
-type resolveFileResponse struct {
-	fileSize    int64
-	contentType string
+type filePayloadParams struct {
+	header   http.Header
+	reader   io.Reader
+	fileName string
 }
 
-func (m *responseBodyManager) resolveFilePayload(ctx context.Context, reader io.Reader) (response resolveFileResponse, err error) {
-	fileSize, err := io.Copy(io.Discard, reader)
+type filePayload struct {
+	contentType   string
+	contentLength int64
+	reader        io.ReadCloser
+}
+
+func (m *responseBodyManager) resolveFilePayload(src filePayloadParams) (filePayload, error) {
+	buf, err := io.ReadAll(io.LimitReader(src.reader, maxResponseFileSize+1))
 	if err != nil {
-		return response, err
+		return filePayload{}, fmt.Errorf("failed to read file content: %w", err)
 	}
 
-	headerBytes := make([]byte, 512)
-	n, _ := reader.Read(headerBytes)
-	headerBytes = headerBytes[:n]
-	contentType := http.DetectContentType(headerBytes)
+	if int64(len(buf)) > maxResponseFileSize {
+		return filePayload{}, fmt.Errorf("file size exceeds maximum allowed size of %d bytes", maxResponseFileSize)
+	}
 
-	return resolveFileResponse{
-		fileSize:    fileSize,
-		contentType: contentType,
+	if src.header.Get("Content-Length") != "" {
+		_, err := strconv.ParseInt(src.header.Get("Content-Length"), 10, 64)
+		if err != nil {
+			return filePayload{}, fmt.Errorf("failed to parse content length: %w", err)
+		}
+	}
+
+	contentType := resolveContentType(src.header.Get("Content-Type"), src.fileName, buf)
+
+	return filePayload{
+		contentType:   contentType,
+		contentLength: int64(len(buf)),
+		reader:        io.NopCloser(bytes.NewReader(buf)),
 	}, nil
+}
 
+func resolveContentType(headerContentType, fileName string, data []byte) string {
+	mediaType := normalizeMediaType(headerContentType)
+	if mediaType != "" && mediaType != "application/octet-stream" {
+		return mediaType
+	}
+
+	fileExt := strings.TrimPrefix(strings.ToLower(filepath.Ext(fileName)), ".")
+	if fileExt != "" {
+		if resolvedFromExt := normalizeMediaType(mime.TypeByExtension("." + fileExt)); resolvedFromExt != "" {
+			return resolvedFromExt
+		}
+	}
+
+	if len(data) > 0 {
+		return normalizeMediaType(http.DetectContentType(data))
+	}
+
+	return "application/octet-stream"
+}
+
+func normalizeMediaType(contentType string) string {
+	if contentType == "" {
+		return ""
+	}
+
+	return strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
 }
