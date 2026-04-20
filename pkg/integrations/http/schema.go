@@ -305,7 +305,7 @@ var (
 						Name:        "Body Type ",
 						Description: "Request body type",
 						Type:        domain.NodePropertyType_String,
-						Required:    true,
+						Required:    false,
 						Options: []domain.NodePropertyOption{
 							{
 								Label: "Text",
@@ -511,7 +511,7 @@ var (
 						Name:        "Body Type ",
 						Description: "Request body type",
 						Type:        domain.NodePropertyType_String,
-						Required:    true,
+						Required:    false,
 						Options: []domain.NodePropertyOption{
 							{
 								Label: "Text",
@@ -717,7 +717,7 @@ var (
 						Name:        "Body Type ",
 						Description: "Request body type",
 						Type:        domain.NodePropertyType_String,
-						Required:    true,
+						Required:    false,
 						Options: []domain.NodePropertyOption{
 							{
 								Label: "Text",
@@ -923,7 +923,7 @@ var (
 						Name:        "Body Type ",
 						Description: "Request body type",
 						Type:        domain.NodePropertyType_String,
-						Required:    true,
+						Required:    false,
 						Options: []domain.NodePropertyOption{
 							{
 								Label: "Text",
