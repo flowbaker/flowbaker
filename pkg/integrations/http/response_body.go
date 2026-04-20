@@ -18,7 +18,7 @@ import (
 	"github.com/flowbaker/flowbaker/pkg/domain"
 )
 
-const maxResponseFileSize = 1024 * 1024 * 100 // 100MB
+const maxResponseFileSize = 1024 * 1024 * 100 // 100MB change whatever you want
 
 type ResponseBodyManager interface {
 	Parse(ctx context.Context, response *http.Response) (any, error)
@@ -157,7 +157,7 @@ func (m *responseBodyManager) MultipartFormData(ctx context.Context, response *h
 		fileItem, err := m.storageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
 			WorkspaceID:  m.workspaceID,
 			OriginalName: fileName,
-			ContentType:  filePayload.contentType,
+			ContentType:  filePayload.fileExtension,
 			Reader:       filePayload.reader,
 			SizeInBytes:  filePayload.contentLength,
 			UploadedBy:   m.workspaceID,
@@ -184,7 +184,7 @@ func (m *responseBodyManager) ApplicationOctetStream(ctx context.Context, respon
 	fileItem, err := m.storageManager.PutExecutionFile(ctx, domain.PutExecutionFileParams{
 		WorkspaceID:  m.workspaceID,
 		OriginalName: filePayload.fileName,
-		ContentType:  filePayload.contentType,
+		ContentType:  filePayload.fileExtension,
 		Reader:       filePayload.reader,
 		SizeInBytes:  filePayload.contentLength,
 		UploadedBy:   m.workspaceID,
@@ -203,7 +203,7 @@ type filePayloadParams struct {
 
 type filePayload struct {
 	fileName      string
-	contentType   string
+	fileExtension string
 	contentLength int64
 	reader        io.ReadCloser
 }
@@ -225,47 +225,47 @@ func (m *responseBodyManager) resolveFilePayload(src filePayloadParams) (filePay
 		return filePayload{}, fmt.Errorf("file size exceeds maximum allowed size of %d bytes", maxResponseFileSize)
 	}
 
-	if src.header.Get("Content-Length") != "" {
-		_, err := strconv.ParseInt(src.header.Get("Content-Length"), 10, 64)
+	var contentLength int64
+	if contentLengthStr := src.header.Get("Content-Length"); contentLengthStr != "" {
+		contentLength, err = strconv.ParseInt(contentLengthStr, 10, 64)
 		if err != nil {
 			return filePayload{}, fmt.Errorf("failed to parse content length: %w", err)
 		}
+	} else {
+		contentLength = int64(len(buf))
 	}
 
-	contentType := resolveContentType(src.header.Get("Content-Type"), fileName, buf)
+	fileExtension, err := resolveFileExtension(src.header.Get("Content-Type"), fileName)
+	if err != nil {
+		return filePayload{}, err
+	}
 
 	return filePayload{
 		fileName:      fileName,
-		contentType:   contentType,
-		contentLength: int64(len(buf)),
+		fileExtension: fileExtension,
+		contentLength: contentLength,
 		reader:        io.NopCloser(bytes.NewReader(buf)),
 	}, nil
 }
 
-func resolveContentType(headerContentType, fileName string, data []byte) string {
+func resolveFileExtension(headerContentType, fileName string) (string, error) {
 	mediaType := normalizeMediaType(headerContentType)
 	if mediaType != "" && mediaType != "application/octet-stream" {
-		return mediaType
+		return mediaType, nil
 	}
 
 	fileExt := strings.TrimPrefix(strings.ToLower(filepath.Ext(fileName)), ".")
 	if fileExt != "" {
-		if resolvedFromExt := normalizeMediaType(mime.TypeByExtension("." + fileExt)); resolvedFromExt != "" {
-			return resolvedFromExt
+		resolvedFromExt := normalizeMediaType(mime.TypeByExtension("." + fileExt))
+
+		if resolvedFromExt != "" {
+			return resolvedFromExt, nil
 		}
 	}
 
-	if len(data) > 0 {
-		return normalizeMediaType(http.DetectContentType(data))
-	}
-
-	return "application/octet-stream"
+	return "", errors.New("file extension cannot be determined from the file name")
 }
 
 func normalizeMediaType(contentType string) string {
-	if contentType == "" {
-		return ""
-	}
-
 	return strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
 }
