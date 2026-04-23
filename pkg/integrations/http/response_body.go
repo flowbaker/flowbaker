@@ -228,7 +228,6 @@ func (m *responseBodyManager) resolveFilePayload(src filePayloadParams) (filePay
 	contentLength := int64(len(buf))
 
 	contentTypeHeader := src.header.Get("Content-Type")
-
 	fileExtension, err := resolveFileExtension(contentTypeHeader, fileName)
 	if err != nil {
 		return filePayload{}, err
