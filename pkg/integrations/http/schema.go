@@ -1,42 +1,56 @@
 package http
 
-import (
-	"github.com/flowbaker/flowbaker/pkg/domain"
-)
+import "github.com/flowbaker/flowbaker/pkg/domain"
 
 const (
-	IntegrationActionType_Get    domain.IntegrationActionType = "get"
-	IntegrationActionType_Post   domain.IntegrationActionType = "post"
-	IntegrationActionType_Put    domain.IntegrationActionType = "put"
-	IntegrationActionType_Patch  domain.IntegrationActionType = "patch"
-	IntegrationActionType_Delete domain.IntegrationActionType = "delete"
-)
-
-type HTTPGenericAuthType string
-
-const (
-	HTTPGenericAuthType_Basic  HTTPGenericAuthType = "basic_auth"
-	HTTPGenericAuthType_Bearer HTTPGenericAuthType = "bearer_auth"
-	HTTPGenericAuthType_Query  HTTPGenericAuthType = "query_auth"
-	HTTPGenericAuthType_Header HTTPGenericAuthType = "header_auth"
-	HTTPGenericAuthType_Custom HTTPGenericAuthType = "custom_auth"
-	HTTPGenericAuthType_Body   HTTPGenericAuthType = "body_auth"
+	IntegrationType_HTTP         domain.IntegrationType       = "http"
+	IntegrationActionType_Post   domain.IntegrationActionType = domain.IntegrationActionType(HTTPMethod_Post)
+	IntegrationActionType_Get    domain.IntegrationActionType = domain.IntegrationActionType(HTTPMethod_Get)
+	IntegrationActionType_Put    domain.IntegrationActionType = domain.IntegrationActionType(HTTPMethod_Put)
+	IntegrationActionType_Delete domain.IntegrationActionType = domain.IntegrationActionType(HTTPMethod_Delete)
+	IntegrationActionType_Patch  domain.IntegrationActionType = domain.IntegrationActionType(HTTPMethod_Patch)
 )
 
 var (
 	Schema = schema
 
-	schema domain.Integration = domain.Integration{
-		ID:          domain.IntegrationType_HTTP,
-		Name:        "HTTP",
-		Description: "Make HTTP requests to any API endpoint.",
+	schema = domain.Integration{
+		ID:                   IntegrationType_HTTP,
+		Name:                 "HTTP",
+		Description:          "Simple HTTP POST request.",
+		IsCredentialOptional: true,
 		CredentialProperties: []domain.NodeProperty{
 			{
-				Key:         "generic_auth_type",
-				Name:        "Authentication Method",
-				Description: "Choose how to authenticate incoming webhook requests",
+				Key:         "auth_type",
+				Name:        "Auth Type",
+				Description: "Whether to send no credential, use the vault entry as generic auth (basic/bearer/etc.), or as a pre-defined OAuth/API credential",
 				Type:        domain.NodePropertyType_String,
 				Required:    true,
+				Options: []domain.NodePropertyOption{
+					{
+						Label: "No credential",
+						Value: string(HTTPAuthType_NoCredential),
+					},
+					{
+						Label: "Generic (basic, bearer, header, query)",
+						Value: string(HTTPAuthType_Generic),
+					},
+					{
+						Label: "Pre-defined (OAuth or default vault payload)",
+						Value: string(HTTPAuthType_PreDefined),
+					},
+				},
+			},
+			{
+				Key:         "generic_auth_type",
+				Name:        "Generic authentication method",
+				Description: "Used when credential usage is generic",
+				Type:        domain.NodePropertyType_String,
+				Required:    true,
+				DependsOn: &domain.DependsOn{
+					PropertyKey: "auth_type",
+					Value:       string(HTTPAuthType_Generic),
+				},
 				Options: []domain.NodePropertyOption{
 					{
 						Label: "Basic Authentication",
@@ -54,10 +68,10 @@ var (
 						Label: "Header Authentication",
 						Value: HTTPGenericAuthType_Header,
 					},
-					{
-						Label: "JSON Body Authentication",
-						Value: HTTPGenericAuthType_Body,
-					},
+					// {
+					// 	Label: "JSON (Custom JSON Parameters)",
+					// 	Value: HTTPGenericAuthType_JSON,
+					// },
 				},
 			},
 			{
@@ -137,37 +151,36 @@ var (
 					Value:       HTTPGenericAuthType_Header,
 				},
 			},
-			{
-				Key:         "body_auth",
-				Name:        "Body Authentication",
-				Description: "Authentication in request body",
-				Type:        domain.NodePropertyType_CodeEditor,
-				Required:    true,
-				DependsOn: &domain.DependsOn{
-					PropertyKey: "generic_auth_type",
-					Value:       HTTPGenericAuthType_Body,
-				},
-			},
+			// {
+			// 	Key:         "custom_json_payload",
+			// 	Name:        "Custom JSON Payload",
+			// 	Description: "JSON payload that will be merged into request body without removing existing keys",
+			// 	Type:        domain.NodePropertyType_CodeEditor,
+			// 	Required:    true,
+			// 	DependsOn: &domain.DependsOn{
+			// 		PropertyKey: "generic_auth_type",
+			// 		Value:       HTTPGenericAuthType_JSON,
+			// 	},
+			// },
 		},
-		IsCredentialOptional: true,
 		Actions: []domain.IntegrationAction{
 			{
 				ID:          string(IntegrationActionType_Get),
-				Name:        "GET Request",
 				ActionType:  IntegrationActionType_Get,
+				Name:        "GET Request",
 				Description: "Make an HTTP GET request",
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "url",
 						Name:        "URL",
-						Description: "The URL to send the request to",
-						Required:    true,
+						Description: "Request URL",
 						Type:        domain.NodePropertyType_String,
+						Required:    true,
 					},
 					{
-						Key:         "query_params",
-						Name:        "Query Params",
-						Description: "The query params to send with the request",
+						Key:         "headers",
+						Name:        "Headers",
+						Description: "Optional request headers",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
@@ -177,14 +190,14 @@ var (
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the query parameter",
+									Description: "Header key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
 									Key:         "value",
 									Name:        "Value",
-									Description: "The value for the query parameter",
+									Description: "Header value",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
@@ -192,9 +205,9 @@ var (
 						},
 					},
 					{
-						Key:         "headers",
-						Name:        "Headers",
-						Description: "The headers to send with the request",
+						Key:         "query_params",
+						Name:        "Query Parameters",
+						Description: "Optional request query parameters",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
@@ -204,14 +217,14 @@ var (
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the header",
+									Description: "Query parameter key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
 									Key:         "value",
 									Name:        "Value",
-									Description: "The value for the header",
+									Description: "Query parameter value",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
@@ -222,21 +235,21 @@ var (
 			},
 			{
 				ID:          string(IntegrationActionType_Post),
-				Name:        "POST Request",
 				ActionType:  IntegrationActionType_Post,
+				Name:        "POST Request",
 				Description: "Make an HTTP POST request",
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "url",
 						Name:        "URL",
-						Description: "The URL to send the request to",
-						Required:    true,
+						Description: "Request URL",
 						Type:        domain.NodePropertyType_String,
+						Required:    true,
 					},
 					{
-						Key:         "query_params",
-						Name:        "Query Params",
-						Description: "The query params to send with the request",
+						Key:         "headers",
+						Name:        "Headers",
+						Description: "Optional request headers",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
@@ -246,14 +259,14 @@ var (
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the query parameter",
+									Description: "Header key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
 									Key:         "value",
 									Name:        "Value",
-									Description: "The value for the query parameter",
+									Description: "Header value",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
@@ -261,9 +274,9 @@ var (
 						},
 					},
 					{
-						Key:         "headers",
-						Name:        "Headers",
-						Description: "The headers to send with the request",
+						Key:         "query_params",
+						Name:        "Query Parameters",
+						Description: "Optional request query parameters",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
@@ -273,14 +286,14 @@ var (
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the header",
+									Description: "Query parameter key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
 									Key:         "value",
 									Name:        "Value",
-									Description: "The value for the header",
+									Description: "Query parameter value",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
@@ -289,144 +302,160 @@ var (
 					},
 					{
 						Key:         "body_type",
-						Name:        "Body Type",
-						Description: "The type of body to send with the request",
+						Name:        "Body Type ",
+						Description: "Request body type",
 						Type:        domain.NodePropertyType_String,
-						Required:    true,
+						Required:    false,
 						Options: []domain.NodePropertyOption{
 							{
-								Label: "JSON",
-								Value: "json",
+								Label: "Text",
+								Value: string(HTTPBodyType_Text),
 							},
 							{
-								Label: "Text",
-								Value: "text",
+								Label: "JSON",
+								Value: string(HTTPBodyType_JSON),
 							},
 							{
 								Label: "URL Encoded Form Data",
-								Value: "urlencoded_form_data",
+								Value: string(HTTPBodyType_URLEncodedFormData),
 							},
 							{
 								Label: "Multi-Part Form Data",
-								Value: "multipart_form_data",
+								Value: string(HTTPBodyType_MultiPartFormData),
 							},
 							{
-								Label: "File (Octet Stream)",
-								Value: "file",
+								Label: "File (Application/Octet-Stream)",
+								Value: string(HTTPBodyType_Application_OctetStream),
 							},
 						},
 					},
 					{
-						Key:         "json_body",
-						Name:        "JSON Body",
-						Description: "The JSON body to send with the request",
-						Type:        domain.NodePropertyType_CodeEditor,
-						DependsOn: &domain.DependsOn{
-							PropertyKey: "body_type",
-							Value:       "json",
-						},
-					},
-					{
-						Key:         "text_body",
-						Name:        "Text Body",
-						Description: "The text body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (Text)",
 						Type:        domain.NodePropertyType_Text,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "text",
+							Value:       string(HTTPBodyType_Text),
 						},
 					},
+					// not implemented yet currently. but should be implemented in the future.
+					// {
+					// 	Key:         "body",
+					// 	Name:        "Body",
+					// 	Description: "Request body (JSON)",
+					// 	Type:        domain.NodePropertyType_CodeEditor,
+					// 	DependsOn: &domain.DependsOn{
+					// 		PropertyKey: "body_type",
+					// 		Value:       string(HTTPBodyType_JSON),
+					// 	},
+					// },
 					{
-						Key:         "urlencoded_form_data_body",
-						Name:        "URL Encoded Form Data Body",
-						Description: "The form data body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (URL Encoded Form Data)",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
+
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the query parameter",
+									Description: "Query parameter key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
-									Key:         "value",
-									Name:        "Value",
-									Description: "The value for the header",
-									Type:        domain.NodePropertyType_String,
-									Required:    true,
+									Key:         "values",
+									Name:        "Values",
+									Description: "Query parameter values",
+									Type:        domain.NodePropertyType_Array,
+									ArrayOpts: &domain.ArrayPropertyOptions{
+										MinItems: 0,
+										MaxItems: 100,
+										ItemType: domain.NodePropertyType_Map,
+										ItemProperties: []domain.NodeProperty{
+											{
+												Key:         "value",
+												Name:        "Value",
+												Description: "Query parameter value",
+												Type:        domain.NodePropertyType_String,
+											},
+										},
+									},
+									Required: true,
 								},
 							},
 						},
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "urlencoded_form_data",
+							Value:       string(HTTPBodyType_URLEncodedFormData),
 						},
 					},
 					{
-						Key:         "multipart_form_data_body",
-						Name:        "Multi-Part Form Data Body",
-						Description: "The form data body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (Multi-Part Form Data)",
 						Type:        domain.NodePropertyType_Array,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "body_type",
+							Value:       string(HTTPBodyType_MultiPartFormData),
+						},
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
+
 								{
-									Key:         "key",
-									Name:        "Key",
-									Description: "The key for the query parameter",
+									Key:         "name",
+									Name:        "Name",
+									Description: "Form data file name (without extension)",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
-									Key:         "value",
-									Name:        "Value",
-									Description: "The value for the header",
+									Key:         "file",
+									Name:        "File",
+									Description: "Multi-Part form data file",
 									Type:        domain.NodePropertyType_File,
 									Required:    true,
 								},
 							},
 						},
-						DependsOn: &domain.DependsOn{
-							PropertyKey: "body_type",
-							Value:       "multipart_form_data",
-						},
 					},
 					{
-						Key:         "file_body",
-						Name:        "File Body",
-						Description: "The file body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (File (Application/Octet-Stream))",
 						Type:        domain.NodePropertyType_File,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "file",
+							Value:       string(HTTPBodyType_Application_OctetStream),
 						},
 					},
 				},
 			},
 			{
 				ID:          string(IntegrationActionType_Put),
+				ActionType:  domain.IntegrationActionType(HTTPMethod_Put),
 				Name:        "PUT Request",
-				ActionType:  IntegrationActionType_Put,
 				Description: "Make an HTTP PUT request",
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "url",
 						Name:        "URL",
-						Description: "The URL to send the request to",
-						Required:    true,
+						Description: "Request URL",
 						Type:        domain.NodePropertyType_String,
+						Required:    true,
 					},
 					{
-						Key:         "query_params",
-						Name:        "Query Params",
-						Description: "The query params to send with the request",
+						Key:         "headers",
+						Name:        "Headers",
+						Description: "Optional request headers",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
@@ -436,14 +465,14 @@ var (
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the query parameter",
+									Description: "Header key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
 									Key:         "value",
 									Name:        "Value",
-									Description: "The value for the query parameter",
+									Description: "Header value",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
@@ -451,9 +480,9 @@ var (
 						},
 					},
 					{
-						Key:         "headers",
-						Name:        "Headers",
-						Description: "The headers to send with the request",
+						Key:         "query_params",
+						Name:        "Query Parameters",
+						Description: "Optional request query parameters",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
@@ -463,14 +492,14 @@ var (
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the header",
+									Description: "Query parameter key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
 									Key:         "value",
 									Name:        "Value",
-									Description: "The value for the header",
+									Description: "Query parameter value",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
@@ -479,144 +508,160 @@ var (
 					},
 					{
 						Key:         "body_type",
-						Name:        "Body Type",
-						Description: "The type of body to send with the request",
+						Name:        "Body Type ",
+						Description: "Request body type",
 						Type:        domain.NodePropertyType_String,
-						Required:    true,
+						Required:    false,
 						Options: []domain.NodePropertyOption{
 							{
-								Label: "JSON",
-								Value: "json",
+								Label: "Text",
+								Value: string(HTTPBodyType_Text),
 							},
 							{
-								Label: "Text",
-								Value: "text",
+								Label: "JSON",
+								Value: string(HTTPBodyType_JSON),
 							},
 							{
 								Label: "URL Encoded Form Data",
-								Value: "urlencoded_form_data",
+								Value: string(HTTPBodyType_URLEncodedFormData),
 							},
 							{
 								Label: "Multi-Part Form Data",
-								Value: "multipart_form_data",
+								Value: string(HTTPBodyType_MultiPartFormData),
 							},
 							{
-								Label: "File (Octet Stream)",
-								Value: "file",
+								Label: "File (Application/Octet-Stream)",
+								Value: string(HTTPBodyType_Application_OctetStream),
 							},
 						},
 					},
 					{
-						Key:         "json_body",
-						Name:        "JSON Body",
-						Description: "The JSON body to send with the request",
-						Type:        domain.NodePropertyType_CodeEditor,
-						DependsOn: &domain.DependsOn{
-							PropertyKey: "body_type",
-							Value:       "json",
-						},
-					},
-					{
-						Key:         "text_body",
-						Name:        "Text Body",
-						Description: "The text body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (Text)",
 						Type:        domain.NodePropertyType_Text,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "text",
+							Value:       string(HTTPBodyType_Text),
 						},
 					},
+					// not implemented yet currently. but should be implemented in the future.
+					// {
+					// 	Key:         "body",
+					// 	Name:        "Body",
+					// 	Description: "Request body (JSON)",
+					// 	Type:        domain.NodePropertyType_CodeEditor,
+					// 	DependsOn: &domain.DependsOn{
+					// 		PropertyKey: "body_type",
+					// 		Value:       string(HTTPBodyType_JSON),
+					// 	},
+					// },
 					{
-						Key:         "urlencoded_form_data_body",
-						Name:        "URL Encoded Form Data Body",
-						Description: "The form data body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (URL Encoded Form Data)",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
+
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the query parameter",
+									Description: "Query parameter key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
-									Key:         "value",
-									Name:        "Value",
-									Description: "The value for the header",
-									Type:        domain.NodePropertyType_String,
-									Required:    true,
+									Key:         "values",
+									Name:        "Values",
+									Description: "Query parameter values",
+									Type:        domain.NodePropertyType_Array,
+									ArrayOpts: &domain.ArrayPropertyOptions{
+										MinItems: 0,
+										MaxItems: 100,
+										ItemType: domain.NodePropertyType_Map,
+										ItemProperties: []domain.NodeProperty{
+											{
+												Key:         "value",
+												Name:        "Value",
+												Description: "Query parameter value",
+												Type:        domain.NodePropertyType_String,
+											},
+										},
+									},
+									Required: true,
 								},
 							},
 						},
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "urlencoded_form_data",
+							Value:       string(HTTPBodyType_URLEncodedFormData),
 						},
 					},
 					{
-						Key:         "multipart_form_data_body",
-						Name:        "Multi-Part Form Data Body",
-						Description: "The form data body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (Multi-Part Form Data)",
 						Type:        domain.NodePropertyType_Array,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "body_type",
+							Value:       string(HTTPBodyType_MultiPartFormData),
+						},
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
+
 								{
-									Key:         "key",
-									Name:        "Key",
-									Description: "The key for the query parameter",
+									Key:         "name",
+									Name:        "Name",
+									Description: "Form data file name (without extension)",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
-									Key:         "value",
-									Name:        "Value",
-									Description: "The value for the header",
+									Key:         "file",
+									Name:        "File",
+									Description: "Multi-Part form data file",
 									Type:        domain.NodePropertyType_File,
 									Required:    true,
 								},
 							},
 						},
-						DependsOn: &domain.DependsOn{
-							PropertyKey: "body_type",
-							Value:       "multipart_form_data",
-						},
 					},
 					{
-						Key:         "file_body",
-						Name:        "File Body",
-						Description: "The file body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (File (Application/Octet-Stream))",
 						Type:        domain.NodePropertyType_File,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "file",
+							Value:       string(HTTPBodyType_Application_OctetStream),
 						},
 					},
 				},
 			},
 			{
 				ID:          string(IntegrationActionType_Patch),
+				ActionType:  domain.IntegrationActionType(HTTPMethod_Patch),
 				Name:        "PATCH Request",
-				ActionType:  IntegrationActionType_Patch,
 				Description: "Make an HTTP PATCH request",
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "url",
 						Name:        "URL",
-						Description: "The URL to send the request to",
-						Required:    true,
+						Description: "Request URL",
 						Type:        domain.NodePropertyType_String,
+						Required:    true,
 					},
 					{
-						Key:         "query_params",
-						Name:        "Query Params",
-						Description: "The query params to send with the request",
+						Key:         "headers",
+						Name:        "Headers",
+						Description: "Optional request headers",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
@@ -626,14 +671,14 @@ var (
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the query parameter",
+									Description: "Header key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
 									Key:         "value",
 									Name:        "Value",
-									Description: "The value for the query parameter",
+									Description: "Header value",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
@@ -641,9 +686,9 @@ var (
 						},
 					},
 					{
-						Key:         "headers",
-						Name:        "Headers",
-						Description: "The headers to send with the request",
+						Key:         "query_params",
+						Name:        "Query Parameters",
+						Description: "Optional request query parameters",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
@@ -653,14 +698,14 @@ var (
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the header",
+									Description: "Query parameter key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
 									Key:         "value",
 									Name:        "Value",
-									Description: "The value for the header",
+									Description: "Query parameter value",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
@@ -669,144 +714,160 @@ var (
 					},
 					{
 						Key:         "body_type",
-						Name:        "Body Type",
-						Description: "The type of body to send with the request",
+						Name:        "Body Type ",
+						Description: "Request body type",
 						Type:        domain.NodePropertyType_String,
-						Required:    true,
+						Required:    false,
 						Options: []domain.NodePropertyOption{
 							{
-								Label: "JSON",
-								Value: "json",
+								Label: "Text",
+								Value: string(HTTPBodyType_Text),
 							},
 							{
-								Label: "Text",
-								Value: "text",
+								Label: "JSON",
+								Value: string(HTTPBodyType_JSON),
 							},
 							{
 								Label: "URL Encoded Form Data",
-								Value: "urlencoded_form_data",
+								Value: string(HTTPBodyType_URLEncodedFormData),
 							},
 							{
 								Label: "Multi-Part Form Data",
-								Value: "multipart_form_data",
+								Value: string(HTTPBodyType_MultiPartFormData),
 							},
 							{
-								Label: "File (Octet Stream)",
-								Value: "file",
+								Label: "File (Application/Octet-Stream)",
+								Value: string(HTTPBodyType_Application_OctetStream),
 							},
 						},
 					},
 					{
-						Key:         "json_body",
-						Name:        "JSON Body",
-						Description: "The JSON body to send with the request",
-						Type:        domain.NodePropertyType_CodeEditor,
-						DependsOn: &domain.DependsOn{
-							PropertyKey: "body_type",
-							Value:       "json",
-						},
-					},
-					{
-						Key:         "text_body",
-						Name:        "Text Body",
-						Description: "The text body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (Text)",
 						Type:        domain.NodePropertyType_Text,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "text",
+							Value:       string(HTTPBodyType_Text),
 						},
 					},
+					// not implemented yet currently. but should be implemented in the future.
+					// {
+					// 	Key:         "body",
+					// 	Name:        "Body",
+					// 	Description: "Request body (JSON)",
+					// 	Type:        domain.NodePropertyType_CodeEditor,
+					// 	DependsOn: &domain.DependsOn{
+					// 		PropertyKey: "body_type",
+					// 		Value:       string(HTTPBodyType_JSON),
+					// 	},
+					// },
 					{
-						Key:         "urlencoded_form_data_body",
-						Name:        "URL Encoded Form Data Body",
-						Description: "The form data body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (URL Encoded Form Data)",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
+
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the query parameter",
+									Description: "Query parameter key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
-									Key:         "value",
-									Name:        "Value",
-									Description: "The value for the header",
-									Type:        domain.NodePropertyType_String,
-									Required:    true,
+									Key:         "values",
+									Name:        "Values",
+									Description: "Query parameter values",
+									Type:        domain.NodePropertyType_Array,
+									ArrayOpts: &domain.ArrayPropertyOptions{
+										MinItems: 0,
+										MaxItems: 100,
+										ItemType: domain.NodePropertyType_Map,
+										ItemProperties: []domain.NodeProperty{
+											{
+												Key:         "value",
+												Name:        "Value",
+												Description: "Query parameter value",
+												Type:        domain.NodePropertyType_String,
+											},
+										},
+									},
+									Required: true,
 								},
 							},
 						},
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "urlencoded_form_data",
+							Value:       string(HTTPBodyType_URLEncodedFormData),
 						},
 					},
 					{
-						Key:         "multipart_form_data_body",
-						Name:        "Multi-Part Form Data Body",
-						Description: "The form data body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (Multi-Part Form Data)",
 						Type:        domain.NodePropertyType_Array,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "body_type",
+							Value:       string(HTTPBodyType_MultiPartFormData),
+						},
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
+
 								{
-									Key:         "key",
-									Name:        "Key",
-									Description: "The key for the query parameter",
+									Key:         "name",
+									Name:        "Name",
+									Description: "Form data file name (without extension)",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
-									Key:         "value",
-									Name:        "Value",
-									Description: "The value for the header",
+									Key:         "file",
+									Name:        "File",
+									Description: "Multi-Part form data file",
 									Type:        domain.NodePropertyType_File,
 									Required:    true,
 								},
 							},
 						},
-						DependsOn: &domain.DependsOn{
-							PropertyKey: "body_type",
-							Value:       "multipart_form_data",
-						},
 					},
 					{
-						Key:         "file_body",
-						Name:        "File Body",
-						Description: "The file body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (File (Application/Octet-Stream))",
 						Type:        domain.NodePropertyType_File,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "file",
+							Value:       string(HTTPBodyType_Application_OctetStream),
 						},
 					},
 				},
 			},
 			{
 				ID:          string(IntegrationActionType_Delete),
-				Name:        "DELETE Request",
 				ActionType:  IntegrationActionType_Delete,
+				Name:        "DELETE Request",
 				Description: "Make an HTTP DELETE request",
 				Properties: []domain.NodeProperty{
 					{
 						Key:         "url",
 						Name:        "URL",
-						Description: "The URL to send the request to",
-						Required:    true,
+						Description: "Request URL",
 						Type:        domain.NodePropertyType_String,
+						Required:    true,
 					},
 					{
-						Key:         "query_params",
-						Name:        "Query Params",
-						Description: "The query params to send with the request",
+						Key:         "headers",
+						Name:        "Headers",
+						Description: "Optional request headers",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
@@ -816,14 +877,14 @@ var (
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the query parameter",
+									Description: "Header key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
 									Key:         "value",
 									Name:        "Value",
-									Description: "The value for the query parameter",
+									Description: "Header value",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
@@ -831,9 +892,9 @@ var (
 						},
 					},
 					{
-						Key:         "headers",
-						Name:        "Headers",
-						Description: "The headers to send with the request",
+						Key:         "query_params",
+						Name:        "Query Parameters",
+						Description: "Optional request query parameters",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
@@ -843,14 +904,14 @@ var (
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the header",
+									Description: "Query parameter key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
 									Key:         "value",
 									Name:        "Value",
-									Description: "The value for the header",
+									Description: "Query parameter value",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
@@ -859,124 +920,139 @@ var (
 					},
 					{
 						Key:         "body_type",
-						Name:        "Body Type",
-						Description: "The type of body to send with the request",
+						Name:        "Body Type ",
+						Description: "Request body type",
 						Type:        domain.NodePropertyType_String,
-						Required:    true,
+						Required:    false,
 						Options: []domain.NodePropertyOption{
 							{
-								Label: "JSON",
-								Value: "json",
+								Label: "Text",
+								Value: string(HTTPBodyType_Text),
 							},
 							{
-								Label: "Text",
-								Value: "text",
+								Label: "JSON",
+								Value: string(HTTPBodyType_JSON),
 							},
 							{
 								Label: "URL Encoded Form Data",
-								Value: "urlencoded_form_data",
+								Value: string(HTTPBodyType_URLEncodedFormData),
 							},
 							{
 								Label: "Multi-Part Form Data",
-								Value: "multipart_form_data",
+								Value: string(HTTPBodyType_MultiPartFormData),
 							},
 							{
-								Label: "File (Octet Stream)",
-								Value: "file",
+								Label: "File (Application/Octet-Stream)",
+								Value: string(HTTPBodyType_Application_OctetStream),
 							},
 						},
 					},
 					{
-						Key:         "json_body",
-						Name:        "JSON Body",
-						Description: "The JSON body to send with the request",
-						Type:        domain.NodePropertyType_CodeEditor,
-						DependsOn: &domain.DependsOn{
-							PropertyKey: "body_type",
-							Value:       "json",
-						},
-						Required: true,
-					},
-					{
-						Key:         "text_body",
-						Name:        "Text Body",
-						Description: "The text body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (Text)",
 						Type:        domain.NodePropertyType_Text,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "text",
+							Value:       string(HTTPBodyType_Text),
 						},
 					},
+					// not implemented yet currently. but should be implemented in the future.
+					// {
+					// 	Key:         "body",
+					// 	Name:        "Body",
+					// 	Description: "Request body (JSON)",
+					// 	Type:        domain.NodePropertyType_CodeEditor,
+					// 	DependsOn: &domain.DependsOn{
+					// 		PropertyKey: "body_type",
+					// 		Value:       string(HTTPBodyType_JSON),
+					// 	},
+					// },
 					{
-						Key:         "urlencoded_form_data_body",
-						Name:        "URL Encoded Form Data Body",
-						Description: "The form data body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (URL Encoded Form Data)",
 						Type:        domain.NodePropertyType_Array,
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
+
 								{
 									Key:         "key",
 									Name:        "Key",
-									Description: "The key for the query parameter",
+									Description: "Query parameter key",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
-									Key:         "value",
-									Name:        "Value",
-									Description: "The value for the header",
-									Type:        domain.NodePropertyType_String,
-									Required:    true,
+									Key:         "values",
+									Name:        "Values",
+									Description: "Query parameter values",
+									Type:        domain.NodePropertyType_Array,
+									ArrayOpts: &domain.ArrayPropertyOptions{
+										MinItems: 0,
+										MaxItems: 100,
+										ItemType: domain.NodePropertyType_Map,
+										ItemProperties: []domain.NodeProperty{
+											{
+												Key:         "value",
+												Name:        "Value",
+												Description: "Query parameter value",
+												Type:        domain.NodePropertyType_String,
+											},
+										},
+									},
+									Required: true,
 								},
 							},
 						},
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "urlencoded_form_data",
+							Value:       string(HTTPBodyType_URLEncodedFormData),
 						},
 					},
 					{
-						Key:         "multipart_form_data_body",
-						Name:        "Multi-Part Form Data Body",
-						Description: "The form data body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (Multi-Part Form Data)",
 						Type:        domain.NodePropertyType_Array,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "body_type",
+							Value:       string(HTTPBodyType_MultiPartFormData),
+						},
 						ArrayOpts: &domain.ArrayPropertyOptions{
 							MinItems: 0,
 							MaxItems: 100,
 							ItemType: domain.NodePropertyType_Map,
 							ItemProperties: []domain.NodeProperty{
+
 								{
-									Key:         "key",
-									Name:        "Key",
-									Description: "The key for the query parameter",
+									Key:         "name",
+									Name:        "Name",
+									Description: "Form data file name (without extension)",
 									Type:        domain.NodePropertyType_String,
 									Required:    true,
 								},
 								{
-									Key:         "value",
-									Name:        "Value",
-									Description: "The value for the header",
+									Key:         "file",
+									Name:        "File",
+									Description: "Multi-Part form data file",
 									Type:        domain.NodePropertyType_File,
 									Required:    true,
 								},
 							},
 						},
-						DependsOn: &domain.DependsOn{
-							PropertyKey: "body_type",
-							Value:       "multipart_form_data",
-						},
 					},
 					{
-						Key:         "file_body",
-						Name:        "File Body",
-						Description: "The file body to send with the request",
+						Key:         "body",
+						Name:        "Body",
+						Description: "Request body (File (Application/Octet-Stream))",
 						Type:        domain.NodePropertyType_File,
 						DependsOn: &domain.DependsOn{
 							PropertyKey: "body_type",
-							Value:       "file",
+							Value:       string(HTTPBodyType_Application_OctetStream),
 						},
 					},
 				},
