@@ -147,9 +147,9 @@ func (i *ConditionIntegration) IfElse(ctx context.Context, params domain.Integra
 		outputIndex = 0
 	}
 
-	enhancedItem := make(map[string]any)
-	for k, v := range item.(map[string]any) {
-		enhancedItem[k] = v
+	enhancedItem, err := buildEnhancedItem(item)
+	if err != nil {
+		return domain.RoutableOutput{}, err
 	}
 
 	if p.ReturnConditionResult {
@@ -190,9 +190,9 @@ func (i *ConditionIntegration) ConditionalDispatch(ctx context.Context, params d
 		}
 
 		if matches {
-			enhancedItem := make(map[string]any)
-			for k, v := range item.(map[string]any) {
-				enhancedItem[k] = v
+			enhancedItem, err := buildEnhancedItem(item)
+			if err != nil {
+				return domain.RoutableOutput{}, err
 			}
 
 			conditionalDispatchResult := ConditionalDispatchResult{
@@ -887,4 +887,19 @@ func convertToObject(value any) (map[string]any, error) {
 	default:
 		return nil, fmt.Errorf("cannot convert %T to map[string]any", value)
 	}
+}
+
+func buildEnhancedItem(item domain.Item) (map[string]any, error) {
+	enhancedItem := make(map[string]any)
+
+	raw, err := json.Marshal(item)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal item: %w", err)
+	}
+
+	if err := json.Unmarshal(raw, &enhancedItem); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal item into map: %w", err)
+	}
+
+	return enhancedItem, nil
 }
