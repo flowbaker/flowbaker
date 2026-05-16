@@ -2,6 +2,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
@@ -694,9 +695,11 @@ func (e *ASTExecutor) propertyAccess(object, property interface{}) (interface{},
 		} else {
 			result = nil
 		}
+
 	case map[string]interface{}:
 		propStr := e.converter.ToString(property)
 		result = obj[propStr]
+
 	case string:
 		propStr := e.converter.ToString(property)
 		if propStr == "length" {
@@ -706,8 +709,20 @@ func (e *ASTExecutor) propertyAccess(object, property interface{}) (interface{},
 		} else {
 			result = nil
 		}
+
 	default:
-		result = nil
+		jsonData, err := json.Marshal(object)
+		if err != nil {
+			return nil, nil
+		}
+
+		var m map[string]interface{}
+		if err := json.Unmarshal(jsonData, &m); err != nil {
+			return nil, nil
+		}
+
+		propStr := e.converter.ToString(property)
+		result = m[propStr]
 	}
 
 	return result, nil

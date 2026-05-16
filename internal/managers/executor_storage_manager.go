@@ -26,6 +26,8 @@ func NewExecutorStorageManager(deps ExecutorStorageManagerDependencies) domain.E
 	}
 }
 
+const maxFileSize = 1024 * 1024 * 1024 // 1GB, change it to whatever you want
+
 func (s *executorStorageManager) GetExecutionFile(ctx context.Context, params domain.GetExecutionFileParams) (domain.ExecutionWorkspaceFile, error) {
 	readerResult, err := s.client.GetFileReader(ctx, &flowbaker.GetFileReaderRequest{
 		WorkspaceID: params.WorkspaceID,
@@ -100,6 +102,10 @@ func (s *executorStorageManager) PutExecutionFile(ctx context.Context, params do
 
 	if err := writerResult.Writer.Close(); err != nil {
 		return domain.FileItem{}, fmt.Errorf("failed to complete upload: %w", err)
+	}
+
+	if bytesWritten > maxFileSize {
+		return domain.FileItem{}, fmt.Errorf("file size is too large (max %d bytes)", maxFileSize)
 	}
 
 	return domain.FileItem{
