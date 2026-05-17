@@ -23,6 +23,7 @@ import (
 type ClientInterface interface {
 	// Workflow execution operations
 	CompleteWorkflowExecution(ctx context.Context, req *CompleteExecutionRequest) error
+	PauseWorkflowExecution(ctx context.Context, req *PauseExecutionRequest) error
 
 	// Event operations
 	PublishExecutionEvent(ctx context.Context, workspaceID string, req *PublishEventRequest) error
@@ -155,6 +156,25 @@ func (c *Client) CompleteWorkflowExecution(ctx context.Context, req *CompleteExe
 	}
 	if err := c.handleResponse(resp, &result); err != nil {
 		return fmt.Errorf("failed to process complete execution response: %w", err)
+	}
+
+	return nil
+}
+
+// PauseWorkflowExecution pauses a workflow execution for sleep
+func (c *Client) PauseWorkflowExecution(ctx context.Context, req *PauseExecutionRequest) error {
+	path := fmt.Sprintf("/v1/workspaces/%s/executions/%s/pause", req.WorkspaceID, req.ExecutionID)
+
+	resp, err := c.doRequest(ctx, "POST", path, req)
+	if err != nil {
+		return fmt.Errorf("failed to pause workflow execution: %w", err)
+	}
+
+	var result struct {
+		Success bool `json:"success"`
+	}
+	if err := c.handleResponse(resp, &result); err != nil {
+		return fmt.Errorf("failed to process pause response: %w", err)
 	}
 
 	return nil

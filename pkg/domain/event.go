@@ -28,12 +28,21 @@ type EventOrderContext struct {
 }
 
 func NewContextWithEventOrder(ctx context.Context) context.Context {
+	return NewContextWithEventOrderFrom(ctx, 0)
+}
+
+func NewContextWithEventOrderFrom(ctx context.Context, startOrder int) context.Context {
 	eventOrderContext := &EventOrderContext{
-		order: 0,
+		order: startOrder,
 		mtx:   sync.Mutex{},
 	}
-
 	return context.WithValue(ctx, EventOrderContextKey{}, eventOrderContext)
+}
+
+func (c *EventOrderContext) GetCurrentOrder() int {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	return c.order
 }
 
 func GetEventOrderContext(ctx context.Context) (*EventOrderContext, bool) {
@@ -70,6 +79,7 @@ const (
 	NodeExecutionStarted       EventType = "node_execution_started"
 	WorkflowExecutionStarted   EventType = "workflow_execution_started"
 	WorkflowExecutionCompleted EventType = "workflow_execution_completed"
+	WorkflowExecutionPaused    EventType = "workflow_execution_paused"
 )
 
 type NodeExecutionStartedEvent struct {
@@ -196,6 +206,28 @@ func (e *WorkflowExecutionCompletedEvent) GetEventOrder() int {
 }
 
 func (e *WorkflowExecutionCompletedEvent) SetEventOrder(order int) {
+	e.EventOrder = order
+}
+
+type WorkflowExecutionPausedEvent struct {
+	WorkflowID          string `json:"workflow_id"`
+	WorkflowExecutionID string `json:"workflow_execution_id"`
+	SleepNodeID         string `json:"sleep_node_id"`
+	WakeAt              int64  `json:"wake_at"`
+	Timestamp           int64  `json:"timestamp"`
+	EventOrder          int    `json:"event_order"`
+	IsTesting           bool   `json:"is_testing"`
+}
+
+func (e *WorkflowExecutionPausedEvent) GetType() EventType {
+	return WorkflowExecutionPaused
+}
+
+func (e *WorkflowExecutionPausedEvent) GetEventOrder() int {
+	return e.EventOrder
+}
+
+func (e *WorkflowExecutionPausedEvent) SetEventOrder(order int) {
 	e.EventOrder = order
 }
 

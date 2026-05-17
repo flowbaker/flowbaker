@@ -90,6 +90,7 @@ func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
 		PayloadJSON:       string(req.PayloadJSON),
 		EnableEvents:      req.EnableEvents,
 		IsTestingWorkflow: isTestingWorkflow,
+		ResumeState:       req.ResumeState,
 	}
 
 	if isTestingWorkflow {

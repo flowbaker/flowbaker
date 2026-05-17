@@ -41,15 +41,16 @@ type IntegrationActionType string
 type IntegrationTriggerEventType string
 
 type StartExecutionRequest struct {
-	ExecutionID     string           `json:"execution_id"`
-	UserID          *string          `json:"user_id,omitempty"`
-	EventName       string           `json:"event_name"`
-	PayloadJSON     []byte           `json:"payload_json"`
-	EnableEvents    bool             `json:"enable_events"`
-	WorkflowType    WorkflowType     `json:"workflow_type"`
-	Workspace       Workspace        `json:"workspace"`
-	Workflow        *Workflow        `json:"workflow,omitempty"`
-	TestingWorkflow *TestingWorkflow `json:"testing_workflow,omitempty"`
+	ExecutionID     string              `json:"execution_id"`
+	UserID          *string             `json:"user_id,omitempty"`
+	EventName       string              `json:"event_name"`
+	PayloadJSON     []byte              `json:"payload_json"`
+	EnableEvents    bool                `json:"enable_events"`
+	WorkflowType    WorkflowType        `json:"workflow_type"`
+	Workspace       Workspace           `json:"workspace"`
+	Workflow        *Workflow           `json:"workflow,omitempty"`
+	TestingWorkflow *TestingWorkflow    `json:"testing_workflow,omitempty"`
+	ResumeState     *domain.ResumeState `json:"resume_state,omitempty"`
 }
 
 type StopExecutionRequest struct {

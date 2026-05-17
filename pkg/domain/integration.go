@@ -81,6 +81,7 @@ const (
 	IntegrationType_Snowflake            IntegrationType = "snowflake"
 	IntegrationType_InputTrigger         IntegrationType = "input_trigger"
 	IntegrationType_Loop                 IntegrationType = "loop"
+	IntegrationType_Sleep                IntegrationType = "sleep"
 )
 
 type Integration struct {
