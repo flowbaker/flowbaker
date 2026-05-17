@@ -71,7 +71,7 @@ type QueuedTaskSnapshot struct {
 	ItemsByInputIndex NodeItemsMap `json:"items_by_input_index"`
 }
 
-type ResumeState struct {
+type ExecutorStateSnapshot struct {
 	SleepNodeID            string                `json:"sleep_node_id"`
 	TriggerNodeID          string                `json:"trigger_node_id"`
 	SleepNodeInput         NodeItemsMap          `json:"sleep_node_input"`

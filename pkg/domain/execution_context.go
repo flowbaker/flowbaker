@@ -7,15 +7,23 @@ import (
 
 type WorkflowExecutionContextKey struct{}
 
+type SignalType string
+
+const (
+	SignalTypePause SignalType = "pause"
+)
+
 type ExecutionSignal interface {
-	signalMarker()
+	Type() SignalType
 }
 
 type PauseSignal struct {
 	WakeAt time.Time
 }
 
-func (PauseSignal) signalMarker() {}
+func (PauseSignal) Type() SignalType {
+	return SignalTypePause
+}
 
 type WorkflowExecutionContext struct {
 	UserID              *string

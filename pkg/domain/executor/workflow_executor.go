@@ -60,7 +60,7 @@ type WorkflowExecutor struct {
 	streamEventPublisher domain.StreamEventPublisher
 
 	pauseResult *pauseResult
-	resumeState *domain.ResumeState
+	executorStateSnapshot *domain.ExecutorStateSnapshot
 }
 
 type pauseResult struct {
@@ -69,7 +69,7 @@ type pauseResult struct {
 	SleepNodeInput domain.NodeItemsMap
 }
 
-func (w *WorkflowExecutor) buildResumeStateSnapshot(ctx context.Context, triggerNodeID string) *domain.ResumeState {
+func (w *WorkflowExecutor) buildExecutorStateSnapshot(ctx context.Context, triggerNodeID string) *domain.ExecutorStateSnapshot {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -104,7 +104,7 @@ func (w *WorkflowExecutor) buildResumeStateSnapshot(ctx context.Context, trigger
 		lastEventOrder = orderCtx.GetCurrentOrder()
 	}
 
-	return &domain.ResumeState{
+	return &domain.ExecutorStateSnapshot{
 		SleepNodeID:            w.pauseResult.NodeID,
 		TriggerNodeID:          triggerNodeID,
 		SleepNodeInput:         w.pauseResult.SleepNodeInput,
@@ -126,7 +126,7 @@ type WorkflowExecutorDeps struct {
 	IsTestingWorkflow     bool
 	ExecutorClient        flowbaker.ClientInterface
 	OrderedEventPublisher domain.EventPublisher
-	ResumeState           *domain.ResumeState
+	ExecutorStateSnapshot *domain.ExecutorStateSnapshot
 }
 
 func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
@@ -161,20 +161,20 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 	executedNodes := map[string]struct{}{}
 	executionCountByNodeID := map[string]int{}
 
-	if deps.ResumeState != nil {
-		for _, snap := range deps.ResumeState.WaitingTasks {
+	if deps.ExecutorStateSnapshot != nil {
+		for _, snap := range deps.ExecutorStateSnapshot.WaitingTasks {
 			waitingTasks = append(waitingTasks, NewWaitingExecutionTask(snap.NodeID, snap.ReceivedPayloads))
 		}
-		for _, snap := range deps.ResumeState.QueuedTasks {
+		for _, snap := range deps.ExecutorStateSnapshot.QueuedTasks {
 			queuedTasks = append(queuedTasks, NodeExecutionTask{
 				NodeID:            snap.NodeID,
 				ItemsByInputIndex: snap.ItemsByInputIndex,
 			})
 		}
-		for _, nodeID := range deps.ResumeState.ExecutedNodes {
+		for _, nodeID := range deps.ExecutorStateSnapshot.ExecutedNodes {
 			executedNodes[nodeID] = struct{}{}
 		}
-		for nodeID, count := range deps.ResumeState.ExecutionCountByNodeID {
+		for nodeID, count := range deps.ExecutorStateSnapshot.ExecutionCountByNodeID {
 			executionCountByNodeID[nodeID] = count
 		}
 	}
@@ -198,7 +198,7 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		historyRecorder:            historyRecorder,
 		usageCollector:             usageCollector,
 		streamEventPublisher:       streamEventPublisher,
-		resumeState:                deps.ResumeState,
+		executorStateSnapshot:      deps.ExecutorStateSnapshot,
 	}, nil
 }
 
@@ -223,8 +223,8 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 	}
 
 	startOrder := 0
-	if w.resumeState != nil {
-		startOrder = w.resumeState.LastEventOrder
+	if w.executorStateSnapshot != nil {
+		startOrder = w.executorStateSnapshot.LastEventOrder
 	}
 	ctx = domain.NewContextWithEventOrderFrom(ctx, startOrder)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
@@ -240,7 +240,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 		TriggerNode:         triggerNode,
 	})
 
-	isResume := w.resumeState != nil
+	isResume := w.executorStateSnapshot != nil
 
 	if !isResume {
 		if err := w.observer.Notify(ctx, WorkflowExecutionStartedEvent{
@@ -255,27 +255,27 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 	executionCount := 0
 
 	if isResume {
-		sleepNode, exists := w.workflow.GetNodeByID(w.resumeState.SleepNodeID)
+		sleepNode, exists := w.workflow.GetNodeByID(w.executorStateSnapshot.SleepNodeID)
 		if !exists {
-			return ExecutionResult{}, fmt.Errorf("resume: sleep node %s not found in workflow", w.resumeState.SleepNodeID)
+			return ExecutionResult{}, fmt.Errorf("resume: sleep node %s not found in workflow", w.executorStateSnapshot.SleepNodeID)
 		}
 
 		executionCount++
 
 		sleepOutput := domain.IntegrationOutput{
-			ItemsByOutputIndex: w.resumeState.SleepNodeInput,
+			ItemsByOutputIndex: w.executorStateSnapshot.SleepNodeInput,
 		}
 
-		if err := w.Propagate(ctx, w.resumeState.SleepNodeID, sleepOutput); err != nil {
+		if err := w.Propagate(ctx, w.executorStateSnapshot.SleepNodeID, sleepOutput); err != nil {
 			return ExecutionResult{}, fmt.Errorf("resume: failed to propagate sleep output: %w", err)
 		}
 
-		w.MarkNodeAsExecuted(w.resumeState.SleepNodeID)
+		w.MarkNodeAsExecuted(w.executorStateSnapshot.SleepNodeID)
 
 		now := time.Now()
 		if err := w.observer.Notify(ctx, NodeExecutionCompletedEvent{
-			NodeID:                w.resumeState.SleepNodeID,
-			ItemsByInputIndex:     w.resumeState.SleepNodeInput,
+			NodeID:                w.executorStateSnapshot.SleepNodeID,
+			ItemsByInputIndex:     w.executorStateSnapshot.SleepNodeInput,
 			ItemsByOutputIndex:    sleepOutput.ItemsByOutputIndex,
 			ExecutionOrder:        int64(executionCount),
 			IntegrationType:       sleepNode.IntegrationType,
@@ -341,8 +341,8 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 
 	if w.pauseResult != nil {
 		originalTriggerID := nodeID
-		if w.resumeState != nil && w.resumeState.TriggerNodeID != "" {
-			originalTriggerID = w.resumeState.TriggerNodeID
+		if w.executorStateSnapshot != nil && w.executorStateSnapshot.TriggerNodeID != "" {
+			originalTriggerID = w.executorStateSnapshot.TriggerNodeID
 		}
 
 		sleepEntry := domain.NodeExecutionEntry{
@@ -363,7 +363,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 			log.Error().Err(err).Msg("Failed to notify workflow execution paused")
 		}
 
-		snapshot := w.buildResumeStateSnapshot(ctx, originalTriggerID)
+		snapshot := w.buildExecutorStateSnapshot(ctx, originalTriggerID)
 		snapshotJSON, err := json.Marshal(snapshot)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("failed to marshal resume state: %w", err)

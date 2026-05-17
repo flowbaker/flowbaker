@@ -50,7 +50,7 @@ type StartExecutionRequest struct {
 	Workspace       Workspace           `json:"workspace"`
 	Workflow        *Workflow           `json:"workflow,omitempty"`
 	TestingWorkflow *TestingWorkflow    `json:"testing_workflow,omitempty"`
-	ResumeState     *domain.ResumeState `json:"resume_state,omitempty"`
+	ExecutorStateSnapshot *domain.ExecutorStateSnapshot `json:"executor_state_snapshot,omitempty"`
 }
 
 type StopExecutionRequest struct {
