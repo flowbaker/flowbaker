@@ -167,11 +167,13 @@ type NodeSettings struct {
 
 // PollingEventRequest represents a request to handle a polling event
 type PollingEventRequest struct {
-	IntegrationType IntegrationType `json:"integration_type"`
-	Trigger         WorkflowNode    `json:"trigger"`
-	Workflow        Workflow        `json:"workflow"`
-	UserID          string          `json:"user_id"`
-	WorkflowType    WorkflowType    `json:"workflow_type"`
+	IntegrationType  IntegrationType `json:"integration_type"`
+	Trigger          WorkflowNode    `json:"trigger"`
+	Workflow         Workflow        `json:"workflow"`
+	UserID           string          `json:"user_id"`
+	WorkflowType     WorkflowType    `json:"workflow_type"`
+	LastModifiedData string          `json:"last_modified_data,omitempty"`
+	BootstrapTime    time.Time       `json:"bootstrap_time,omitempty"`
 }
 
 // PollingEventResponse represents the response from handling a polling event

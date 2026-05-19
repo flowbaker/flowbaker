@@ -264,13 +264,11 @@ type IntegrationOutput struct {
 type IntegrationDeps struct {
 	FlowbakerClient            flowbaker.ClientInterface
 	ExecutorTaskPublisher      ExecutorTaskPublisher
-	TaskSchedulerService       TaskSchedulerService
 	ParameterBinder            IntegrationParameterBinder
 	IntegrationSelector        IntegrationSelector
 	ExecutorStorageManager     ExecutorStorageManager
 	ExecutorCredentialManager  ExecutorCredentialManager
 	ExecutorIntegrationManager ExecutorIntegrationManager
-	ExecutorScheduleManager    ExecutorScheduleManager
 	ExecutorKnowledgeManager   ExecutorKnowledgeManager
 	ExecutorModelManager       ExecutorModelManager
 }

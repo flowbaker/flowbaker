@@ -16,18 +16,16 @@ import (
 )
 
 type DiscordPollingHandler struct {
-	credentialGetter     domain.CredentialGetter[DiscordCredential]
-	taskPublisher        domain.ExecutorTaskPublisher
-	taskSchedulerService domain.ExecutorScheduleManager
+	credentialGetter domain.CredentialGetter[DiscordCredential]
+	taskPublisher    domain.ExecutorTaskPublisher
 }
 
 func NewDiscordPollingHandler(deps domain.IntegrationDeps) domain.IntegrationPoller {
 	credentialGetter := managers.NewExecutorCredentialGetter[DiscordCredential](deps.ExecutorCredentialManager)
 
 	return &DiscordPollingHandler{
-		credentialGetter:     credentialGetter,
-		taskPublisher:        deps.ExecutorTaskPublisher,
-		taskSchedulerService: deps.ExecutorScheduleManager,
+		credentialGetter: credentialGetter,
+		taskPublisher:    deps.ExecutorTaskPublisher,
 	}
 }
 
@@ -81,12 +79,7 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 		return domain.PollResult{}, fmt.Errorf("channel_id is empty")
 	}
 
-	schedule, err := i.taskSchedulerService.GetSchedule(ctx, p.WorkspaceID, p.Trigger.ID, p.Workflow.ID)
-	if err != nil {
-		return domain.PollResult{}, fmt.Errorf("failed to get schedule: %w", err)
-	}
-
-	lastModifiedData := schedule.LastModifiedData
+	lastModifiedData := p.LastModifiedData
 
 	messages, err := discordSession.ChannelMessages(channelID, 100, "", lastModifiedData, "")
 	if err != nil {
@@ -104,7 +97,7 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 				continue
 			}
 
-			if messageTimestamp.After(schedule.ScheduleCreatedAt) {
+			if messageTimestamp.After(p.BootstrapTime) {
 				log.Info().Str("messageID", message.ID).Str("messageContent", message.Content).Msg("Enqueuing task")
 			} else {
 				break

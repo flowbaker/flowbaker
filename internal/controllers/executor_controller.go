@@ -211,12 +211,14 @@ func (c *ExecutorController) HandlePollingEvent(ctx fiber.Ctx) error {
 
 	// Convert executor types to domain types
 	pollingEvent := domain.PollingEvent{
-		IntegrationType: domain.IntegrationType(req.IntegrationType),
-		Trigger:         mappers.ExecutorWorkflowNodeToDomain(req.Trigger),
-		Workflow:        mappers.ExecutorWorkflowToDomain(&req.Workflow),
-		UserID:          req.UserID,
-		WorkflowType:    mappers.ExecutorWorkflowTypeToDomain(req.WorkflowType),
-		WorkspaceID:     workspaceID,
+		IntegrationType:  domain.IntegrationType(req.IntegrationType),
+		Trigger:          mappers.ExecutorWorkflowNodeToDomain(req.Trigger),
+		Workflow:         mappers.ExecutorWorkflowToDomain(&req.Workflow),
+		UserID:           req.UserID,
+		WorkflowType:     mappers.ExecutorWorkflowTypeToDomain(req.WorkflowType),
+		WorkspaceID:      workspaceID,
+		LastModifiedData: req.LastModifiedData,
+		BootstrapTime:    req.BootstrapTime,
 	}
 
 	// Call the executor service to handle the polling event

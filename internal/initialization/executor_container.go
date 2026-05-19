@@ -88,9 +88,6 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		Client: config.FlowbakerClient,
 	})
 	orderedEventPublisher := domain.NewOrderedEventPublisher(executorEventPublisher)
-	executorScheduleManager := managers.NewExecutorScheduleManager(managers.ExecutorScheduleManagerDependencies{
-		Client: config.FlowbakerClient,
-	})
 
 	executorKnowledgeManager := managers.NewExecutorKnowledgeManager(managers.ExecutorKnowledgeManagerDependencies{
 		Client: config.FlowbakerClient,
@@ -108,7 +105,6 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		ParameterBinder:            kangarooBinder,
 		ExecutorTaskPublisher:      executorTaskPublisher,
 		ExecutorIntegrationManager: executorIntegrationManager,
-		ExecutorScheduleManager:    executorScheduleManager,
 		ExecutorKnowledgeManager:   executorKnowledgeManager,
 		ExecutorModelManager:       executorModelManager,
 	}

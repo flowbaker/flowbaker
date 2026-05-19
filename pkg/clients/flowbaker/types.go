@@ -444,52 +444,6 @@ type UpdateOAuthAccountMetadataResponse struct {
 	Message string `json:"message"`
 }
 
-// Schedule management types
-
-// Schedule represents a polling schedule for workflow triggers
-type Schedule struct {
-	ID                        string    `json:"id"`
-	WorkflowID                string    `json:"workflow_id"`
-	ScheduleCreatedAt         time.Time `json:"schedule_created_at"`
-	TriggerID                 string    `json:"trigger_id"`
-	UserID                    string    `json:"user_id"`
-	WorkflowType              string    `json:"workflow_type"`
-	IntegrationType           string    `json:"integration_type"`
-	LastCheckedAt             time.Time `json:"last_checked_at"`
-	NextScheduledCheckAt      time.Time `json:"next_scheduled_check_at"`
-	IsActive                  bool      `json:"is_active"`
-	LastModifiedData          string    `json:"last_modified_data"`
-	PollingScheduleGapSeconds int       `json:"polling_schedule_gap_seconds"`
-}
-
-// GetScheduleRequest represents the request to get a schedule
-type GetScheduleRequest struct {
-	WorkspaceID string `json:"workspace_id"`
-	ScheduleID  string `json:"schedule_id"`
-	WorkflowID  string `json:"workflow_id"`
-}
-
-// GetScheduleResponse represents the response from getting a schedule
-type GetScheduleResponse struct {
-	Schedule Schedule `json:"schedule"`
-}
-
-// CreateScheduleRequest represents the request to create a schedule
-type CreateScheduleRequest struct {
-	WorkflowID                string `json:"workflow_id"`
-	TriggerID                 string `json:"trigger_id"`
-	IntegrationType           string `json:"integration_type"`
-	WorkflowType              string `json:"workflow_type"`
-	UserID                    string `json:"user_id"`
-	LastModifiedData          string `json:"last_modified_data"`
-	PollingScheduleGapSeconds int    `json:"polling_schedule_gap_seconds"`
-}
-
-// CreateScheduleResponse represents the response from creating a schedule
-type CreateScheduleResponse struct {
-	Schedule Schedule `json:"schedule"`
-}
-
 type ConversationStatus string
 
 const (

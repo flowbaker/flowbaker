@@ -81,10 +81,6 @@ type ClientInterface interface {
 	SaveAgentConversation(ctx context.Context, workspaceID string, conversation *AgentConversation) (*SaveAgentConversationResponse, error)
 	GetAgentConversation(ctx context.Context, req *GetAgentConversationRequest) (*GetAgentConversationResponse, error)
 
-	// Schedule operations (for executor clients)
-	GetSchedule(ctx context.Context, workspaceID, scheduleID, workflowID string) ([]byte, error)
-	CreateSchedule(ctx context.Context, workspaceID string, req *CreateScheduleRequest) ([]byte, error)
-
 	// Route operations (for executor clients)
 	GetRoutes(ctx context.Context, req GetRoutesRequest) (GetRoutesResponse, error)
 
@@ -1433,95 +1429,6 @@ func (c *Client) SearchKnowledge(ctx context.Context, workspaceID, knowledgeID s
 		return nil, &Error{
 			StatusCode: resp.StatusCode,
 			Message:    fmt.Sprintf("search knowledge failed with status %d", resp.StatusCode),
-			Body:       string(body),
-			RequestID:  resp.Header.Get("X-Request-ID"),
-		}
-	}
-
-	return body, nil
-}
-
-// GetSchedule retrieves a specific schedule for the executor
-func (c *Client) GetSchedule(ctx context.Context, workspaceID, scheduleID, workflowID string) ([]byte, error) {
-	if c.config.ExecutorID == "" {
-		return nil, fmt.Errorf("executor ID is required for schedule requests")
-	}
-
-	if workspaceID == "" {
-		return nil, fmt.Errorf("workspace ID is required")
-	}
-
-	if scheduleID == "" {
-		return nil, fmt.Errorf("schedule ID is required")
-	}
-
-	if workflowID == "" {
-		return nil, fmt.Errorf("workflow ID is required")
-	}
-
-	path := fmt.Sprintf("/v1/workspaces/%s/schedules/%s", workspaceID, scheduleID)
-
-	// Add workflow ID as query parameter
-	path = fmt.Sprintf("%s?workflow_id=%s", path, workflowID)
-
-	resp, err := c.doRequestWithExecutorID(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get schedule: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read the raw JSON response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// Check for error status codes
-	if resp.StatusCode >= 400 {
-		return nil, &Error{
-			StatusCode: resp.StatusCode,
-			Message:    fmt.Sprintf("get schedule failed with status %d", resp.StatusCode),
-			Body:       string(body),
-			RequestID:  resp.Header.Get("X-Request-ID"),
-		}
-	}
-
-	return body, nil
-}
-
-// CreateSchedule creates a new schedule for the executor
-func (c *Client) CreateSchedule(ctx context.Context, workspaceID string, req *CreateScheduleRequest) ([]byte, error) {
-	if c.config.ExecutorID == "" {
-		return nil, fmt.Errorf("executor ID is required for schedule requests")
-	}
-
-	if workspaceID == "" {
-		return nil, fmt.Errorf("workspace ID is required")
-	}
-
-	if req == nil {
-		return nil, fmt.Errorf("create schedule request is required")
-	}
-
-	path := fmt.Sprintf("/v1/workspaces/%s/schedules", workspaceID)
-
-	resp, err := c.doRequestWithExecutorID(ctx, "POST", path, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create schedule: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Read the raw JSON response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// Check for error status codes
-	if resp.StatusCode >= 400 {
-		return nil, &Error{
-			StatusCode: resp.StatusCode,
-			Message:    fmt.Sprintf("create schedule failed with status %d", resp.StatusCode),
 			Body:       string(body),
 			RequestID:  resp.Header.Get("X-Request-ID"),
 		}

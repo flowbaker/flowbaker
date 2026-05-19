@@ -7,22 +7,19 @@ import (
 	"time"
 
 	"github.com/flowbaker/flowbaker/pkg/domain"
-	"github.com/robfig/cron"
 
 	"github.com/rs/zerolog/log"
 )
 
 type CronPollingHandler struct {
-	ExecutorScheduleManager domain.ExecutorScheduleManager
-	TaskPublisher           domain.ExecutorTaskPublisher
-	ParameterBinder         domain.IntegrationParameterBinder
+	TaskPublisher   domain.ExecutorTaskPublisher
+	ParameterBinder domain.IntegrationParameterBinder
 }
 
 func NewCronPollingHandler(deps domain.IntegrationDeps) domain.IntegrationPoller {
 	return &CronPollingHandler{
-		ExecutorScheduleManager: deps.ExecutorScheduleManager,
-		TaskPublisher:           deps.ExecutorTaskPublisher,
-		ParameterBinder:         deps.ParameterBinder,
+		TaskPublisher:   deps.ExecutorTaskPublisher,
+		ParameterBinder: deps.ParameterBinder,
 	}
 }
 
@@ -49,6 +46,7 @@ type HandleCronTriggerParams struct {
 
 type HandleSimpleTriggerParams struct {
 	Interval string `json:"interval"`
+	Second   int    `json:"second"`
 	Minute   int    `json:"minute"`
 	Hour     int    `json:"hour"`
 	Day      int    `json:"day"`
@@ -71,7 +69,7 @@ func (h *CronPollingHandler) HandleCronTrigger(ctx context.Context, event domain
 		return domain.PollResult{}, fmt.Errorf("cron string is empty")
 	}
 
-	return h.HandleNextRun(ctx, event, params.CronString)
+	return h.enqueueCronRun(ctx, event)
 }
 
 func (h *CronPollingHandler) HandleSimpleTrigger(ctx context.Context, event domain.PollingEvent) (domain.PollResult, error) {
@@ -91,69 +89,38 @@ func (h *CronPollingHandler) HandleSimpleTrigger(ctx context.Context, event doma
 		return domain.PollResult{}, fmt.Errorf("interval is empty")
 	}
 
-	if params.Day == 0 && params.Hour == 0 && params.Minute == 0 {
-		return domain.PollResult{}, fmt.Errorf("one of day, hour, or minute must be set")
+	if params.Day == 0 && params.Hour == 0 && params.Minute == 0 && params.Second == 0 {
+		return domain.PollResult{}, fmt.Errorf("one of day, hour, minute, or second must be set")
 	}
 
-	var cronString string
-
-	switch params.Interval {
-	case "minute":
-		cronString = fmt.Sprintf("*/%d * * * *", params.Minute)
-	case "hour":
-		cronString = fmt.Sprintf("0 */%d * * *", params.Hour)
-
-	case "day":
-		cronString = fmt.Sprintf("0 0 */%d * *", params.Day)
-	}
-
-	return h.HandleNextRun(ctx, event, cronString)
+	return h.enqueueCronRun(ctx, event)
 }
 
-func (h *CronPollingHandler) HandleNextRun(ctx context.Context, event domain.PollingEvent, cronString string) (domain.PollResult, error) {
-	schedule, err := h.ExecutorScheduleManager.GetSchedule(ctx, event.WorkspaceID, event.Trigger.ID, event.Workflow.ID)
-	if err != nil {
-		return domain.PollResult{}, fmt.Errorf("failed to get schedule: %w", err)
+func (h *CronPollingHandler) enqueueCronRun(ctx context.Context, event domain.PollingEvent) (domain.PollResult, error) {
+	log.Info().
+		Str("workflow_id", event.Workflow.ID).
+		Str("workflow_type", string(event.WorkflowType)).
+		Str("trigger_id", event.Trigger.ID).
+		Msg("Enqueuing cron run")
+
+	payload := map[string]any{
+		"timestamp": time.Now().Format(time.RFC3339),
 	}
 
-	cronSchedule, err := cron.ParseStandard(cronString)
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return domain.PollResult{}, fmt.Errorf("failed to parse cron string: %w", err)
+		return domain.PollResult{}, fmt.Errorf("failed to marshal cron event: %w", err)
 	}
 
-	now := time.Now()
-	nextRun := cronSchedule.Next(schedule.LastCheckedAt)
-	shouldRun := now.After(nextRun)
-
-	if shouldRun {
-		log.Info().
-			Time("next_run", nextRun).
-			Time("now", now).
-			Str("workflow_id", event.Workflow.ID).
-			Str("workflow_type", string(event.WorkflowType)).
-			Str("trigger_id", event.Trigger.ID).
-			Msg("Enqueuing cron run - time has passed")
-
-		payload := map[string]any{
-			"timestamp": time.Now().Format(time.RFC3339),
-		}
-
-		payloadBytes, err := json.Marshal(payload)
-		if err != nil {
-			return domain.PollResult{}, fmt.Errorf("failed to marshal cron event: %w", err)
-		}
-
-		err = h.TaskPublisher.EnqueueTask(ctx, event.WorkspaceID, domain.ExecuteWorkflowTask{
-			WorkspaceID:  event.WorkspaceID,
-			WorkflowID:   event.Workflow.ID,
-			UserID:       event.UserID,
-			WorkflowType: event.WorkflowType,
-			FromNodeID:   event.Trigger.ID,
-			Payload:      string(payloadBytes),
-		})
-		if err != nil {
-			return domain.PollResult{}, fmt.Errorf("failed to enqueue cron task: %w", err)
-		}
+	if err := h.TaskPublisher.EnqueueTask(ctx, event.WorkspaceID, domain.ExecuteWorkflowTask{
+		WorkspaceID:  event.WorkspaceID,
+		WorkflowID:   event.Workflow.ID,
+		UserID:       event.UserID,
+		WorkflowType: event.WorkflowType,
+		FromNodeID:   event.Trigger.ID,
+		Payload:      string(payloadBytes),
+	}); err != nil {
+		return domain.PollResult{}, fmt.Errorf("failed to enqueue cron task: %w", err)
 	}
 
 	return domain.PollResult{}, nil
