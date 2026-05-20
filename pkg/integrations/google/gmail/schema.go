@@ -30,6 +30,29 @@ var (
 				EventType:                     IntegrationTriggerType_OnMessageReceived,
 				Description:                   "Triggered when a new message is received",
 				IsNonAvailableForDefaultOAuth: true,
+				Properties: []domain.NodeProperty{
+					{
+						Key:         "polling_interval_value",
+						Name:        "Polling Interval",
+						Description: "How often to check for new items. Defaults to 5 minutes. Minimum 1 minute.",
+						Required:    false,
+						Type:        domain.NodePropertyType_Integer,
+						Advanced:    true,
+					},
+					{
+						Key:         "polling_interval_unit",
+						Name:        "Polling Interval Unit",
+						Description: "Unit for the polling interval. Defaults to minute.",
+						Required:    false,
+						Type:        domain.NodePropertyType_String,
+						Advanced:    true,
+						Options: []domain.NodePropertyOption{
+							{Label: "Minute", Value: "minute"},
+							{Label: "Hour", Value: "hour"},
+							{Label: "Day", Value: "day"},
+						},
+					},
+				},
 			},
 		},
 		Actions: []domain.IntegrationAction{

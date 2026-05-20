@@ -58,6 +58,62 @@ type WorkflowExecutor struct {
 	usageCollector  *UsageCollector
 
 	streamEventPublisher domain.StreamEventPublisher
+
+	pauseResult           *pauseResult
+	executorStateSnapshot *domain.ExecutorStateSnapshot
+}
+
+type pauseResult struct {
+	NodeID     string
+	WakeAt     time.Time
+	NodeOutput domain.NodeItemsMap
+}
+
+func (w *WorkflowExecutor) buildExecutorStateSnapshot(ctx context.Context, triggerNodeID string) *domain.ExecutorStateSnapshot {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	waitingTasks := make([]domain.WaitingTaskSnapshot, 0, len(w.waitingExecutionTasks))
+	for _, t := range w.waitingExecutionTasks {
+		waitingTasks = append(waitingTasks, domain.WaitingTaskSnapshot{
+			NodeID:           t.NodeID,
+			ReceivedPayloads: t.ReceivedPayloads,
+		})
+	}
+
+	queuedTasks := make([]domain.QueuedTaskSnapshot, 0, len(w.executionQueue))
+	for _, t := range w.executionQueue {
+		queuedTasks = append(queuedTasks, domain.QueuedTaskSnapshot{
+			NodeID:            t.NodeID,
+			ItemsByInputIndex: t.ItemsByInputIndex,
+		})
+	}
+
+	executedNodes := make([]string, 0, len(w.executedNodes))
+	for nodeID := range w.executedNodes {
+		executedNodes = append(executedNodes, nodeID)
+	}
+
+	executionCount := make(map[string]int, len(w.executionCountByNodeID))
+	for nodeID, count := range w.executionCountByNodeID {
+		executionCount[nodeID] = count
+	}
+
+	lastEventOrder := 0
+	if orderCtx, ok := domain.GetEventOrderContext(ctx); ok {
+		lastEventOrder = orderCtx.GetCurrentOrder()
+	}
+
+	return &domain.ExecutorStateSnapshot{
+		PauseNodeID:            w.pauseResult.NodeID,
+		TriggerNodeID:          triggerNodeID,
+		PauseNodeOutput:        w.pauseResult.NodeOutput,
+		WaitingTasks:           waitingTasks,
+		QueuedTasks:            queuedTasks,
+		ExecutedNodes:          executedNodes,
+		ExecutionCountByNodeID: executionCount,
+		LastEventOrder:         lastEventOrder,
+	}
 }
 
 type WorkflowExecutorDeps struct {
@@ -70,6 +126,7 @@ type WorkflowExecutorDeps struct {
 	IsTestingWorkflow     bool
 	ExecutorClient        flowbaker.ClientInterface
 	OrderedEventPublisher domain.EventPublisher
+	ExecutorStateSnapshot *domain.ExecutorStateSnapshot
 }
 
 func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
@@ -99,16 +156,39 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 	observer.Subscribe(eventBroadcaster)
 	observer.SubscribeStream(streamBroadcaster)
 
+	waitingTasks := []WaitingExecutionTask{}
+	queuedTasks := []NodeExecutionTask{}
+	executedNodes := map[string]struct{}{}
+	executionCountByNodeID := map[string]int{}
+
+	if deps.ExecutorStateSnapshot != nil {
+		for _, snap := range deps.ExecutorStateSnapshot.WaitingTasks {
+			waitingTasks = append(waitingTasks, NewWaitingExecutionTask(snap.NodeID, snap.ReceivedPayloads))
+		}
+		for _, snap := range deps.ExecutorStateSnapshot.QueuedTasks {
+			queuedTasks = append(queuedTasks, NodeExecutionTask{
+				NodeID:            snap.NodeID,
+				ItemsByInputIndex: snap.ItemsByInputIndex,
+			})
+		}
+		for _, nodeID := range deps.ExecutorStateSnapshot.ExecutedNodes {
+			executedNodes[nodeID] = struct{}{}
+		}
+		for nodeID, count := range deps.ExecutorStateSnapshot.ExecutionCountByNodeID {
+			executionCountByNodeID[nodeID] = count
+		}
+	}
+
 	return WorkflowExecutor{
 		executionID:                deps.ExecutionID,
 		userID:                     deps.UserID,
 		workflow:                   deps.Workflow,
-		waitingExecutionTasks:      []WaitingExecutionTask{},
-		executionQueue:             []NodeExecutionTask{},
-		executedNodes:              map[string]struct{}{},
+		waitingExecutionTasks:      waitingTasks,
+		executionQueue:             queuedTasks,
+		executedNodes:              executedNodes,
 		edgeIndex:                  edgeIndex,
 		integrationSelector:        deps.Selector,
-		executionCountByNodeID:     map[string]int{},
+		executionCountByNodeID:     executionCountByNodeID,
 		enableEvents:               deps.EnableEvents,
 		enableStreaming:            deps.EnableStreaming,
 		IsTestingWorkflow:          deps.IsTestingWorkflow,
@@ -118,6 +198,7 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		historyRecorder:            historyRecorder,
 		usageCollector:             usageCollector,
 		streamEventPublisher:       streamEventPublisher,
+		executorStateSnapshot:      deps.ExecutorStateSnapshot,
 	}, nil
 }
 
@@ -141,7 +222,11 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 		return ExecutionResult{}, fmt.Errorf("failed to marshal items: %w", err)
 	}
 
-	ctx = domain.NewContextWithEventOrder(ctx)
+	startOrder := 0
+	if w.executorStateSnapshot != nil {
+		startOrder = w.executorStateSnapshot.LastEventOrder
+	}
+	ctx = domain.NewContextWithEventOrderFrom(ctx, startOrder)
 	ctx = domain.NewContextWithWorkflowExecutionContext(ctx, domain.NewContextWithWorkflowExecutionContextParams{
 		UserID:              w.userID,
 		InputPayload:        inputPayload,
@@ -155,20 +240,57 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 		TriggerNode:         triggerNode,
 	})
 
-	if err := w.observer.Notify(ctx, WorkflowExecutionStartedEvent{
-		Timestamp: time.Now(),
-	}); err != nil {
-		log.Error().Err(err).Msg("Failed to notify workflow execution started")
+	isResume := w.executorStateSnapshot != nil
+
+	if !isResume {
+		if err := w.observer.Notify(ctx, WorkflowExecutionStartedEvent{
+			Timestamp: time.Now(),
+		}); err != nil {
+			log.Error().Err(err).Msg("Failed to notify workflow execution started")
+		}
 	}
 
-	log.Info().Msgf("Executing workflow triggered by node %s", nodeID)
-
-	w.AddExecutionTask(NodeExecutionTask{
-		NodeID:            nodeID,
-		ItemsByInputIndex: domain.NewNodeItemsMap(0, nodeID, items),
-	})
+	log.Info().Bool("resume", isResume).Msgf("Executing workflow triggered by node %s", nodeID)
 
 	executionCount := 0
+
+	if isResume {
+		pauseNode, exists := w.workflow.GetNodeByID(w.executorStateSnapshot.PauseNodeID)
+		if !exists {
+			return ExecutionResult{}, fmt.Errorf("resume: paused node %s not found in workflow", w.executorStateSnapshot.PauseNodeID)
+		}
+
+		executionCount++
+
+		resumedOutput := domain.IntegrationOutput{
+			ItemsByOutputIndex: w.executorStateSnapshot.PauseNodeOutput,
+		}
+
+		if err := w.Propagate(ctx, w.executorStateSnapshot.PauseNodeID, resumedOutput); err != nil {
+			return ExecutionResult{}, fmt.Errorf("resume: failed to propagate paused node output: %w", err)
+		}
+
+		w.MarkNodeAsExecuted(w.executorStateSnapshot.PauseNodeID)
+
+		now := time.Now()
+		if err := w.observer.Notify(ctx, NodeExecutionCompletedEvent{
+			NodeID:                w.executorStateSnapshot.PauseNodeID,
+			ItemsByInputIndex:     w.executorStateSnapshot.PauseNodeOutput,
+			ItemsByOutputIndex:    resumedOutput.ItemsByOutputIndex,
+			ExecutionOrder:        int64(executionCount),
+			IntegrationType:       pauseNode.IntegrationType,
+			IntegrationActionType: pauseNode.ActionNodeOpts.ActionType,
+			StartedAt:             now,
+			EndedAt:               now,
+		}); err != nil {
+			log.Error().Err(err).Msg("Failed to notify paused node completion on resume")
+		}
+	} else {
+		w.AddExecutionTask(NodeExecutionTask{
+			NodeID:            nodeID,
+			ItemsByInputIndex: domain.NewNodeItemsMap(0, nodeID, items),
+		})
+	}
 
 	for len(w.executionQueue) > 0 {
 		if ctx.Err() != nil {
@@ -205,6 +327,10 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 			break
 		}
 
+		if w.pauseResult != nil {
+			break
+		}
+
 		w.FlushWaitingTasks()
 	}
 
@@ -212,6 +338,74 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 
 	nodeExecutions := mappers.DomainNodeExecutionsToFlowbaker(w.usageCollector.GetNodeExecutions())
 	historyEntries := mappers.DomainNodeExecutionEntriesToFlowbaker(executionResults)
+
+	if w.pauseResult != nil {
+		originalTriggerID := nodeID
+		if w.executorStateSnapshot != nil && w.executorStateSnapshot.TriggerNodeID != "" {
+			originalTriggerID = w.executorStateSnapshot.TriggerNodeID
+		}
+
+		pauseEntry := domain.NodeExecutionEntry{
+			NodeID:             w.pauseResult.NodeID,
+			ItemsByInputIndex:  w.pauseResult.NodeOutput,
+			ItemsByOutputIndex: domain.NodeItemsMap{},
+			EventType:          domain.NodeExecutionStarted,
+			Timestamp:          time.Now().UnixNano(),
+		}
+		executionResults = append(executionResults, pauseEntry)
+		historyEntries = mappers.DomainNodeExecutionEntriesToFlowbaker(executionResults)
+
+		if err := w.observer.Notify(ctx, WorkflowExecutionPausedEvent{
+			PauseNodeID: w.pauseResult.NodeID,
+			WakeAt:      w.pauseResult.WakeAt,
+			Timestamp:   time.Now(),
+		}); err != nil {
+			log.Error().Err(err).Msg("Failed to notify workflow execution paused")
+		}
+
+		snapshot := w.buildExecutorStateSnapshot(ctx, originalTriggerID)
+		snapshotJSON, err := json.Marshal(snapshot)
+		if err != nil {
+			return ExecutionResult{}, fmt.Errorf("failed to marshal resume state: %w", err)
+		}
+
+		pauseUserID := ""
+		if w.userID != nil {
+			pauseUserID = *w.userID
+		}
+		pauseParams := &flowbaker.PauseExecutionRequest{
+			ExecutionID:       w.executionID,
+			WorkspaceID:       w.workflow.WorkspaceID,
+			WorkflowID:        w.workflow.ID,
+			UserID:            pauseUserID,
+			PauseNodeID:       w.pauseResult.NodeID,
+			WakeAt:            w.pauseResult.WakeAt,
+			StartedAt:         w.WorkflowExecutionStartedAt,
+			PausedAt:          time.Now(),
+			NodeExecutions:    nodeExecutions,
+			HistoryEntries:    historyEntries,
+			IsTestingWorkflow: w.IsTestingWorkflow,
+			ResumeStateJSON:   snapshotJSON,
+		}
+
+		if err := w.client.PauseWorkflowExecution(ctx, pauseParams); err != nil {
+			return ExecutionResult{}, fmt.Errorf("failed to send pause: %w", err)
+		}
+
+		log.Info().Str("pause_node_id", w.pauseResult.NodeID).Time("wake_at", w.pauseResult.WakeAt).Msg("Workflow paused")
+
+		executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
+		if !ok {
+			return ExecutionResult{}, errors.New("workflow execution context not found")
+		}
+
+		return ExecutionResult{
+			Payload:              executionContext.ResponsePayload,
+			Headers:              executionContext.ResponseHeaders,
+			StatusCode:           executionContext.ResponseStatusCode,
+			NodeExecutionResults: executionResults,
+		}, nil
+	}
 
 	completeParams := &flowbaker.CompleteExecutionRequest{
 		ExecutionID:       w.executionID,
@@ -223,6 +417,10 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 		NodeExecutions:    nodeExecutions,
 		HistoryEntries:    historyEntries,
 		IsTestingWorkflow: w.IsTestingWorkflow,
+	}
+
+	if isResume {
+		completeParams.ResumedAt = w.WorkflowExecutionStartedAt
 	}
 
 	if err := w.client.CompleteWorkflowExecution(ctx, completeParams); err != nil {
@@ -282,15 +480,15 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 
 	nodeExecutionStartedAt := time.Now()
 
-	err := w.observer.Notify(ctx, NodeExecutionStartedEvent{
+	if err := w.observer.Notify(ctx, NodeExecutionStartedEvent{
 		NodeID:    task.NodeID,
 		Timestamp: nodeExecutionStartedAt,
-	})
-	if err != nil {
+	}); err != nil {
 		log.Error().Err(err).Msg("Failed to notify node execution started")
 	}
 
 	var result NodeExecutionResult
+	var err error
 
 	switch node.Type {
 	case domain.NodeTypeAction:
@@ -308,6 +506,20 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 		})
 		if err != nil {
 			return ExecuteNodeResult{}, err
+		}
+	}
+
+	if execCtx, ok := domain.GetWorkflowExecutionContext(ctx); ok {
+		for _, sig := range execCtx.DrainSignals() {
+			switch s := sig.(type) {
+			case domain.PauseSignal:
+				w.pauseResult = &pauseResult{
+					NodeID:     node.ID,
+					WakeAt:     s.WakeAt,
+					NodeOutput: result.Output.ItemsByOutputIndex,
+				}
+				return ExecuteNodeResult{}, nil
+			}
 		}
 	}
 

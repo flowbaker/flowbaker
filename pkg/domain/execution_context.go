@@ -2,9 +2,28 @@ package domain
 
 import (
 	"context"
+	"time"
 )
 
 type WorkflowExecutionContextKey struct{}
+
+type SignalType string
+
+const (
+	SignalTypePause SignalType = "pause"
+)
+
+type ExecutionSignal interface {
+	Type() SignalType
+}
+
+type PauseSignal struct {
+	WakeAt time.Time
+}
+
+func (PauseSignal) Type() SignalType {
+	return SignalTypePause
+}
 
 type WorkflowExecutionContext struct {
 	UserID              *string
@@ -21,6 +40,17 @@ type WorkflowExecutionContext struct {
 	IsFromErrorTrigger  bool
 	IsTesting           bool
 	TriggerNode         WorkflowNode
+	signals             []ExecutionSignal
+}
+
+func (c *WorkflowExecutionContext) EmitSignal(s ExecutionSignal) {
+	c.signals = append(c.signals, s)
+}
+
+func (c *WorkflowExecutionContext) DrainSignals() []ExecutionSignal {
+	out := c.signals
+	c.signals = nil
+	return out
 }
 
 func (c *WorkflowExecutionContext) SetResponsePayload(payload Payload) {

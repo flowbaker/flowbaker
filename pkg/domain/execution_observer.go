@@ -25,6 +25,7 @@ const (
 	ExecutionEventTypeNodeExecutionFailed        ExecutionEventType = "node_execution_failed"
 	ExecutionEventTypeWorkflowExecutionStarted   ExecutionEventType = "workflow_execution_started"
 	ExecutionEventTypeWorkflowExecutionCompleted ExecutionEventType = "workflow_execution_completed"
+	ExecutionEventTypeWorkflowExecutionPaused    ExecutionEventType = "workflow_execution_paused"
 )
 
 type ExecutionEvent interface {

@@ -41,15 +41,16 @@ type IntegrationActionType string
 type IntegrationTriggerEventType string
 
 type StartExecutionRequest struct {
-	ExecutionID     string           `json:"execution_id"`
-	UserID          *string          `json:"user_id,omitempty"`
-	EventName       string           `json:"event_name"`
-	PayloadJSON     []byte           `json:"payload_json"`
-	EnableEvents    bool             `json:"enable_events"`
-	WorkflowType    WorkflowType     `json:"workflow_type"`
-	Workspace       Workspace        `json:"workspace"`
-	Workflow        *Workflow        `json:"workflow,omitempty"`
-	TestingWorkflow *TestingWorkflow `json:"testing_workflow,omitempty"`
+	ExecutionID           string                        `json:"execution_id"`
+	UserID                *string                       `json:"user_id,omitempty"`
+	EventName             string                        `json:"event_name"`
+	PayloadJSON           []byte                        `json:"payload_json"`
+	EnableEvents          bool                          `json:"enable_events"`
+	WorkflowType          WorkflowType                  `json:"workflow_type"`
+	Workspace             Workspace                     `json:"workspace"`
+	Workflow              *Workflow                     `json:"workflow,omitempty"`
+	TestingWorkflow       *TestingWorkflow              `json:"testing_workflow,omitempty"`
+	ExecutorStateSnapshot *domain.ExecutorStateSnapshot `json:"executor_state_snapshot,omitempty"`
 }
 
 type StopExecutionRequest struct {
@@ -166,11 +167,13 @@ type NodeSettings struct {
 
 // PollingEventRequest represents a request to handle a polling event
 type PollingEventRequest struct {
-	IntegrationType IntegrationType `json:"integration_type"`
-	Trigger         WorkflowNode    `json:"trigger"`
-	Workflow        Workflow        `json:"workflow"`
-	UserID          string          `json:"user_id"`
-	WorkflowType    WorkflowType    `json:"workflow_type"`
+	IntegrationType   IntegrationType `json:"integration_type"`
+	Trigger           WorkflowNode    `json:"trigger"`
+	Workflow          Workflow        `json:"workflow"`
+	UserID            string          `json:"user_id"`
+	WorkflowType      WorkflowType    `json:"workflow_type"`
+	LastModifiedData  string          `json:"last_modified_data,omitempty"`
+	FirstRegisteredAt time.Time       `json:"first_registered_at,omitempty"`
 }
 
 // PollingEventResponse represents the response from handling a polling event

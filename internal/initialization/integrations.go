@@ -32,6 +32,7 @@ import (
 	pipedriveintegration "github.com/flowbaker/flowbaker/pkg/integrations/pipedrive"
 	"github.com/flowbaker/flowbaker/pkg/integrations/postgresql"
 	"github.com/flowbaker/flowbaker/pkg/integrations/redis"
+	"github.com/flowbaker/flowbaker/pkg/integrations/sleep"
 	"github.com/flowbaker/flowbaker/pkg/integrations/snowflake"
 	resendintegration "github.com/flowbaker/flowbaker/pkg/integrations/resend"
 	s3integration "github.com/flowbaker/flowbaker/pkg/integrations/s3"
@@ -239,6 +240,10 @@ var integrationRegisterParamsList = []integrationRegisterParams{
 		IntegrationType:     domain.IntegrationType_Snowflake,
 		NewCreator:          snowflake.NewSnowflakeIntegrationCreator,
 		NewConnectionTester: snowflake.NewSnowflakeConnectionTester,
+	},
+	{
+		IntegrationType: domain.IntegrationType_Sleep,
+		NewCreator:      sleep.NewSleepIntegrationCreator,
 	},
 }
 

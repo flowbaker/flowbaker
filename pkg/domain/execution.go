@@ -60,3 +60,24 @@ type InputItemsCount map[int]int64
 type InputItemsSizeInBytes map[int]int64
 type OutputItemsCount map[int]int64
 type OutputItemsSizeInBytes map[int]int64
+
+type WaitingTaskSnapshot struct {
+	NodeID           string       `json:"node_id"`
+	ReceivedPayloads NodeItemsMap `json:"received_payloads"`
+}
+
+type QueuedTaskSnapshot struct {
+	NodeID            string       `json:"node_id"`
+	ItemsByInputIndex NodeItemsMap `json:"items_by_input_index"`
+}
+
+type ExecutorStateSnapshot struct {
+	PauseNodeID            string                `json:"pause_node_id"`
+	TriggerNodeID          string                `json:"trigger_node_id"`
+	PauseNodeOutput        NodeItemsMap          `json:"pause_node_output"`
+	WaitingTasks           []WaitingTaskSnapshot `json:"waiting_tasks"`
+	QueuedTasks            []QueuedTaskSnapshot  `json:"queued_tasks"`
+	ExecutedNodes          []string              `json:"executed_nodes"`
+	ExecutionCountByNodeID map[string]int        `json:"execution_count_by_node_id"`
+	LastEventOrder         int                   `json:"last_event_order"`
+}

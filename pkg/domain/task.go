@@ -26,12 +26,15 @@ var (
 )
 
 type ExecuteWorkflowTask struct {
-	WorkspaceID  string       `json:"workspace_id"`
-	WorkflowID   string       `json:"workflow_id"`
-	UserID       string       `json:"user_id"`
-	WorkflowType WorkflowType `json:"workflow_type"`
-	FromNodeID   string       `json:"from_node_id"`
-	Payload      any          `json:"payload"`
+	WorkspaceID     string       `json:"workspace_id"`
+	WorkflowID      string       `json:"workflow_id"`
+	UserID          string       `json:"user_id"`
+	WorkflowType    WorkflowType `json:"workflow_type"`
+	FromNodeID      string       `json:"from_node_id"`
+	Payload         any          `json:"payload"`
+	ExecutionID     string       `json:"execution_id,omitempty"`
+	IsResume        bool         `json:"is_resume,omitempty"`
+	ScheduledJobID  string       `json:"scheduled_job_id,omitempty"`
 }
 
 func (t ExecuteWorkflowTask) GetType() TaskType {

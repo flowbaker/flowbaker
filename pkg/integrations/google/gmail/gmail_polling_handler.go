@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/flowbaker/flowbaker/internal/managers"
 
@@ -15,18 +17,16 @@ import (
 )
 
 type GmailPollingHandler struct {
-	credentialGetter        domain.CredentialGetter[domain.OAuthAccountSensitiveData]
-	executorScheduleManager domain.ExecutorScheduleManager
-	taskPublisher           domain.ExecutorTaskPublisher
-	binder                  domain.IntegrationParameterBinder
+	credentialGetter domain.CredentialGetter[domain.OAuthAccountSensitiveData]
+	taskPublisher    domain.ExecutorTaskPublisher
+	binder           domain.IntegrationParameterBinder
 }
 
 func NewGmailPollingHandler(deps domain.IntegrationDeps) domain.IntegrationPoller {
 	return &GmailPollingHandler{
-		credentialGetter:        managers.NewExecutorCredentialGetter[domain.OAuthAccountSensitiveData](deps.ExecutorCredentialManager),
-		executorScheduleManager: deps.ExecutorScheduleManager,
-		taskPublisher:           deps.ExecutorTaskPublisher,
-		binder:                  deps.ParameterBinder,
+		credentialGetter: managers.NewExecutorCredentialGetter[domain.OAuthAccountSensitiveData](deps.ExecutorCredentialManager),
+		taskPublisher:    deps.ExecutorTaskPublisher,
+		binder:           deps.ParameterBinder,
 	}
 }
 
@@ -74,14 +74,14 @@ func (h *GmailPollingHandler) HandlePollingEvent(ctx context.Context, p domain.P
 }
 
 func (h *GmailPollingHandler) OnMessageReceived(ctx context.Context, p domain.PollingEvent, integration *GmailIntegration) (domain.PollResult, error) {
-	schedule, err := h.executorScheduleManager.GetSchedule(ctx, p.WorkspaceID, p.Trigger.ID, p.Workflow.ID)
-	if err != nil {
-		return domain.PollResult{}, fmt.Errorf("failed to get schedule: %w", err)
+	lastCheckedAt := p.FirstRegisteredAt.Unix()
+	if p.LastModifiedData != "" {
+		if parsed, err := strconv.ParseInt(p.LastModifiedData, 10, 64); err == nil {
+			lastCheckedAt = parsed
+		}
 	}
 
-	scheduleLastCheckedAt := schedule.LastCheckedAt.Unix()
-
-	newMessages, err := integration.service.Users.Messages.List("me").Q(fmt.Sprintf("after:%d", scheduleLastCheckedAt)).Do()
+	newMessages, err := integration.service.Users.Messages.List("me").Q(fmt.Sprintf("in:inbox after:%d", lastCheckedAt)).Do()
 	if err != nil {
 		return domain.PollResult{}, fmt.Errorf("failed to get messages: %w", err)
 	}
@@ -109,6 +109,6 @@ func (h *GmailPollingHandler) OnMessageReceived(ctx context.Context, p domain.Po
 	}
 
 	return domain.PollResult{
-		LastModifiedData: "",
+		LastModifiedData: strconv.FormatInt(time.Now().Unix(), 10),
 	}, nil
 }

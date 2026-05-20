@@ -70,6 +70,23 @@ type CompleteExecutionRequest struct {
 	NodeExecutions    []NodeExecution      `json:"node_executions"`
 	HistoryEntries    []NodeExecutionEntry `json:"history_entries"`
 	IsTestingWorkflow bool                 `json:"is_testing_workflow"`
+	ResumedAt         time.Time            `json:"resumed_at,omitempty"`
+}
+
+// PauseExecutionRequest represents the request to pause a workflow execution
+type PauseExecutionRequest struct {
+	ExecutionID       string               `json:"execution_id"`
+	WorkspaceID       string               `json:"workspace_id"`
+	WorkflowID        string               `json:"workflow_id"`
+	UserID            string               `json:"user_id"`
+	PauseNodeID       string               `json:"pause_node_id"`
+	WakeAt            time.Time            `json:"wake_at"`
+	StartedAt         time.Time            `json:"started_at"`
+	PausedAt          time.Time            `json:"paused_at"`
+	NodeExecutions    []NodeExecution      `json:"node_executions"`
+	HistoryEntries    []NodeExecutionEntry `json:"history_entries"`
+	IsTestingWorkflow bool                 `json:"is_testing_workflow"`
+	ResumeStateJSON   []byte               `json:"resume_state_json"`
 }
 
 // EncryptedCredential represents an encrypted credential for executor use
@@ -425,52 +442,6 @@ type UpdateOAuthAccountMetadataRequest struct {
 type UpdateOAuthAccountMetadataResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
-}
-
-// Schedule management types
-
-// Schedule represents a polling schedule for workflow triggers
-type Schedule struct {
-	ID                        string    `json:"id"`
-	WorkflowID                string    `json:"workflow_id"`
-	ScheduleCreatedAt         time.Time `json:"schedule_created_at"`
-	TriggerID                 string    `json:"trigger_id"`
-	UserID                    string    `json:"user_id"`
-	WorkflowType              string    `json:"workflow_type"`
-	IntegrationType           string    `json:"integration_type"`
-	LastCheckedAt             time.Time `json:"last_checked_at"`
-	NextScheduledCheckAt      time.Time `json:"next_scheduled_check_at"`
-	IsActive                  bool      `json:"is_active"`
-	LastModifiedData          string    `json:"last_modified_data"`
-	PollingScheduleGapSeconds int       `json:"polling_schedule_gap_seconds"`
-}
-
-// GetScheduleRequest represents the request to get a schedule
-type GetScheduleRequest struct {
-	WorkspaceID string `json:"workspace_id"`
-	ScheduleID  string `json:"schedule_id"`
-	WorkflowID  string `json:"workflow_id"`
-}
-
-// GetScheduleResponse represents the response from getting a schedule
-type GetScheduleResponse struct {
-	Schedule Schedule `json:"schedule"`
-}
-
-// CreateScheduleRequest represents the request to create a schedule
-type CreateScheduleRequest struct {
-	WorkflowID                string `json:"workflow_id"`
-	TriggerID                 string `json:"trigger_id"`
-	IntegrationType           string `json:"integration_type"`
-	WorkflowType              string `json:"workflow_type"`
-	UserID                    string `json:"user_id"`
-	LastModifiedData          string `json:"last_modified_data"`
-	PollingScheduleGapSeconds int    `json:"polling_schedule_gap_seconds"`
-}
-
-// CreateScheduleResponse represents the response from creating a schedule
-type CreateScheduleResponse struct {
-	Schedule Schedule `json:"schedule"`
 }
 
 type ConversationStatus string

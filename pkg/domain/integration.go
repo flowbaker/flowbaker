@@ -81,6 +81,7 @@ const (
 	IntegrationType_Snowflake            IntegrationType = "snowflake"
 	IntegrationType_InputTrigger         IntegrationType = "input_trigger"
 	IntegrationType_Loop                 IntegrationType = "loop"
+	IntegrationType_Sleep                IntegrationType = "sleep"
 )
 
 type Integration struct {
@@ -263,13 +264,11 @@ type IntegrationOutput struct {
 type IntegrationDeps struct {
 	FlowbakerClient            flowbaker.ClientInterface
 	ExecutorTaskPublisher      ExecutorTaskPublisher
-	TaskSchedulerService       TaskSchedulerService
 	ParameterBinder            IntegrationParameterBinder
 	IntegrationSelector        IntegrationSelector
 	ExecutorStorageManager     ExecutorStorageManager
 	ExecutorCredentialManager  ExecutorCredentialManager
 	ExecutorIntegrationManager ExecutorIntegrationManager
-	ExecutorScheduleManager    ExecutorScheduleManager
 	ExecutorKnowledgeManager   ExecutorKnowledgeManager
 	ExecutorModelManager       ExecutorModelManager
 }

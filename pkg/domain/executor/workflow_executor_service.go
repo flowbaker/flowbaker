@@ -112,6 +112,7 @@ type ExecuteParams struct {
 	PayloadJSON       string
 	EnableEvents      bool
 	IsTestingWorkflow bool
+	ExecutorStateSnapshot *domain.ExecutorStateSnapshot
 }
 
 func (s *workflowExecutorService) Execute(ctx context.Context, params ExecuteParams) (ExecutionResult, error) {
@@ -124,6 +125,7 @@ func (s *workflowExecutorService) Execute(ctx context.Context, params ExecutePar
 		IsTestingWorkflow:     params.IsTestingWorkflow,
 		ExecutorClient:        s.flowbakerClient,
 		OrderedEventPublisher: s.orderedEventPublisher,
+		ExecutorStateSnapshot: params.ExecutorStateSnapshot,
 	})
 	if err != nil {
 		return ExecutionResult{}, err

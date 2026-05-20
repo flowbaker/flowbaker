@@ -12,18 +12,16 @@ import (
 )
 
 type StartupsWatchPollingHandler struct {
-	credentialGetter        domain.CredentialGetter[StartupsWatchCredential]
-	executorScheduleManager domain.ExecutorScheduleManager
-	taskPublisher           domain.ExecutorTaskPublisher
-	binder                  domain.IntegrationParameterBinder
+	credentialGetter domain.CredentialGetter[StartupsWatchCredential]
+	taskPublisher    domain.ExecutorTaskPublisher
+	binder           domain.IntegrationParameterBinder
 }
 
 func NewStartupsWatchPollingHandler(deps domain.IntegrationDeps) domain.IntegrationPoller {
 	return &StartupsWatchPollingHandler{
-		credentialGetter:        managers.NewExecutorCredentialGetter[StartupsWatchCredential](deps.ExecutorCredentialManager),
-		executorScheduleManager: deps.ExecutorScheduleManager,
-		taskPublisher:           deps.ExecutorTaskPublisher,
-		binder:                  deps.ParameterBinder,
+		credentialGetter: managers.NewExecutorCredentialGetter[StartupsWatchCredential](deps.ExecutorCredentialManager),
+		taskPublisher:    deps.ExecutorTaskPublisher,
+		binder:           deps.ParameterBinder,
 	}
 }
 
@@ -64,11 +62,6 @@ func (h *StartupsWatchPollingHandler) PollNewStartups(ctx context.Context, p dom
 		return domain.PollResult{}, fmt.Errorf("integration settings are nil")
 	}
 
-	schedule, err := h.executorScheduleManager.GetSchedule(ctx, p.WorkspaceID, p.Trigger.ID, p.Workflow.ID)
-	if err != nil {
-		return domain.PollResult{}, fmt.Errorf("failed to get schedule: %w", err)
-	}
-
 	integration, err := NewStartupsWatchIntegration(ctx, StartupsWatchIntegrationDependencies{
 		CredentialID:     "",
 		ParameterBinder:  h.binder,
@@ -82,7 +75,7 @@ func (h *StartupsWatchPollingHandler) PollNewStartups(ctx context.Context, p dom
 	page := 1
 	limit := "100"
 
-	lastModifiedData := schedule.LastModifiedData
+	lastModifiedData := p.LastModifiedData
 	if lastModifiedData == "" {
 		limit = "1"
 	}

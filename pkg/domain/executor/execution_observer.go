@@ -161,6 +161,22 @@ func (e WorkflowExecutionCompletedEvent) SetIsFromErrorTrigger(isFromErrorTrigge
 	return e
 }
 
+type WorkflowExecutionPausedEvent struct {
+	Timestamp   time.Time
+	PauseNodeID string
+	WakeAt      time.Time
+	IsTesting   bool
+}
+
+func (WorkflowExecutionPausedEvent) GetEventType() domain.ExecutionEventType {
+	return domain.ExecutionEventTypeWorkflowExecutionPaused
+}
+
+func (e WorkflowExecutionPausedEvent) SetIsTesting(isTesting bool) domain.ExecutionEvent {
+	e.IsTesting = isTesting
+	return e
+}
+
 type executionObserver struct {
 	handlers       []domain.ExecutionEventHandler
 	streamHandlers []domain.StreamEventHandler
