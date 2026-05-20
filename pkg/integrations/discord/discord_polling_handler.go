@@ -97,7 +97,7 @@ func (i *DiscordPollingHandler) PollChannelMessages(ctx context.Context, p domai
 				continue
 			}
 
-			if messageTimestamp.After(p.BootstrapTime) {
+			if messageTimestamp.After(p.FirstRegisteredAt) {
 				log.Info().Str("messageID", message.ID).Str("messageContent", message.Content).Msg("Enqueuing task")
 			} else {
 				break

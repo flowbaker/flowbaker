@@ -163,7 +163,7 @@ func (e WorkflowExecutionCompletedEvent) SetIsFromErrorTrigger(isFromErrorTrigge
 
 type WorkflowExecutionPausedEvent struct {
 	Timestamp   time.Time
-	SleepNodeID string
+	PauseNodeID string
 	WakeAt      time.Time
 	IsTesting   bool
 }

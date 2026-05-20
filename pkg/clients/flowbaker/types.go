@@ -61,16 +61,16 @@ type PublishEventRequest struct {
 
 // CompleteExecutionRequest represents the request to complete a workflow execution
 type CompleteExecutionRequest struct {
-	ExecutionID           string               `json:"execution_id"`
-	WorkspaceID           string               `json:"workspace_id"`
-	WorkflowID            string               `json:"workflow_id"`
-	TriggerNodeID         string               `json:"trigger_node_id"`
-	StartedAt             time.Time            `json:"started_at"`
-	EndedAt               time.Time            `json:"ended_at"`
-	NodeExecutions        []NodeExecution      `json:"node_executions"`
-	HistoryEntries        []NodeExecutionEntry `json:"history_entries"`
-	IsTestingWorkflow     bool                 `json:"is_testing_workflow"`
-	ResumedFromSleep      bool                 `json:"resumed_from_sleep,omitempty"`
+	ExecutionID       string               `json:"execution_id"`
+	WorkspaceID       string               `json:"workspace_id"`
+	WorkflowID        string               `json:"workflow_id"`
+	TriggerNodeID     string               `json:"trigger_node_id"`
+	StartedAt         time.Time            `json:"started_at"`
+	EndedAt           time.Time            `json:"ended_at"`
+	NodeExecutions    []NodeExecution      `json:"node_executions"`
+	HistoryEntries    []NodeExecutionEntry `json:"history_entries"`
+	IsTestingWorkflow bool                 `json:"is_testing_workflow"`
+	ResumedAt         time.Time            `json:"resumed_at,omitempty"`
 }
 
 // PauseExecutionRequest represents the request to pause a workflow execution
@@ -79,7 +79,7 @@ type PauseExecutionRequest struct {
 	WorkspaceID       string               `json:"workspace_id"`
 	WorkflowID        string               `json:"workflow_id"`
 	UserID            string               `json:"user_id"`
-	SleepNodeID       string               `json:"sleep_node_id"`
+	PauseNodeID       string               `json:"pause_node_id"`
 	WakeAt            time.Time            `json:"wake_at"`
 	StartedAt         time.Time            `json:"started_at"`
 	PausedAt          time.Time            `json:"paused_at"`

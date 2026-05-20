@@ -72,9 +72,9 @@ type QueuedTaskSnapshot struct {
 }
 
 type ExecutorStateSnapshot struct {
-	SleepNodeID            string                `json:"sleep_node_id"`
+	PauseNodeID            string                `json:"pause_node_id"`
 	TriggerNodeID          string                `json:"trigger_node_id"`
-	SleepNodeInput         NodeItemsMap          `json:"sleep_node_input"`
+	PauseNodeOutput        NodeItemsMap          `json:"pause_node_output"`
 	WaitingTasks           []WaitingTaskSnapshot `json:"waiting_tasks"`
 	QueuedTasks            []QueuedTaskSnapshot  `json:"queued_tasks"`
 	ExecutedNodes          []string              `json:"executed_nodes"`

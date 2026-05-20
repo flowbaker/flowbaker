@@ -106,8 +106,8 @@ func (e *NodeExecutionStartedEvent) SetEventOrder(order int) {
 }
 
 type NodeExecutedEvent struct {
-	WorkflowID          string            `json:"workflow_id"`
-	NodeID              string            `json:"node_id"`
+	WorkflowID          string       `json:"workflow_id"`
+	NodeID              string       `json:"node_id"`
 	ItemsByInputIndex   NodeItemsMap `json:"items_by_input_index"`
 	ItemsByOutputIndex  NodeItemsMap `json:"items_by_output_index"`
 	Timestamp           int64        `json:"timestamp"`
@@ -140,10 +140,10 @@ type NodeFailedEvent struct {
 	Timestamp           int64        `json:"timestamp"`
 	ItemsByInputIndex   NodeItemsMap `json:"items_by_input_index"`
 	ItemsByOutputIndex  NodeItemsMap `json:"items_by_output_index"`
-	EventOrder          int               `json:"event_order"`
-	IsReExecution       bool              `json:"is_re_execution"`
-	IsTesting           bool              `json:"is_testing"`
-	IsFromErrorTrigger  bool              `json:"is_from_error_trigger"`
+	EventOrder          int          `json:"event_order"`
+	IsReExecution       bool         `json:"is_re_execution"`
+	IsTesting           bool         `json:"is_testing"`
+	IsFromErrorTrigger  bool         `json:"is_from_error_trigger"`
 }
 
 func (e *NodeFailedEvent) GetType() EventType {
@@ -212,7 +212,7 @@ func (e *WorkflowExecutionCompletedEvent) SetEventOrder(order int) {
 type WorkflowExecutionPausedEvent struct {
 	WorkflowID          string `json:"workflow_id"`
 	WorkflowExecutionID string `json:"workflow_execution_id"`
-	SleepNodeID         string `json:"sleep_node_id"`
+	PauseNodeID         string `json:"pause_node_id"`
 	WakeAt              int64  `json:"wake_at"`
 	Timestamp           int64  `json:"timestamp"`
 	EventOrder          int    `json:"event_order"`

@@ -84,12 +84,12 @@ func (c *ExecutorController) StartExecution(ctx fiber.Ctx) error {
 	}
 
 	p := executor.ExecuteParams{
-		ExecutionID:       req.ExecutionID,
-		Workflow:          mappers.ExecutorWorkflowToDomain(req.Workflow),
-		EventName:         req.EventName,
-		PayloadJSON:       string(req.PayloadJSON),
-		EnableEvents:      req.EnableEvents,
-		IsTestingWorkflow: isTestingWorkflow,
+		ExecutionID:           req.ExecutionID,
+		Workflow:              mappers.ExecutorWorkflowToDomain(req.Workflow),
+		EventName:             req.EventName,
+		PayloadJSON:           string(req.PayloadJSON),
+		EnableEvents:          req.EnableEvents,
+		IsTestingWorkflow:     isTestingWorkflow,
 		ExecutorStateSnapshot: req.ExecutorStateSnapshot,
 	}
 
@@ -211,14 +211,14 @@ func (c *ExecutorController) HandlePollingEvent(ctx fiber.Ctx) error {
 
 	// Convert executor types to domain types
 	pollingEvent := domain.PollingEvent{
-		IntegrationType:  domain.IntegrationType(req.IntegrationType),
-		Trigger:          mappers.ExecutorWorkflowNodeToDomain(req.Trigger),
-		Workflow:         mappers.ExecutorWorkflowToDomain(&req.Workflow),
-		UserID:           req.UserID,
-		WorkflowType:     mappers.ExecutorWorkflowTypeToDomain(req.WorkflowType),
-		WorkspaceID:      workspaceID,
-		LastModifiedData: req.LastModifiedData,
-		BootstrapTime:    req.BootstrapTime,
+		IntegrationType:   domain.IntegrationType(req.IntegrationType),
+		Trigger:           mappers.ExecutorWorkflowNodeToDomain(req.Trigger),
+		Workflow:          mappers.ExecutorWorkflowToDomain(&req.Workflow),
+		UserID:            req.UserID,
+		WorkflowType:      mappers.ExecutorWorkflowTypeToDomain(req.WorkflowType),
+		WorkspaceID:       workspaceID,
+		LastModifiedData:  req.LastModifiedData,
+		FirstRegisteredAt: req.FirstRegisteredAt,
 	}
 
 	// Call the executor service to handle the polling event

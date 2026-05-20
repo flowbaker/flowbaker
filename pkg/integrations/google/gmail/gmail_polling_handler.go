@@ -74,7 +74,7 @@ func (h *GmailPollingHandler) HandlePollingEvent(ctx context.Context, p domain.P
 }
 
 func (h *GmailPollingHandler) OnMessageReceived(ctx context.Context, p domain.PollingEvent, integration *GmailIntegration) (domain.PollResult, error) {
-	lastCheckedAt := p.BootstrapTime.Unix()
+	lastCheckedAt := p.FirstRegisteredAt.Unix()
 	if p.LastModifiedData != "" {
 		if parsed, err := strconv.ParseInt(p.LastModifiedData, 10, 64); err == nil {
 			lastCheckedAt = parsed

@@ -152,7 +152,7 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 		return b.orderedEventPublisher.PublishEvent(ctx, &domain.WorkflowExecutionPausedEvent{
 			WorkflowID:          b.workflowID,
 			WorkflowExecutionID: b.executionID,
-			SleepNodeID:         e.SleepNodeID,
+			PauseNodeID:         e.PauseNodeID,
 			WakeAt:              e.WakeAt.UnixNano(),
 			Timestamp:           e.Timestamp.UnixNano(),
 			IsTesting:           e.IsTesting,

@@ -59,14 +59,14 @@ type WorkflowExecutor struct {
 
 	streamEventPublisher domain.StreamEventPublisher
 
-	pauseResult *pauseResult
+	pauseResult           *pauseResult
 	executorStateSnapshot *domain.ExecutorStateSnapshot
 }
 
 type pauseResult struct {
-	NodeID         string
-	WakeAt         time.Time
-	SleepNodeInput domain.NodeItemsMap
+	NodeID     string
+	WakeAt     time.Time
+	NodeOutput domain.NodeItemsMap
 }
 
 func (w *WorkflowExecutor) buildExecutorStateSnapshot(ctx context.Context, triggerNodeID string) *domain.ExecutorStateSnapshot {
@@ -105,9 +105,9 @@ func (w *WorkflowExecutor) buildExecutorStateSnapshot(ctx context.Context, trigg
 	}
 
 	return &domain.ExecutorStateSnapshot{
-		SleepNodeID:            w.pauseResult.NodeID,
+		PauseNodeID:            w.pauseResult.NodeID,
 		TriggerNodeID:          triggerNodeID,
-		SleepNodeInput:         w.pauseResult.SleepNodeInput,
+		PauseNodeOutput:        w.pauseResult.NodeOutput,
 		WaitingTasks:           waitingTasks,
 		QueuedTasks:            queuedTasks,
 		ExecutedNodes:          executedNodes,
@@ -255,35 +255,35 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 	executionCount := 0
 
 	if isResume {
-		sleepNode, exists := w.workflow.GetNodeByID(w.executorStateSnapshot.SleepNodeID)
+		pauseNode, exists := w.workflow.GetNodeByID(w.executorStateSnapshot.PauseNodeID)
 		if !exists {
-			return ExecutionResult{}, fmt.Errorf("resume: sleep node %s not found in workflow", w.executorStateSnapshot.SleepNodeID)
+			return ExecutionResult{}, fmt.Errorf("resume: paused node %s not found in workflow", w.executorStateSnapshot.PauseNodeID)
 		}
 
 		executionCount++
 
-		sleepOutput := domain.IntegrationOutput{
-			ItemsByOutputIndex: w.executorStateSnapshot.SleepNodeInput,
+		resumedOutput := domain.IntegrationOutput{
+			ItemsByOutputIndex: w.executorStateSnapshot.PauseNodeOutput,
 		}
 
-		if err := w.Propagate(ctx, w.executorStateSnapshot.SleepNodeID, sleepOutput); err != nil {
-			return ExecutionResult{}, fmt.Errorf("resume: failed to propagate sleep output: %w", err)
+		if err := w.Propagate(ctx, w.executorStateSnapshot.PauseNodeID, resumedOutput); err != nil {
+			return ExecutionResult{}, fmt.Errorf("resume: failed to propagate paused node output: %w", err)
 		}
 
-		w.MarkNodeAsExecuted(w.executorStateSnapshot.SleepNodeID)
+		w.MarkNodeAsExecuted(w.executorStateSnapshot.PauseNodeID)
 
 		now := time.Now()
 		if err := w.observer.Notify(ctx, NodeExecutionCompletedEvent{
-			NodeID:                w.executorStateSnapshot.SleepNodeID,
-			ItemsByInputIndex:     w.executorStateSnapshot.SleepNodeInput,
-			ItemsByOutputIndex:    sleepOutput.ItemsByOutputIndex,
+			NodeID:                w.executorStateSnapshot.PauseNodeID,
+			ItemsByInputIndex:     w.executorStateSnapshot.PauseNodeOutput,
+			ItemsByOutputIndex:    resumedOutput.ItemsByOutputIndex,
 			ExecutionOrder:        int64(executionCount),
-			IntegrationType:       sleepNode.IntegrationType,
-			IntegrationActionType: sleepNode.ActionNodeOpts.ActionType,
+			IntegrationType:       pauseNode.IntegrationType,
+			IntegrationActionType: pauseNode.ActionNodeOpts.ActionType,
 			StartedAt:             now,
 			EndedAt:               now,
 		}); err != nil {
-			log.Error().Err(err).Msg("Failed to notify sleep node completion on resume")
+			log.Error().Err(err).Msg("Failed to notify paused node completion on resume")
 		}
 	} else {
 		w.AddExecutionTask(NodeExecutionTask{
@@ -345,18 +345,18 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 			originalTriggerID = w.executorStateSnapshot.TriggerNodeID
 		}
 
-		sleepEntry := domain.NodeExecutionEntry{
+		pauseEntry := domain.NodeExecutionEntry{
 			NodeID:             w.pauseResult.NodeID,
-			ItemsByInputIndex:  w.pauseResult.SleepNodeInput,
+			ItemsByInputIndex:  w.pauseResult.NodeOutput,
 			ItemsByOutputIndex: domain.NodeItemsMap{},
 			EventType:          domain.NodeExecutionStarted,
 			Timestamp:          time.Now().UnixNano(),
 		}
-		executionResults = append(executionResults, sleepEntry)
+		executionResults = append(executionResults, pauseEntry)
 		historyEntries = mappers.DomainNodeExecutionEntriesToFlowbaker(executionResults)
 
 		if err := w.observer.Notify(ctx, WorkflowExecutionPausedEvent{
-			SleepNodeID: w.pauseResult.NodeID,
+			PauseNodeID: w.pauseResult.NodeID,
 			WakeAt:      w.pauseResult.WakeAt,
 			Timestamp:   time.Now(),
 		}); err != nil {
@@ -378,7 +378,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 			WorkspaceID:       w.workflow.WorkspaceID,
 			WorkflowID:        w.workflow.ID,
 			UserID:            pauseUserID,
-			SleepNodeID:       w.pauseResult.NodeID,
+			PauseNodeID:       w.pauseResult.NodeID,
 			WakeAt:            w.pauseResult.WakeAt,
 			StartedAt:         w.WorkflowExecutionStartedAt,
 			PausedAt:          time.Now(),
@@ -392,7 +392,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 			return ExecutionResult{}, fmt.Errorf("failed to send pause: %w", err)
 		}
 
-		log.Info().Str("sleep_node_id", w.pauseResult.NodeID).Time("wake_at", w.pauseResult.WakeAt).Msg("Workflow paused")
+		log.Info().Str("pause_node_id", w.pauseResult.NodeID).Time("wake_at", w.pauseResult.WakeAt).Msg("Workflow paused")
 
 		executionContext, ok := domain.GetWorkflowExecutionContext(ctx)
 		if !ok {
@@ -420,7 +420,7 @@ func (w *WorkflowExecutor) Execute(ctx context.Context, nodeID string, items []d
 	}
 
 	if isResume {
-		completeParams.ResumedFromSleep = true
+		completeParams.ResumedAt = w.WorkflowExecutionStartedAt
 	}
 
 	if err := w.client.CompleteWorkflowExecution(ctx, completeParams); err != nil {
@@ -514,9 +514,9 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 			switch s := sig.(type) {
 			case domain.PauseSignal:
 				w.pauseResult = &pauseResult{
-					NodeID:         node.ID,
-					WakeAt:         s.WakeAt,
-					SleepNodeInput: result.Output.ItemsByOutputIndex,
+					NodeID:     node.ID,
+					WakeAt:     s.WakeAt,
+					NodeOutput: result.Output.ItemsByOutputIndex,
 				}
 				return ExecuteNodeResult{}, nil
 			}
