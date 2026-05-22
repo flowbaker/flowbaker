@@ -24,6 +24,7 @@ const (
 	NodePropertyType_ListTagInput  NodePropertyType = "list_tag_input"
 	NodePropertyType_APIDefRef     NodePropertyType = "api_definition_ref"
 	NodePropertyType_APIEndpointRef NodePropertyType = "api_endpoint_ref"
+	NodePropertyType_WebhookEndpointRef NodePropertyType = "webhook_endpoint_ref"
 )
 
 const (

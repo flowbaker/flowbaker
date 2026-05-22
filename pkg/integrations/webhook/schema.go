@@ -130,6 +130,47 @@ var (
 				Description: "Triggered when an HTTP request is received",
 				Properties: []domain.NodeProperty{
 					{
+						Key:         "api_definition_id",
+						Name:        "Managed API",
+						Description: "Optional. Pick a managed API to source the path and/or auth from.",
+						Required:    false,
+						Type:        domain.NodePropertyType_APIDefRef,
+					},
+					{
+						Key:         "auth_mode",
+						Name:        "Authentication",
+						Description: "Where auth comes from.",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Default:     "credential",
+						Options: []domain.NodePropertyOption{
+							{Label: "Credential", Value: "credential"},
+							{Label: "Managed API", Value: "managed_api"},
+						},
+					},
+					{
+						Key:         "path_source",
+						Name:        "Path Source",
+						Description: "Where the trigger path comes from.",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Default:     "custom",
+						Options: []domain.NodePropertyOption{
+							{Label: "Custom", Value: "custom"},
+							{Label: "From API", Value: "from_api"},
+						},
+					},
+					{
+						Key:         "webhook_endpoint_id",
+						Name:        "Endpoint",
+						Description: "Pick an endpoint from the managed API.",
+						Type:        domain.NodePropertyType_WebhookEndpointRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "path_source",
+							Value:       "from_api",
+						},
+					},
+					{
 						Key:         "path",
 						Name:        "Path",
 						Description: "The path of the request",
@@ -137,6 +178,10 @@ var (
 						Type:        domain.NodePropertyType_Endpoint,
 						EndpointPropertyOpts: &domain.EndpointPropertyOptions{
 							AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
+						},
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "path_source",
+							Value:       "custom",
 						},
 					},
 					{
@@ -154,29 +199,6 @@ var (
 								Label: "Use Send Response Node",
 								Value: RespondType_SendResponse,
 							},
-						},
-					},
-					{
-						Key:         "auth_mode",
-						Name:        "Authentication",
-						Description: "Where auth comes from.",
-						Required:    true,
-						Type:        domain.NodePropertyType_String,
-						Default:     "credential",
-						Options: []domain.NodePropertyOption{
-							{Label: "Credential", Value: "credential"},
-							{Label: "Managed API", Value: "managed_api"},
-						},
-					},
-					{
-						Key:         "api_definition_id",
-						Name:        "Managed API",
-						Description: "Pick a managed API.",
-						Required:    false,
-						Type:        domain.NodePropertyType_APIDefRef,
-						DependsOn: &domain.DependsOn{
-							PropertyKey: "auth_mode",
-							Value:       "managed_api",
 						},
 					},
 				},
