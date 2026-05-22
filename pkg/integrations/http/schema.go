@@ -158,11 +158,45 @@ var (
 				Description: "Make an HTTP GET request",
 				Properties: []domain.NodeProperty{
 					{
+						Key:         "url_source",
+						Name:        "URL Source",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Default:     "custom",
+						Options: []domain.NodePropertyOption{
+							{Label: "Custom", Value: "custom"},
+							{Label: "From API", Value: "from_api"},
+						},
+					},
+					{
+						Key:         "api_definition_id",
+						Name:        "Managed API",
+						Description: "Pick a managed API definition to source URL from.",
+						Type:        domain.NodePropertyType_APIDefRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "from_api",
+						},
+					},
+					{
+						Key:         "api_endpoint_id",
+						Name:        "Endpoint",
+						Type:        domain.NodePropertyType_APIEndpointRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "from_api",
+						},
+					},
+					{
 						Key:         "url",
 						Name:        "URL",
 						Description: "The URL to send the request to",
 						Required:    true,
 						Type:        domain.NodePropertyType_String,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "custom",
+						},
 					},
 					{
 						Key:         "query_params",
@@ -227,11 +261,45 @@ var (
 				Description: "Make an HTTP POST request",
 				Properties: []domain.NodeProperty{
 					{
+						Key:         "url_source",
+						Name:        "URL Source",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Default:     "custom",
+						Options: []domain.NodePropertyOption{
+							{Label: "Custom", Value: "custom"},
+							{Label: "From API", Value: "from_api"},
+						},
+					},
+					{
+						Key:         "api_definition_id",
+						Name:        "Managed API",
+						Description: "Pick a managed API definition to source URL from.",
+						Type:        domain.NodePropertyType_APIDefRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "from_api",
+						},
+					},
+					{
+						Key:         "api_endpoint_id",
+						Name:        "Endpoint",
+						Type:        domain.NodePropertyType_APIEndpointRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "from_api",
+						},
+					},
+					{
 						Key:         "url",
 						Name:        "URL",
 						Description: "The URL to send the request to",
 						Required:    true,
 						Type:        domain.NodePropertyType_String,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "custom",
+						},
 					},
 					{
 						Key:         "query_params",
@@ -417,11 +485,45 @@ var (
 				Description: "Make an HTTP PUT request",
 				Properties: []domain.NodeProperty{
 					{
+						Key:         "url_source",
+						Name:        "URL Source",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Default:     "custom",
+						Options: []domain.NodePropertyOption{
+							{Label: "Custom", Value: "custom"},
+							{Label: "From API", Value: "from_api"},
+						},
+					},
+					{
+						Key:         "api_definition_id",
+						Name:        "Managed API",
+						Description: "Pick a managed API definition to source URL from.",
+						Type:        domain.NodePropertyType_APIDefRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "from_api",
+						},
+					},
+					{
+						Key:         "api_endpoint_id",
+						Name:        "Endpoint",
+						Type:        domain.NodePropertyType_APIEndpointRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "from_api",
+						},
+					},
+					{
 						Key:         "url",
 						Name:        "URL",
 						Description: "The URL to send the request to",
 						Required:    true,
 						Type:        domain.NodePropertyType_String,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "custom",
+						},
 					},
 					{
 						Key:         "query_params",
@@ -607,11 +709,45 @@ var (
 				Description: "Make an HTTP PATCH request",
 				Properties: []domain.NodeProperty{
 					{
+						Key:         "url_source",
+						Name:        "URL Source",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Default:     "custom",
+						Options: []domain.NodePropertyOption{
+							{Label: "Custom", Value: "custom"},
+							{Label: "From API", Value: "from_api"},
+						},
+					},
+					{
+						Key:         "api_definition_id",
+						Name:        "Managed API",
+						Description: "Pick a managed API definition to source URL from.",
+						Type:        domain.NodePropertyType_APIDefRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "from_api",
+						},
+					},
+					{
+						Key:         "api_endpoint_id",
+						Name:        "Endpoint",
+						Type:        domain.NodePropertyType_APIEndpointRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "from_api",
+						},
+					},
+					{
 						Key:         "url",
 						Name:        "URL",
 						Description: "The URL to send the request to",
 						Required:    true,
 						Type:        domain.NodePropertyType_String,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "custom",
+						},
 					},
 					{
 						Key:         "query_params",
@@ -797,11 +933,45 @@ var (
 				Description: "Make an HTTP DELETE request",
 				Properties: []domain.NodeProperty{
 					{
+						Key:         "url_source",
+						Name:        "URL Source",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Default:     "custom",
+						Options: []domain.NodePropertyOption{
+							{Label: "Custom", Value: "custom"},
+							{Label: "From API", Value: "from_api"},
+						},
+					},
+					{
+						Key:         "api_definition_id",
+						Name:        "Managed API",
+						Description: "Pick a managed API definition to source URL from.",
+						Type:        domain.NodePropertyType_APIDefRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "from_api",
+						},
+					},
+					{
+						Key:         "api_endpoint_id",
+						Name:        "Endpoint",
+						Type:        domain.NodePropertyType_APIEndpointRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "from_api",
+						},
+					},
+					{
 						Key:         "url",
 						Name:        "URL",
 						Description: "The URL to send the request to",
 						Required:    true,
 						Type:        domain.NodePropertyType_String,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "url_source",
+							Value:       "custom",
+						},
 					},
 					{
 						Key:         "query_params",

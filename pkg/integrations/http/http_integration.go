@@ -20,76 +20,82 @@ import (
 )
 
 type HTTPIntegrationCreator struct {
-	credentialGetter          domain.CredentialGetter[domain.OAuthAccountSensitiveData]
-	httpCredentialGetter      domain.CredentialGetter[HTTPDecryptionResult]
-	binder                    domain.IntegrationParameterBinder
-	integrationSelector       domain.IntegrationSelector
-	executorStorageManager    domain.ExecutorStorageManager
-	executorCredentialManager domain.ExecutorCredentialManager
+	credentialGetter             domain.CredentialGetter[domain.OAuthAccountSensitiveData]
+	httpCredentialGetter         domain.CredentialGetter[HTTPDecryptionResult]
+	binder                       domain.IntegrationParameterBinder
+	integrationSelector          domain.IntegrationSelector
+	executorStorageManager       domain.ExecutorStorageManager
+	executorCredentialManager    domain.ExecutorCredentialManager
+	executorAPIDefinitionManager domain.ExecutorAPIDefinitionManager
 }
 
 func NewHTTPIntegrationCreator(deps domain.IntegrationDeps) domain.IntegrationCreator {
 	return &HTTPIntegrationCreator{
-		credentialGetter:          managers.NewExecutorCredentialGetter[domain.OAuthAccountSensitiveData](deps.ExecutorCredentialManager),
-		httpCredentialGetter:      managers.NewExecutorCredentialGetter[HTTPDecryptionResult](deps.ExecutorCredentialManager),
-		binder:                    deps.ParameterBinder,
-		integrationSelector:       deps.IntegrationSelector,
-		executorStorageManager:    deps.ExecutorStorageManager,
-		executorCredentialManager: deps.ExecutorCredentialManager,
+		credentialGetter:             managers.NewExecutorCredentialGetter[domain.OAuthAccountSensitiveData](deps.ExecutorCredentialManager),
+		httpCredentialGetter:         managers.NewExecutorCredentialGetter[HTTPDecryptionResult](deps.ExecutorCredentialManager),
+		binder:                       deps.ParameterBinder,
+		integrationSelector:          deps.IntegrationSelector,
+		executorStorageManager:       deps.ExecutorStorageManager,
+		executorCredentialManager:    deps.ExecutorCredentialManager,
+		executorAPIDefinitionManager: deps.ExecutorAPIDefinitionManager,
 	}
 }
 
 type HTTPIntegrationDependencies struct {
-	CredentialGetter          domain.CredentialGetter[domain.OAuthAccountSensitiveData]
-	HTTPCredentialGetter      domain.CredentialGetter[HTTPDecryptionResult]
-	ParameterBinder           domain.IntegrationParameterBinder
-	ExecutorCredentialManager domain.ExecutorCredentialManager
-	IntegrationSelector       domain.IntegrationSelector
-	CredentialID              string
-	WorkspaceID               string
-	ExecutorStorageManager    domain.ExecutorStorageManager
+	CredentialGetter             domain.CredentialGetter[domain.OAuthAccountSensitiveData]
+	HTTPCredentialGetter         domain.CredentialGetter[HTTPDecryptionResult]
+	ParameterBinder              domain.IntegrationParameterBinder
+	ExecutorCredentialManager    domain.ExecutorCredentialManager
+	ExecutorAPIDefinitionManager domain.ExecutorAPIDefinitionManager
+	IntegrationSelector          domain.IntegrationSelector
+	CredentialID                 string
+	WorkspaceID                  string
+	ExecutorStorageManager       domain.ExecutorStorageManager
 }
 
 type HTTPIntegration struct {
-	binder                    domain.IntegrationParameterBinder
-	credentialGetter          domain.CredentialGetter[domain.OAuthAccountSensitiveData]
-	httpCredentialGetter      domain.CredentialGetter[HTTPDecryptionResult]
-	integrationSelector       domain.IntegrationSelector
-	executionStorageManager   domain.ExecutorStorageManager
-	executorCredentialManager domain.ExecutorCredentialManager
-	client                    *http.Client
-	bodyReader                io.Reader
-	credentialID              string
-	workspaceID               string
+	binder                       domain.IntegrationParameterBinder
+	credentialGetter             domain.CredentialGetter[domain.OAuthAccountSensitiveData]
+	httpCredentialGetter         domain.CredentialGetter[HTTPDecryptionResult]
+	integrationSelector          domain.IntegrationSelector
+	executionStorageManager      domain.ExecutorStorageManager
+	executorCredentialManager    domain.ExecutorCredentialManager
+	executorAPIDefinitionManager domain.ExecutorAPIDefinitionManager
+	client                       *http.Client
+	bodyReader                   io.Reader
+	credentialID                 string
+	workspaceID                  string
 
 	actionFuncs map[domain.IntegrationActionType]func(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error)
 }
 
 func (c *HTTPIntegrationCreator) CreateIntegration(ctx context.Context, p domain.CreateIntegrationParams) (domain.IntegrationExecutor, error) {
 	return NewHTTPIntegration(HTTPIntegrationDependencies{
-		WorkspaceID:               p.WorkspaceID,
-		CredentialGetter:          c.credentialGetter,
-		ParameterBinder:           c.binder,
-		IntegrationSelector:       c.integrationSelector,
-		CredentialID:              p.CredentialID,
-		ExecutorStorageManager:    c.executorStorageManager,
-		HTTPCredentialGetter:      c.httpCredentialGetter,
-		ExecutorCredentialManager: c.executorCredentialManager,
+		WorkspaceID:                  p.WorkspaceID,
+		CredentialGetter:             c.credentialGetter,
+		ParameterBinder:              c.binder,
+		IntegrationSelector:          c.integrationSelector,
+		CredentialID:                 p.CredentialID,
+		ExecutorStorageManager:       c.executorStorageManager,
+		HTTPCredentialGetter:         c.httpCredentialGetter,
+		ExecutorCredentialManager:    c.executorCredentialManager,
+		ExecutorAPIDefinitionManager: c.executorAPIDefinitionManager,
 	})
 }
 
 func NewHTTPIntegration(deps HTTPIntegrationDependencies) (*HTTPIntegration, error) {
 	integration := &HTTPIntegration{
-		binder:                    deps.ParameterBinder,
-		credentialID:              deps.CredentialID,
-		credentialGetter:          deps.CredentialGetter,
-		httpCredentialGetter:      deps.HTTPCredentialGetter,
-		integrationSelector:       deps.IntegrationSelector,
-		executionStorageManager:   deps.ExecutorStorageManager,
-		workspaceID:               deps.WorkspaceID,
-		client:                    &http.Client{},
-		bodyReader:                nil,
-		executorCredentialManager: deps.ExecutorCredentialManager,
+		binder:                       deps.ParameterBinder,
+		credentialID:                 deps.CredentialID,
+		credentialGetter:             deps.CredentialGetter,
+		httpCredentialGetter:         deps.HTTPCredentialGetter,
+		integrationSelector:          deps.IntegrationSelector,
+		executionStorageManager:      deps.ExecutorStorageManager,
+		workspaceID:                  deps.WorkspaceID,
+		client:                       &http.Client{},
+		bodyReader:                   nil,
+		executorCredentialManager:    deps.ExecutorCredentialManager,
+		executorAPIDefinitionManager: deps.ExecutorAPIDefinitionManager,
 	}
 
 	actionFuncs := map[domain.IntegrationActionType]func(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error){
@@ -116,6 +122,9 @@ type HTTPRequestParams struct {
 	MultipartFormData  []MultipartFormData  `json:"multipart_form_data_body"`
 	URLEncodedFormData []URLEncodedFormData `json:"urlencoded_form_data_body"`
 	File               domain.FileItem      `json:"file_body"`
+	APIDefinitionID    string               `json:"api_definition_id"`
+	APIEndpointID      string               `json:"api_endpoint_id"`
+	URLSource          string               `json:"url_source"`
 }
 
 type HTTPBodyType string
@@ -219,6 +228,65 @@ const (
 	ContentType_Application_OctetStream        ContentType = "application/octet-stream"
 )
 
+func (i *HTTPIntegration) applyAPIDefinition(ctx context.Context, p *HTTPRequestParams) error {
+	if p.URLSource != "from_api" {
+		return nil
+	}
+	if p.APIDefinitionID == "" || i.executorAPIDefinitionManager == nil {
+		return nil
+	}
+
+	def, err := i.executorAPIDefinitionManager.Load(ctx, p.APIDefinitionID)
+	if err != nil {
+		return fmt.Errorf("load api definition: %w", err)
+	}
+
+	p.URL = resolveURLFromAPI(def, p.APIEndpointID, p.URL)
+	return nil
+}
+
+func resolveURLFromAPI(def domain.ResolvedAPIDefinition, endpointID, currentURL string) string {
+	if endpointID != "" {
+		if ep, ok := findEndpoint(def.Endpoints, endpointID); ok {
+			return joinURL(def.BaseURL, ep.Path)
+		}
+	}
+	if currentURL == "" {
+		return def.BaseURL
+	}
+	if isAbsoluteURL(currentURL) {
+		return currentURL
+	}
+	return joinURL(def.BaseURL, currentURL)
+}
+
+func findEndpoint(endpoints []domain.ResolvedAPIEndpoint, id string) (domain.ResolvedAPIEndpoint, bool) {
+	for _, e := range endpoints {
+		if endpointKey(e) == id {
+			return e, true
+		}
+	}
+	return domain.ResolvedAPIEndpoint{}, false
+}
+
+func endpointKey(e domain.ResolvedAPIEndpoint) string {
+	return strings.ToUpper(e.Method) + " " + e.Path
+}
+
+func isAbsoluteURL(u string) bool {
+	return strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://")
+}
+
+func joinURL(base, path string) string {
+	if base == "" {
+		return path
+	}
+	if path == "" {
+		return base
+	}
+	return strings.TrimRight(base, "/") + "/" + strings.TrimLeft(path, "/")
+}
+
 func (i *HTTPIntegration) Execute(ctx context.Context, params domain.IntegrationInput) (domain.IntegrationOutput, error) {
 	executeHttpParams := GetHTTPCredentialClientParams{}
 
@@ -261,6 +329,10 @@ func (i *HTTPIntegration) ExecuteGet(ctx context.Context, params domain.Integrat
 		p := HTTPRequestParams{}
 		err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
 		if err != nil {
+			return domain.IntegrationOutput{}, err
+		}
+
+		if err := i.applyAPIDefinition(ctx, &p); err != nil {
 			return domain.IntegrationOutput{}, err
 		}
 
@@ -310,6 +382,10 @@ func (i *HTTPIntegration) ExecutePost(ctx context.Context, params domain.Integra
 		p := HTTPRequestParams{}
 		err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
 		if err != nil {
+			return domain.IntegrationOutput{}, err
+		}
+
+		if err := i.applyAPIDefinition(ctx, &p); err != nil {
 			return domain.IntegrationOutput{}, err
 		}
 
@@ -376,6 +452,10 @@ func (i *HTTPIntegration) ExecutePut(ctx context.Context, params domain.Integrat
 			return domain.IntegrationOutput{}, err
 		}
 
+		if err := i.applyAPIDefinition(ctx, &p); err != nil {
+			return domain.IntegrationOutput{}, err
+		}
+
 		bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
 			Headers:            p.Headers,
 			BodyType:           HTTPBodyType(p.BodyType),
@@ -438,6 +518,10 @@ func (i *HTTPIntegration) ExecutePatch(ctx context.Context, params domain.Integr
 			return domain.IntegrationOutput{}, err
 		}
 
+		if err := i.applyAPIDefinition(ctx, &p); err != nil {
+			return domain.IntegrationOutput{}, err
+		}
+
 		bodyReader, headers, err := i.setRequestBody(ctx, setRequestBodyParams{
 			Headers:            p.Headers,
 			BodyType:           HTTPBodyType(p.BodyType),
@@ -497,6 +581,10 @@ func (i *HTTPIntegration) ExecuteDelete(ctx context.Context, params domain.Integ
 		p := HTTPRequestParams{}
 		err := i.binder.BindToStruct(ctx, item, &p, params.IntegrationParams.Settings)
 		if err != nil {
+			return domain.IntegrationOutput{}, err
+		}
+
+		if err := i.applyAPIDefinition(ctx, &p); err != nil {
 			return domain.IntegrationOutput{}, err
 		}
 

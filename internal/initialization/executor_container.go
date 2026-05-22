@@ -97,16 +97,19 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		Client: config.FlowbakerClient,
 	})
 
+	executorAPIDefinitionManager := managers.NewExecutorAPIDefinitionManager(config.FlowbakerClient)
+
 	integrationDeps := domain.IntegrationDeps{
-		FlowbakerClient:            config.FlowbakerClient,
-		IntegrationSelector:        integrationSelector,
-		ExecutorStorageManager:     executorStorageManager,
-		ExecutorCredentialManager:  executorCredentialManager,
-		ParameterBinder:            kangarooBinder,
-		ExecutorTaskPublisher:      executorTaskPublisher,
-		ExecutorIntegrationManager: executorIntegrationManager,
-		ExecutorKnowledgeManager:   executorKnowledgeManager,
-		ExecutorModelManager:       executorModelManager,
+		FlowbakerClient:              config.FlowbakerClient,
+		IntegrationSelector:          integrationSelector,
+		ExecutorStorageManager:       executorStorageManager,
+		ExecutorCredentialManager:    executorCredentialManager,
+		ParameterBinder:              kangarooBinder,
+		ExecutorTaskPublisher:        executorTaskPublisher,
+		ExecutorIntegrationManager:   executorIntegrationManager,
+		ExecutorKnowledgeManager:     executorKnowledgeManager,
+		ExecutorModelManager:         executorModelManager,
+		ExecutorAPIDefinitionManager: executorAPIDefinitionManager,
 	}
 
 	if err := registerIntegrations(integrationSelector, integrationDeps); err != nil {

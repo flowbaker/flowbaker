@@ -444,6 +444,32 @@ type UpdateOAuthAccountMetadataResponse struct {
 	Message string `json:"message"`
 }
 
+type ResolvedAPIDefinition struct {
+	ID          string                  `json:"id"`
+	WorkspaceID string                  `json:"workspace_id"`
+	Name        string                  `json:"name"`
+	Type        string                  `json:"type"`
+	BaseURL     string                  `json:"base_url"`
+	Endpoints   []ResolvedAPIEndpoint   `json:"endpoints"`
+	Auth        ResolvedAPIAuth         `json:"auth"`
+}
+
+type ResolvedAPIEndpoint struct {
+	Path    string `json:"path"`
+	Method  string `json:"method"`
+	Summary string `json:"summary,omitempty"`
+}
+
+type ResolvedAPIAuth struct {
+	Type          string `json:"type"`
+	KeyLocation   string `json:"key_location,omitempty"`
+	KeyName       string `json:"key_name,omitempty"`
+	HMACAlgorithm string `json:"hmac_algorithm,omitempty"`
+	HMACHeader    string `json:"hmac_header,omitempty"`
+	HMACPrefix    string `json:"hmac_prefix,omitempty"`
+	Secret        string `json:"secret,omitempty"`
+}
+
 type ConversationStatus string
 
 const (
