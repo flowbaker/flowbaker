@@ -15,7 +15,7 @@ require (
 	github.com/clbanning/mxj/v2 v2.7.0
 	github.com/dop251/goja v0.0.0-20250630131328-58d95d85e994
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
-	github.com/gofiber/fiber/v2 v2.52.10
+	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/gofiber/fiber/v3 v3.1.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-github/v57 v57.0.0
