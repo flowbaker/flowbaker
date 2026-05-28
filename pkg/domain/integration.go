@@ -268,10 +268,9 @@ type IntegrationDeps struct {
 	IntegrationSelector          IntegrationSelector
 	ExecutorStorageManager       ExecutorStorageManager
 	ExecutorCredentialManager    ExecutorCredentialManager
-	ExecutorIntegrationManager   ExecutorIntegrationManager
-	ExecutorKnowledgeManager     ExecutorKnowledgeManager
-	ExecutorModelManager         ExecutorModelManager
-	ExecutorAPIDefinitionManager ExecutorAPIDefinitionManager
+	ExecutorIntegrationManager ExecutorIntegrationManager
+	ExecutorKnowledgeManager   ExecutorKnowledgeManager
+	ExecutorModelManager       ExecutorModelManager
 }
 
 type IntegrationParameterBinder interface {

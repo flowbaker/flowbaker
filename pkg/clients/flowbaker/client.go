@@ -45,7 +45,6 @@ type ClientInterface interface {
 	GetCredential(ctx context.Context, workspaceID, credentialID string) (*EncryptedCredential, error)
 	GetFullCredential(ctx context.Context, workspaceID, credentialID string) (*EncryptedFullCredential, error)
 
-	GetResolvedAPIDefinition(ctx context.Context, workspaceID, apiDefinitionID string) (*ResolvedAPIDefinition, error)
 	BindParametersToStruct(ctx context.Context, workspaceID string, item any, nodeSettings map[string]any) ([]byte, error)
 	GetExecutionFile(ctx context.Context, req GetExecutionFileRequest) (ExecutionWorkspaceFile, error)
 
@@ -347,26 +346,6 @@ func (c *Client) GetCredential(ctx context.Context, workspaceID, credentialID st
 	}
 
 	return &credential, nil
-}
-
-func (c *Client) GetResolvedAPIDefinition(ctx context.Context, workspaceID, apiDefinitionID string) (*ResolvedAPIDefinition, error) {
-	if c.config.ExecutorID == "" {
-		return nil, fmt.Errorf("executor ID is required for api definition requests")
-	}
-
-	path := fmt.Sprintf("/v1/workspaces/%s/api-definitions/%s/resolved", workspaceID, apiDefinitionID)
-
-	resp, err := c.doRequestWithExecutorID(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get resolved api definition: %w", err)
-	}
-
-	var def ResolvedAPIDefinition
-	if err := c.handleResponse(resp, &def); err != nil {
-		return nil, fmt.Errorf("failed to process resolved api definition response: %w", err)
-	}
-
-	return &def, nil
 }
 
 // GetFullCredential retrieves an encrypted full credential for the executor
