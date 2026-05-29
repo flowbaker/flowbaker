@@ -27,6 +27,7 @@ type ClientInterface interface {
 
 	// Event operations
 	PublishExecutionEvent(ctx context.Context, workspaceID string, req *PublishEventRequest) error
+	PersistNodeExecution(ctx context.Context, workspaceID string, req *PersistNodeExecutionRequest) error
 
 	// Task publishing operations (for executor clients)
 	EnqueueTask(ctx context.Context, workspaceID string, req *EnqueueTaskRequest) (*EnqueueTaskResponse, error)
@@ -171,6 +172,25 @@ func (c *Client) PauseWorkflowExecution(ctx context.Context, req *PauseExecution
 	}
 	if err := c.handleResponse(resp, &result); err != nil {
 		return fmt.Errorf("failed to process pause response: %w", err)
+	}
+
+	return nil
+}
+
+// PersistNodeExecution writes a single node execution entry incrementally
+func (c *Client) PersistNodeExecution(ctx context.Context, workspaceID string, req *PersistNodeExecutionRequest) error {
+	path := fmt.Sprintf("/v1/workspaces/%s/executions/%s/node-executions", workspaceID, req.ExecutionID)
+
+	resp, err := c.doRequest(ctx, "POST", path, req)
+	if err != nil {
+		return fmt.Errorf("failed to persist node execution: %w", err)
+	}
+
+	var result struct {
+		Success bool `json:"success"`
+	}
+	if err := c.handleResponse(resp, &result); err != nil {
+		return fmt.Errorf("failed to process persist node execution response: %w", err)
 	}
 
 	return nil

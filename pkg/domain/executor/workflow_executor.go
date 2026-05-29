@@ -149,11 +149,19 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		deps.Workflow.ID,
 		deps.ExecutionID,
 	)
+	incrementalPersister := NewIncrementalPersister(
+		deps.ExecutorClient,
+		deps.Workflow.WorkspaceID,
+		deps.ExecutionID,
+		deps.IsTestingWorkflow,
+		deps.EnableEvents,
+	)
 	streamBroadcaster := NewStreamEventBroadcaster(streamEventPublisher)
 
 	observer.Subscribe(historyRecorder)
 	observer.Subscribe(usageCollector)
 	observer.Subscribe(eventBroadcaster)
+	observer.Subscribe(incrementalPersister)
 	observer.SubscribeStream(streamBroadcaster)
 
 	waitingTasks := []WaitingExecutionTask{}
@@ -481,8 +489,9 @@ func (w *WorkflowExecutor) ExecuteNode(ctx context.Context, p ExecuteNodeParams)
 	nodeExecutionStartedAt := time.Now()
 
 	if err := w.observer.Notify(ctx, NodeExecutionStartedEvent{
-		NodeID:    task.NodeID,
-		Timestamp: nodeExecutionStartedAt,
+		NodeID:            task.NodeID,
+		ItemsByInputIndex: task.ItemsByInputIndex,
+		Timestamp:         nodeExecutionStartedAt,
 	}); err != nil {
 		log.Error().Err(err).Msg("Failed to notify node execution started")
 	}

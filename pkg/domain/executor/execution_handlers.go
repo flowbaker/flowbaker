@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/flowbaker/flowbaker/pkg/clients/flowbaker"
 	"github.com/flowbaker/flowbaker/pkg/domain"
+	"github.com/flowbaker/flowbaker/pkg/domain/mappers"
 	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
 )
@@ -60,6 +62,92 @@ func (h *HistoryRecorder) GetHistoryEntries() []domain.NodeExecutionEntry {
 	return h.historyEntries
 }
 
+// IncrementalPersister writes each node entry to the API as soon as it completes,
+// so the running-node UI can fetch upstream data before workflow finishes.
+type IncrementalPersister struct {
+	client            flowbaker.ClientInterface
+	workspaceID       string
+	executionID       string
+	isTestingWorkflow bool
+	enabled           bool
+}
+
+func NewIncrementalPersister(
+	client flowbaker.ClientInterface,
+	workspaceID string,
+	executionID string,
+	isTestingWorkflow bool,
+	enabled bool,
+) *IncrementalPersister {
+	return &IncrementalPersister{
+		client:            client,
+		workspaceID:       workspaceID,
+		executionID:       executionID,
+		isTestingWorkflow: isTestingWorkflow,
+		enabled:           enabled,
+	}
+}
+
+func (p *IncrementalPersister) HandleEvent(ctx context.Context, event domain.ExecutionEvent) error {
+	if !p.enabled {
+		return nil
+	}
+
+	domainEntry, ok := buildEntryFromEvent(event)
+	if !ok {
+		return nil
+	}
+
+	entry := mappers.DomainNodeExecutionEntryToFlowbaker(domainEntry)
+
+	go func() {
+		bgCtx := context.Background()
+		err := p.client.PersistNodeExecution(bgCtx, p.workspaceID, &flowbaker.PersistNodeExecutionRequest{
+			ExecutionID:       p.executionID,
+			IsTestingWorkflow: p.isTestingWorkflow,
+			Entry:             entry,
+		})
+		if err != nil {
+			log.Warn().Err(err).
+				Str("execution_id", p.executionID).
+				Str("node_id", entry.NodeID).
+				Msg("Incremental persist failed")
+		}
+	}()
+
+	return nil
+}
+
+func buildEntryFromEvent(event domain.ExecutionEvent) (domain.NodeExecutionEntry, bool) {
+	switch e := event.(type) {
+	case NodeExecutionStartedEvent:
+		return domain.NodeExecutionEntry{
+			NodeID:            e.NodeID,
+			ItemsByInputIndex: e.ItemsByInputIndex,
+			EventType:         domain.NodeExecutionStarted,
+			Timestamp:         e.Timestamp.UnixNano(),
+		}, true
+	case NodeExecutionCompletedEvent:
+		return domain.NodeExecutionEntry{
+			NodeID:             e.NodeID,
+			ItemsByInputIndex:  e.ItemsByInputIndex,
+			ItemsByOutputIndex: e.ItemsByOutputIndex,
+			EventType:          domain.NodeExecuted,
+			Timestamp:          e.EndedAt.UnixNano(),
+			ExecutionOrder:     int(e.ExecutionOrder),
+		}, true
+	case NodeExecutionFailedEvent:
+		return domain.NodeExecutionEntry{
+			NodeID:            e.NodeID,
+			ItemsByInputIndex: e.ItemsByInputIndex,
+			EventType:         domain.NodeFailed,
+			Error:             e.Error.Error(),
+			Timestamp:         e.Timestamp.UnixNano(),
+		}, true
+	}
+	return domain.NodeExecutionEntry{}, false
+}
+
 // EventBroadcaster publishes events to external event publisher
 type EventBroadcaster struct {
 	orderedEventPublisher domain.EventPublisher
@@ -108,8 +196,6 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			WorkflowExecutionID: b.executionID,
 			NodeID:              e.NodeID,
 			Timestamp:           e.EndedAt.UnixNano(),
-			ItemsByInputIndex:   e.ItemsByInputIndex,
-			ItemsByOutputIndex:  e.ItemsByOutputIndex,
 			ExecutionOrder:      int(e.ExecutionOrder),
 			IsReExecution:       e.IsReExecution,
 			IsTesting:           e.IsTesting,
@@ -123,8 +209,6 @@ func (b *EventBroadcaster) HandleEvent(ctx context.Context, event domain.Executi
 			NodeID:              e.NodeID,
 			Timestamp:           e.Timestamp.UnixNano(),
 			Error:               e.Error.Error(),
-			ItemsByInputIndex:   e.ItemsByInputIndex,
-			ItemsByOutputIndex:  domain.NodeItemsMap{},
 			IsReExecution:       e.IsReExecution,
 			IsFromErrorTrigger:  e.IsFromErrorTrigger,
 			IsTesting:           e.IsTesting,
