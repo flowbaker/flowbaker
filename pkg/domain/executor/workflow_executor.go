@@ -153,7 +153,6 @@ func NewWorkflowExecutor(deps WorkflowExecutorDeps) (WorkflowExecutor, error) {
 		deps.ExecutorClient,
 		deps.Workflow.WorkspaceID,
 		deps.ExecutionID,
-		deps.IsTestingWorkflow,
 		deps.EnableEvents,
 	)
 	streamBroadcaster := NewStreamEventBroadcaster(streamEventPublisher)

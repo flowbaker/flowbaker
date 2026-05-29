@@ -61,9 +61,8 @@ type PublishEventRequest struct {
 
 // PersistNodeExecutionRequest represents an incremental node-level persist call
 type PersistNodeExecutionRequest struct {
-	ExecutionID       string             `json:"execution_id"`
-	IsTestingWorkflow bool               `json:"is_testing_workflow"`
-	Entry             NodeExecutionEntry `json:"entry"`
+	ExecutionID string             `json:"execution_id"`
+	Entry       NodeExecutionEntry `json:"entry"`
 }
 
 // CompleteExecutionRequest represents the request to complete a workflow execution

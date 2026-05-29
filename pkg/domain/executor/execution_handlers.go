@@ -65,26 +65,23 @@ func (h *HistoryRecorder) GetHistoryEntries() []domain.NodeExecutionEntry {
 // IncrementalPersister writes each node entry to the API as soon as it completes,
 // so the running-node UI can fetch upstream data before workflow finishes.
 type IncrementalPersister struct {
-	client            flowbaker.ClientInterface
-	workspaceID       string
-	executionID       string
-	isTestingWorkflow bool
-	enabled           bool
+	client      flowbaker.ClientInterface
+	workspaceID string
+	executionID string
+	enabled     bool
 }
 
 func NewIncrementalPersister(
 	client flowbaker.ClientInterface,
 	workspaceID string,
 	executionID string,
-	isTestingWorkflow bool,
 	enabled bool,
 ) *IncrementalPersister {
 	return &IncrementalPersister{
-		client:            client,
-		workspaceID:       workspaceID,
-		executionID:       executionID,
-		isTestingWorkflow: isTestingWorkflow,
-		enabled:           enabled,
+		client:      client,
+		workspaceID: workspaceID,
+		executionID: executionID,
+		enabled:     enabled,
 	}
 }
 
@@ -103,9 +100,8 @@ func (p *IncrementalPersister) HandleEvent(ctx context.Context, event domain.Exe
 	go func() {
 		bgCtx := context.Background()
 		err := p.client.PersistNodeExecution(bgCtx, p.workspaceID, &flowbaker.PersistNodeExecutionRequest{
-			ExecutionID:       p.executionID,
-			IsTestingWorkflow: p.isTestingWorkflow,
-			Entry:             entry,
+			ExecutionID: p.executionID,
+			Entry:       entry,
 		})
 		if err != nil {
 			log.Warn().Err(err).
