@@ -21,6 +21,7 @@ type TestingEvent interface {
 
 type NodeExecutionStartedEvent struct {
 	NodeID             string
+	ItemsByInputIndex  domain.NodeItemsMap
 	Timestamp          time.Time
 	IsReExecution      bool
 	IsTesting          bool
