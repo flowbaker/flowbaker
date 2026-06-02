@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "description": "Shared CEL parity vectors. Canonical here in flowbaker; mirrored byte-equal into workflow-editor-react/src/components/Node/ExpressionInput/cel/vectors.json. Both repos run their own vectors runner in CI. Each vector wraps `expr` as a template ({{ ... }}) so both sides exercise the production template/eval path. Comparison rule = deep-equal after JSON-roundtrip.",
+  "vectors": [
+    { "id": "arith/int-add", "expr": "1 + 2", "scope": {}, "expect": { "value": 3 } },
+    { "id": "arith/int-sub", "expr": "10 - 3", "scope": {}, "expect": { "value": 7 } },
+    { "id": "arith/int-mul", "expr": "4 * 5", "scope": {}, "expect": { "value": 20 } },
+    { "id": "arith/int-div", "expr": "10 / 4", "scope": {}, "expect": { "value": 2 } },
+    { "id": "arith/int-mod", "expr": "10 % 3", "scope": {}, "expect": { "value": 1 } },
+    { "id": "arith/double-add", "expr": "1.5 + 2.5", "scope": {}, "expect": { "value": 4 } },
+    { "id": "arith/double-div", "expr": "10.0 / 4.0", "scope": {}, "expect": { "value": 2.5 } },
+    { "id": "arith/string-concat", "expr": "\"a\" + \"b\"", "scope": {}, "expect": { "value": "ab" } },
+
+    { "id": "cmp/lt-true", "expr": "1 < 2", "scope": {}, "expect": { "value": true } },
+    { "id": "cmp/gt-false", "expr": "5 > 10", "scope": {}, "expect": { "value": false } },
+    { "id": "cmp/eq-string", "expr": "\"a\" == \"a\"", "scope": {}, "expect": { "value": true } },
+    { "id": "cmp/neq", "expr": "1 != 2", "scope": {}, "expect": { "value": true } },
+
+    { "id": "logical/and-tt", "expr": "true && true", "scope": {}, "expect": { "value": true } },
+    { "id": "logical/or-ft", "expr": "false || true", "scope": {}, "expect": { "value": true } },
+    { "id": "logical/not", "expr": "!false", "scope": {}, "expect": { "value": true } },
+
+    { "id": "ternary/true", "expr": "true ? \"yes\" : \"no\"", "scope": {}, "expect": { "value": "yes" } },
+    { "id": "ternary/scope-adult", "expr": "item.age >= 18 ? \"adult\" : \"minor\"", "scope": { "item": { "age": 30 } }, "expect": { "value": "adult" } },
+    { "id": "ternary/scope-minor", "expr": "item.age >= 18 ? \"adult\" : \"minor\"", "scope": { "item": { "age": 5 } }, "expect": { "value": "minor" } },
+
+    { "id": "member/nested", "expr": "item.addr.city", "scope": { "item": { "addr": { "city": "Istanbul" } } }, "expect": { "value": "Istanbul" } },
+    { "id": "member/index", "expr": "item.tags[0]", "scope": { "item": { "tags": ["a", "b"] } }, "expect": { "value": "a" } },
+    { "id": "member/in-list", "expr": "\"a\" in item.tags", "scope": { "item": { "tags": ["a", "b"] } }, "expect": { "value": true } },
+    { "id": "member/in-map", "expr": "\"city\" in item.addr", "scope": { "item": { "addr": { "city": "Istanbul" } } }, "expect": { "value": true } },
+
+    { "id": "types/int-from-string", "expr": "int(\"42\")", "scope": {}, "expect": { "value": 42 } },
+    { "id": "types/double-from-string", "expr": "double(\"3.14\")", "scope": {}, "expect": { "value": 3.14 } },
+    { "id": "types/string-from-int", "expr": "string(42)", "scope": {}, "expect": { "value": "42" } },
+
+    { "id": "has/present", "expr": "has(item.name)", "scope": { "item": { "name": "Ada" } }, "expect": { "value": true } },
+    { "id": "has/missing", "expr": "has(item.nope)", "scope": { "item": { "name": "Ada" } }, "expect": { "value": false } },
+    { "id": "size/string", "expr": "size(\"hello\")", "scope": {}, "expect": { "value": 5 } },
+    { "id": "size/list", "expr": "size([1, 2, 3, 4])", "scope": {}, "expect": { "value": 4 } },
+    { "id": "size/map", "expr": "size({\"a\": 1, \"b\": 2})", "scope": {}, "expect": { "value": 2 } },
+
+    { "id": "macro/filter", "expr": "[1, 2, 3, 4, 5].filter(x, x > 2)", "scope": {}, "expect": { "value": [3, 4, 5] } },
+    { "id": "macro/map", "expr": "[1, 2, 3].map(x, x * 2)", "scope": {}, "expect": { "value": [2, 4, 6] } },
+    { "id": "macro/all-true", "expr": "[1, 2, 3].all(x, x > 0)", "scope": {}, "expect": { "value": true } },
+    { "id": "macro/all-false", "expr": "[1, 2, 3].all(x, x > 1)", "scope": {}, "expect": { "value": false } },
+    { "id": "macro/exists-true", "expr": "[1, 2, 3].exists(x, x == 2)", "scope": {}, "expect": { "value": true } },
+    { "id": "macro/exists_one-false", "expr": "[1, 2, 3].exists_one(x, x > 1)", "scope": {}, "expect": { "value": false } },
+    { "id": "macro/filter-to-empty", "expr": "[1, 2, 3].filter(x, x > 5)", "scope": {}, "expect": { "value": [] } },
+
+    { "id": "str/contains", "expr": "\"hello\".contains(\"ell\")", "scope": {}, "expect": { "value": true } },
+    { "id": "str/startsWith", "expr": "\"hello\".startsWith(\"he\")", "scope": {}, "expect": { "value": true } },
+    { "id": "str/endsWith", "expr": "\"hello\".endsWith(\"lo\")", "scope": {}, "expect": { "value": true } },
+    { "id": "str/lowerAscii", "expr": "\"HELLO\".lowerAscii()", "scope": {}, "expect": { "value": "hello" } },
+    { "id": "str/upperAscii", "expr": "\"hello\".upperAscii()", "scope": {}, "expect": { "value": "HELLO" } },
+    { "id": "str/trim", "expr": "\"  hello  \".trim()", "scope": {}, "expect": { "value": "hello" } },
+    { "id": "str/split", "expr": "\"a,b,c\".split(\",\")", "scope": {}, "expect": { "value": ["a", "b", "c"] } },
+    { "id": "str/replace", "expr": "\"foofoo\".replace(\"foo\", \"bar\")", "scope": {}, "expect": { "value": "barbar" } },
+    { "id": "str/substring", "expr": "\"hello\".substring(1, 4)", "scope": {}, "expect": { "value": "ell" } },
+    { "id": "str/indexOf-found", "expr": "\"hello\".indexOf(\"l\")", "scope": {}, "expect": { "value": 2 } },
+    { "id": "str/indexOf-missing", "expr": "\"hello\".indexOf(\"z\")", "scope": {}, "expect": { "value": -1 } },
+    { "id": "str/matches", "expr": "\"abc123\".matches(\"^[a-z]+[0-9]+$\")", "scope": {}, "expect": { "value": true } },
+
+    { "id": "str/capitalize", "expr": "\"ada\".capitalize()", "scope": {}, "expect": { "value": "Ada" } },
+    { "id": "str/capitalize-empty", "expr": "\"\".capitalize()", "scope": {}, "expect": { "value": "" } },
+    { "id": "str/capitalize-preserves-rest-case", "expr": "\"aDA\".capitalize()", "scope": {}, "expect": { "value": "ADA" } },
+    { "id": "str/truncate-shorter", "expr": "\"hi\".truncate(10)", "scope": {}, "expect": { "value": "hi" } },
+    { "id": "str/truncate-cut", "expr": "\"Hello World\".truncate(5)", "scope": {}, "expect": { "value": "Hello" } },
+
+    { "id": "list/flatten", "expr": "[[1, 2], [3, 4]].flatten()", "scope": {}, "expect": { "value": [1, 2, 3, 4] } },
+    { "id": "list/distinct", "expr": "[\"a\", \"b\", \"a\", \"c\"].distinct()", "scope": {}, "expect": { "value": ["a", "b", "c"] } },
+    { "id": "list/reverse", "expr": "[1, 2, 3].reverse()", "scope": {}, "expect": { "value": [3, 2, 1] } },
+
+    { "id": "list/first", "expr": "[10, 20, 30].first()", "scope": {}, "expect": { "value": 10 } },
+    { "id": "list/last", "expr": "[10, 20, 30].last()", "scope": {}, "expect": { "value": 30 } },
+    { "id": "list/first-empty", "expr": "[].first()", "scope": {}, "expect": { "value": null } },
+    { "id": "list/last-empty", "expr": "[].last()", "scope": {}, "expect": { "value": null } },
+    { "id": "list/sum-ints", "expr": "[1, 2, 3, 4].sum()", "scope": {}, "expect": { "value": 10 } },
+    { "id": "list/sum-mixed", "expr": "[1.5, 2.5, 3.0].sum()", "scope": {}, "expect": { "value": 7 } },
+    { "id": "list/sum-empty", "expr": "[].sum()", "scope": {}, "expect": { "value": 0 } },
+    { "id": "list/join", "expr": "[\"a\", \"b\", \"c\"].join(\"-\")", "scope": {}, "expect": { "value": "a-b-c" } },
+
+    { "id": "ns/JSON/parse-roundtrip", "expr": "JSON.parse('{\"x\":42}').x", "scope": {}, "expect": { "value": 42 } },
+    { "id": "ns/JSON/parse-list", "expr": "JSON.parse('[1,2,3]')", "scope": {}, "expect": { "value": [1, 2, 3] } },
+    { "id": "ns/JSON/stringify-scalar", "expr": "JSON.stringify(42)", "scope": {}, "expect": { "value": "42" } },
+
+    { "id": "ns/Math/abs-pos", "expr": "Math.abs(5)", "scope": {}, "expect": { "value": 5 } },
+    { "id": "ns/Math/abs-neg", "expr": "Math.abs(-3.5)", "scope": {}, "expect": { "value": 3.5 } },
+    { "id": "ns/Math/round-up", "expr": "Math.round(2.6)", "scope": {}, "expect": { "value": 3 } },
+    { "id": "ns/Math/round-down", "expr": "Math.round(2.4)", "scope": {}, "expect": { "value": 2 } },
+    { "id": "ns/Math/floor", "expr": "Math.floor(2.9)", "scope": {}, "expect": { "value": 2 } },
+    { "id": "ns/Math/ceil", "expr": "Math.ceil(2.1)", "scope": {}, "expect": { "value": 3 } },
+    { "id": "ns/Math/max-int", "expr": "Math.max(10, 20)", "scope": {}, "expect": { "value": 20 } },
+    { "id": "ns/Math/min-int", "expr": "Math.min(10, 20)", "scope": {}, "expect": { "value": 10 } },
+    { "id": "ns/Math/sqrt", "expr": "Math.sqrt(16)", "scope": {}, "expect": { "value": 4 } },
+
+    { "id": "ns/Crypto/uuid", "expr": "Crypto.uuid()", "scope": {}, "expect": { "matcher": "regex", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" } },
+
+    { "id": "ns/Object/keys-single", "expr": "Object.keys({\"only\": 1})", "scope": {}, "expect": { "value": ["only"] } },
+    { "id": "ns/Object/values-single", "expr": "Object.values({\"only\": 42})", "scope": {}, "expect": { "value": [42] } },
+
+    { "id": "map/keys-multi-sorted", "expr": "item.keys()", "scope": { "item": { "b": 2, "a": 1, "c": 3 } }, "expect": { "value": ["a", "b", "c"] } },
+    { "id": "map/keys-empty", "expr": "item.keys()", "scope": { "item": {} }, "expect": { "value": [] } },
+    { "id": "map/values-multi-sorted", "expr": "item.values()", "scope": { "item": { "b": 2, "a": 1, "c": 3 } }, "expect": { "value": [1, 2, 3] } },
+    { "id": "map/values-empty", "expr": "item.values()", "scope": { "item": {} }, "expect": { "value": [] } },
+    { "id": "map/entries-multi-sorted", "expr": "item.entries()", "scope": { "item": { "b": 2, "a": 1, "c": 3 } }, "expect": { "value": [["a", 1], ["b", 2], ["c", 3]] } },
+    { "id": "map/entries-empty", "expr": "item.entries()", "scope": { "item": {} }, "expect": { "value": [] } },
+
+    { "id": "tmpl/single-string", "template": "{{ item.name }}", "scope": { "item": { "name": "Ada" } }, "expect": { "value": "Ada" } },
+    { "id": "tmpl/single-number", "template": "{{ item.age }}", "scope": { "item": { "age": 36 } }, "expect": { "value": 36 } },
+    { "id": "tmpl/single-list", "template": "{{ item.tags }}", "scope": { "item": { "tags": ["a", "b"] } }, "expect": { "value": ["a", "b"] } },
+    { "id": "tmpl/mixed-one", "template": "Hello {{ item.name }}!", "scope": { "item": { "name": "Ada" } }, "expect": { "value": "Hello Ada!" } },
+    { "id": "tmpl/mixed-multi", "template": "{{ item.name }} ({{ item.age }})", "scope": { "item": { "name": "Ada", "age": 36 } }, "expect": { "value": "Ada (36)" } },
+    { "id": "tmpl/plain-text", "template": "no expressions here", "scope": {}, "expect": { "value": "no expressions here" } },
+
+    { "id": "err/missing-field", "expr": "item.nope", "scope": { "item": { "x": 1 } }, "expect": { "error": true } },
+    { "id": "err/parse-error", "expr": "item.age.", "scope": { "item": { "age": 1 } }, "expect": { "error": true } }
+  ]
+}

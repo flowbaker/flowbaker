@@ -63,12 +63,12 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 	log.Info().Msg("Building executor dependencies")
 	logger := log.Logger
 
-	kangarooBinder, err := expressions.NewKangarooBinder(expressions.KangarooBinderOptions{
+	celBinder, err := expressions.NewCELBinder(expressions.CELBinderOptions{
 		Logger:         logger,
 		DefaultTimeout: 5 * time.Second,
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create Kangaroo expression binder")
+		log.Error().Err(err).Msg("Failed to create CEL expression binder")
 		return nil, err
 	}
 
@@ -102,7 +102,7 @@ func (c *ExecutorContainer) BuildExecutorDependencies(ctx context.Context, confi
 		IntegrationSelector:        integrationSelector,
 		ExecutorStorageManager:     executorStorageManager,
 		ExecutorCredentialManager:  executorCredentialManager,
-		ParameterBinder:            kangarooBinder,
+		ParameterBinder:            celBinder,
 		ExecutorTaskPublisher:      executorTaskPublisher,
 		ExecutorIntegrationManager: executorIntegrationManager,
 		ExecutorKnowledgeManager:   executorKnowledgeManager,
