@@ -130,6 +130,40 @@ var (
 				Description: "Triggered when an HTTP request is received",
 				Properties: []domain.NodeProperty{
 					{
+						Key:         "source",
+						Name:        "Source",
+						Description: "Where the path and authentication come from.",
+						Required:    true,
+						Type:        domain.NodePropertyType_String,
+						Default:     "custom",
+						Options: []domain.NodePropertyOption{
+							{Label: "Custom", Value: "custom"},
+							{Label: "Managed API", Value: "api"},
+						},
+					},
+					{
+						Key:         "api_definition_id",
+						Name:        "Managed API",
+						Description: "Pick a managed API to source the path and auth from.",
+						Required:    true,
+						Type:        domain.NodePropertyType_APIDefRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "source",
+							Value:       "api",
+						},
+					},
+					{
+						Key:         "webhook_endpoint_id",
+						Name:        "Endpoint",
+						Description: "Pick an endpoint from the managed API.",
+						Required:    true,
+						Type:        domain.NodePropertyType_WebhookEndpointRef,
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "source",
+							Value:       "api",
+						},
+					},
+					{
 						Key:         "path",
 						Name:        "Path",
 						Description: "The path of the request",
@@ -137,6 +171,10 @@ var (
 						Type:        domain.NodePropertyType_Endpoint,
 						EndpointPropertyOpts: &domain.EndpointPropertyOptions{
 							AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
+						},
+						DependsOn: &domain.DependsOn{
+							PropertyKey: "source",
+							Value:       "custom",
 						},
 					},
 					{

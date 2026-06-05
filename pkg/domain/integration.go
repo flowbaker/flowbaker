@@ -262,12 +262,12 @@ type IntegrationOutput struct {
 }
 
 type IntegrationDeps struct {
-	FlowbakerClient            flowbaker.ClientInterface
-	ExecutorTaskPublisher      ExecutorTaskPublisher
-	ParameterBinder            IntegrationParameterBinder
-	IntegrationSelector        IntegrationSelector
-	ExecutorStorageManager     ExecutorStorageManager
-	ExecutorCredentialManager  ExecutorCredentialManager
+	FlowbakerClient              flowbaker.ClientInterface
+	ExecutorTaskPublisher        ExecutorTaskPublisher
+	ParameterBinder              IntegrationParameterBinder
+	IntegrationSelector          IntegrationSelector
+	ExecutorStorageManager       ExecutorStorageManager
+	ExecutorCredentialManager    ExecutorCredentialManager
 	ExecutorIntegrationManager ExecutorIntegrationManager
 	ExecutorKnowledgeManager   ExecutorKnowledgeManager
 	ExecutorModelManager       ExecutorModelManager

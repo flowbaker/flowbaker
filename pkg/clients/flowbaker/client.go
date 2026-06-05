@@ -45,6 +45,7 @@ type ClientInterface interface {
 	// Credential operations (for executor clients)
 	GetCredential(ctx context.Context, workspaceID, credentialID string) (*EncryptedCredential, error)
 	GetFullCredential(ctx context.Context, workspaceID, credentialID string) (*EncryptedFullCredential, error)
+
 	BindParametersToStruct(ctx context.Context, workspaceID string, item any, nodeSettings map[string]any) ([]byte, error)
 	GetExecutionFile(ctx context.Context, req GetExecutionFileRequest) (ExecutionWorkspaceFile, error)
 
